@@ -1,0 +1,10 @@
+{
+	"scripts": {
+		"d2:svg": "node tools/render-d2.mjs svg",
+		"d2:png": "node tools/render-d2.mjs png",
+		"d2:pdf": "node tools/render-d2.mjs pdf"
+	},
+	"devDependencies": {
+		"@terrastruct/d2": "^0.1.33"
+	}
+}

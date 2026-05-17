@@ -1,0 +1,22 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+importers:
+
+  .:
+    devDependencies:
+      '@terrastruct/d2':
+        specifier: ^0.1.33
+        version: 0.1.33
+
+packages:
+
+  '@terrastruct/d2@0.1.33':
+    resolution: {integrity: sha512-eK5hyfGIJFolC7sUsiKvWdY9xGFctTe3d+PSijo09IYDso8psztC+A4SammizXtlwYZpnnW0AtDjfBYauceSeA==}
+
+snapshots:
+
+  '@terrastruct/d2@0.1.33': {}

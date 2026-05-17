@@ -1,0 +1,323 @@
+vars: {
+  d2-config: {
+    layout-engine: elk
+    theme-id: 4
+  }
+}
+
+direction: down
+
+classes: {
+  role: {
+    style.fill: "#EFF6FF"
+    style.stroke: "#2563EB"
+    style.stroke-width: 2
+    style.border-radius: 10
+  }
+  admin: {
+    style.fill: "#F8FAFC"
+    style.stroke: "#64748B"
+    style.stroke-width: 2
+    style.border-radius: 10
+  }
+  product: {
+    style.fill: "#F5F3FF"
+    style.stroke: "#7C3AED"
+    style.stroke-width: 2
+    style.border-radius: 10
+  }
+  result: {
+    style.fill: "#ECFDF5"
+    style.stroke: "#16A34A"
+    style.stroke-width: 2
+    style.border-radius: 10
+  }
+  production: {
+    style.fill: "#FFFBEB"
+    style.stroke: "#D97706"
+    style.stroke-width: 2
+    style.border-radius: 10
+  }
+  logistics: {
+    style.fill: "#EFF6FF"
+    style.stroke: "#0284C7"
+    style.stroke-width: 2
+    style.border-radius: 10
+  }
+  sales: {
+    style.fill: "#FDF2F8"
+    style.stroke: "#DB2777"
+    style.stroke-width: 2
+    style.border-radius: 10
+  }
+  money: {
+    style.fill: "#FEF2F2"
+    style.stroke: "#DC2626"
+    style.stroke-width: 2
+    style.border-radius: 10
+  }
+  direct: {
+    style.fill: "#EEF2FF"
+    style.stroke: "#4F46E5"
+    style.stroke-width: 2
+    style.border-radius: 10
+  }
+  note: {
+    style.fill: "#F8FAFC"
+    style.stroke: "#CBD5E1"
+    style.stroke-dash: 4
+    style.border-radius: 10
+  }
+}
+
+roles: {
+  label: "Роли"
+  direction: right
+  style.fill: "#FFFFFF"
+  style.stroke: "#CBD5E1"
+
+  director: {
+    label: "Директор\nШаблоны продукции\nСтатистика\nПрием денег"
+    class: role
+  }
+
+  commercial: {
+    label: "Коммерческий руководитель\nКлиенты\nПродажи по точкам\nПрямая отправка"
+    class: role
+  }
+
+  production_manager: {
+    label: "Заведующий производством\nСырье\nВыпуск продукции\nПередача логисту"
+    class: role
+  }
+
+  logist: {
+    label: "Логист\nПродукция на производстве\nОстатки на точках\nДоставка и сбор денег"
+    class: role
+  }
+
+  seller: {
+    label: "Работник точки выдачи\nПрием продукции\nКлиенты\nПродажи"
+    class: role
+  }
+
+  admin: {
+    label: "Администратор системы\nПользователи\nРоли\nТочки выдачи"
+    class: admin
+  }
+}
+
+main_flow: {
+  label: "Основной бизнес-процесс"
+  direction: down
+  style.fill: "#FFFFFF"
+  style.stroke: "#CBD5E1"
+
+  templates: {
+    label: "1. Шаблоны продукции\nРоль: директор\nСоздает и корректирует\nтипы продукции"
+    class: product
+  }
+
+  raw: {
+    label: "2. Сырье\nРоль: заведующий производством\nФиксирует поступление\nсырья в систему"
+    class: production
+  }
+
+  release: {
+    label: "3. Выпуск продукции\nРоль: заведующий производством\nВыбирает шаблон\nУказывает сырье и выход продукции"
+    class: production
+  }
+
+  stock: {
+    label: "Результат: готовая продукция\nОстаток готовой продукции\nпоявляется на производстве"
+    class: result
+  }
+
+  point_setup: {
+    label: "Подготовка точки выдачи\nРоль: администратор или директор\nСоздает точку и назначает\nработника точки выдачи"
+    class: admin
+  }
+
+  production_transfer: {
+    label: "4. Передача продукции логисту\nРоль: заведующий производством\nПередает готовую продукцию\nлогисту"
+    class: production
+  }
+
+  logist_acceptance: {
+    label: "5. Прием продукции логистом\nРоль: логист\nПринимает продукцию\nс производства"
+    class: logistics
+  }
+
+  delivery_task: {
+    label: "6. Назначение доставки\nРоль: требует уточнения\nКто создает задачу логисту:\nлогист, работник точки\nили руководитель?"
+    class: note
+  }
+
+  logist_transfer: {
+    label: "7. Передача на точку выдачи\nРоль: логист\nПередает продукцию\nна конкретную точку выдачи"
+    class: logistics
+  }
+
+  point_acceptance: {
+    label: "8. Прием на точке выдачи\nРоль: работник точки выдачи\nПринимает продукцию\nот логиста"
+    class: sales
+  }
+
+  point_balance: {
+    label: "Результат: остатки точки выдачи\nЛогист и работник видят\nколичество, цену и сумму"
+    class: result
+  }
+
+  client: {
+    label: "9. Подготовка клиента\nРоль: работник точки выдачи или\nкоммерческий руководитель\nКлиент обязателен для продажи"
+    class: sales
+  }
+
+  sale: {
+    label: "10. Продажа\nРоль: работник точки выдачи или\nкоммерческий руководитель\nОстаток продукции уменьшается,\nденежный остаток растет"
+    class: sales
+  }
+
+  direct_sale: {
+    label: "Ветка: прямая отправка\nРоль: коммерческий руководитель\nОформляет продажу\nдо доставки клиенту"
+    class: direct
+  }
+
+  direct_delivery: {
+    label: "Доставка клиенту\nРоль: логист\nЛогист не продает,\nтолько фиксирует передачу"
+    class: direct
+  }
+
+  raw -> release
+  templates -> release
+  release -> stock
+  stock -> production_transfer
+  production_transfer -> logist_acceptance
+  point_setup -> logist_transfer
+  logist_acceptance -> delivery_task
+  stock -> direct_sale {
+    style.stroke: "#4F46E5"
+  }
+  delivery_task -> logist_transfer
+  direct_sale -> direct_delivery {
+    style.stroke: "#4F46E5"
+  }
+  logist_transfer -> point_acceptance
+  point_acceptance -> point_balance
+  point_balance -> client
+  client -> sale
+}
+
+money_flow: {
+  label: "Денежный процесс"
+  direction: right
+  style.fill: "#FFFFFF"
+  style.stroke: "#CBD5E1"
+
+  point_money: {
+    label: "Денежный остаток\nУвеличивается после продаж\nна точке или прямой отправке"
+    class: money
+  }
+
+  logist_money: {
+    label: "Денежные средства у логиста\nРаботник точки передает X рублей\nлогист подтверждает прием"
+    class: money
+  }
+
+  director_money: {
+    label: "Денежные средства у директора\nДиректор принимает деньги\nпосле передачи логистом"
+    class: money
+  }
+
+  point_money -> logist_money
+  logist_money -> director_money
+}
+
+control: {
+  label: "Контроль и системные функции"
+  direction: right
+  style.fill: "#FFFFFF"
+  style.stroke: "#CBD5E1"
+
+  director_stats: {
+    label: "Директор\nВидит статистику\nпо всей системе"
+    class: role
+  }
+
+  commercial_control: {
+    label: "Коммерческий руководитель\nВидит точки, продажи,\nдвижение продукции\nи денежные показатели"
+    class: role
+  }
+
+  logist_visibility: {
+    label: "Логист\nВидит наличие продукции\nна производстве\nи остатки на точках"
+    class: logistics
+  }
+
+  admin_functions: {
+    label: "Администратор системы\nСупер-права\nПользователи, роли,\nточки выдачи"
+    class: admin
+  }
+}
+
+roles -> control {
+  style.opacity: 0
+}
+
+legend: {
+  label: "Цветовая маркировка"
+  direction: right
+  style.fill: "#FFFFFF"
+  style.stroke: "#CBD5E1"
+
+  template: {
+    label: "Шаблоны продукции"
+    class: product
+  }
+
+  production: {
+    label: "Производство"
+    class: production
+  }
+
+  logistics: {
+    label: "Логистика"
+    class: logistics
+  }
+
+  sales: {
+    label: "Продажи и клиенты"
+    class: sales
+  }
+
+  result: {
+    label: "Результат / состояние"
+    class: result
+  }
+
+  money: {
+    label: "Деньги"
+    class: money
+  }
+
+  admin: {
+    label: "Администрирование / вопрос"
+    class: admin
+  }
+
+  direct: {
+    label: "Прямая отправка"
+    class: direct
+  }
+}
+
+control -> legend {
+  style.opacity: 0
+}
+main_flow.direct_delivery -> money_flow.point_money {
+  style.stroke: "#4F46E5"
+}
+main_flow.sale -> money_flow.point_money
+legend -> main_flow {
+  style.opacity: 0
+}
