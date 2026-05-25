@@ -38,9 +38,15 @@ classes: {
     style.stroke-width: 2
     style.border-radius: 10
   }
-  logistics: {
-    style.fill: "#EFF6FF"
-    style.stroke: "#0284C7"
+  distributor: {
+    style.fill: "#ECFEFF"
+    style.stroke: "#0891B2"
+    style.stroke-width: 2
+    style.border-radius: 10
+  }
+  courier: {
+    style.fill: "#F0FDF4"
+    style.stroke: "#16A34A"
     style.stroke-width: 2
     style.border-radius: 10
   }
@@ -56,16 +62,10 @@ classes: {
     style.stroke-width: 2
     style.border-radius: 10
   }
-  direct: {
+  notify: {
     style.fill: "#EEF2FF"
     style.stroke: "#4F46E5"
     style.stroke-width: 2
-    style.border-radius: 10
-  }
-  note: {
-    style.fill: "#F8FAFC"
-    style.stroke: "#CBD5E1"
-    style.stroke-dash: 4
     style.border-radius: 10
   }
 }
@@ -77,32 +77,32 @@ roles: {
   style.stroke: "#CBD5E1"
 
   director: {
-    label: "Директор\nШаблоны продукции\nСтатистика\nПрием денег"
+    label: "Директор\nШаблоны продукции\nСтатистика\nСписание денег\nНикита — пользователь\nс этой ролью"
     class: role
   }
 
   commercial: {
-    label: "Коммерческий руководитель\nКлиенты\nПродажи по точкам\nПрямая отправка"
+    label: "Коммерческий руководитель\nОстатки распределителя\nПродажи\nУведомления производству"
     class: role
   }
 
   production_manager: {
-    label: "Заведующий производством\nСырье\nВыпуск продукции\nПередача логисту"
+    label: "Заведующий производством\nСырье и тара\nВыпуск продукции\nПеремещение на распределитель"
     class: role
   }
 
-  logist: {
-    label: "Логист\nПродукция на производстве\nОстатки на точках\nДоставка и сбор денег"
+  distributor_worker: {
+    label: "Работник распределителя\nБаланс распределителя\nКлиенты\nПродажи"
     class: role
   }
 
-  seller: {
-    label: "Работник точки выдачи\nПрием продукции\nКлиенты\nПродажи"
+  courier: {
+    label: "Курьер\nЗагрузка продукции\nПродажи\nСгрузка продукции и наличных"
     class: role
   }
 
   admin: {
-    label: "Администратор системы\nПользователи\nРоли\nТочки выдачи"
+    label: "Администратор системы\nПользователи\nРоли\nСправочники"
     class: admin
   }
 }
@@ -114,17 +114,17 @@ main_flow: {
   style.stroke: "#CBD5E1"
 
   templates: {
-    label: "1. Шаблоны продукции\nРоль: директор\nСоздает и корректирует\nтипы продукции"
+    label: "1. Шаблоны продукции\nРоль: директор\nИсточник автозаполнения\nдля будущих выпусков"
     class: product
   }
 
-  raw: {
-    label: "2. Сырье\nРоль: заведующий производством\nФиксирует поступление\nсырья в систему"
+  raw_and_packaging: {
+    label: "2. Сырье и тара\nРоль: заведующий производством\nФиксирует поступление\nсырья и тары"
     class: production
   }
 
   release: {
-    label: "3. Выпуск продукции\nРоль: заведующий производством\nВыбирает шаблон\nУказывает сырье и выход продукции"
+    label: "3. Выпуск продукции\nРоль: заведующий производством\nКопирует цену и поля\nшаблона в партию"
     class: production
   }
 
@@ -133,104 +133,125 @@ main_flow: {
     class: result
   }
 
-  point_setup: {
-    label: "Подготовка точки выдачи\nРоль: администратор или директор\nСоздает точку и назначает\nработника точки выдачи"
-    class: admin
-  }
-
-  production_transfer: {
-    label: "4. Передача продукции логисту\nРоль: заведующий производством\nПередает готовую продукцию\nлогисту"
+  move_to_distributor: {
+    label: "4. Перемещение на распределитель\nРоль: заведующий производством\nПередает готовую продукцию\nна распределитель"
     class: production
   }
 
-  logist_acceptance: {
-    label: "5. Прием продукции логистом\nРоль: логист\nПринимает продукцию\nс производства"
-    class: logistics
+  distributor_balance: {
+    label: "Распределитель\nТоварный остаток\nНаличный денежный баланс\nВ v1 один, позже может быть больше"
+    class: distributor
   }
 
-  delivery_task: {
-    label: "6. Назначение доставки\nРоль: требует уточнения\nКто создает задачу логисту:\nлогист, работник точки\nили руководитель?"
-    class: note
-  }
-
-  logist_transfer: {
-    label: "7. Передача на точку выдачи\nРоль: логист\nПередает продукцию\nна конкретную точку выдачи"
-    class: logistics
-  }
-
-  point_acceptance: {
-    label: "8. Прием на точке выдачи\nРоль: работник точки выдачи\nПринимает продукцию\nот логиста"
-    class: sales
-  }
-
-  point_balance: {
-    label: "Результат: остатки точки выдачи\nЛогист и работник видят\nколичество, цену и сумму"
-    class: result
+  notification: {
+    label: "Уведомление производству\nРоль: коммерческий руководитель\nСвободная задача\nСтатус: новое / выполнено"
+    class: notify
   }
 
   client: {
-    label: "9. Подготовка клиента\nРоль: работник точки выдачи или\nкоммерческий руководитель\nКлиент обязателен для продажи"
+    label: "Клиент\nСоздается или выбирается\nперед продажей\nТелефон уникален"
     class: sales
   }
 
-  sale: {
-    label: "10. Продажа\nРоль: работник точки выдачи или\nкоммерческий руководитель\nОстаток продукции уменьшается,\nденежный остаток растет"
+  distributor_sale: {
+    label: "Продажа с распределителя\nРоль: работник распределителя\nили коммерческий руководитель\nСпособ оплаты: наличные / безнал"
     class: sales
   }
 
-  direct_sale: {
-    label: "Ветка: прямая отправка\nРоль: коммерческий руководитель\nОформляет продажу\nдо доставки клиенту"
-    class: direct
+  courier_load: {
+    label: "Загрузка курьера\nРоль: курьер\nБерет продукцию\nс распределителя на свой баланс"
+    class: courier
   }
 
-  direct_delivery: {
-    label: "Доставка клиенту\nРоль: логист\nЛогист не продает,\nтолько фиксирует передачу"
-    class: direct
+  courier_balance: {
+    label: "Баланс курьера\nПродукция у курьера\nНаличные от продаж"
+    class: courier
   }
 
-  raw -> release
+  courier_sale: {
+    label: "Продажа курьером\nРоль: курьер\nКлиент создается или выбирается\nкак при продаже с распределителя"
+    class: sales
+  }
+
+  courier_unload: {
+    label: "Сгрузка курьера\nРоль: курьер\nОдной операцией возвращает\nостаток продукции и наличные\nна распределитель"
+    class: courier
+  }
+
+  distributor_cash_sale: {
+    label: "Наличная продажа\nс распределителя\nНаличный баланс\nраспределителя увеличивается"
+    class: money
+  }
+
+  courier_cash_sale: {
+    label: "Наличная продажа\nкурьером\nНаличный баланс курьера\nувеличивается"
+    class: money
+  }
+
+  money_cashless: {
+    label: "Безналичная продажа\nНаличный баланс не меняется\nДеньги уходят сразу на ИП"
+    class: money
+  }
+
+  revenue_stats: {
+    label: "Статистика выручки\nОбщая / наличная / безналичная\nБез разрезов в v1"
+    class: result
+  }
+
+  action_log: {
+    label: "История действий\nВсе операции пишутся\nИсправления только\nновой операцией"
+    class: admin
+  }
+
+  money_writeoff: {
+    label: "Списание денег\nРоль: директор\nНикита — пользователь\nс ролью директор"
+    class: money
+  }
+
+  raw_and_packaging -> release
   templates -> release
   release -> stock
-  stock -> production_transfer
-  production_transfer -> logist_acceptance
-  point_setup -> logist_transfer
-  logist_acceptance -> delivery_task
-  stock -> direct_sale {
+  stock -> move_to_distributor
+  move_to_distributor -> distributor_balance
+  notification -> release {
     style.stroke: "#4F46E5"
+    style.stroke-dash: 4
   }
-  delivery_task -> logist_transfer
-  direct_sale -> direct_delivery {
-    style.stroke: "#4F46E5"
+  distributor_balance -> client
+  client -> distributor_sale
+  distributor_balance -> courier_load
+  courier_load -> courier_balance
+  courier_balance -> client
+  client -> courier_sale
+  courier_balance -> courier_unload
+  courier_unload -> distributor_balance
+  distributor_sale -> distributor_cash_sale
+  distributor_sale -> money_cashless
+  courier_sale -> courier_cash_sale
+  courier_sale -> money_cashless
+  distributor_sale -> revenue_stats
+  courier_sale -> revenue_stats
+  distributor_cash_sale -> distributor_balance {
+    style.stroke: "#DC2626"
   }
-  logist_transfer -> point_acceptance
-  point_acceptance -> point_balance
-  point_balance -> client
-  client -> sale
-}
-
-money_flow: {
-  label: "Денежный процесс"
-  direction: right
-  style.fill: "#FFFFFF"
-  style.stroke: "#CBD5E1"
-
-  point_money: {
-    label: "Денежный остаток\nУвеличивается после продаж\nна точке или прямой отправке"
-    class: money
+  courier_cash_sale -> courier_balance {
+    style.stroke: "#DC2626"
   }
-
-  logist_money: {
-    label: "Денежные средства у логиста\nРаботник точки передает X рублей\nлогист подтверждает прием"
-    class: money
+  distributor_balance -> money_writeoff {
+    style.stroke: "#DC2626"
   }
-
-  director_money: {
-    label: "Денежные средства у директора\nДиректор принимает деньги\nпосле передачи логистом"
-    class: money
+  distributor_sale -> action_log {
+    style.stroke: "#64748B"
+    style.stroke-dash: 4
   }
-
-  point_money -> logist_money
-  logist_money -> director_money
+  courier_sale -> action_log {
+    style.stroke: "#64748B"
+    style.stroke-dash: 4
+  }
+  courier_unload -> action_log {
+    style.stroke: "#64748B"
+    style.stroke-dash: 4
+  }
 }
 
 control: {
@@ -240,27 +261,30 @@ control: {
   style.stroke: "#CBD5E1"
 
   director_stats: {
-    label: "Директор\nВидит статистику\nпо всей системе"
+    label: "Директор\nВидит статистику,\nостатки и деньги\nСписывает денежные средства"
     class: role
   }
 
   commercial_control: {
-    label: "Коммерческий руководитель\nВидит точки, продажи,\nдвижение продукции\nи денежные показатели"
+    label: "Коммерческий руководитель\nВидит распределитель,\nпродажи, остатки\nи денежные показатели"
     class: role
   }
 
-  logist_visibility: {
-    label: "Логист\nВидит наличие продукции\nна производстве\nи остатки на точках"
-    class: logistics
+  production_visibility: {
+    label: "Заведующий производством\nВидит остатки\nна распределителе\nи уведомления"
+    class: production
   }
 
   admin_functions: {
-    label: "Администратор системы\nСупер-права\nПользователи, роли,\nточки выдачи"
+    label: "Администратор системы\nСупер-права\nПользователи, роли,\nсправочники"
     class: admin
   }
 }
 
-roles -> control {
+roles -> main_flow {
+  style.opacity: 0
+}
+main_flow -> control {
   style.opacity: 0
 }
 
@@ -280,9 +304,14 @@ legend: {
     class: production
   }
 
-  logistics: {
-    label: "Логистика"
-    class: logistics
+  distributor: {
+    label: "Распределитель"
+    class: distributor
+  }
+
+  courier: {
+    label: "Курьер"
+    class: courier
   }
 
   sales: {
@@ -290,34 +319,22 @@ legend: {
     class: sales
   }
 
-  result: {
-    label: "Результат / состояние"
-    class: result
-  }
-
   money: {
     label: "Деньги"
     class: money
   }
 
-  admin: {
-    label: "Администрирование / вопрос"
-    class: admin
+  notify: {
+    label: "Уведомления"
+    class: notify
   }
 
-  direct: {
-    label: "Прямая отправка"
-    class: direct
+  admin: {
+    label: "Администрирование"
+    class: admin
   }
 }
 
 control -> legend {
-  style.opacity: 0
-}
-main_flow.direct_delivery -> money_flow.point_money {
-  style.stroke: "#4F46E5"
-}
-main_flow.sale -> money_flow.point_money
-legend -> main_flow {
   style.opacity: 0
 }
