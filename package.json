@@ -1,8 +1,12 @@
 {
 	"scripts": {
-		"d2:svg": "node tools/render-d2.mjs svg",
-		"d2:png": "node tools/render-d2.mjs png",
-		"d2:pdf": "node tools/render-d2.mjs pdf"
+		"d2:svg": "node scripts/diagrams/render-d2.mjs svg",
+		"d2:png": "node scripts/diagrams/render-d2.mjs png",
+		"d2:pdf": "node scripts/diagrams/render-d2.mjs pdf",
+		"docs:check": "pnpm docs:check:links && pnpm docs:check:index && pnpm docs:check:status",
+		"docs:check:links": "node scripts/docs/check-links.mjs",
+		"docs:check:index": "node scripts/docs/check-index.mjs",
+		"docs:check:status": "node scripts/docs/check-status.mjs"
 	},
 	"devDependencies": {
 		"@terrastruct/d2": "^0.1.33"

@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, extname, resolve } from "node:path";
 import { D2 } from "@terrastruct/d2";
 
@@ -36,6 +36,8 @@ if (format !== "svg") {
     console.error(conversion.stderr || "rsvg-convert failed");
     process.exit(conversion.status ?? 1);
   }
+
+  await rm(svgPath, { force: true });
 }
 
 console.log(outputPath);
