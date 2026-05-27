@@ -1,0 +1,109 @@
+# Engineering Plan: Полная v1 CRM «Бухта»
+
+Статус: `Active`
+Дата: 2026-05-27
+Источник: `gstack-plan-eng-review` + последующее product/engineering обсуждение.
+
+## Summary
+
+Реализуем полную v1 последовательно и основательно, без частичного production-запуска пользователям. Пользовательское тестирование начинается после сборки цельного продукта, затем идут правки, полировка и уточнение сценариев.
+
+При этом внутри разработки каждый этап закрывается инженерным checkpoint:
+
+- backend tests;
+- integration tests на real Postgres для критичных операций;
+- docs check;
+- локальная ручная проверка UI владельцем проекта;
+- исправление найденных проблем до перехода к следующему крупному этапу.
+
+Основная последовательность: роли/админка и mobile/PWA shell → shared contracts/domain core → справочники → производство → перемещения → распределитель/курьер → продажи → сгрузка/списания → отчеты/audit.
+
+Архитектурный принцип: append-only операции + защищенные текущие balance projections, обновляемые в одной Prisma transaction.
+
+Принятые решения:
+- Source of truth: `Operation`/audit envelope + typed operation details + transactional balance tables.
+- Concurrency: conditional update + `idempotencyKey` для критичных write-команд.
+- Права задаются через policy layer; текущая policy для дисконта, отмены и корректировок: `director` и `admin`, с возможностью быстро добавить роли позже.
+- Backend modules: по доменным зонам, не по таблицам.
+- Contracts: `packages/shared` zod schemas + inferred TS types.
+- Errors: единый `{ code, message, details }` contract.
+- Tests: real Postgres integration tests per phase + unit tests.
+- PWA/mobile foundation начинается рано: app-like shell, role home screens, mobile navigation, cache только shell/static/read-only data; write-операции online-only.
+
+## Implementation Phases
+1. **Roles, Admin, Policy Foundation**
+   - Заменить spike-style role guard на policy registry/guard.
+   - Зафиксировать роли: `admin`, `director`, `production_manager`, `commercial_manager`, `distributor_worker`, `courier`.
+   - Добавить admin user management, seed пользователей/ролей, protected routes.
+   - Все permission checks проходят backend policy layer, не frontend.
+   - Policy rules должны меняться в одном месте, без поиска проверок по controllers/UI.
+
+2. **Mobile/PWA Foundation**
+   - Создать mobile-first app shell.
+   - Добавить PWA manifest, базовые app icons, standalone display mode, theme/status colors.
+   - Добавить role home screen pattern для ежедневных операций.
+   - Добавить mobile navigation pattern для операционных ролей.
+   - Зафиксировать explicit offline write blocking: при отсутствии соединения write-действия недоступны или возвращают понятную ошибку.
+   - Не реализовывать offline queue, background sync и разрешение конфликтов остатков в v1.
+
+3. **Shared Contracts And Domain Core**
+   - В `packages/shared` добавить zod contracts для commands/responses/errors.
+   - Ввести value helpers для денег в копейках и количеств с unit.
+   - В API добавить domain error mapper в HTTP responses.
+   - В Prisma добавить базовые модели для append-only operation envelope, audit log, idempotency records и balance projections.
+   - Для важных операций добавить typed details вместо одного универсального JSON payload.
+
+4. **Catalog And Admin Data**
+   - Справочники: виды сырья, тара/упаковка, шаблоны продукции, распределители.
+   - CRUD здесь допустим, но все изменения проходят role/policy checks и audit.
+   - Product template changes не меняют уже выпущенные партии.
+
+5. **Production Flow**
+   - Поступление сырья/тары.
+   - Выпуск партии продукции с snapshot полей шаблона и цены.
+   - Авто/ручное списание тары.
+   - Перемещение готовой продукции на распределитель.
+   - Каждая write-команда: validate → policy → transaction → operation/audit → balance update.
+
+6. **Inventory, Courier, Sales, Cash**
+   - Загрузка курьера с распределителя.
+   - Продажа с распределителя и продажа курьером.
+   - Сгрузка товара и наличных от курьера.
+   - Списание наличных директором.
+   - Дисконт как заранее назначенный priced stock allocation на конкретное количество остатка, без ручной скидки в момент продажи.
+   - Отмена/корректировка только новой операцией со ссылкой на исходную.
+
+7. **Reports, Audit, PWA Completion**
+   - Query services для остатков, истории, движения денег/товара и базовой статистики.
+   - Pagination/filtering для истории и отчетов.
+   - Проверить PWA installability и performance на мобильном viewport.
+   - `HANDLER-MAP.md`, `ARCHITECTURE.md`, `SECURITY.md`, `FRONTEND.md`, `DEVELOPMENT.md` обновить по фактическим handlers/tests.
+
+## Public Interfaces
+- Command handler shape: `execute(actor, command, idempotencyKey)`; actor берется из BetterAuth session.
+- Shared error shape: `{ code: string; message: string; details?: unknown }`.
+- Critical command responses возвращают operation id, affected balances и user-facing status.
+- API не принимает финальные цены/скидки от продавца, кроме выбора заранее разрешенного discounted stock item.
+- Read path идет через query services, не через Prisma reads в controllers.
+- Operation persistence shape: общий `Operation`/audit envelope для факта действия + typed detail models для продаж, загрузок, сгрузок, выпуска, списаний и корректировок.
+
+## Test Plan
+- Unit: money/quantity helpers, policy matrix, discount calculations, allowed status transitions.
+- Integration with real Postgres: every command happy path, insufficient stock/cash, insufficient permissions, idempotent retry, audit write, balance before/after.
+- Concurrency: parallel sale/load/unload attempts cannot create negative balances or double-spend stock.
+- API: anonymous `401`, wrong role `403`, valid role `200/201`, stable error codes.
+- Frontend: mobile role flows, offline write disabled/error state, no horizontal overflow, core forms and loading/error states, PWA manifest/installability after PWA foundation.
+- Manual UI verification: владелец проекта регулярно проверяет интерфейс руками после готовности каждого крупного flow.
+- Required verification per phase: `pnpm lint`, `pnpm lint:boundaries`, `pnpm typecheck`, `pnpm test`, `pnpm docs:check`, `pnpm audit`.
+
+## Assumptions And References
+- Полная v1 тестируется целиком после реализации, но каждый этап обязан проходить targeted verification до следующего этапа.
+- Частичные production-релизы пользователям до готовности полной v1 не планируются.
+- Инженерные checkpoints не являются пользовательскими релизами; они нужны, чтобы не копить ошибки до конца разработки.
+- Admin user management — ранняя часть v1, потому что администратор создает пользователей и назначает роли.
+- Права ролей могут уточняться по ходу разработки; policy layer должен делать такие изменения быстрыми и локальными.
+- Existing modified docs in the worktree are treated as user changes and must not be reverted.
+- External checks used: Prisma transactions docs, PostgreSQL row-level locking docs, NestJS guards/authorization docs:
+  - https://www.prisma.io/docs/concepts/components/prisma-client/transactions
+  - https://www.postgresql.org/docs/17/explicit-locking.html
+  - https://docs.nestjs.com/security/authorization
