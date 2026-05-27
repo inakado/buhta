@@ -28,6 +28,8 @@
 - Для выбора технологий и Docker-dev подхода: `docs/TECH-STACK.md`.
 - Для карты документации: `docs/DOCS-INDEX.md`.
 - Для правил планирования задач: `docs/PLANS.md`.
+- Для текущей v1 roadmap: `docs/exec-plans/active/2026-05-27-v1-roadmap.md`.
+- Для ближайшего кодового этапа: `docs/exec-plans/active/2026-05-28-architecture-baseline-and-domain-core.md`.
 - Для диаграммы процесса: `docs/diagrams/business-flow.d2` или `docs/diagrams/business-flow.png`.
 
 ## 4. Инженерные ожидания
