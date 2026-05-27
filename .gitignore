@@ -2,3 +2,10 @@
 .playwright-mcp/
 output/
 node_modules/
+.turbo/
+dist/
+.next/
+coverage/
+apps/api/src/generated/
+*.tsbuildinfo
+.env

@@ -1,5 +1,19 @@
 {
+	"name": "buhta",
+	"private": true,
+	"packageManager": "pnpm@11.3.0",
 	"scripts": {
+		"dev": "turbo dev",
+		"dev:infra": "docker compose up -d postgres",
+		"dev:api": "pnpm --filter @buhta/api dev",
+		"dev:web": "pnpm --filter @buhta/web dev",
+		"build": "turbo build",
+		"lint": "turbo lint",
+		"lint:boundaries": "eslint \"apps/*/{app,src,test}/**/*.{ts,tsx}\" \"packages/*/src/**/*.{ts,tsx}\" --no-error-on-unmatched-pattern --quiet",
+		"typecheck": "turbo typecheck",
+		"test": "turbo test",
+		"smoke": "node scripts/smoke/smoke.mjs",
+		"audit": "pnpm audit",
 		"d2:svg": "node scripts/diagrams/render-d2.mjs svg",
 		"d2:png": "node scripts/diagrams/render-d2.mjs png",
 		"d2:pdf": "node scripts/diagrams/render-d2.mjs pdf",
@@ -9,6 +23,13 @@
 		"docs:check:status": "node scripts/docs/check-status.mjs"
 	},
 	"devDependencies": {
-		"@terrastruct/d2": "^0.1.33"
+		"@terrastruct/d2": "^0.1.33",
+		"@typescript-eslint/eslint-plugin": "^8.60.0",
+		"@typescript-eslint/parser": "^8.60.0",
+		"dotenv-cli": "^11.0.0",
+		"eslint": "^10.4.0",
+		"eslint-plugin-boundaries": "^6.0.2",
+		"turbo": "^2.8.1",
+		"typescript": "^6.0.3"
 	}
 }

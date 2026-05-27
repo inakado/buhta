@@ -4,7 +4,7 @@
 
 ## 1. Общая структура
 
-- `pnpm workspace` — пакетный менеджер и workspace-основа.
+- `pnpm 11.x workspace` — пакетный менеджер и workspace-основа.
 - `turbo` — orchestration для monorepo, если структура будет `apps/web`, `apps/api`, `packages/shared`.
 - `TypeScript` — единый язык для web, API и shared contracts.
 - Monorepo по умолчанию:
@@ -37,14 +37,22 @@ Backend является источником доменных операций,
 
 ## 4. Auth
 
-Предпочтительное направление — `BetterAuth`, если короткий technical spike подтверждает чистую интеграцию в связке `NestJS + Prisma + роли Бухты`.
+Выбранное направление после technical spike — `BetterAuth` в связке `NestJS + Prisma`.
+
+Spike подтвердил:
+
+- `@thallesp/nestjs-better-auth` подключает BetterAuth в NestJS на `/api/auth`;
+- email/password sign-up и sign-in работают через BetterAuth;
+- session cookie доступна backend guard-слою;
+- backend route может различать anonymous, wrong role и allowed role;
+- роль пользователя хранится в auth user table как дополнительное поле.
 
 Ожидаемая зона ответственности:
 
 - `BetterAuth` отвечает за identity, sessions, cookies, user management и базовые permissions.
 - Backend policy/guards и application services отвечают за доменные права: продажи, скидки, списания, выпуск продукции, загрузку и сгрузку курьера.
 
-Fallback, если интеграция BetterAuth с NestJS окажется хрупкой:
+Fallback остается запасным вариантом, если при развитии доменной модели интеграция окажется хрупкой:
 
 - auth-слой на `NestJS` с проверенными библиотеками;
 - `argon2` для паролей;
@@ -67,7 +75,10 @@ Fallback, если интеграция BetterAuth с NestJS окажется х
 - Не использовать устаревшие версии только ради привычки или копирования из старого проекта.
 - Lockfile обязателен; обновления зависимостей должны проходить через тесты и релевантные проверки.
 - Known high/critical vulnerability нельзя оставлять без явного решения: обновление, mitigation или временное исключение с причиной.
-- После появления полноценного workspace в verification contour добавить dependency audit.
+- Dependency audit входит в verification contour.
+- Настройки pnpm, кроме registry/auth, хранятся в `pnpm-workspace.yaml`.
+- Dependency overrides используются точечно для security fixes.
+- Build scripts зависимостей разрешаются явно через `allowBuilds`; не включать глобальный режим запуска всех scripts.
 
 Критичные доменные сценарии должны иметь тесты: деньги, остатки, права, история действий, скидки, наличные/безналичные продажи.
 
@@ -82,6 +93,8 @@ Fallback, если интеграция BetterAuth с NestJS окажется х
 - `postgres`;
 - `api`;
 - `web`.
+
+Локальный `postgres` публикуется на `localhost:5433`, чтобы не конфликтовать с возможным системным Postgres на `localhost:5432`. Внутри Docker Compose API подключается к `postgres:5432`.
 
 Дополнительно после появления приложения:
 

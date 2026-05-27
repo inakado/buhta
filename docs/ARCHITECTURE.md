@@ -2,7 +2,7 @@
 
 Рабочая карта архитектуры проекта «Бухта».
 
-Статус: `Draft`. Не является заменой `docs/crm-requirements.md`, `docs/ARCHITECTURE-PRINCIPLES.md` и `docs/TECH-STACK.md`.
+Статус: `Draft`. Foundation scaffold создан; документ фиксирует текущую техническую карту, но не заменяет `docs/crm-requirements.md`, `docs/ARCHITECTURE-PRINCIPLES.md` и `docs/TECH-STACK.md`.
 
 ## 1. Назначение
 
@@ -19,10 +19,30 @@
 - Базовый стек описан в `docs/TECH-STACK.md`.
 - Инженерные принципы описаны в `docs/ARCHITECTURE-PRINCIPLES.md`.
 - Бизнес-логика и роли описаны в `docs/crm-requirements.md`.
+- Текущая структура:
+  - `apps/web` — Next.js frontend;
+  - `apps/api` — NestJS backend;
+  - `packages/shared` — общие runtime constants/contracts;
+  - `apps/api/prisma` — Prisma schema, migrations и seed.
+- Auth foundation:
+  - BetterAuth подключен в NestJS на `/api/auth`;
+  - auth tables живут в PostgreSQL через Prisma;
+  - backend guards отвечают за доменные роли и доступ к операциям.
+- Foundation data flow:
+
+```text
+apps/web
+  -> HTTP API
+apps/api
+  -> imports packages/shared
+  -> BetterAuth sessions/cookies
+  -> Prisma
+PostgreSQL
+```
 
 ## 3. Что пока не фиксируем
 
-До начала scaffold не фиксировать преждевременно:
+Пока не фиксировать преждевременно:
 
 - окончательный список backend-модулей;
 - структуру таблиц;
@@ -32,4 +52,4 @@
 
 ## 4. Когда заполнять
 
-Заполнить после первого technical spike/scaffold, когда появятся реальные директории, contracts, Prisma schema и первые доменные операции.
+Расширять после появления первых доменных операций: продажи, выпуск продукции, загрузка/сгрузка курьера, списание наличных и заранее назначенный дисконт.

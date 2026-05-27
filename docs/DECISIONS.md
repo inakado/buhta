@@ -2,7 +2,7 @@
 
 Короткий журнал архитектурных решений проекта «Бухта».
 
-Статус: `Draft`. Решения ниже актуальны до появления кода; после scaffold источником истины становятся код, тесты и схемы.
+Статус: `Draft`. После scaffold источником истины становятся код, тесты и схемы; этот журнал фиксирует принятые решения и причины.
 
 ## DEC-01 — Базовый стек
 
@@ -45,12 +45,12 @@
 
 ## DEC-03 — Auth direction
 
-Статус: `Accepted with spike`
+Статус: `Accepted`
 
 Решение:
 
-- предпочтительный кандидат — `BetterAuth`;
-- перед финальным scaffold нужен technical spike `NestJS + Prisma + BetterAuth + роли Бухты`;
+- auth foundation строится на `BetterAuth` через `@thallesp/nestjs-better-auth`;
+- spike `NestJS + Prisma + BetterAuth + роли Бухты` пройден;
 - BetterAuth отвечает за identity, sessions, cookies, user management и базовые permissions;
 - backend policy/guards и application services отвечают за доменные права и бизнес-инварианты.
 
@@ -63,6 +63,13 @@
 Fallback:
 
 - если spike показывает хрупкую интеграцию, используем auth-слой на NestJS с проверенными библиотеками, `argon2`, `httpOnly` cookies/JWT-сессиями и backend RBAC.
+
+Проверка spike:
+
+- `/api/auth/sign-up/email` создает пользователя с ролью по умолчанию `courier`;
+- protected route без сессии возвращает `401`;
+- courier-сессия на director-only route возвращает `403`;
+- director-сессия на director-only route возвращает `200`.
 
 ## DEC-04 — Docs harness
 
@@ -79,3 +86,19 @@ Fallback:
 - проект активно проектируется через документацию;
 - без автоматической проверки документация быстро начнет расходиться с кодом;
 - перенос документов из других проектов требует явной очистки.
+
+## DEC-05 — Local Postgres port
+
+Статус: `Accepted`
+
+Решение:
+
+- проектный Postgres в Docker публикуется на host port `5433`;
+- внутри Docker Compose сервис остается доступен как `postgres:5432`;
+- `DATABASE_URL` для host-run использует `localhost:5433`.
+
+Причина:
+
+- на машине владельца проекта уже может быть системный Postgres на `localhost:5432`;
+- явный порт `5433` убирает конфликт между OrbStack container port publishing и локальным Postgres;
+- внутри compose сохраняется стандартный порт Postgres.

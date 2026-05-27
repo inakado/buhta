@@ -1,0 +1,53 @@
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-buhta}
+      POSTGRES_USER: ${POSTGRES_USER:-buhta}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-buhta}
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - postgres18-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    image: node:24-bookworm-slim
+    working_dir: /app
+    command: sh -lc "corepack enable && pnpm install --frozen-lockfile && pnpm --filter @buhta/api dev"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-buhta}:${POSTGRES_PASSWORD:-buhta}@postgres:5432/${POSTGRES_DB:-buhta}
+      API_PORT: ${API_PORT:-3000}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:3000}
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-replace-with-at-least-32-random-characters}
+    ports:
+      - "${API_PORT:-3000}:3000"
+    volumes:
+      - .:/app
+      - pnpm-store:/root/.local/share/pnpm/store
+
+  web:
+    image: node:24-bookworm-slim
+    working_dir: /app
+    command: sh -lc "corepack enable && pnpm install --frozen-lockfile && pnpm --filter @buhta/web dev"
+    depends_on:
+      - api
+    environment:
+      PORT: ${WEB_PORT:-3001}
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://localhost:3000}
+    ports:
+      - "${WEB_PORT:-3001}:3001"
+    volumes:
+      - .:/app
+      - pnpm-store:/root/.local/share/pnpm/store
+
+volumes:
+  postgres18-data:
+  pnpm-store:

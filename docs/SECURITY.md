@@ -2,7 +2,7 @@
 
 Security notes проекта «Бухта».
 
-Статус: `Draft`. Заполняется по мере появления кода и auth-интеграции.
+Статус: `Draft`. Foundation auth-интеграция создана, доменные security rules будут расширяться по мере появления операций.
 
 ## 1. Scope
 
@@ -21,11 +21,19 @@ Security notes проекта «Бухта».
 - Критичные операции проверяются на backend.
 - Проведенные операции не редактируются задним числом; исправления идут отдельной операцией.
 - Секреты не попадают в git.
-- Auth-решение фиксируется после BetterAuth/NestJS spike.
+- Auth foundation строится на BetterAuth через NestJS adapter.
 
-## 3. Заполнить после scaffold
+## 3. Текущий auth/session flow
 
-- выбранный session/cookie flow;
+- BetterAuth подключен в API на `/api/auth`.
+- Используется email/password flow.
+- Session хранится в httpOnly cookie `better-auth.session_token`.
+- Роль пользователя хранится в user table как дополнительное поле.
+- Публичные routes должны быть явно отмечены как anonymous.
+- Protected routes проходят через BetterAuth session guard и затем через backend role/policy guards.
+
+## 4. Заполнить после доменного scaffold
+
 - roles/permissions matrix в коде;
 - правила CORS/origin;
 - политика audit log;
