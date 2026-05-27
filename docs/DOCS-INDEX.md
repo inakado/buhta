@@ -20,7 +20,7 @@
 - `docs/QUALITY_SCORE.md` — черновая шкала оценки зрелости проекта.
 - `docs/exec-plans/deferred-roadmap.md` — отложенные идеи, которые не являются активной задачей.
 - `docs/exec-plans/tech-debt-tracker.md` — признанный техдолг после появления кода или harness.
-- `docs/exec-plans/active/2026-05-27-v1-engineering-plan.md` — активный инженерный план полной v1.
+- `docs/exec-plans/active/2026-05-27-v1-roadmap.md` — долгоживущая roadmap/meta-plan полной v1.
 - `docs/diagrams/business-flow.d2` — редактируемый исходник диаграммы бизнес-процесса.
 - `docs/diagrams/business-flow.png` — PNG-версия диаграммы для просмотра.
 
