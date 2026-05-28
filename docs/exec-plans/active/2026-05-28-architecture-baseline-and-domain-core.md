@@ -508,6 +508,37 @@ Mitigation:
 - документация обновлена;
 - verification commands из плана выполнены.
 
+## Progress Log
+
+### 2026-05-28 — Policy and operation baseline
+
+Выполнено:
+
+- добавлены shared roles, permissions, error shape, money/quantity helpers;
+- BetterAuth user/session преобразуется в application `Actor`;
+- spike-style `DirectorOnlyGuard` заменен на `PolicyRegistry`, `RequirePermission` и `PolicyGuard`;
+- добавлен `GET /auth/me` для current actor summary;
+- добавлен Prisma baseline: `Operation`, `AuditLog`, `IdempotencyRecord`;
+- добавлен `OperationService` с idempotency hash/retry/conflict behavior;
+- добавлены unit tests для policy, auth/me, errors, idempotency и shared primitives;
+- добавлен real Postgres integration test для operation/audit/idempotency transaction baseline;
+- обновлены `ARCHITECTURE.md`, `SECURITY.md`, `HANDLER-MAP.md`, `DOMAIN-EVENTS.md`, `RELIABILITY.md`, `DEVELOPMENT.md`.
+
+Проверки:
+
+- `corepack pnpm lint` — passed;
+- `corepack pnpm lint:boundaries` — passed;
+- `corepack pnpm typecheck` — passed;
+- `corepack pnpm test` — passed;
+- `corepack pnpm docs:check` — passed;
+- `corepack pnpm build` — passed;
+- `corepack pnpm audit` — passed.
+
+Notes:
+
+- `corepack pnpm test` с real Postgres integration test требует поднятого `postgres` и примененных миграций.
+- В sandbox Prisma/DB и Next/Turbopack проверки могут падать с `EPERM`; runbook обновлен с правилами повтора вне sandbox.
+
 ## Out Of Scope Follow-up Plans
 
 После этого этапа вероятные следующие plans:
