@@ -2,6 +2,7 @@ import {
 	CanActivate,
 	ExecutionContext,
 	ForbiddenException,
+	Inject,
 	Injectable,
 	UnauthorizedException,
 } from "@nestjs/common";
@@ -14,7 +15,9 @@ import { PolicyRegistry } from "./policy.registry";
 @Injectable()
 export class PolicyGuard implements CanActivate {
 	constructor(
+		@Inject(Reflector)
 		private readonly reflector: Reflector,
+		@Inject(PolicyRegistry)
 		private readonly policyRegistry: PolicyRegistry,
 	) {}
 

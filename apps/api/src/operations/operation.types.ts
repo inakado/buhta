@@ -1,4 +1,9 @@
-export const BASELINE_OPERATION_TYPES = ["foundation.baseline"] as const;
+export const BASELINE_OPERATION_TYPES = [
+	"foundation.baseline",
+	"user.create",
+	"user.role.update",
+	"user.password.reset",
+] as const;
 
 export type BaselineOperationType = (typeof BASELINE_OPERATION_TYPES)[number];
 

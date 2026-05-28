@@ -30,11 +30,14 @@
 - `audit_log` — append-only запись действия;
 - `idempotency_record` — запись ключа идемпотентности write-команды.
 
-Текущий технический operation type:
+Текущие operation types:
 
 | Type | Назначение | Typed details |
 |---|---|---|
 | `foundation.baseline` | проверочный baseline для operation/idempotency service | нет |
+| `user.create` | администратор создал пользователя с логином и временным паролем | нет, audit details без пароля |
+| `user.role.update` | администратор изменил роль пользователя | нет |
+| `user.password.reset` | администратор сбросил временный пароль пользователя | нет, audit details без пароля |
 
 ## 4. Кандидаты на будущую фиксацию
 

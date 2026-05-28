@@ -28,14 +28,14 @@ describe("PolicyRegistry", () => {
 	it("builds an application actor from an auth user", () => {
 		const actor = registry.buildActor({
 			id: "u1",
-			email: "director@buhta.local",
+			username: "director",
 			name: "Nikita",
 			role: "director",
 		});
 
 		expect(actor).toMatchObject({
 			userId: "u1",
-			email: "director@buhta.local",
+			login: "director",
 			displayName: "Nikita",
 			role: "director",
 		});
@@ -44,8 +44,8 @@ describe("PolicyRegistry", () => {
 	});
 
 	it("rejects missing identity fields and unknown roles", () => {
-		expect(registry.buildActor({ email: "no-id@buhta.local", role: "director" })).toBeNull();
-		expect(registry.buildActor({ id: "u1", email: "x@buhta.local", role: "owner" })).toBeNull();
+		expect(registry.buildActor({ username: "no-id", role: "director" })).toBeNull();
+		expect(registry.buildActor({ id: "u1", username: "x", role: "owner" })).toBeNull();
 	});
 });
 
@@ -56,7 +56,7 @@ describe("PolicyGuard", () => {
 		const request: RequestWithActor = {
 			user: {
 				id: "u1",
-				email: "director@buhta.local",
+				username: "director",
 				name: "Nikita",
 				role: "director",
 			},
@@ -77,7 +77,7 @@ describe("PolicyGuard", () => {
 				contextWithRequest({
 					user: {
 						id: "u2",
-						email: "courier@buhta.local",
+						username: "courier",
 						name: "Courier",
 						role: "courier",
 					},

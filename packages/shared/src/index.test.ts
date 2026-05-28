@@ -9,6 +9,8 @@ import {
 	ROLES,
 	subtractMoneyCents,
 	subtractQuantity,
+	CreateUserRequestSchema,
+	LoginSchema,
 	UpdateUserRoleRequestSchema,
 	UserSummarySchema,
 } from "./index";
@@ -47,13 +49,19 @@ describe("shared contracts", () => {
 	});
 
 	it("validates user management contracts", () => {
+		expect(LoginSchema.parse("Director-1")).toBe("director-1");
+		expect(LoginSchema.safeParse("bad login").success).toBe(false);
+		expect(CreateUserRequestSchema.safeParse({ name: "Nikita", role: "director" }).success).toBe(true);
+		expect(
+			CreateUserRequestSchema.safeParse({ name: "Nikita", role: "director", login: "director-1" }).success,
+		).toBe(true);
 		expect(UpdateUserRoleRequestSchema.safeParse({ role: "director" }).success).toBe(true);
 		expect(UpdateUserRoleRequestSchema.safeParse({ role: "owner" }).success).toBe(false);
 		expect(
 			UserSummarySchema.safeParse({
 				id: "u1",
 				name: "Nikita",
-				email: "director@buhta.local",
+				login: "director",
 				role: "director",
 				createdAt: new Date(0).toISOString(),
 				updatedAt: new Date(0).toISOString(),

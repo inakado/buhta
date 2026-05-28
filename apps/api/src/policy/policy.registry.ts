@@ -10,14 +10,16 @@ import type { Actor, RequestUser } from "./actor";
 @Injectable()
 export class PolicyRegistry {
 	buildActor(user: RequestUser): Actor | null {
-		if (!user.id || !user.email || !isRole(user.role)) {
+		if (!user.id || !isRole(user.role)) {
 			return null;
 		}
 
+		const login = user.username ?? user.email ?? user.id;
+
 		return {
 			userId: user.id,
-			email: user.email,
-			displayName: user.name ?? user.email,
+			login,
+			displayName: user.name ?? user.displayUsername ?? login,
 			role: user.role,
 			permissions: permissionsForRole(user.role),
 		};

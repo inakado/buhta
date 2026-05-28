@@ -10,7 +10,7 @@ describe("AuthMeController", () => {
 			controller.me({
 				user: {
 					id: "u1",
-					email: "director@buhta.local",
+					username: "director",
 					name: "Nikita",
 					role: "director",
 				},
@@ -19,6 +19,7 @@ describe("AuthMeController", () => {
 			authenticated: true,
 			actor: {
 				userId: "u1",
+				login: "director",
 				role: "director",
 				permissions: expect.arrayContaining(["cash.withdraw"]),
 			},

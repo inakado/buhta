@@ -13,7 +13,7 @@ export function mapUserSummary(user: User): UserSummary {
 	return {
 		id: user.id,
 		name: user.name,
-		email: user.email,
+		login: user.username ?? user.email.split("@")[0] ?? user.id,
 		role: user.role,
 		createdAt: user.createdAt.toISOString(),
 		updatedAt: user.updatedAt.toISOString(),

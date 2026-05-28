@@ -28,9 +28,17 @@ Security notes проекта «Бухта».
 ## 3. Текущий auth/session flow
 
 - BetterAuth подключен в API на `/api/auth`.
-- Используется email/password flow.
+- Текущий v1 flow использует BetterAuth email/password + username plugin.
+- Администратор создает пользователя, назначает роль, получает логин и временный пароль, а сотрудник входит по логину и паролю.
+- Email не является пользовательским идентификатором в интерфейсе CRM.
+- BetterAuth все еще требует email на уровне auth user table, поэтому API генерирует внутренний технический email вида `login@internal.buhta.local`. Это поле не показывать в UI и не использовать как бизнес-идентификатор.
 - Session хранится в httpOnly cookie `better-auth.session_token`.
 - Роль пользователя хранится в user table как дополнительное поле.
+- Логин хранится в BetterAuth username fields `username/displayUsername`.
+- Временный пароль возвращается только в response создания пользователя или сброса пароля.
+- Администратор не может изменить собственную роль через users API.
+- Администратор не может сбросить временный пароль самому себе; смена собственного пароля должна быть отдельным защищенным flow, когда он появится.
+- Audit для создания пользователя, смены роли и сброса пароля не должен содержать plaintext password.
 - Публичные routes должны быть явно отмечены как anonymous.
 - Protected routes проходят через BetterAuth session guard и затем через backend role/policy guards.
 
@@ -43,7 +51,7 @@ Policy layer отвечает за доменные разрешения. Тек
 - `RequirePermission` + `PolicyGuard` проверяют доменное permission на backend;
 - protected handlers не должны проверять `role === ...` напрямую;
 - `admin` получает все baseline permissions.
-- Минимальные `/users` handlers защищены permission `users.manage`; сейчас это только `admin`.
+- `/users` handlers защищены permission `users.manage`; сейчас это только `admin`.
 
 Текущие baseline permissions:
 

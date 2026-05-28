@@ -1,10 +1,10 @@
-import { Controller, Get, Req } from "@nestjs/common";
+import { Controller, Get, Inject, Req } from "@nestjs/common";
 import { PolicyRegistry } from "../policy/policy.registry";
 import type { RequestWithActor } from "../policy/actor";
 
 @Controller("auth")
 export class AuthMeController {
-	constructor(private readonly policyRegistry: PolicyRegistry) {}
+	constructor(@Inject(PolicyRegistry) private readonly policyRegistry: PolicyRegistry) {}
 
 	@Get("me")
 	me(@Req() request: RequestWithActor) {

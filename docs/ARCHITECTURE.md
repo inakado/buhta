@@ -79,6 +79,14 @@ Mobile/PWA foundation реализуется рано, а не в конце: ap
 - `audit_log` — append-only запись действия с actor, operation, action, entity и display/details context;
 - `idempotency_record` — защита write-команды от повторного выполнения по паре `actorUserId + key`.
 
+Admin user management уже пишет audit operations:
+
+- `user.create`;
+- `user.role.update`;
+- `user.password.reset`.
+
+Audit details для password lifecycle не содержат plaintext password.
+
 Базовый принцип для следующих доменных операций:
 
 - `Operation`/audit envelope фиксирует общий факт: id, тип операции, actor, время, idempotency key, источник и статус;

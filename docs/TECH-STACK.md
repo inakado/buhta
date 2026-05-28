@@ -48,9 +48,28 @@ Spike подтвердил:
 
 - `@thallesp/nestjs-better-auth` подключает BetterAuth в NestJS на `/api/auth`;
 - email/password sign-up и sign-in работают через BetterAuth;
+- BetterAuth username plugin добавляет sign-in по `username + password`;
 - session cookie доступна backend guard-слою;
 - backend route может различать anonymous, wrong role и allowed role;
 - роль пользователя хранится в auth user table как дополнительное поле.
+
+После уточнения пользовательского сценария целевой v1 auth-flow меняется на admin-managed login/password:
+
+- пользователи не проходят самостоятельную регистрацию;
+- администратор создает пользователя, назначает роль, генерирует логин и временный пароль;
+- сотрудник входит по логину и паролю;
+- email не является обязательным пользовательским идентификатором в CRM UI.
+
+Техническое решение: BetterAuth username plugin в связке `NestJS + Prisma + @thallesp/nestjs-better-auth`.
+
+BetterAuth продолжает требовать email на уровне таблицы, поэтому API создает внутренний технический email из логина: `login@internal.buhta.local`. Это поле остается техническим компромиссом, не показывается пользователю и не является бизнес-идентификатором.
+
+Для admin-managed user lifecycle используется BetterAuth admin API:
+
+- создание пользователя с password credential;
+- username/displayUsername как login;
+- role как CRM-specific user field;
+- сброс пароля через admin set-user-password API с текущей admin session.
 
 Ожидаемая зона ответственности:
 

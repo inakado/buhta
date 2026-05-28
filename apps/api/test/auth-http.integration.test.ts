@@ -7,6 +7,7 @@ import { AppModule } from "../src/app.module";
 import { prisma } from "../src/prisma/client";
 
 const email = "auth-http-integration@buhta.local";
+const username = "auth-http-admin";
 const password = "Pass123!";
 
 describe("auth and policy HTTP integration", () => {
@@ -35,6 +36,7 @@ describe("auth and policy HTTP integration", () => {
 				email,
 				password,
 				name: "Auth HTTP Integration",
+				username,
 			})
 			.expect(200);
 
@@ -56,7 +58,7 @@ describe("auth and policy HTTP integration", () => {
 			authenticated: true,
 			actor: {
 				userId,
-				email,
+				login: username,
 				role: "courier",
 			},
 		});
@@ -95,7 +97,7 @@ describe("auth and policy HTTP integration", () => {
 			expect.arrayContaining([
 				expect.objectContaining({
 					id: userId,
-					email,
+					login: username,
 					role: "admin",
 				}),
 			]),
@@ -111,34 +113,137 @@ describe("auth and policy HTTP integration", () => {
 			role: "director",
 		});
 	});
+
+	it("lets admin create a login user who can sign in with username", async () => {
+		await prisma.user.update({
+			where: { id: userId },
+			data: { role: "admin" },
+		});
+
+		const createResponse = await agent
+			.post("/users")
+			.send({
+				name: "Auth Created Courier",
+				role: "courier",
+				login: "auth-http-courier",
+			})
+			.expect(201);
+
+		expect(createResponse.body.user).toMatchObject({
+			name: "Auth Created Courier",
+			login: "auth-http-courier",
+			role: "courier",
+		});
+		expect(createResponse.body.temporaryPassword).toEqual(expect.any(String));
+
+		const courierAgent = request.agent(server);
+		await courierAgent
+			.post("/api/auth/sign-in/username")
+			.send({
+				username: "auth-http-courier",
+				password: createResponse.body.temporaryPassword,
+			})
+			.expect(200);
+
+		const meResponse = await courierAgent.get("/auth/me").expect(200);
+		expect(meResponse.body).toMatchObject({
+			authenticated: true,
+			actor: {
+				login: "auth-http-courier",
+				role: "courier",
+			},
+		});
+
+		const auditLog = await prisma.auditLog.findFirstOrThrow({
+			where: {
+				action: "user.create",
+				entityId: createResponse.body.user.id,
+			},
+		});
+		expect(JSON.stringify(auditLog.details)).not.toContain(createResponse.body.temporaryPassword);
+	});
+
+	it("lets admin reset a user password without writing the password to audit", async () => {
+		await prisma.user.update({
+			where: { id: userId },
+			data: { role: "admin" },
+		});
+
+		const createResponse = await agent
+			.post("/users")
+			.send({
+				name: "Auth Reset Courier",
+				role: "courier",
+				login: "auth-http-reset",
+			})
+			.expect(201);
+
+		const oldPassword = createResponse.body.temporaryPassword;
+
+		const resetResponse = await agent
+			.post(`/users/${createResponse.body.user.id}/reset-password`)
+			.expect(201);
+
+		expect(resetResponse.body.temporaryPassword).toEqual(expect.any(String));
+		expect(resetResponse.body.temporaryPassword).not.toBe(oldPassword);
+
+		const oldPasswordAgent = request.agent(server);
+		const oldPasswordResponse = await oldPasswordAgent.post("/api/auth/sign-in/username").send({
+			username: "auth-http-reset",
+			password: oldPassword,
+		});
+		expect(oldPasswordResponse.status).toBeGreaterThanOrEqual(400);
+
+		const newPasswordAgent = request.agent(server);
+		await newPasswordAgent
+			.post("/api/auth/sign-in/username")
+			.send({
+				username: "auth-http-reset",
+				password: resetResponse.body.temporaryPassword,
+			})
+			.expect(200);
+
+		const auditLog = await prisma.auditLog.findFirstOrThrow({
+			where: {
+				action: "user.password.reset",
+				entityId: createResponse.body.user.id,
+			},
+		});
+		expect(JSON.stringify(auditLog.details)).not.toContain(resetResponse.body.temporaryPassword);
+	});
 });
 
 async function cleanupUser() {
-	const user = await prisma.user.findUnique({
-		where: { email },
+	const users = await prisma.user.findMany({
+		where: {
+			OR: [{ email }, { username: { startsWith: "auth-http" } }],
+		},
 		select: { id: true },
 	});
+	const userIds = users.map((user) => user.id);
 
-	if (!user) {
+	if (userIds.length === 0) {
 		return;
 	}
 
 	await prisma.idempotencyRecord.deleteMany({
-		where: { actorUserId: user.id },
+		where: { actorUserId: { in: userIds } },
 	});
 	await prisma.auditLog.deleteMany({
-		where: { actorUserId: user.id },
+		where: {
+			OR: [{ actorUserId: { in: userIds } }, { entityId: { in: userIds } }],
+		},
 	});
 	await prisma.operation.deleteMany({
-		where: { actorUserId: user.id },
+		where: { actorUserId: { in: userIds } },
 	});
 	await prisma.session.deleteMany({
-		where: { userId: user.id },
+		where: { userId: { in: userIds } },
 	});
 	await prisma.account.deleteMany({
-		where: { userId: user.id },
+		where: { userId: { in: userIds } },
 	});
-	await prisma.user.delete({
-		where: { id: user.id },
+	await prisma.user.deleteMany({
+		where: { id: { in: userIds } },
 	});
 }

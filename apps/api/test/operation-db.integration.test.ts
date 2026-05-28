@@ -6,11 +6,12 @@ import { OperationService } from "../src/operations/operation.service";
 import { prisma } from "../src/prisma/client";
 
 const testUserId = "operation-integration-user";
+const actorEmail = "operation-integration@internal.buhta.local";
 const operationService = new OperationService(new IdempotencyService());
 
 const actor: Actor = {
 	userId: testUserId,
-	email: "operation-integration@buhta.local",
+	login: "operation-integration",
 	displayName: "Operation Integration",
 	role: "admin",
 	permissions: ["users.manage"],
@@ -18,14 +19,17 @@ const actor: Actor = {
 
 async function ensureUser() {
 	await prisma.user.upsert({
-		where: { email: actor.email },
+		where: { email: actorEmail },
 		update: {
 			name: actor.displayName,
 			role: actor.role,
+			username: actor.login,
 		},
 		create: {
 			id: actor.userId,
-			email: actor.email,
+			email: actorEmail,
+			username: actor.login,
+			displayUsername: actor.login,
 			name: actor.displayName,
 			emailVerified: true,
 			role: actor.role,

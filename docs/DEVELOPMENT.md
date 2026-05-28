@@ -76,6 +76,7 @@ Runbook разработки проекта «Бухта».
 - миграции выполняются командой `pnpm --filter @buhta/api exec prisma migrate dev --name <name>`;
 - Prisma client генерируется командой `pnpm --filter @buhta/api prisma:generate`;
 - seed запускается командой `pnpm --filter @buhta/api seed`;
+- dev seed создает bootstrap admin с логином `SEED_ADMIN_LOGIN` и паролем `SEED_ADMIN_PASSWORD` из env; значения из `.env.example` допустимы только для локального контура;
 - healthchecks проверяют готовность `postgres`, `api`, `web`.
 
 Docker не должен скрывать ошибки приложения. Если локальная команда `pnpm test` падает, compose-сборка не считается заменой исправления.
