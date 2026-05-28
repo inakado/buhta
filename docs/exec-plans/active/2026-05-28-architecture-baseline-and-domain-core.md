@@ -518,10 +518,12 @@ Mitigation:
 - BetterAuth user/session преобразуется в application `Actor`;
 - spike-style `DirectorOnlyGuard` заменен на `PolicyRegistry`, `RequirePermission` и `PolicyGuard`;
 - добавлен `GET /auth/me` для current actor summary;
+- добавлены минимальные admin users handlers: список пользователей и изменение роли;
 - добавлен Prisma baseline: `Operation`, `AuditLog`, `IdempotencyRecord`;
 - добавлен `OperationService` с idempotency hash/retry/conflict behavior;
-- добавлены unit tests для policy, auth/me, errors, idempotency и shared primitives;
+- добавлены unit tests для policy, auth/me, users controller, errors, idempotency и shared primitives;
 - добавлен real Postgres integration test для operation/audit/idempotency transaction baseline;
+- добавлен real Postgres integration test для users role update baseline;
 - обновлены `ARCHITECTURE.md`, `SECURITY.md`, `HANDLER-MAP.md`, `DOMAIN-EVENTS.md`, `RELIABILITY.md`, `DEVELOPMENT.md`.
 
 Проверки:

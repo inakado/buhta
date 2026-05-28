@@ -43,6 +43,7 @@ Policy layer отвечает за доменные разрешения. Тек
 - `RequirePermission` + `PolicyGuard` проверяют доменное permission на backend;
 - protected handlers не должны проверять `role === ...` напрямую;
 - `admin` получает все baseline permissions.
+- Минимальные `/users` handlers защищены permission `users.manage`; сейчас это только `admin`.
 
 Текущие baseline permissions:
 

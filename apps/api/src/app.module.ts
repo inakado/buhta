@@ -8,6 +8,7 @@ import { AppErrorFilter } from "./common/errors/app-error.filter";
 import { HealthController } from "./health/health.controller";
 import { OperationsModule } from "./operations/operations.module";
 import { PolicyModule } from "./policy/policy.module";
+import { UsersModule } from "./users/users.module";
 
 @Module({
 	imports: [
@@ -20,6 +21,7 @@ import { PolicyModule } from "./policy/policy.module";
 		}),
 		PolicyModule,
 		OperationsModule,
+		UsersModule,
 	],
 	controllers: [HealthController, AuthMeController, AuthSpikeController],
 	providers: [

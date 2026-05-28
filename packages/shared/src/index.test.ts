@@ -9,6 +9,8 @@ import {
 	ROLES,
 	subtractMoneyCents,
 	subtractQuantity,
+	UpdateUserRoleRequestSchema,
+	UserSummarySchema,
 } from "./index";
 
 describe("shared contracts", () => {
@@ -42,5 +44,20 @@ describe("shared contracts", () => {
 		});
 		expect(() => quantity(-1, "kg")).toThrow();
 		expect(() => subtractQuantity(quantity(1, "kg"), quantity(1, "piece"))).toThrow();
+	});
+
+	it("validates user management contracts", () => {
+		expect(UpdateUserRoleRequestSchema.safeParse({ role: "director" }).success).toBe(true);
+		expect(UpdateUserRoleRequestSchema.safeParse({ role: "owner" }).success).toBe(false);
+		expect(
+			UserSummarySchema.safeParse({
+				id: "u1",
+				name: "Nikita",
+				email: "director@buhta.local",
+				role: "director",
+				createdAt: new Date(0).toISOString(),
+				updatedAt: new Date(0).toISOString(),
+			}).success,
+		).toBe(true);
 	});
 });

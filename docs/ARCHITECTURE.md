@@ -32,6 +32,7 @@
 - Текущие backend-модули:
   - `auth` — BetterAuth wiring, `GET /auth/me`, current actor helpers;
   - `policy` — roles/permissions registry, `RequirePermission`, `PolicyGuard`;
+  - `users` — минимальное backend-управление пользователями и ролями для администратора;
   - `operations` — baseline operation/idempotency services;
   - `common/errors` — единый `AppError` и mapper в `{ error: { code, message, details } }`;
   - `health` — публичный health contract.
