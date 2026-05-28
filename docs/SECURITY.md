@@ -36,7 +36,15 @@ Security notes проекта «Бухта».
 
 ## 4. Policy Layer Direction
 
-Policy layer отвечает за доменные разрешения:
+Policy layer отвечает за доменные разрешения. Текущий кодовый baseline:
+
+- roles и permissions описаны в `packages/shared`;
+- `PolicyRegistry` строит application `Actor` из BetterAuth user/session;
+- `RequirePermission` + `PolicyGuard` проверяют доменное permission на backend;
+- protected handlers не должны проверять `role === ...` напрямую;
+- `admin` получает все baseline permissions.
+
+Текущие baseline permissions:
 
 - кто может назначать дисконт;
 - кто может отменять или корректировать операции;
@@ -47,9 +55,30 @@ Policy layer отвечает за доменные разрешения:
 
 Текущая policy для дисконта, отмены и корректировок: `director` и `admin`. Если позже право нужно добавить коммерческому руководителю или другой роли, это должно быть одно изменение в policy matrix/helper и соответствующих тестах.
 
+Минимальная матрица ролей в коде:
+
+| Permission | Роли |
+|---|---|
+| `users.manage` | `admin` |
+| `catalog.manage` | `admin`, `director` |
+| `production.manage` | `admin`, `production_manager` |
+| `distributor.stock.read` | все роли |
+| `distributor.cash.read` | `admin`, `director`, `commercial_manager`, `distributor_worker` |
+| `client.manage` | `admin`, `commercial_manager`, `distributor_worker`, `courier` |
+| `distributor.sale.create` | `admin`, `commercial_manager`, `distributor_worker` |
+| `courier.stock.load` | `admin`, `courier` |
+| `courier.sale.create` | `admin`, `courier` |
+| `courier.unload.create` | `admin`, `courier` |
+| `notification.create` | `admin`, `commercial_manager` |
+| `notification.complete` | `admin`, `production_manager` |
+| `cash.withdraw` | `admin`, `director` |
+| `discount.assign` | `admin`, `director` |
+| `operation.correct` | `admin`, `director` |
+| `audit.read` | `admin`, `director`, `production_manager`, `commercial_manager`, `distributor_worker` |
+| `reports.read` | `admin`, `director`, `commercial_manager` |
+
 ## 5. Заполнить после доменного scaffold
 
-- roles/permissions matrix в коде;
 - правила CORS/origin;
 - политика audit log;
 - security test cases.

@@ -26,6 +26,19 @@ Reliability notes проекта «Бухта».
 
 - health endpoints;
 - smoke сценарии;
-- retry/idempotency strategy;
 - backup/restore policy;
 - реальные troubleshooting cases.
+
+## 4. Текущая idempotency baseline
+
+Для критичных write-команд вводится таблица `idempotency_record`.
+
+Текущий принцип:
+
+- idempotency key уникален в рамках `actorUserId`;
+- request hash считается детерминированно по command payload;
+- повтор с тем же ключом и тем же payload возвращает уже созданную operation;
+- повтор с тем же ключом и другим payload отклоняется ошибкой `IDEMPOTENCY_CONFLICT`;
+- запись idempotency, `operation` и `audit_log` создаются в одной Prisma transaction.
+
+Политика хранения и очистки старых idempotency records пока не автоматизирована. Baseline использует `expiresAt`; реальный cleanup нужно добавить перед появлением production write-команд.

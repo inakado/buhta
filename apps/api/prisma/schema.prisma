@@ -8,16 +8,19 @@ datasource db {
 }
 
 model User {
-  id            String    @id
-  name          String
-  email         String    @unique
-  emailVerified Boolean   @default(false)
-  image         String?
-  role          String    @default("courier")
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  sessions      Session[]
-  accounts      Account[]
+  id                 String              @id
+  name               String
+  email              String              @unique
+  emailVerified      Boolean             @default(false)
+  image              String?
+  role               String              @default("courier")
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  sessions           Session[]
+  accounts           Account[]
+  operations         Operation[]         @relation("OperationActor")
+  auditLogs          AuditLog[]          @relation("AuditActor")
+  idempotencyRecords IdempotencyRecord[] @relation("IdempotencyActor")
 
   @@map("user")
 }
@@ -67,4 +70,59 @@ model Verification {
   updatedAt  DateTime? @updatedAt
 
   @@map("verification")
+}
+
+model Operation {
+  id                 String              @id @default(cuid())
+  type               String
+  status             String              @default("succeeded")
+  actorUserId        String
+  idempotencyKey     String?
+  metadata           Json?
+  createdAt          DateTime            @default(now())
+  actor              User                @relation("OperationActor", fields: [actorUserId], references: [id], onDelete: Restrict)
+  auditLogs          AuditLog[]
+  idempotencyRecords IdempotencyRecord[]
+
+  @@unique([actorUserId, idempotencyKey])
+  @@index([actorUserId])
+  @@map("operation")
+}
+
+model AuditLog {
+  id          String    @id @default(cuid())
+  operationId String
+  actorUserId String
+  action      String
+  entityType  String
+  entityId    String?
+  details     Json?
+  createdAt   DateTime  @default(now())
+  operation   Operation @relation(fields: [operationId], references: [id], onDelete: Restrict)
+  actor       User      @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  @@index([operationId])
+  @@index([actorUserId])
+  @@index([entityType, entityId])
+  @@map("audit_log")
+}
+
+model IdempotencyRecord {
+  id               String    @id @default(cuid())
+  key              String
+  actorUserId      String
+  commandName      String
+  operationId      String
+  requestHash      String
+  responseHash     String?
+  responseSnapshot Json?
+  createdAt        DateTime  @default(now())
+  expiresAt        DateTime
+  actor            User      @relation("IdempotencyActor", fields: [actorUserId], references: [id], onDelete: Restrict)
+  operation        Operation @relation(fields: [operationId], references: [id], onDelete: Restrict)
+
+  @@unique([actorUserId, key])
+  @@index([operationId])
+  @@index([expiresAt])
+  @@map("idempotency_record")
 }

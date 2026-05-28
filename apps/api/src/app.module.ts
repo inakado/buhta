@@ -1,8 +1,13 @@
 import { Module } from "@nestjs/common";
+import { APP_FILTER } from "@nestjs/core";
 import { AuthModule } from "@thallesp/nestjs-better-auth";
 import { AuthSpikeController } from "./auth/auth-spike.controller";
+import { AuthMeController } from "./auth/auth-me.controller";
 import { auth } from "./auth/auth";
+import { AppErrorFilter } from "./common/errors/app-error.filter";
 import { HealthController } from "./health/health.controller";
+import { OperationsModule } from "./operations/operations.module";
+import { PolicyModule } from "./policy/policy.module";
 
 @Module({
 	imports: [
@@ -13,7 +18,15 @@ import { HealthController } from "./health/health.controller";
 				urlencoded: { limit: "2mb", extended: true },
 			},
 		}),
+		PolicyModule,
+		OperationsModule,
 	],
-	controllers: [HealthController, AuthSpikeController],
+	controllers: [HealthController, AuthMeController, AuthSpikeController],
+	providers: [
+		{
+			provide: APP_FILTER,
+			useClass: AppErrorFilter,
+		},
+	],
 })
 export class AppModule {}

@@ -1,10 +1,46 @@
 import { describe, expect, it } from "vitest";
-import { HEALTH_RESPONSE_STATUS, ROLES } from "./index";
+import {
+	addMoneyCents,
+	formatMoneyCents,
+	HEALTH_RESPONSE_STATUS,
+	moneyCents,
+	permissionsForRole,
+	quantity,
+	ROLES,
+	subtractMoneyCents,
+	subtractQuantity,
+} from "./index";
 
 describe("shared contracts", () => {
 	it("keeps health status and CRM roles available", () => {
 		expect(HEALTH_RESPONSE_STATUS).toBe("ok");
 		expect(ROLES).toContain("courier");
 		expect(ROLES).toContain("distributor_worker");
+	});
+
+	it("keeps baseline permissions explicit by role", () => {
+		expect(permissionsForRole("admin")).toContain("users.manage");
+		expect(permissionsForRole("director")).toContain("cash.withdraw");
+		expect(permissionsForRole("courier")).not.toContain("cash.withdraw");
+	});
+
+	it("handles money only as integer cents", () => {
+		const left = moneyCents(10_50);
+		const right = moneyCents(250);
+
+		expect(addMoneyCents(left, right)).toBe(1300);
+		expect(subtractMoneyCents(left, right)).toBe(800);
+		expect(formatMoneyCents(left)).toBe("10.50");
+		expect(() => moneyCents(10.5)).toThrow();
+		expect(() => subtractMoneyCents(right, left)).toThrow();
+	});
+
+	it("handles quantities with explicit units", () => {
+		expect(subtractQuantity(quantity(10, "kg"), quantity(3, "kg"))).toEqual({
+			value: 7,
+			unit: "kg",
+		});
+		expect(() => quantity(-1, "kg")).toThrow();
+		expect(() => subtractQuantity(quantity(1, "kg"), quantity(1, "piece"))).toThrow();
 	});
 });

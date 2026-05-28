@@ -27,7 +27,19 @@
 - Auth foundation:
   - BetterAuth подключен в NestJS на `/api/auth`;
   - auth tables живут в PostgreSQL через Prisma;
-  - backend guards отвечают за доменные роли и доступ к операциям.
+  - BetterAuth user/session преобразуется в application `Actor`;
+  - backend policy layer отвечает за доменные роли и доступ к операциям.
+- Текущие backend-модули:
+  - `auth` — BetterAuth wiring, `GET /auth/me`, current actor helpers;
+  - `policy` — roles/permissions registry, `RequirePermission`, `PolicyGuard`;
+  - `operations` — baseline operation/idempotency services;
+  - `common/errors` — единый `AppError` и mapper в `{ error: { code, message, details } }`;
+  - `health` — публичный health contract.
+- `packages/shared` содержит runtime contracts, которые нужны API и web:
+  - роли и permissions;
+  - error response shape;
+  - money-in-cents и quantity helpers;
+  - health constants.
 - Foundation data flow:
 
 ```text
@@ -60,7 +72,13 @@ Mobile/PWA foundation реализуется рано, а не в конце: ap
 
 Критичные доменные действия проектируются как append-only операции.
 
-Базовый принцип:
+Текущий baseline в Prisma:
+
+- `operation` — общий envelope действия: тип, статус, actor, idempotency key, metadata и время создания;
+- `audit_log` — append-only запись действия с actor, operation, action, entity и display/details context;
+- `idempotency_record` — защита write-команды от повторного выполнения по паре `actorUserId + key`.
+
+Базовый принцип для следующих доменных операций:
 
 - `Operation`/audit envelope фиксирует общий факт: id, тип операции, actor, время, idempotency key, источник и статус;
 - typed operation details фиксируют доменные поля конкретного действия;
@@ -85,10 +103,10 @@ Typed details нужны минимум для:
 Пока не фиксировать преждевременно:
 
 - окончательный список backend-модулей;
-- структуру таблиц;
-- структуру API routes;
+- typed detail таблицы для конкретных операций;
+- финальные API routes бизнес-сценариев;
 - финальную форму UI-навигации сверх mobile-first/PWA направления;
-- модель permissions сверх уже описанных ролей и открытых решений.
+- conditional balance projection tables до проектирования конкретных денежных и товарных операций.
 
 ## 6. Когда заполнять
 

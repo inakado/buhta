@@ -1,23 +1,19 @@
-import { Controller, Get, Req, UseGuards } from "@nestjs/common";
-import { DirectorOnlyGuard } from "./role.guard";
-
-type RequestWithUser = {
-	user?: {
-		id?: string;
-		email?: string;
-		role?: string | null;
-	};
-};
+import { Controller, Get, UseGuards } from "@nestjs/common";
+import { CurrentActor } from "./actor.decorator";
+import type { Actor } from "../policy/actor";
+import { PolicyGuard } from "../policy/policy.guard";
+import { RequirePermission } from "../policy/require-permission.decorator";
 
 @Controller("auth-spike")
 export class AuthSpikeController {
 	@Get("director-only")
-	@UseGuards(DirectorOnlyGuard)
-	directorOnly(@Req() request: RequestWithUser) {
+	@RequirePermission("cash.withdraw")
+	@UseGuards(PolicyGuard)
+	directorOnly(@CurrentActor() actor: Actor) {
 		return {
 			status: "ok",
-			userId: request.user?.id,
-			role: request.user?.role,
+			userId: actor.userId,
+			role: actor.role,
 		};
 	}
 }
