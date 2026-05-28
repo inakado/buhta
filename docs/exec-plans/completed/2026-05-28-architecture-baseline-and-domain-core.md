@@ -1,6 +1,6 @@
 # Architecture Baseline And Domain Core Plan
 
-Статус: `Active`
+Статус: `Completed`
 Дата: 2026-05-28
 Roadmap stage: `0. Project Structure And Architecture Baseline` + начало `1. Roles, Admin, Policy Foundation` и `3. Shared Contracts And Domain Core`.
 
@@ -524,6 +524,7 @@ Mitigation:
 - добавлены unit tests для policy, auth/me, users controller, errors, idempotency и shared primitives;
 - добавлен real Postgres integration test для operation/audit/idempotency transaction baseline;
 - добавлен real Postgres integration test для users role update baseline;
+- добавлен HTTP integration test для BetterAuth cookie -> Actor -> PolicyGuard flow, включая `401/403/200`-семантику защищенных routes.
 - обновлены `ARCHITECTURE.md`, `SECURITY.md`, `HANDLER-MAP.md`, `DOMAIN-EVENTS.md`, `RELIABILITY.md`, `DEVELOPMENT.md`.
 
 Проверки:
