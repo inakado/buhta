@@ -54,6 +54,7 @@ Policy layer отвечает за доменные разрешения. Тек
 - `/users` handlers защищены permission `users.manage`; сейчас это только `admin`.
 - `/catalog/*` handlers защищены permission `catalog.manage`; сейчас это `admin` и `director`.
 - `/production/*` handlers защищены permission `production.manage`; сейчас это `admin` и `production_manager`.
+- Перемещение продукции из цеха на распределитель использует тот же `production.manage`: `production_manager` выполняет рабочую операцию, `admin` имеет support-доступ. Отдельный permission для transfer пока не введен.
 
 Текущие baseline permissions:
 

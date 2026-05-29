@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+	DistributorSchema,
 	PackagingTypeSchema,
 	ProductTemplateSchema,
 	RawMaterialTypeSchema,
@@ -103,6 +104,75 @@ export const ProductBatchesResponseSchema = z.object({
 });
 
 export type ProductBatchesResponse = z.infer<typeof ProductBatchesResponseSchema>;
+
+export const WorkshopProductBalanceItemSchema = z.object({
+	id: z.string(),
+	productBatchId: z.string(),
+	productName: z.string(),
+	priceCents: z.number().int().nonnegative(),
+	quantity: z.number().int().nonnegative(),
+	producedQuantity: z.number().int().positive(),
+	createdAt: z.string(),
+	updatedAt: z.string(),
+});
+
+export type WorkshopProductBalanceItem = z.infer<typeof WorkshopProductBalanceItemSchema>;
+
+export const DistributorProductBalanceItemSchema = z.object({
+	id: z.string(),
+	distributorId: z.string(),
+	distributorName: z.string(),
+	productBatchId: z.string(),
+	productName: z.string(),
+	priceCents: z.number().int().nonnegative(),
+	quantity: z.number().int().nonnegative(),
+	updatedAt: z.string(),
+});
+
+export type DistributorProductBalanceItem = z.infer<typeof DistributorProductBalanceItemSchema>;
+
+export const WorkshopProductBalancesResponseSchema = z.object({
+	workshopProductBalances: z.array(WorkshopProductBalanceItemSchema),
+});
+
+export type WorkshopProductBalancesResponse = z.infer<typeof WorkshopProductBalancesResponseSchema>;
+
+export const ProductionTransferOptionsResponseSchema = z.object({
+	distributors: z.array(DistributorSchema),
+	workshopProductBalances: z.array(WorkshopProductBalanceItemSchema),
+});
+
+export type ProductionTransferOptionsResponse = z.infer<typeof ProductionTransferOptionsResponseSchema>;
+
+export const CreateProductTransferRequestSchema = z.object({
+	productBatchId: z.string().min(1),
+	distributorId: z.string().min(1),
+	quantity: PositiveIntegerSchema,
+	comment: OptionalCommentSchema,
+});
+
+export type CreateProductTransferRequest = z.infer<typeof CreateProductTransferRequestSchema>;
+
+export const ProductTransferSchema = z.object({
+	id: z.string(),
+	productBatchId: z.string(),
+	distributorId: z.string(),
+	quantity: z.number().int().positive(),
+	comment: z.string().nullable(),
+	operationId: z.string(),
+	actorUserId: z.string(),
+	createdAt: z.string(),
+});
+
+export type ProductTransfer = z.infer<typeof ProductTransferSchema>;
+
+export const ProductTransferResponseSchema = z.object({
+	transfer: ProductTransferSchema,
+	workshopProductBalance: WorkshopProductBalanceItemSchema,
+	distributorProductBalance: DistributorProductBalanceItemSchema,
+});
+
+export type ProductTransferResponse = z.infer<typeof ProductTransferResponseSchema>;
 
 export const CreateProductBatchRequestSchema = z.object({
 	productTemplateId: z.string().min(1),

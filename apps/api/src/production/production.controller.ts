@@ -2,6 +2,7 @@ import { Body, Controller, Get, Inject, Post, UseGuards } from "@nestjs/common";
 import {
 	CreatePackagingIntakeRequestSchema,
 	CreateProductBatchRequestSchema,
+	CreateProductTransferRequestSchema,
 	CreateRawMaterialIntakeRequestSchema,
 } from "@buhta/shared";
 import type { z } from "zod";
@@ -71,6 +72,18 @@ export class ProductionController {
 		};
 	}
 
+	@Get("workshop-product-balances")
+	async workshopProductBalances() {
+		return {
+			workshopProductBalances: await this.productionService.listWorkshopProductBalances(),
+		};
+	}
+
+	@Get("transfer-options")
+	async transferOptions() {
+		return this.productionService.getTransferOptions();
+	}
+
 	@Post("product-batches")
 	async createProductBatch(@CurrentActor() actor: Actor | undefined, @Body() body: unknown) {
 		return {
@@ -79,6 +92,14 @@ export class ProductionController {
 				parseBody(CreateProductBatchRequestSchema, body, "Invalid product batch payload"),
 			),
 		};
+	}
+
+	@Post("product-transfers")
+	async createProductTransfer(@CurrentActor() actor: Actor | undefined, @Body() body: unknown) {
+		return this.productionService.createProductTransfer(
+			requireActor(actor),
+			parseBody(CreateProductTransferRequestSchema, body, "Invalid product transfer payload"),
+		);
 	}
 }
 

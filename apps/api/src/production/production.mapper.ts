@@ -1,7 +1,10 @@
 import type {
+	DistributorProductBalanceItem,
 	ProductBatch,
+	ProductTransfer,
 	ProductionBalanceItem,
 	ProductionSummary,
+	WorkshopProductBalanceItem,
 } from "@buhta/shared";
 import type { Prisma } from "../generated/prisma/client";
 
@@ -38,6 +41,48 @@ type ProductBatchRecord = {
 	consumedRawMaterialQuantity: DecimalLike;
 	consumedPackagingQuantity: DecimalLike;
 	status: string;
+	createdAt: Date;
+};
+
+type WorkshopProductBalanceRecord = {
+	id: string;
+	productBatchId: string;
+	quantity: number;
+	updatedAt: Date;
+	productBatch: {
+		id: string;
+		productName: string;
+		priceCents: number;
+		quantity: number;
+		createdAt: Date;
+	};
+};
+
+type DistributorProductBalanceRecord = {
+	id: string;
+	distributorId: string;
+	productBatchId: string;
+	quantity: number;
+	updatedAt: Date;
+	distributor: {
+		id: string;
+		name: string;
+	};
+	productBatch: {
+		id: string;
+		productName: string;
+		priceCents: number;
+	};
+};
+
+type ProductTransferRecord = {
+	id: string;
+	productBatchId: string;
+	distributorId: string;
+	quantity: number;
+	comment: string | null;
+	operationId: string;
+	actorUserId: string;
 	createdAt: Date;
 };
 
@@ -87,6 +132,47 @@ export function mapProductBatch(record: ProductBatchRecord): ProductBatch {
 		consumedRawMaterialQuantity: toNumber(record.consumedRawMaterialQuantity),
 		consumedPackagingQuantity: toNumber(record.consumedPackagingQuantity),
 		status: "in_workshop",
+		createdAt: record.createdAt.toISOString(),
+	};
+}
+
+export function mapWorkshopProductBalance(record: WorkshopProductBalanceRecord): WorkshopProductBalanceItem {
+	return {
+		id: record.id,
+		productBatchId: record.productBatchId,
+		productName: record.productBatch.productName,
+		priceCents: record.productBatch.priceCents,
+		quantity: record.quantity,
+		producedQuantity: record.productBatch.quantity,
+		createdAt: record.productBatch.createdAt.toISOString(),
+		updatedAt: record.updatedAt.toISOString(),
+	};
+}
+
+export function mapDistributorProductBalance(
+	record: DistributorProductBalanceRecord,
+): DistributorProductBalanceItem {
+	return {
+		id: record.id,
+		distributorId: record.distributorId,
+		distributorName: record.distributor.name,
+		productBatchId: record.productBatchId,
+		productName: record.productBatch.productName,
+		priceCents: record.productBatch.priceCents,
+		quantity: record.quantity,
+		updatedAt: record.updatedAt.toISOString(),
+	};
+}
+
+export function mapProductTransfer(record: ProductTransferRecord): ProductTransfer {
+	return {
+		id: record.id,
+		productBatchId: record.productBatchId,
+		distributorId: record.distributorId,
+		quantity: record.quantity,
+		comment: record.comment,
+		operationId: record.operationId,
+		actorUserId: record.actorUserId,
 		createdAt: record.createdAt.toISOString(),
 	};
 }

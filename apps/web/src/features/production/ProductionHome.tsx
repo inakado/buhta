@@ -19,25 +19,30 @@ import {
 import {
 	formatMoneyCents,
 	moneyCents,
+	type Distributor,
 	type PackagingType,
 	type ProductBatch,
 	type ProductTemplate,
 	type ProductionBalanceItem,
 	type RawMaterialType,
+	type WorkshopProductBalanceItem,
 } from "@buhta/shared";
 import {
 	createPackagingIntake,
 	createProductBatch,
+	createProductTransfer,
 	createRawMaterialIntake,
 	getProductionOptions,
 	getProductionSummary,
+	getProductionTransferOptions,
 	listPackagingBalances,
 	listProductBatches,
 	listRawMaterialBalances,
+	listWorkshopProductBalances,
 } from "../../lib/api-client";
 
 type ProductionTab = "home" | "notifications" | "history";
-type ProductionScreen = "raw-intake" | "packaging-intake" | "batch-release" | "raw-stock" | "packaging-stock" | "products";
+type ProductionScreen = "raw-intake" | "packaging-intake" | "batch-release" | "transfer" | "raw-stock" | "packaging-stock" | "products";
 
 export function ProductionHome({
 	activeTab,
@@ -63,6 +68,14 @@ export function ProductionHome({
 		queryKey: ["production", "product-batches"],
 		queryFn: listProductBatches,
 	});
+	const workshopProductBalances = useQuery({
+		queryKey: ["production", "workshop-product-balances"],
+		queryFn: listWorkshopProductBalances,
+	});
+	const transferOptions = useQuery({
+		queryKey: ["production", "transfer-options"],
+		queryFn: getProductionTransferOptions,
+	});
 	const options = useQuery({
 		queryKey: ["production", "options"],
 		queryFn: getProductionOptions,
@@ -83,12 +96,15 @@ export function ProductionHome({
 				packagingBalances={packagingBalances.data?.packagingBalances ?? []}
 				packagingBalancesLoading={packagingBalances.isLoading}
 				packagingTypes={options.data?.packagingTypes ?? []}
-				productBatches={productBatches.data?.productBatches ?? []}
-				productBatchesLoading={productBatches.isLoading}
 				productTemplates={options.data?.productTemplates ?? []}
 				rawMaterialBalances={rawMaterialBalances.data?.rawMaterialBalances ?? []}
 				rawMaterialBalancesLoading={rawMaterialBalances.isLoading}
 				rawMaterialTypes={options.data?.rawMaterialTypes ?? []}
+				transferDistributors={transferOptions.data?.distributors ?? []}
+				transferOptionsLoading={transferOptions.isLoading}
+				transferWorkshopProductBalances={transferOptions.data?.workshopProductBalances ?? []}
+				workshopProductBalances={workshopProductBalances.data?.workshopProductBalances ?? []}
+				workshopProductBalancesLoading={workshopProductBalances.isLoading}
 			/>
 		);
 	}
@@ -151,7 +167,7 @@ export function ProductionHome({
 					<Factory aria-hidden size={22} />
 					<span>Выпустить</span>
 				</button>
-				<button className="action-tile" disabled type="button">
+				<button className="action-tile" disabled={!online} onClick={() => setActiveScreen("transfer")} type="button">
 					<ArrowRightLeft aria-hidden size={22} />
 					<span>На распределитель</span>
 				</button>
@@ -175,12 +191,15 @@ function ProductionDetailScreen({
 	packagingBalances,
 	packagingBalancesLoading,
 	packagingTypes,
-	productBatches,
-	productBatchesLoading,
 	productTemplates,
 	rawMaterialBalances,
 	rawMaterialBalancesLoading,
 	rawMaterialTypes,
+	transferDistributors,
+	transferOptionsLoading,
+	transferWorkshopProductBalances,
+	workshopProductBalances,
+	workshopProductBalancesLoading,
 }: {
 	mode: ProductionScreen;
 	onBack: () => void;
@@ -188,12 +207,15 @@ function ProductionDetailScreen({
 	packagingBalances: ProductionBalanceItem[];
 	packagingBalancesLoading: boolean;
 	packagingTypes: PackagingType[];
-	productBatches: ProductBatch[];
-	productBatchesLoading: boolean;
 	productTemplates: ProductTemplate[];
 	rawMaterialBalances: ProductionBalanceItem[];
 	rawMaterialBalancesLoading: boolean;
 	rawMaterialTypes: RawMaterialType[];
+	transferDistributors: Distributor[];
+	transferOptionsLoading: boolean;
+	transferWorkshopProductBalances: WorkshopProductBalanceItem[];
+	workshopProductBalances: WorkshopProductBalanceItem[];
+	workshopProductBalancesLoading: boolean;
 }) {
 	const activeRawMaterialTypes = useMemo(() => rawMaterialTypes.filter((item) => item.active), [rawMaterialTypes]);
 	const activePackagingTypes = useMemo(() => packagingTypes.filter((item) => item.active), [packagingTypes]);
@@ -243,6 +265,14 @@ function ProductionDetailScreen({
 					productTemplates={activeProductTemplates}
 				/>
 			) : null}
+			{mode === "transfer" ? (
+				<ProductTransferForm
+					distributors={transferDistributors}
+					loading={transferOptionsLoading}
+					online={online}
+					workshopProductBalances={transferWorkshopProductBalances}
+				/>
+			) : null}
 			{mode === "raw-stock" ? (
 				<StockListScreen
 					emptyText="Сырья пока нет. Добавьте первый приход сырья."
@@ -262,7 +292,10 @@ function ProductionDetailScreen({
 				/>
 			) : null}
 			{mode === "products" ? (
-				<ProductStockScreen loading={productBatchesLoading} productBatches={productBatches} />
+				<ProductStockScreen
+					loading={workshopProductBalancesLoading}
+					workshopProductBalances={workshopProductBalances}
+				/>
 			) : null}
 		</section>
 	);
@@ -476,6 +509,127 @@ function ProductBatchForm({
 	);
 }
 
+function ProductTransferForm({
+	distributors,
+	loading,
+	online,
+	workshopProductBalances,
+}: {
+	distributors: Distributor[];
+	loading: boolean;
+	online: boolean;
+	workshopProductBalances: WorkshopProductBalanceItem[];
+}) {
+	const queryClient = useQueryClient();
+	const [productBatchId, setProductBatchId] = useState("");
+	const [distributorId, setDistributorId] = useState("");
+	const [quantity, setQuantity] = useState("");
+	const [comment, setComment] = useState("");
+	const [localError, setLocalError] = useState("");
+	const selectedProduct = workshopProductBalances.find((item) => item.productBatchId === productBatchId);
+	const selectedDistributor = distributors.find((item) => item.id === distributorId);
+	const mutation = useMutation({
+		mutationFn: () => createProductTransfer({
+			productBatchId,
+			distributorId,
+			quantity: parsePositiveInteger(quantity, "Количество продукции"),
+			...(comment.trim() ? { comment: comment.trim() } : {}),
+		}),
+		onSuccess: async () => {
+			setProductBatchId("");
+			setDistributorId("");
+			setQuantity("");
+			setComment("");
+			setLocalError("");
+			await invalidateProduction(queryClient);
+		},
+	});
+
+	function handleSubmit(event: FormEvent<HTMLFormElement>) {
+		event.preventDefault();
+		try {
+			const parsedQuantity = parsePositiveInteger(quantity, "Количество продукции");
+			if (selectedProduct && parsedQuantity > selectedProduct.quantity) {
+				throw new Error("Количество продукции: нельзя переместить больше доступного остатка.");
+			}
+		} catch (error) {
+			setLocalError(error instanceof Error ? error.message : "Проверьте количество.");
+			return;
+		}
+		setLocalError("");
+		mutation.mutate();
+	}
+
+	return (
+		<form className="form-panel" onSubmit={handleSubmit}>
+			<div className="section-heading compact">
+				<h2>На распределитель</h2>
+				<span>{selectedDistributor?.name ?? ""}</span>
+			</div>
+			{loading ? <p className="muted">Загрузка доступной продукции</p> : null}
+			{!loading && workshopProductBalances.length === 0 ? (
+				<p className="muted">В цеху нет готовой продукции для перемещения.</p>
+			) : null}
+			{!loading && distributors.length === 0 ? (
+				<p className="muted">Нет активного распределителя для перемещения.</p>
+			) : null}
+			<label className="field">
+				<span>Продукция</span>
+				<select onChange={(event) => setProductBatchId(event.target.value)} required value={productBatchId}>
+					<option value="">Выберите продукцию</option>
+					{workshopProductBalances.map((item) => (
+						<option key={item.id} value={item.productBatchId}>
+							{item.productName} · {item.quantity} шт
+						</option>
+					))}
+				</select>
+			</label>
+			{selectedProduct ? (
+				<p className="muted">
+					Доступно {selectedProduct.quantity} шт · {formatPriceRubles(selectedProduct.priceCents)} ₽ · выпуск{" "}
+					{formatDateTime(selectedProduct.createdAt)}
+				</p>
+			) : null}
+			<label className="field">
+				<span>Распределитель</span>
+				<select onChange={(event) => setDistributorId(event.target.value)} required value={distributorId}>
+					<option value="">Выберите распределитель</option>
+					{distributors.map((item) => (
+						<option key={item.id} value={item.id}>
+							{item.name}
+						</option>
+					))}
+				</select>
+			</label>
+			<label className="field">
+				<span>Количество, шт</span>
+				<input
+					inputMode="numeric"
+					onChange={(event) => setQuantity(event.target.value)}
+					placeholder="4"
+					required
+					type="text"
+					value={quantity}
+				/>
+			</label>
+			<label className="field">
+				<span>Комментарий</span>
+				<input onChange={(event) => setComment(event.target.value)} type="text" value={comment} />
+			</label>
+			{localError ? <p className="form-error">{localError}</p> : null}
+			{mutation.isError ? <p className="form-error">{mutation.error.message}</p> : null}
+			<button
+				className="primary-button"
+				disabled={!online || loading || distributors.length === 0 || workshopProductBalances.length === 0 || mutation.isPending}
+				type="submit"
+			>
+				<ArrowRightLeft aria-hidden size={18} />
+				Переместить
+			</button>
+		</form>
+	);
+}
+
 function ProductionHistory({
 	loading,
 	productBatches,
@@ -528,23 +682,48 @@ function StockListScreen({
 
 function ProductStockScreen({
 	loading,
-	productBatches,
+	workshopProductBalances,
 }: {
 	loading: boolean;
-	productBatches: ProductBatch[];
+	workshopProductBalances: WorkshopProductBalanceItem[];
 }) {
 	return (
 		<section className="detail-list-panel">
 			<div className="section-heading compact">
 				<h2>Продукция в цеху</h2>
-				<span>Готовые партии</span>
+				<span>Доступный остаток</span>
 			</div>
 			{loading ? <p className="muted">Загрузка продукции</p> : null}
-			{!loading && productBatches.length === 0 ? (
+			{!loading && workshopProductBalances.length === 0 ? (
 				<p className="muted">Готовой продукции пока нет. Выпустите первую партию.</p>
 			) : null}
-			<ProductBatchList productBatches={productBatches} />
+			<WorkshopProductBalanceList workshopProductBalances={workshopProductBalances} />
 		</section>
+	);
+}
+
+function WorkshopProductBalanceList({
+	workshopProductBalances,
+}: {
+	workshopProductBalances: WorkshopProductBalanceItem[];
+}) {
+	return (
+		<div className="list-stack">
+			{workshopProductBalances.map((balance) => (
+				<article className="entity-card production-history-card" key={balance.id}>
+					<div>
+						<strong>{balance.productName}</strong>
+						<p>
+							Доступно {balance.quantity} из {balance.producedQuantity} шт
+						</p>
+					</div>
+					<div className="production-history-meta">
+						<strong>{formatPriceRubles(balance.priceCents)} ₽</strong>
+						<span>{formatDateTime(balance.createdAt)}</span>
+					</div>
+				</article>
+			))}
+		</div>
 	);
 }
 

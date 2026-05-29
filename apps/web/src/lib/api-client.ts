@@ -4,6 +4,7 @@ import type {
 	CreatePackagingIntakeRequest,
 	CreateProductBatchRequest,
 	CreateProductTemplateRequest,
+	CreateProductTransferRequest,
 	CreateRawMaterialIntakeRequest,
 	CreateRawMaterialTypeRequest,
 	CreateUserRequest,
@@ -16,7 +17,9 @@ import type {
 	PackagingTypesListResponse,
 	ProductBatchResponse,
 	ProductBatchesResponse,
+	ProductTransferResponse,
 	ProductionOptionsResponse,
+	ProductionTransferOptionsResponse,
 	ProductTemplateResponse,
 	ProductTemplatesListResponse,
 	ProductionSummaryResponse,
@@ -32,6 +35,7 @@ import type {
 	UpdateRawMaterialTypeRequest,
 	UpdateUserRoleResponse,
 	UsersListResponse,
+	WorkshopProductBalancesResponse,
 } from "@buhta/shared";
 import { API_BASE_URL } from "./api";
 import { toUserErrorMessage } from "./error-messages";
@@ -258,8 +262,25 @@ export async function listProductBatches(): Promise<ProductBatchesResponse> {
 	return fetchJson<ProductBatchesResponse>("/production/product-batches");
 }
 
+export async function listWorkshopProductBalances(): Promise<WorkshopProductBalancesResponse> {
+	return fetchJson<WorkshopProductBalancesResponse>("/production/workshop-product-balances");
+}
+
+export async function getProductionTransferOptions(): Promise<ProductionTransferOptionsResponse> {
+	return fetchJson<ProductionTransferOptionsResponse>("/production/transfer-options");
+}
+
 export async function createProductBatch(input: CreateProductBatchRequest): Promise<ProductBatchResponse> {
 	return fetchJson<ProductBatchResponse>("/production/product-batches", {
+		method: "POST",
+		body: JSON.stringify(input),
+	});
+}
+
+export async function createProductTransfer(
+	input: CreateProductTransferRequest,
+): Promise<ProductTransferResponse> {
+	return fetchJson<ProductTransferResponse>("/production/product-transfers", {
 		method: "POST",
 		body: JSON.stringify(input),
 	});

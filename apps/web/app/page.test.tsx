@@ -281,6 +281,43 @@ describe("HomePage", () => {
 				});
 			}
 
+			if (url.endsWith("/production/workshop-product-balances")) {
+				return jsonResponse({
+					workshopProductBalances: [{
+						id: "workshop-balance1",
+						productBatchId: "batch1",
+						productName: "Икра горбуши",
+						priceCents: 125000,
+						quantity: 4,
+						producedQuantity: 4,
+						createdAt: new Date(0).toISOString(),
+						updatedAt: new Date(0).toISOString(),
+					}],
+				});
+			}
+
+			if (url.endsWith("/production/transfer-options")) {
+				return jsonResponse({
+					distributors: [{
+						id: "dist1",
+						name: "Распределитель Центральный",
+						active: true,
+						createdAt: new Date(0).toISOString(),
+						updatedAt: new Date(0).toISOString(),
+					}],
+					workshopProductBalances: [{
+						id: "workshop-balance1",
+						productBatchId: "batch1",
+						productName: "Икра горбуши",
+						priceCents: 125000,
+						quantity: 4,
+						producedQuantity: 4,
+						createdAt: new Date(0).toISOString(),
+						updatedAt: new Date(0).toISOString(),
+					}],
+				});
+			}
+
 			if (url.endsWith("/production/product-batches") && method === "POST") {
 				return jsonResponse({
 					productBatch: {
@@ -299,6 +336,41 @@ describe("HomePage", () => {
 						consumedPackagingQuantity: 4,
 						status: "in_workshop",
 						createdAt: new Date(0).toISOString(),
+					},
+				});
+			}
+
+			if (url.endsWith("/production/product-transfers") && method === "POST") {
+				return jsonResponse({
+					transfer: {
+						id: "transfer1",
+						productBatchId: "batch1",
+						distributorId: "dist1",
+						quantity: 2,
+						comment: "На Центральный",
+						operationId: "op1",
+						actorUserId: "seed-production-manager",
+						createdAt: new Date(0).toISOString(),
+					},
+					workshopProductBalance: {
+						id: "workshop-balance1",
+						productBatchId: "batch1",
+						productName: "Икра горбуши",
+						priceCents: 125000,
+						quantity: 2,
+						producedQuantity: 4,
+						createdAt: new Date(0).toISOString(),
+						updatedAt: new Date(0).toISOString(),
+					},
+					distributorProductBalance: {
+						id: "distributor-balance1",
+						distributorId: "dist1",
+						distributorName: "Распределитель Центральный",
+						productBatchId: "batch1",
+						productName: "Икра горбуши",
+						priceCents: 125000,
+						quantity: 2,
+						updatedAt: new Date(0).toISOString(),
 					},
 				});
 			}
@@ -414,6 +486,7 @@ describe("HomePage", () => {
 		fireEvent.click(screen.getByRole("button", { name: /Продукция в цеху/ }));
 		expect(await screen.findByRole("heading", { name: "Продукция в цеху" })).toBeTruthy();
 		expect(screen.getByText("Икра горбуши")).toBeTruthy();
+		expect(screen.getByText("Доступно 4 из 4 шт")).toBeTruthy();
 		fireEvent.click(screen.getByRole("button", { name: "Назад" }));
 
 		fireEvent.click(screen.getByRole("button", { name: "Выпустить" }));
@@ -435,6 +508,30 @@ describe("HomePage", () => {
 						productTemplateId: "template1",
 						quantity: 4,
 						consumedRawMaterialQuantity: 6.25,
+					}),
+				}),
+			);
+		});
+
+		fireEvent.click(screen.getByRole("button", { name: "Назад" }));
+		fireEvent.click(screen.getByRole("button", { name: "На распределитель" }));
+		expect(await screen.findByRole("heading", { name: "На распределитель" })).toBeTruthy();
+		fireEvent.change(await screen.findByLabelText("Продукция"), { target: { value: "batch1" } });
+		fireEvent.change(screen.getByLabelText("Распределитель"), { target: { value: "dist1" } });
+		fireEvent.change(screen.getByLabelText("Количество, шт"), { target: { value: "2" } });
+		fireEvent.change(screen.getByLabelText("Комментарий"), { target: { value: "На Центральный" } });
+		fireEvent.click(screen.getByRole("button", { name: "Переместить" }));
+
+		await waitFor(() => {
+			expect(fetchMock).toHaveBeenCalledWith(
+				expect.stringContaining("/production/product-transfers"),
+				expect.objectContaining({
+					method: "POST",
+					body: JSON.stringify({
+						productBatchId: "batch1",
+						distributorId: "dist1",
+						quantity: 2,
+						comment: "На Центральный",
 					}),
 				}),
 			);

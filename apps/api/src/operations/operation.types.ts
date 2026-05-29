@@ -14,6 +14,7 @@ export const BASELINE_OPERATION_TYPES = [
 	"catalog.raw_material_type.update",
 	"production.packaging_intake.create",
 	"production.product_batch.create",
+	"production.product_transfer.create",
 	"production.raw_material_intake.create",
 	"user.create",
 	"user.role.update",

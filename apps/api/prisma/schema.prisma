@@ -91,6 +91,7 @@ model Operation {
   rawMaterialIntakes RawMaterialIntake[]
   packagingIntakes   PackagingIntake[]
   productBatches     ProductBatch[]
+  productTransfers   ProductTransfer[]
 
   @@unique([actorUserId, idempotencyKey])
   @@index([actorUserId])
@@ -164,11 +165,13 @@ model PackagingType {
 }
 
 model Distributor {
-  id        String   @id @default(cuid())
-  name      String   @unique
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id               String                      @id @default(cuid())
+  name             String                      @unique
+  active           Boolean                     @default(true)
+  createdAt        DateTime                    @default(now())
+  updatedAt        DateTime                    @updatedAt
+  productBalances  DistributorProductBalance[]
+  productTransfers ProductTransfer[]
 
   @@map("distributor")
 }
@@ -263,9 +266,56 @@ model ProductBatch {
   createdAt                   DateTime        @default(now())
   productTemplate             ProductTemplate @relation(fields: [productTemplateId], references: [id], onDelete: Restrict)
   operation                   Operation       @relation(fields: [operationId], references: [id], onDelete: Restrict)
+  workshopBalance             WorkshopProductBalance?
+  distributorBalances         DistributorProductBalance[]
+  transfers                   ProductTransfer[]
 
   @@index([productTemplateId])
   @@index([actorUserId])
   @@index([status])
   @@map("product_batch")
+}
+
+model WorkshopProductBalance {
+  id             String       @id @default(cuid())
+  productBatchId String       @unique
+  quantity       Int
+  updatedAt      DateTime     @updatedAt
+  productBatch   ProductBatch @relation(fields: [productBatchId], references: [id], onDelete: Restrict)
+
+  @@map("workshop_product_balance")
+}
+
+model DistributorProductBalance {
+  id             String       @id @default(cuid())
+  distributorId  String
+  productBatchId String
+  quantity       Int
+  updatedAt      DateTime     @updatedAt
+  distributor    Distributor  @relation(fields: [distributorId], references: [id], onDelete: Restrict)
+  productBatch   ProductBatch @relation(fields: [productBatchId], references: [id], onDelete: Restrict)
+
+  @@unique([distributorId, productBatchId])
+  @@index([distributorId])
+  @@index([productBatchId])
+  @@map("distributor_product_balance")
+}
+
+model ProductTransfer {
+  id             String       @id @default(cuid())
+  productBatchId String
+  distributorId  String
+  quantity       Int
+  comment        String?
+  operationId    String       @unique
+  actorUserId    String
+  createdAt      DateTime     @default(now())
+  productBatch   ProductBatch @relation(fields: [productBatchId], references: [id], onDelete: Restrict)
+  distributor    Distributor  @relation(fields: [distributorId], references: [id], onDelete: Restrict)
+  operation      Operation    @relation(fields: [operationId], references: [id], onDelete: Restrict)
+
+  @@index([productBatchId])
+  @@index([distributorId])
+  @@index([actorUserId])
+  @@map("product_transfer")
 }

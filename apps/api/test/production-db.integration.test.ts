@@ -56,16 +56,22 @@ async function createCatalogFixture(prefix = "production-integration") {
 			priceCents: 88050,
 		},
 	});
+	const distributor = await prisma.distributor.create({
+		data: {
+			name: `${prefix}-distributor`,
+		},
+	});
 
 	return {
 		rawMaterialType,
 		packagingType,
 		productTemplate,
+		distributor,
 	};
 }
 
 async function cleanup() {
-	const [rawMaterialTypes, packagingTypes] = await Promise.all([
+	const [rawMaterialTypes, packagingTypes, distributors] = await Promise.all([
 		prisma.rawMaterialType.findMany({
 			where: { name: { startsWith: "production-integration" } },
 			select: { id: true },
@@ -74,15 +80,31 @@ async function cleanup() {
 			where: { name: { startsWith: "production-integration" } },
 			select: { id: true },
 		}),
+		prisma.distributor.findMany({
+			where: { name: { startsWith: "production-integration" } },
+			select: { id: true },
+		}),
 	]);
 	const rawMaterialTypeIds = rawMaterialTypes.map((item) => item.id);
 	const packagingTypeIds = packagingTypes.map((item) => item.id);
+	const distributorIds = distributors.map((item) => item.id);
 	const operations = await prisma.operation.findMany({
 		where: { actorUserId: actor.userId },
 		select: { id: true },
 	});
 	const operationIds = operations.map((operation) => operation.id);
 
+	await prisma.productTransfer.deleteMany({
+		where: {
+			OR: [{ actorUserId: actor.userId }, { distributorId: { in: distributorIds } }],
+		},
+	});
+	await prisma.distributorProductBalance.deleteMany({
+		where: { distributorId: { in: distributorIds } },
+	});
+	await prisma.workshopProductBalance.deleteMany({
+		where: { productBatch: { actorUserId: actor.userId } },
+	});
 	await prisma.productBatch.deleteMany({
 		where: { actorUserId: actor.userId },
 	});
@@ -113,6 +135,9 @@ async function cleanup() {
 	});
 	await prisma.productTemplate.deleteMany({
 		where: { name: { startsWith: "production-integration" } },
+	});
+	await prisma.distributor.deleteMany({
+		where: { id: { in: distributorIds } },
 	});
 	await prisma.packagingType.deleteMany({
 		where: { id: { in: packagingTypeIds } },
@@ -253,6 +278,13 @@ describe("ProductionService real Postgres integration", () => {
 				},
 			}),
 		]);
+		await expect(
+			prisma.workshopProductBalance.findUniqueOrThrow({
+				where: { productBatchId: batch.id },
+			}),
+		).resolves.toMatchObject({
+			quantity: 4,
+		});
 		expect(Number(rawBalance.quantity)).toBe(9.25);
 		expect(Number(packagingBalance.quantity)).toBe(6);
 		expect(auditLog.details).toMatchObject({
@@ -302,5 +334,273 @@ describe("ProductionService real Postgres integration", () => {
 		]);
 		expect(Number(rawBalance.quantity)).toBe(2);
 		expect(batchCount).toBe(0);
+	});
+
+	it("transfers part of a product batch from workshop to active distributor", async () => {
+		const { rawMaterialType, packagingType, productTemplate, distributor } =
+			await createCatalogFixture("production-integration-transfer");
+
+		await productionService.createRawMaterialIntake(actor, {
+			rawMaterialTypeId: rawMaterialType.id,
+			quantity: 15,
+		});
+		await productionService.createPackagingIntake(actor, {
+			packagingTypeId: packagingType.id,
+			quantity: 10,
+		});
+		const batch = await productionService.createProductBatch(actor, {
+			productTemplateId: productTemplate.id,
+			quantity: 5,
+			consumedRawMaterialQuantity: 7.5,
+		});
+
+		const response = await productionService.createProductTransfer(actor, {
+			productBatchId: batch.id,
+			distributorId: distributor.id,
+			quantity: 2,
+			comment: "На Центральный",
+		});
+
+		expect(response.transfer).toMatchObject({
+			productBatchId: batch.id,
+			distributorId: distributor.id,
+			quantity: 2,
+			comment: "На Центральный",
+			actorUserId: actor.userId,
+		});
+		expect(response.workshopProductBalance).toMatchObject({
+			productBatchId: batch.id,
+			productName: "production-integration-transfer-template",
+			priceCents: 88050,
+			quantity: 3,
+			producedQuantity: 5,
+		});
+		expect(response.distributorProductBalance).toMatchObject({
+			distributorId: distributor.id,
+			distributorName: "production-integration-transfer-distributor",
+			productBatchId: batch.id,
+			productName: "production-integration-transfer-template",
+			priceCents: 88050,
+			quantity: 2,
+		});
+
+		await expect(
+			prisma.productTransfer.findUniqueOrThrow({ where: { operationId: response.transfer.operationId } }),
+		).resolves.toMatchObject({
+			productBatchId: batch.id,
+			distributorId: distributor.id,
+			quantity: 2,
+		});
+		await expect(
+			prisma.auditLog.findFirstOrThrow({
+				where: {
+					actorUserId: actor.userId,
+					action: "production.product_transfer.create",
+					entityId: response.transfer.id,
+				},
+			}),
+		).resolves.toMatchObject({
+			details: expect.objectContaining({
+				productName: "production-integration-transfer-template",
+				distributorName: "production-integration-transfer-distributor",
+				workshopBalanceBefore: 5,
+				workshopBalanceAfter: 3,
+				distributorBalanceBefore: 0,
+				distributorBalanceAfter: 2,
+			}),
+		});
+	});
+
+	it("hides fully transferred product from workshop balance list", async () => {
+		const { rawMaterialType, packagingType, productTemplate, distributor } =
+			await createCatalogFixture("production-integration-full-transfer");
+
+		await productionService.createRawMaterialIntake(actor, {
+			rawMaterialTypeId: rawMaterialType.id,
+			quantity: 10,
+		});
+		await productionService.createPackagingIntake(actor, {
+			packagingTypeId: packagingType.id,
+			quantity: 10,
+		});
+		const batch = await productionService.createProductBatch(actor, {
+			productTemplateId: productTemplate.id,
+			quantity: 3,
+			consumedRawMaterialQuantity: 4.5,
+		});
+
+		const response = await productionService.createProductTransfer(actor, {
+			productBatchId: batch.id,
+			distributorId: distributor.id,
+			quantity: 3,
+		});
+		const workshopBalances = await productionService.listWorkshopProductBalances();
+
+		expect(response.workshopProductBalance.quantity).toBe(0);
+		expect(workshopBalances).not.toEqual(
+			expect.arrayContaining([expect.objectContaining({ productBatchId: batch.id })]),
+		);
+	});
+
+	it("increments existing distributor balance for repeated transfers", async () => {
+		const { rawMaterialType, packagingType, productTemplate, distributor } =
+			await createCatalogFixture("production-integration-repeat-transfer");
+
+		await productionService.createRawMaterialIntake(actor, {
+			rawMaterialTypeId: rawMaterialType.id,
+			quantity: 10,
+		});
+		await productionService.createPackagingIntake(actor, {
+			packagingTypeId: packagingType.id,
+			quantity: 10,
+		});
+		const batch = await productionService.createProductBatch(actor, {
+			productTemplateId: productTemplate.id,
+			quantity: 5,
+			consumedRawMaterialQuantity: 5,
+		});
+
+		await productionService.createProductTransfer(actor, {
+			productBatchId: batch.id,
+			distributorId: distributor.id,
+			quantity: 2,
+		});
+		const secondTransfer = await productionService.createProductTransfer(actor, {
+			productBatchId: batch.id,
+			distributorId: distributor.id,
+			quantity: 2,
+		});
+
+		expect(secondTransfer.workshopProductBalance.quantity).toBe(1);
+		expect(secondTransfer.distributorProductBalance.quantity).toBe(4);
+	});
+
+	it("rejects transfer when workshop product balance is not enough", async () => {
+		const { rawMaterialType, packagingType, productTemplate, distributor } =
+			await createCatalogFixture("production-integration-transfer-insufficient");
+
+		await productionService.createRawMaterialIntake(actor, {
+			rawMaterialTypeId: rawMaterialType.id,
+			quantity: 10,
+		});
+		await productionService.createPackagingIntake(actor, {
+			packagingTypeId: packagingType.id,
+			quantity: 10,
+		});
+		const batch = await productionService.createProductBatch(actor, {
+			productTemplateId: productTemplate.id,
+			quantity: 2,
+			consumedRawMaterialQuantity: 3,
+		});
+
+		await expect(
+			productionService.createProductTransfer(actor, {
+				productBatchId: batch.id,
+				distributorId: distributor.id,
+				quantity: 3,
+			}),
+		).rejects.toThrow(AppError);
+
+		await expect(
+			prisma.workshopProductBalance.findUniqueOrThrow({ where: { productBatchId: batch.id } }),
+		).resolves.toMatchObject({ quantity: 2 });
+		await expect(
+			prisma.distributorProductBalance.count({ where: { distributorId: distributor.id } }),
+		).resolves.toBe(0);
+		await expect(
+			prisma.productTransfer.count({ where: { distributorId: distributor.id } }),
+		).resolves.toBe(0);
+	});
+
+	it("rejects transfer to inactive or missing distributor", async () => {
+		const { rawMaterialType, packagingType, productTemplate, distributor } =
+			await createCatalogFixture("production-integration-inactive-transfer");
+
+		await prisma.distributor.update({
+			where: { id: distributor.id },
+			data: { active: false },
+		});
+		await productionService.createRawMaterialIntake(actor, {
+			rawMaterialTypeId: rawMaterialType.id,
+			quantity: 10,
+		});
+		await productionService.createPackagingIntake(actor, {
+			packagingTypeId: packagingType.id,
+			quantity: 10,
+		});
+		const batch = await productionService.createProductBatch(actor, {
+			productTemplateId: productTemplate.id,
+			quantity: 2,
+			consumedRawMaterialQuantity: 3,
+		});
+
+		await expect(
+			productionService.createProductTransfer(actor, {
+				productBatchId: batch.id,
+				distributorId: distributor.id,
+				quantity: 1,
+			}),
+		).rejects.toThrow(AppError);
+		await expect(
+			productionService.createProductTransfer(actor, {
+				productBatchId: batch.id,
+				distributorId: "missing-distributor",
+				quantity: 1,
+			}),
+		).rejects.toThrow(AppError);
+		await expect(
+			productionService.createProductTransfer(actor, {
+				productBatchId: "missing-batch",
+				distributorId: distributor.id,
+				quantity: 1,
+			}),
+		).rejects.toThrow(AppError);
+	});
+
+	it("keeps transfer audit snapshots after distributor and template rename", async () => {
+		const { rawMaterialType, packagingType, productTemplate, distributor } =
+			await createCatalogFixture("production-integration-transfer-snapshot");
+
+		await productionService.createRawMaterialIntake(actor, {
+			rawMaterialTypeId: rawMaterialType.id,
+			quantity: 10,
+		});
+		await productionService.createPackagingIntake(actor, {
+			packagingTypeId: packagingType.id,
+			quantity: 10,
+		});
+		const batch = await productionService.createProductBatch(actor, {
+			productTemplateId: productTemplate.id,
+			quantity: 3,
+			consumedRawMaterialQuantity: 4.5,
+		});
+		const response = await productionService.createProductTransfer(actor, {
+			productBatchId: batch.id,
+			distributorId: distributor.id,
+			quantity: 1,
+		});
+
+		await prisma.productTemplate.update({
+			where: { id: productTemplate.id },
+			data: { name: "production-integration-transfer-snapshot-template-renamed" },
+		});
+		await prisma.distributor.update({
+			where: { id: distributor.id },
+			data: { name: "production-integration-transfer-snapshot-distributor-renamed" },
+		});
+
+		await expect(
+			prisma.auditLog.findFirstOrThrow({
+				where: {
+					action: "production.product_transfer.create",
+					entityId: response.transfer.id,
+				},
+			}),
+		).resolves.toMatchObject({
+			details: expect.objectContaining({
+				productName: "production-integration-transfer-snapshot-template",
+				distributorName: "production-integration-transfer-snapshot-distributor",
+			}),
+		});
 	});
 });

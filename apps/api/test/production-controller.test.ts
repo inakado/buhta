@@ -73,4 +73,74 @@ describe("ProductionController", () => {
 		).rejects.toThrow(AppError);
 		expect(productionService.createProductBatch).not.toHaveBeenCalled();
 	});
+
+	it("validates product transfer payload before calling service", async () => {
+		const productionService = {
+			createProductTransfer: vi.fn(),
+		} as unknown as ProductionService;
+		const controller = new ProductionController(productionService);
+
+		await expect(
+			controller.createProductTransfer(actor, {
+				productBatchId: "batch1",
+				distributorId: "dist1",
+				quantity: 0,
+			}),
+		).rejects.toThrow(AppError);
+		expect(productionService.createProductTransfer).not.toHaveBeenCalled();
+	});
+
+	it("returns transfer response after product transfer", async () => {
+		const transferResponse = {
+			transfer: {
+				id: "transfer1",
+				productBatchId: "batch1",
+				distributorId: "dist1",
+				quantity: 2,
+				comment: "На Центральный",
+				operationId: "op1",
+				actorUserId: actor.userId,
+				createdAt: new Date(0).toISOString(),
+			},
+			workshopProductBalance: {
+				id: "workshop-balance1",
+				productBatchId: "batch1",
+				productName: "Икра горбуши",
+				priceCents: 125000,
+				quantity: 2,
+				producedQuantity: 4,
+				createdAt: new Date(0).toISOString(),
+				updatedAt: new Date(0).toISOString(),
+			},
+			distributorProductBalance: {
+				id: "distributor-balance1",
+				distributorId: "dist1",
+				distributorName: "Распределитель Центральный",
+				productBatchId: "batch1",
+				productName: "Икра горбуши",
+				priceCents: 125000,
+				quantity: 2,
+				updatedAt: new Date(0).toISOString(),
+			},
+		};
+		const productionService = {
+			createProductTransfer: vi.fn().mockResolvedValue(transferResponse),
+		} as unknown as ProductionService;
+		const controller = new ProductionController(productionService);
+
+		await expect(
+			controller.createProductTransfer(actor, {
+				productBatchId: "batch1",
+				distributorId: "dist1",
+				quantity: 2,
+				comment: " На Центральный ",
+			}),
+		).resolves.toEqual(transferResponse);
+		expect(productionService.createProductTransfer).toHaveBeenCalledWith(actor, {
+			productBatchId: "batch1",
+			distributorId: "dist1",
+			quantity: 2,
+			comment: "На Центральный",
+		});
+	});
 });

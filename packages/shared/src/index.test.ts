@@ -12,12 +12,14 @@ import {
 	subtractQuantity,
 	CreatePackagingIntakeRequestSchema,
 	CreateProductBatchRequestSchema,
+	CreateProductTransferRequestSchema,
 	CreateUserRequestSchema,
 	CreateProductTemplateRequestSchema,
 	CreateRawMaterialTypeRequestSchema,
 	CreateRawMaterialIntakeRequestSchema,
 	LoginSchema,
 	ProductionOptionsResponseSchema,
+	ProductionTransferOptionsResponseSchema,
 	ProductTemplateSchema,
 	UpdateRawMaterialTypeRequestSchema,
 	UpdateUserRoleRequestSchema,
@@ -159,5 +161,38 @@ describe("shared contracts", () => {
 				consumedRawMaterialQuantity: 2.5,
 			}).success,
 		).toBe(false);
+		expect(
+			CreateProductTransferRequestSchema.parse({
+				productBatchId: "batch-1",
+				distributorId: "dist-1",
+				quantity: 4,
+				comment: " Перемещение на Центральный ",
+			}),
+		).toEqual({
+			productBatchId: "batch-1",
+			distributorId: "dist-1",
+			quantity: 4,
+			comment: "Перемещение на Центральный",
+		});
+		expect(
+			CreateProductTransferRequestSchema.safeParse({
+				productBatchId: "batch-1",
+				distributorId: "dist-1",
+				quantity: 0,
+			}).success,
+		).toBe(false);
+		expect(
+			CreateProductTransferRequestSchema.safeParse({
+				productBatchId: "batch-1",
+				distributorId: "dist-1",
+				quantity: 1.5,
+			}).success,
+		).toBe(false);
+		expect(
+			ProductionTransferOptionsResponseSchema.safeParse({
+				distributors: [],
+				workshopProductBalances: [],
+			}).success,
+		).toBe(true);
 	});
 });

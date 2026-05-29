@@ -1,12 +1,16 @@
 import { Injectable } from "@nestjs/common";
 import type {
+	CreateProductTransferRequest,
 	CreatePackagingIntakeRequest,
 	CreateProductBatchRequest,
 	CreateRawMaterialIntakeRequest,
 	ProductBatch,
+	ProductTransferResponse,
 	ProductionOptionsResponse,
 	ProductionBalanceItem,
 	ProductionSummary,
+	ProductionTransferOptionsResponse,
+	WorkshopProductBalanceItem,
 } from "@buhta/shared";
 import type { Prisma } from "../generated/prisma/client";
 import { AppError } from "../common/errors/app-error";
@@ -14,6 +18,7 @@ import { OPERATION_STATUS, type BaselineOperationType } from "../operations/oper
 import type { Actor } from "../policy/actor";
 import { prisma } from "../prisma/client";
 import {
+	mapDistributor,
 	mapPackagingType,
 	mapProductTemplate,
 	mapRawMaterialType,
@@ -21,8 +26,11 @@ import {
 import {
 	mapPackagingBalance,
 	mapProductBatch,
+	mapDistributorProductBalance,
+	mapProductTransfer,
 	mapProductionSummary,
 	mapRawMaterialBalance,
+	mapWorkshopProductBalance,
 } from "./production.mapper";
 
 type ProductionOperationInput = {
@@ -63,17 +71,17 @@ export class ProductionService {
 	}
 
 	async getSummary(): Promise<ProductionSummary> {
-		const [rawMaterialBalances, packagingBalances, batchAggregate] = await Promise.all([
+		const [rawMaterialBalances, packagingBalances, workshopProductAggregate] = await Promise.all([
 			this.listRawMaterialBalances(),
 			this.listPackagingBalances(),
-			prisma.productBatch.aggregate({
-				where: { status: "in_workshop" },
+			prisma.workshopProductBalance.aggregate({
+				where: { quantity: { gt: 0 } },
 				_sum: { quantity: true },
 			}),
 		]);
 
 		return mapProductionSummary({
-			readyProductUnits: batchAggregate._sum.quantity ?? 0,
+			readyProductUnits: workshopProductAggregate._sum.quantity ?? 0,
 			rawMaterialBalances,
 			packagingBalances,
 		});
@@ -103,6 +111,31 @@ export class ProductionService {
 		});
 
 		return batches.map(mapProductBatch);
+	}
+
+	async listWorkshopProductBalances(): Promise<WorkshopProductBalanceItem[]> {
+		const balances = await prisma.workshopProductBalance.findMany({
+			where: { quantity: { gt: 0 } },
+			include: { productBatch: true },
+			orderBy: { productBatch: { createdAt: "desc" } },
+		});
+
+		return balances.map(mapWorkshopProductBalance);
+	}
+
+	async getTransferOptions(): Promise<ProductionTransferOptionsResponse> {
+		const [distributors, workshopProductBalances] = await Promise.all([
+			prisma.distributor.findMany({
+				where: { active: true },
+				orderBy: { name: "asc" },
+			}),
+			this.listWorkshopProductBalances(),
+		]);
+
+		return {
+			distributors: distributors.map(mapDistributor),
+			workshopProductBalances,
+		};
 	}
 
 	async createRawMaterialIntake(
@@ -308,6 +341,13 @@ export class ProductionService {
 				},
 			});
 
+			await tx.workshopProductBalance.create({
+				data: {
+					productBatchId: createdBatch.id,
+					quantity: createdBatch.quantity,
+				},
+			});
+
 			await tx.auditLog.updateMany({
 				where: { operationId: operation.id },
 				data: { entityId: createdBatch.id },
@@ -317,6 +357,136 @@ export class ProductionService {
 		});
 
 		return mapProductBatch(batch);
+	}
+
+	async createProductTransfer(
+		actor: Actor,
+		input: CreateProductTransferRequest,
+	): Promise<ProductTransferResponse> {
+		const productBatch = await prisma.productBatch.findUnique({ where: { id: input.productBatchId } });
+
+		if (!productBatch) {
+			throw new AppError("NOT_FOUND", "Product batch not found", { id: input.productBatchId });
+		}
+
+		const result = await prisma.$transaction(async (tx) => {
+			const distributor = await tx.distributor.findUnique({ where: { id: input.distributorId } });
+			if (!distributor) {
+				throw new AppError("NOT_FOUND", "Distributor not found", { id: input.distributorId });
+			}
+			if (!distributor.active) {
+				throw new AppError("DOMAIN_RULE_VIOLATION", "Distributor is inactive", { id: input.distributorId });
+			}
+
+			const workshopBalanceBefore = await tx.workshopProductBalance.findUnique({
+				where: { productBatchId: input.productBatchId },
+				include: { productBatch: true },
+			});
+			if (!workshopBalanceBefore) {
+				throw new AppError("DOMAIN_RULE_VIOLATION", "Product batch has no workshop balance", {
+					productBatchId: input.productBatchId,
+				});
+			}
+
+			const distributorBalanceBefore = await tx.distributorProductBalance.findUnique({
+				where: {
+					distributorId_productBatchId: {
+						distributorId: input.distributorId,
+						productBatchId: input.productBatchId,
+					},
+				},
+				include: { distributor: true, productBatch: true },
+			});
+
+			const decrement = await tx.workshopProductBalance.updateMany({
+				where: {
+					productBatchId: input.productBatchId,
+					quantity: { gte: input.quantity },
+				},
+				data: {
+					quantity: { decrement: input.quantity },
+				},
+			});
+			if (decrement.count !== 1) {
+				throw new AppError("DOMAIN_RULE_VIOLATION", "Not enough product balance in workshop", {
+					productBatchId: input.productBatchId,
+				});
+			}
+
+			const workshopBalanceAfter = await tx.workshopProductBalance.findUniqueOrThrow({
+				where: { productBatchId: input.productBatchId },
+				include: { productBatch: true },
+			});
+
+			const distributorProductBalance = await tx.distributorProductBalance.upsert({
+				where: {
+					distributorId_productBatchId: {
+						distributorId: input.distributorId,
+						productBatchId: input.productBatchId,
+					},
+				},
+				create: {
+					distributorId: input.distributorId,
+					productBatchId: input.productBatchId,
+					quantity: input.quantity,
+				},
+				update: {
+					quantity: { increment: input.quantity },
+				},
+				include: { distributor: true, productBatch: true },
+			});
+
+			const operation = await this.createOperation(tx, {
+				actor,
+				type: "production.product_transfer.create",
+				entityType: "product_transfer",
+				details: {
+					productBatchId: input.productBatchId,
+					productName: productBatch.productName,
+					priceCents: productBatch.priceCents,
+					distributorId: input.distributorId,
+					distributorName: distributor.name,
+					quantity: input.quantity,
+					workshopBalanceBefore: workshopBalanceBefore.quantity,
+					workshopBalanceAfter: workshopBalanceAfter.quantity,
+					distributorBalanceBefore: distributorBalanceBefore?.quantity ?? 0,
+					distributorBalanceAfter: distributorProductBalance.quantity,
+					comment: input.comment,
+				},
+			});
+
+			const transferData: Prisma.ProductTransferUncheckedCreateInput = {
+				productBatchId: input.productBatchId,
+				distributorId: input.distributorId,
+				quantity: input.quantity,
+				operationId: operation.id,
+				actorUserId: actor.userId,
+			};
+			if (input.comment !== undefined) {
+				transferData.comment = input.comment;
+			}
+
+			const transfer = await tx.productTransfer.create({
+				data: transferData,
+			});
+
+			await tx.auditLog.updateMany({
+				where: { operationId: operation.id },
+				data: { entityId: transfer.id },
+			});
+
+			return {
+				transfer,
+				workshopProductBalance: workshopBalanceAfter,
+				distributorProductBalance,
+			};
+		});
+
+		return {
+			transfer: mapProductTransfer(result.transfer),
+			workshopProductBalance: mapWorkshopProductBalance(result.workshopProductBalance),
+			distributorProductBalance: mapDistributorProductBalance(result.distributorProductBalance),
+		};
 	}
 
 	private async ensureActiveRawMaterialType(id: string) {

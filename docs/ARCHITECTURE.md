@@ -110,7 +110,8 @@ Production baseline пишет audit operations:
 
 - `production.raw_material_intake.create`;
 - `production.packaging_intake.create`;
-- `production.product_batch.create`.
+- `production.product_batch.create`;
+- `production.product_transfer.create`.
 
 Справочники отключаются через `active=false`, без физического удаления. Шаблон продукции хранит название, связи на активные вид сырья и вид тары, а также цену за единицу в `priceCents`. Фасовки, нормативы и остатки не входят в catalog foundation.
 
@@ -120,8 +121,13 @@ Production balance baseline:
 - `packaging_balance` — текущий остаток тары в цеху по виду тары;
 - `raw_material_intake` и `packaging_intake` — факты поступления;
 - `product_batch` — выпущенная партия в статусе `in_workshop` со snapshot названий, единиц учета и цены.
+- `workshop_product_balance` — доступный остаток готовой продукции в цеху по выпущенной партии;
+- `distributor_product_balance` — товарный остаток распределителя по паре распределитель + партия продукции;
+- `product_transfer` — typed record факта перемещения партии из цеха на распределитель.
 
 Поступления и выпуск выполняются в Prisma transaction. Выпуск партии использует conditional decrement: сырье и тара списываются только если текущего остатка достаточно, иначе операция отклоняется и партия не создается.
+
+Выпуск партии в той же transaction создает `workshop_product_balance` с количеством выпущенной продукции. Перемещение на распределитель использует conditional decrement `workshop_product_balance.quantity >= requestedQuantity` и upsert/increment `distributor_product_balance`. `ProductBatch.status` не является источником доступного остатка, потому что партия может быть перемещена частично.
 
 Базовый принцип для следующих доменных операций:
 
