@@ -131,3 +131,53 @@ model IdempotencyRecord {
   @@index([expiresAt])
   @@map("idempotency_record")
 }
+
+model RawMaterialType {
+  id               String            @id @default(cuid())
+  name             String            @unique
+  unit             String
+  active           Boolean           @default(true)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  productTemplates ProductTemplate[]
+
+  @@map("raw_material_type")
+}
+
+model PackagingType {
+  id               String            @id @default(cuid())
+  name             String            @unique
+  unit             String
+  active           Boolean           @default(true)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  productTemplates ProductTemplate[]
+
+  @@map("packaging_type")
+}
+
+model Distributor {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("distributor")
+}
+
+model ProductTemplate {
+  id                String          @id @default(cuid())
+  name              String          @unique
+  rawMaterialTypeId String
+  packagingTypeId   String
+  active            Boolean         @default(true)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  rawMaterialType   RawMaterialType @relation(fields: [rawMaterialTypeId], references: [id], onDelete: Restrict)
+  packagingType     PackagingType   @relation(fields: [packagingTypeId], references: [id], onDelete: Restrict)
+
+  @@index([rawMaterialTypeId])
+  @@index([packagingTypeId])
+  @@map("product_template")
+}

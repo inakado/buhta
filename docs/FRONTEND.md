@@ -257,6 +257,12 @@ apps/web/
         CourierHome.tsx
 
     features/
+      catalog/
+        CatalogHome.tsx
+        RawMaterialTypesPanel.tsx
+        PackagingTypesPanel.tsx
+        DistributorsPanel.tsx
+        ProductTemplatesPanel.tsx
       users/
         api.ts
         types.ts
@@ -303,6 +309,8 @@ apps/web/
 - `app-shell/*` — оболочка приложения, навигация, online/offline state;
 - `auth/*` — login/logout/current actor frontend flow;
 - `ui/*` — визуальные primitives без доменных правил.
+
+Текущий catalog foundation реализован как общий feature в `apps/web/src/features/catalog/CatalogHome.tsx` и подключен через mobile shell для пользователей с permission `catalog.manage`. Экран справочников не принадлежит только роли администратора: администратор и директор используют один feature, остальные роли не видят этот раздел в навигации. Write-действия на экране справочников отключаются при offline state.
 
 ## 11. Что пока не фиксируем
 

@@ -1,3 +1,4 @@
+export * from "./catalog";
 export * from "./errors";
 export * from "./permissions";
 export * from "./primitives";

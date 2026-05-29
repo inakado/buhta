@@ -10,7 +10,11 @@ import {
 	subtractMoneyCents,
 	subtractQuantity,
 	CreateUserRequestSchema,
+	CreateProductTemplateRequestSchema,
+	CreateRawMaterialTypeRequestSchema,
 	LoginSchema,
+	ProductTemplateSchema,
+	UpdateRawMaterialTypeRequestSchema,
 	UpdateUserRoleRequestSchema,
 	UserSummarySchema,
 } from "./index";
@@ -24,6 +28,7 @@ describe("shared contracts", () => {
 
 	it("keeps baseline permissions explicit by role", () => {
 		expect(permissionsForRole("admin")).toContain("users.manage");
+		expect(permissionsForRole("director")).toContain("catalog.manage");
 		expect(permissionsForRole("director")).toContain("cash.withdraw");
 		expect(permissionsForRole("courier")).not.toContain("cash.withdraw");
 	});
@@ -65,6 +70,45 @@ describe("shared contracts", () => {
 				role: "director",
 				createdAt: new Date(0).toISOString(),
 				updatedAt: new Date(0).toISOString(),
+			}).success,
+		).toBe(true);
+	});
+
+	it("validates catalog contracts", () => {
+		expect(CreateRawMaterialTypeRequestSchema.parse({ name: " Горбуша ", unit: " кг " })).toEqual({
+			name: "Горбуша",
+			unit: "кг",
+		});
+		expect(CreateRawMaterialTypeRequestSchema.safeParse({ name: "", unit: "кг" }).success).toBe(false);
+		expect(UpdateRawMaterialTypeRequestSchema.safeParse({ active: false }).success).toBe(true);
+		expect(
+			CreateProductTemplateRequestSchema.safeParse({
+				name: "Икра горбуши",
+				rawMaterialTypeId: "raw-1",
+				packagingTypeId: "pack-1",
+			}).success,
+		).toBe(true);
+		expect(
+			ProductTemplateSchema.safeParse({
+				id: "template-1",
+				name: "Икра горбуши",
+				rawMaterialTypeId: "raw-1",
+				packagingTypeId: "pack-1",
+				active: true,
+				createdAt: new Date(0).toISOString(),
+				updatedAt: new Date(0).toISOString(),
+				rawMaterialType: {
+					id: "raw-1",
+					name: "Горбуша",
+					unit: "кг",
+					active: true,
+				},
+				packagingType: {
+					id: "pack-1",
+					name: "Банка",
+					unit: "шт",
+					active: true,
+				},
 			}).success,
 		).toBe(true);
 	});

@@ -33,6 +33,7 @@
   - `auth` — BetterAuth wiring, `GET /auth/me`, current actor helpers;
   - `policy` — roles/permissions registry, `RequirePermission`, `PolicyGuard`;
   - `users` — минимальное backend-управление пользователями и ролями для администратора;
+  - `catalog` — минимальные справочники сырья, тары, распределителей и шаблонов продукции;
   - `operations` — baseline operation/idempotency services;
   - `common/errors` — единый `AppError` и mapper в `{ error: { code, message, details } }`;
   - `health` — публичный health contract.
@@ -40,6 +41,7 @@
   - роли и permissions;
   - error response shape;
   - money-in-cents и quantity helpers;
+  - catalog contracts для сырья, тары, распределителей и шаблонов продукции;
   - health constants.
 - Foundation data flow:
 
@@ -86,6 +88,23 @@ Admin user management уже пишет audit operations:
 - `user.password.reset`.
 
 Audit details для password lifecycle не содержат plaintext password.
+
+Catalog management пишет audit operations:
+
+- `catalog.raw_material_type.create`;
+- `catalog.raw_material_type.update`;
+- `catalog.raw_material_type.archive`;
+- `catalog.packaging_type.create`;
+- `catalog.packaging_type.update`;
+- `catalog.packaging_type.archive`;
+- `catalog.distributor.create`;
+- `catalog.distributor.update`;
+- `catalog.distributor.archive`;
+- `catalog.product_template.create`;
+- `catalog.product_template.update`;
+- `catalog.product_template.archive`.
+
+Справочники отключаются через `active=false`, без физического удаления. Шаблон продукции на текущем этапе хранит только название и связи на активные вид сырья и вид тары; цены, фасовки, нормативы и остатки не входят в catalog foundation.
 
 Базовый принцип для следующих доменных операций:
 

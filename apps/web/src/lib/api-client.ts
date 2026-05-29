@@ -1,8 +1,24 @@
 import type {
+	CreateDistributorRequest,
+	CreatePackagingTypeRequest,
+	CreateProductTemplateRequest,
+	CreateRawMaterialTypeRequest,
 	CreateUserRequest,
 	CreateUserResponse,
+	DistributorResponse,
+	DistributorsListResponse,
+	PackagingTypeResponse,
+	PackagingTypesListResponse,
+	ProductTemplateResponse,
+	ProductTemplatesListResponse,
+	RawMaterialTypeResponse,
+	RawMaterialTypesListResponse,
 	ResetUserPasswordResponse,
 	Role,
+	UpdateDistributorRequest,
+	UpdatePackagingTypeRequest,
+	UpdateProductTemplateRequest,
+	UpdateRawMaterialTypeRequest,
 	UpdateUserRoleResponse,
 	UsersListResponse,
 } from "@buhta/shared";
@@ -79,6 +95,91 @@ export async function resetUserPassword(userId: string): Promise<ResetUserPasswo
 	return fetchJson<ResetUserPasswordResponse>(`/users/${userId}/reset-password`, {
 		method: "POST",
 		body: JSON.stringify({}),
+	});
+}
+
+export async function listRawMaterialTypes(): Promise<RawMaterialTypesListResponse> {
+	return fetchJson<RawMaterialTypesListResponse>("/catalog/raw-material-types");
+}
+
+export async function createRawMaterialType(
+	input: CreateRawMaterialTypeRequest,
+): Promise<RawMaterialTypeResponse> {
+	return fetchJson<RawMaterialTypeResponse>("/catalog/raw-material-types", {
+		method: "POST",
+		body: JSON.stringify(input),
+	});
+}
+
+export async function updateRawMaterialType(
+	id: string,
+	input: UpdateRawMaterialTypeRequest,
+): Promise<RawMaterialTypeResponse> {
+	return fetchJson<RawMaterialTypeResponse>(`/catalog/raw-material-types/${id}`, {
+		method: "PATCH",
+		body: JSON.stringify(input),
+	});
+}
+
+export async function listPackagingTypes(): Promise<PackagingTypesListResponse> {
+	return fetchJson<PackagingTypesListResponse>("/catalog/packaging-types");
+}
+
+export async function createPackagingType(input: CreatePackagingTypeRequest): Promise<PackagingTypeResponse> {
+	return fetchJson<PackagingTypeResponse>("/catalog/packaging-types", {
+		method: "POST",
+		body: JSON.stringify(input),
+	});
+}
+
+export async function updatePackagingType(
+	id: string,
+	input: UpdatePackagingTypeRequest,
+): Promise<PackagingTypeResponse> {
+	return fetchJson<PackagingTypeResponse>(`/catalog/packaging-types/${id}`, {
+		method: "PATCH",
+		body: JSON.stringify(input),
+	});
+}
+
+export async function listDistributors(): Promise<DistributorsListResponse> {
+	return fetchJson<DistributorsListResponse>("/catalog/distributors");
+}
+
+export async function createDistributor(input: CreateDistributorRequest): Promise<DistributorResponse> {
+	return fetchJson<DistributorResponse>("/catalog/distributors", {
+		method: "POST",
+		body: JSON.stringify(input),
+	});
+}
+
+export async function updateDistributor(id: string, input: UpdateDistributorRequest): Promise<DistributorResponse> {
+	return fetchJson<DistributorResponse>(`/catalog/distributors/${id}`, {
+		method: "PATCH",
+		body: JSON.stringify(input),
+	});
+}
+
+export async function listProductTemplates(): Promise<ProductTemplatesListResponse> {
+	return fetchJson<ProductTemplatesListResponse>("/catalog/product-templates");
+}
+
+export async function createProductTemplate(
+	input: CreateProductTemplateRequest,
+): Promise<ProductTemplateResponse> {
+	return fetchJson<ProductTemplateResponse>("/catalog/product-templates", {
+		method: "POST",
+		body: JSON.stringify(input),
+	});
+}
+
+export async function updateProductTemplate(
+	id: string,
+	input: UpdateProductTemplateRequest,
+): Promise<ProductTemplateResponse> {
+	return fetchJson<ProductTemplateResponse>(`/catalog/product-templates/${id}`, {
+		method: "PATCH",
+		body: JSON.stringify(input),
 	});
 }
 

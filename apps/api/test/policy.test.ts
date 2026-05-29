@@ -39,6 +39,7 @@ describe("PolicyRegistry", () => {
 			displayName: "Nikita",
 			role: "director",
 		});
+		expect(actor?.permissions).toContain("catalog.manage");
 		expect(actor?.permissions).toContain("cash.withdraw");
 		expect(actor?.permissions).not.toContain("users.manage");
 	});

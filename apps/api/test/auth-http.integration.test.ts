@@ -103,13 +103,22 @@ describe("auth and policy HTTP integration", () => {
 			]),
 		);
 
+		const createResponse = await agent
+			.post("/users")
+			.send({
+				name: "Auth Role Target",
+				role: "courier",
+				login: "auth-http-role-target",
+			})
+			.expect(201);
+
 		const updateResponse = await agent
-			.patch(`/users/${userId}/role`)
+			.patch(`/users/${createResponse.body.user.id}/role`)
 			.send({ role: "director" })
 			.expect(200);
 
 		expect(updateResponse.body.user).toMatchObject({
-			id: userId,
+			id: createResponse.body.user.id,
 			role: "director",
 		});
 	});

@@ -52,6 +52,7 @@ Policy layer отвечает за доменные разрешения. Тек
 - protected handlers не должны проверять `role === ...` напрямую;
 - `admin` получает все baseline permissions.
 - `/users` handlers защищены permission `users.manage`; сейчас это только `admin`.
+- `/catalog/*` handlers защищены permission `catalog.manage`; сейчас это `admin` и `director`.
 
 Текущие baseline permissions:
 

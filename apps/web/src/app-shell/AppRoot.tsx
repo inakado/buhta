@@ -9,10 +9,11 @@ import {
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
-import { Box, LogOut, PackageCheck, ReceiptText, Settings, Shield, Truck, Users } from "lucide-react";
+import { Box, ClipboardList, LogOut, PackageCheck, ReceiptText, Settings, Shield, Truck, Users } from "lucide-react";
 import { useState } from "react";
 import type { Role } from "@buhta/shared";
 import { LoginForm } from "../auth/LoginForm";
+import { CatalogHome } from "../features/catalog/CatalogHome";
 import { AdminHome } from "../roles/admin/AdminHome";
 import { ROLE_LABELS } from "../lib/role-labels";
 import { getCurrentActor, isUnauthorizedError, signOut, type CurrentActor } from "../lib/api-client";
@@ -112,8 +113,14 @@ function AppShell({ actor }: { actor: CurrentActor }) {
 					</div>
 				)}
 
-				<RoleHome actor={actor} activeTab={activeTab} logout={handleLogout} logoutPending={logout.isPending} />
-				<BottomNav activeTab={activeTab} onTabChange={setActiveTab} role={actor.role} />
+				<RoleHome
+					actor={actor}
+					activeTab={activeTab}
+					logout={handleLogout}
+					logoutPending={logout.isPending}
+					online={online}
+				/>
+				<BottomNav activeTab={activeTab} onTabChange={setActiveTab} actor={actor} />
 			</div>
 		</main>
 	);
@@ -124,14 +131,20 @@ function RoleHome({
 	activeTab,
 	logout,
 	logoutPending,
+	online,
 }: {
 	actor: CurrentActor;
 	activeTab: string;
 	logout: () => void;
 	logoutPending: boolean;
+	online: boolean;
 }) {
 	if (activeTab === "settings") {
 		return <SettingsScreen actor={actor} logout={logout} logoutPending={logoutPending} />;
+	}
+
+	if (activeTab === "catalog" && actor.permissions.includes("catalog.manage")) {
+		return <CatalogHome online={online} />;
 	}
 
 	if (actor.role === "admin") {
@@ -230,21 +243,26 @@ function SettingsScreen({
 
 function BottomNav({
 	activeTab,
+	actor,
 	onTabChange,
-	role,
 }: {
 	activeTab: string;
+	actor: CurrentActor;
 	onTabChange: (tab: string) => void;
-	role: Role;
 }) {
-	const items = role === "admin"
+	const catalogItem = actor.permissions.includes("catalog.manage")
+		? [{ id: "catalog", label: "Каталог", icon: ClipboardList }]
+		: [];
+	const items = actor.role === "admin"
 		? [
 			{ id: "people", label: "Люди", icon: Users },
+			...catalogItem,
 			{ id: "audit", label: "Аудит", icon: Shield },
 			{ id: "settings", label: "Настройки", icon: Settings },
 		]
 		: [
 			{ id: "home", label: "Главная", icon: PackageCheck },
+			...catalogItem,
 			{ id: "sale", label: "Продажа", icon: ReceiptText },
 			{ id: "settings", label: "Профиль", icon: Settings },
 		];

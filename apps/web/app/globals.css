@@ -64,6 +64,8 @@ button:disabled {
 	display: flex;
 	flex-direction: column;
 	gap: 16px;
+	height: calc(100dvh - 32px);
+	min-height: 0;
 	overflow: hidden;
 	padding: 18px 16px 92px;
 	border-radius: 28px;
@@ -181,13 +183,15 @@ button:disabled {
 .screen-stack,
 .form-stack,
 .form-panel,
-.list-stack {
+.list-stack,
+.catalog-section {
 	display: flex;
 	flex-direction: column;
 	gap: 12px;
 }
 
 .screen-stack {
+	flex: 1 1 auto;
 	min-height: 0;
 	overflow: auto;
 	padding-bottom: 8px;
@@ -211,6 +215,15 @@ button:disabled {
 	font-size: 24px;
 	line-height: 1.1;
 	letter-spacing: 0;
+}
+
+.compact-summary {
+	min-height: 96px;
+}
+
+.compact-summary strong {
+	max-width: 270px;
+	font-size: 20px;
 }
 
 .section-heading {
@@ -255,6 +268,32 @@ button:disabled {
 
 .action-tile span {
 	font-weight: 700;
+}
+
+.catalog-tabs {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 8px;
+}
+
+.catalog-tabs button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	min-height: 40px;
+	border: 1px solid var(--line);
+	border-radius: 999px;
+	background: var(--base-white);
+	color: var(--text-muted);
+	font-size: 12px;
+	font-weight: 800;
+}
+
+.catalog-tabs button.active {
+	border-color: var(--base-black);
+	background: var(--base-black);
+	color: var(--base-white);
 }
 
 .form-panel {
@@ -384,6 +423,22 @@ button:disabled {
 	padding: 12px;
 }
 
+.edit-card {
+	align-items: stretch;
+	flex-direction: column;
+	padding: 14px;
+}
+
+.edit-card .entity-actions {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	width: 100%;
+}
+
+.edit-card .secondary-button {
+	width: 100%;
+}
+
 .entity-card strong {
 	display: block;
 	font-size: 15px;
@@ -408,6 +463,33 @@ button:disabled {
 	width: 38px;
 	height: 38px;
 	border-radius: 8px;
+}
+
+.secondary-button,
+.status-button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	min-height: 38px;
+	border: 1px solid var(--line);
+	border-radius: 8px;
+	background: var(--base-white);
+	color: var(--base-black);
+	padding: 0 10px;
+	font-size: 12px;
+	font-weight: 800;
+}
+
+.status-button.active {
+	border-color: #caefac;
+	background: var(--brand-lime);
+	color: #25772d;
+}
+
+.status-button.inactive {
+	background: #f5f5f5;
+	color: var(--text-muted);
 }
 
 .bottom-nav {
@@ -463,7 +545,11 @@ button:disabled {
 		border-radius: 0;
 	}
 
-	.bottom-nav span {
+	.mobile-shell {
+		height: 100dvh;
+	}
+
+	.bottom-nav button:not(.active) span {
 		display: none;
 	}
 }

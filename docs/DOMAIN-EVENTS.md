@@ -38,6 +38,18 @@
 | `user.create` | администратор создал пользователя с логином и временным паролем | нет, audit details без пароля |
 | `user.role.update` | администратор изменил роль пользователя | нет |
 | `user.password.reset` | администратор сбросил временный пароль пользователя | нет, audit details без пароля |
+| `catalog.raw_material_type.create` | администратор или директор создал вид сырья | нет |
+| `catalog.raw_material_type.update` | администратор или директор изменил вид сырья | нет |
+| `catalog.raw_material_type.archive` | администратор или директор отключил вид сырья через `active=false` | нет |
+| `catalog.packaging_type.create` | администратор или директор создал вид тары | нет |
+| `catalog.packaging_type.update` | администратор или директор изменил вид тары | нет |
+| `catalog.packaging_type.archive` | администратор или директор отключил вид тары через `active=false` | нет |
+| `catalog.distributor.create` | администратор или директор создал распределитель | нет |
+| `catalog.distributor.update` | администратор или директор изменил распределитель | нет |
+| `catalog.distributor.archive` | администратор или директор отключил распределитель через `active=false` | нет |
+| `catalog.product_template.create` | администратор или директор создал шаблон продукции | нет |
+| `catalog.product_template.update` | администратор или директор изменил шаблон продукции | нет |
+| `catalog.product_template.archive` | администратор или директор отключил шаблон продукции через `active=false` | нет |
 
 ## 4. Кандидаты на будущую фиксацию
 
