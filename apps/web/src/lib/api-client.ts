@@ -1,16 +1,27 @@
 import type {
 	CreateDistributorRequest,
 	CreatePackagingTypeRequest,
+	CreatePackagingIntakeRequest,
+	CreateProductBatchRequest,
 	CreateProductTemplateRequest,
+	CreateRawMaterialIntakeRequest,
 	CreateRawMaterialTypeRequest,
 	CreateUserRequest,
 	CreateUserResponse,
 	DistributorResponse,
 	DistributorsListResponse,
+	PackagingBalancesResponse,
+	PackagingIntakeResponse,
 	PackagingTypeResponse,
 	PackagingTypesListResponse,
+	ProductBatchResponse,
+	ProductBatchesResponse,
+	ProductionOptionsResponse,
 	ProductTemplateResponse,
 	ProductTemplatesListResponse,
+	ProductionSummaryResponse,
+	RawMaterialBalancesResponse,
+	RawMaterialIntakeResponse,
 	RawMaterialTypeResponse,
 	RawMaterialTypesListResponse,
 	ResetUserPasswordResponse,
@@ -179,6 +190,49 @@ export async function updateProductTemplate(
 ): Promise<ProductTemplateResponse> {
 	return fetchJson<ProductTemplateResponse>(`/catalog/product-templates/${id}`, {
 		method: "PATCH",
+		body: JSON.stringify(input),
+	});
+}
+
+export async function getProductionSummary(): Promise<ProductionSummaryResponse> {
+	return fetchJson<ProductionSummaryResponse>("/production/summary");
+}
+
+export async function getProductionOptions(): Promise<ProductionOptionsResponse> {
+	return fetchJson<ProductionOptionsResponse>("/production/options");
+}
+
+export async function listRawMaterialBalances(): Promise<RawMaterialBalancesResponse> {
+	return fetchJson<RawMaterialBalancesResponse>("/production/raw-material-balances");
+}
+
+export async function createRawMaterialIntake(
+	input: CreateRawMaterialIntakeRequest,
+): Promise<RawMaterialIntakeResponse> {
+	return fetchJson<RawMaterialIntakeResponse>("/production/raw-material-intakes", {
+		method: "POST",
+		body: JSON.stringify(input),
+	});
+}
+
+export async function listPackagingBalances(): Promise<PackagingBalancesResponse> {
+	return fetchJson<PackagingBalancesResponse>("/production/packaging-balances");
+}
+
+export async function createPackagingIntake(input: CreatePackagingIntakeRequest): Promise<PackagingIntakeResponse> {
+	return fetchJson<PackagingIntakeResponse>("/production/packaging-intakes", {
+		method: "POST",
+		body: JSON.stringify(input),
+	});
+}
+
+export async function listProductBatches(): Promise<ProductBatchesResponse> {
+	return fetchJson<ProductBatchesResponse>("/production/product-batches");
+}
+
+export async function createProductBatch(input: CreateProductBatchRequest): Promise<ProductBatchResponse> {
+	return fetchJson<ProductBatchResponse>("/production/product-batches", {
+		method: "POST",
 		body: JSON.stringify(input),
 	});
 }

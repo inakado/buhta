@@ -10,6 +10,7 @@ import type {
 	RawMaterialType,
 	UpdateProductTemplateRequest,
 } from "@buhta/shared";
+import { formatMoneyCents, moneyCents, rublePriceToCents } from "@buhta/shared";
 import {
 	createDistributor,
 	createPackagingType,
@@ -326,12 +327,16 @@ function ProductTemplatesSection({
 	const [name, setName] = useState("");
 	const [rawMaterialTypeId, setRawMaterialTypeId] = useState("");
 	const [packagingTypeId, setPackagingTypeId] = useState("");
+	const [priceRubles, setPriceRubles] = useState("");
+	const [priceError, setPriceError] = useState("");
 	const createMutation = useMutation({
 		mutationFn: createProductTemplate,
 		onSuccess: async () => {
 			setName("");
 			setRawMaterialTypeId("");
 			setPackagingTypeId("");
+			setPriceRubles("");
+			setPriceError("");
 			await queryClient.invalidateQueries({ queryKey: ["catalog", "product-templates"] });
 		},
 	});
@@ -345,10 +350,17 @@ function ProductTemplatesSection({
 
 	function handleCreate(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
+		const parsedPrice = parsePriceRubles(priceRubles);
+		if (!parsedPrice.ok) {
+			setPriceError(parsedPrice.message);
+			return;
+		}
+		setPriceError("");
 		createMutation.mutate({
 			name,
 			rawMaterialTypeId,
 			packagingTypeId,
+			priceCents: parsedPrice.value,
 		});
 	}
 
@@ -392,9 +404,21 @@ function ProductTemplatesSection({
 						))}
 					</select>
 				</label>
+				<label className="field">
+					<span>Цена продукции, ₽</span>
+					<input
+						inputMode="decimal"
+						onChange={(event) => setPriceRubles(event.target.value)}
+						placeholder="1250.00"
+						required
+						type="text"
+						value={priceRubles}
+					/>
+				</label>
 				{dependenciesReady ? null : (
 					<p className="muted">Сначала нужны активные виды сырья и тары.</p>
 				)}
+				{priceError ? <p className="form-error">{priceError}</p> : null}
 				{createMutation.isError ? <p className="form-error">{createMutation.error.message}</p> : null}
 				<button
 					className="primary-button"
@@ -445,12 +469,21 @@ function ProductTemplateListItem({
 	const [name, setName] = useState(item.name);
 	const [rawMaterialTypeId, setRawMaterialTypeId] = useState(item.rawMaterialTypeId);
 	const [packagingTypeId, setPackagingTypeId] = useState(item.packagingTypeId);
+	const [priceRubles, setPriceRubles] = useState(formatPriceRubles(item.priceCents));
+	const [priceError, setPriceError] = useState("");
 
 	function handleSave() {
+		const parsedPrice = parsePriceRubles(priceRubles);
+		if (!parsedPrice.ok) {
+			setPriceError(parsedPrice.message);
+			return;
+		}
+		setPriceError("");
 		updateItem({
 			name,
 			rawMaterialTypeId,
 			packagingTypeId,
+			priceCents: parsedPrice.value,
 		});
 		setEditing(false);
 	}
@@ -482,6 +515,16 @@ function ProductTemplateListItem({
 						))}
 					</select>
 				</label>
+				<label className="field">
+					<span>Цена, ₽</span>
+					<input
+						inputMode="decimal"
+						onChange={(event) => setPriceRubles(event.target.value)}
+						type="text"
+						value={priceRubles}
+					/>
+				</label>
+				{priceError ? <p className="form-error">{priceError}</p> : null}
 				<div className="entity-actions">
 					<button className="secondary-button" onClick={() => setEditing(false)} type="button">
 						Отмена
@@ -502,6 +545,7 @@ function ProductTemplateListItem({
 				<p>
 					{item.rawMaterialType.name} / {item.packagingType.name}
 				</p>
+				<p>{formatPriceRubles(item.priceCents)} ₽</p>
 			</div>
 			<div className="entity-actions">
 				<StatusButton active={item.active} disabled={!online || pending} onToggle={() => updateItem({ active: !item.active })} />
@@ -552,4 +596,22 @@ function CatalogListState({ count, loading }: { count: number; loading: boolean 
 	}
 
 	return null;
+}
+
+function formatPriceRubles(priceCents: number): string {
+	return formatMoneyCents(moneyCents(priceCents));
+}
+
+function parsePriceRubles(value: string): { ok: true; value: number } | { ok: false; message: string } {
+	try {
+		return {
+			ok: true,
+			value: rublePriceToCents(value),
+		};
+	} catch {
+		return {
+			ok: false,
+			message: "Цена должна быть положительной суммой в рублях, максимум 2 знака после запятой.",
+		};
+	}
 }

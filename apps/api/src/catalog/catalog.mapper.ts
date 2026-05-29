@@ -20,6 +20,7 @@ type UnitCatalogRecord = CatalogRecord & {
 type ProductTemplateRecord = CatalogRecord & {
 	rawMaterialTypeId: string;
 	packagingTypeId: string;
+	priceCents: number;
 	rawMaterialType: UnitCatalogRecord;
 	packagingType: UnitCatalogRecord;
 };
@@ -62,6 +63,7 @@ export function mapProductTemplate(record: ProductTemplateRecord): ProductTempla
 		name: record.name,
 		rawMaterialTypeId: record.rawMaterialTypeId,
 		packagingTypeId: record.packagingTypeId,
+		priceCents: record.priceCents,
 		active: record.active,
 		createdAt: record.createdAt.toISOString(),
 		updatedAt: record.updatedAt.toISOString(),

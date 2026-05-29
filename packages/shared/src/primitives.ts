@@ -25,6 +25,21 @@ export function formatMoneyCents(value: MoneyCents): string {
 	return (value / 100).toFixed(2);
 }
 
+export const RublePriceSchema = z
+	.string()
+	.trim()
+	.regex(/^\d+([.,]\d{1,2})?$/, "Price must be a ruble amount with up to 2 decimal places")
+	.transform((value) => {
+		const normalized = value.replace(",", ".");
+		const [rubles = "0", kopecks = ""] = normalized.split(".");
+		return Number(rubles) * 100 + Number(kopecks.padEnd(2, "0"));
+	})
+	.pipe(z.number().int().positive());
+
+export function rublePriceToCents(value: string): MoneyCents {
+	return moneyCents(RublePriceSchema.parse(value));
+}
+
 export const QUANTITY_UNITS = ["kg", "piece"] as const;
 
 export type QuantityUnit = (typeof QUANTITY_UNITS)[number];

@@ -88,6 +88,9 @@ model Operation {
   actor              User                @relation("OperationActor", fields: [actorUserId], references: [id], onDelete: Restrict)
   auditLogs          AuditLog[]
   idempotencyRecords IdempotencyRecord[]
+  rawMaterialIntakes RawMaterialIntake[]
+  packagingIntakes   PackagingIntake[]
+  productBatches     ProductBatch[]
 
   @@unique([actorUserId, idempotencyKey])
   @@index([actorUserId])
@@ -140,6 +143,8 @@ model RawMaterialType {
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   productTemplates ProductTemplate[]
+  balance          RawMaterialBalance?
+  intakes          RawMaterialIntake[]
 
   @@map("raw_material_type")
 }
@@ -152,6 +157,8 @@ model PackagingType {
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   productTemplates ProductTemplate[]
+  balance          PackagingBalance?
+  intakes          PackagingIntake[]
 
   @@map("packaging_type")
 }
@@ -171,13 +178,94 @@ model ProductTemplate {
   name              String          @unique
   rawMaterialTypeId String
   packagingTypeId   String
+  priceCents        Int             @default(0)
   active            Boolean         @default(true)
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
   rawMaterialType   RawMaterialType @relation(fields: [rawMaterialTypeId], references: [id], onDelete: Restrict)
   packagingType     PackagingType   @relation(fields: [packagingTypeId], references: [id], onDelete: Restrict)
+  productBatches    ProductBatch[]
 
   @@index([rawMaterialTypeId])
   @@index([packagingTypeId])
   @@map("product_template")
+}
+
+model RawMaterialBalance {
+  id                String          @id @default(cuid())
+  rawMaterialTypeId String          @unique
+  quantity          Decimal         @default(0) @db.Decimal(12, 3)
+  updatedAt         DateTime        @updatedAt
+  rawMaterialType   RawMaterialType @relation(fields: [rawMaterialTypeId], references: [id], onDelete: Restrict)
+
+  @@map("raw_material_balance")
+}
+
+model PackagingBalance {
+  id              String        @id @default(cuid())
+  packagingTypeId String        @unique
+  quantity        Decimal       @default(0) @db.Decimal(12, 3)
+  updatedAt       DateTime      @updatedAt
+  packagingType   PackagingType @relation(fields: [packagingTypeId], references: [id], onDelete: Restrict)
+
+  @@map("packaging_balance")
+}
+
+model RawMaterialIntake {
+  id                String          @id @default(cuid())
+  rawMaterialTypeId String
+  quantity          Decimal         @db.Decimal(12, 3)
+  comment           String?
+  operationId       String          @unique
+  actorUserId       String
+  createdAt         DateTime        @default(now())
+  rawMaterialType   RawMaterialType @relation(fields: [rawMaterialTypeId], references: [id], onDelete: Restrict)
+  operation         Operation       @relation(fields: [operationId], references: [id], onDelete: Restrict)
+
+  @@index([rawMaterialTypeId])
+  @@index([actorUserId])
+  @@map("raw_material_intake")
+}
+
+model PackagingIntake {
+  id              String        @id @default(cuid())
+  packagingTypeId String
+  quantity        Decimal       @db.Decimal(12, 3)
+  comment         String?
+  operationId     String        @unique
+  actorUserId     String
+  createdAt       DateTime      @default(now())
+  packagingType   PackagingType @relation(fields: [packagingTypeId], references: [id], onDelete: Restrict)
+  operation       Operation     @relation(fields: [operationId], references: [id], onDelete: Restrict)
+
+  @@index([packagingTypeId])
+  @@index([actorUserId])
+  @@map("packaging_intake")
+}
+
+model ProductBatch {
+  id                          String          @id @default(cuid())
+  productTemplateId           String
+  productName                 String
+  rawMaterialTypeId           String
+  rawMaterialTypeName         String
+  rawMaterialUnit             String
+  packagingTypeId             String
+  packagingTypeName           String
+  packagingUnit               String
+  priceCents                  Int
+  quantity                    Int
+  consumedRawMaterialQuantity Decimal         @db.Decimal(12, 3)
+  consumedPackagingQuantity   Decimal         @db.Decimal(12, 3)
+  status                      String          @default("in_workshop")
+  operationId                 String          @unique
+  actorUserId                 String
+  createdAt                   DateTime        @default(now())
+  productTemplate             ProductTemplate @relation(fields: [productTemplateId], references: [id], onDelete: Restrict)
+  operation                   Operation       @relation(fields: [operationId], references: [id], onDelete: Restrict)
+
+  @@index([productTemplateId])
+  @@index([actorUserId])
+  @@index([status])
+  @@map("product_batch")
 }

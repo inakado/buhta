@@ -57,6 +57,7 @@ describe("CatalogController", () => {
 				name: "Икра горбуши",
 				rawMaterialTypeId: "",
 				packagingTypeId: "pack1",
+				priceCents: 125000,
 			}),
 		).rejects.toThrow(AppError);
 		expect(catalogService.createProductTemplate).not.toHaveBeenCalled();

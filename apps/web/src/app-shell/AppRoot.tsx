@@ -9,11 +9,12 @@ import {
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
-import { Box, ClipboardList, LogOut, PackageCheck, ReceiptText, Settings, Shield, Truck, Users } from "lucide-react";
+import { Bell, Box, ClipboardList, LogOut, PackageCheck, ReceiptText, Settings, Shield, Truck, Users } from "lucide-react";
 import { useState } from "react";
 import type { Role } from "@buhta/shared";
 import { LoginForm } from "../auth/LoginForm";
 import { CatalogHome } from "../features/catalog/CatalogHome";
+import { ProductionHome } from "../features/production/ProductionHome";
 import { AdminHome } from "../roles/admin/AdminHome";
 import { ROLE_LABELS } from "../lib/role-labels";
 import { getCurrentActor, isUnauthorizedError, signOut, type CurrentActor } from "../lib/api-client";
@@ -147,6 +148,15 @@ function RoleHome({
 		return <CatalogHome online={online} />;
 	}
 
+	if (actor.role === "production_manager" && isProductionTab(activeTab)) {
+		return (
+			<ProductionHome
+				activeTab={activeTab}
+				online={online}
+			/>
+		);
+	}
+
 	if (actor.role === "admin") {
 		if (activeTab !== "people") {
 			return <PlaceholderScreen title="Аудит" text="Журнал действий будет подключен следующим экраном." icon={Shield} />;
@@ -253,6 +263,12 @@ function BottomNav({
 	const catalogItem = actor.permissions.includes("catalog.manage")
 		? [{ id: "catalog", label: "Каталог", icon: ClipboardList }]
 		: [];
+	const productionItems = [
+		{ id: "home", label: "Главная", icon: PackageCheck },
+		{ id: "notifications", label: "Уведомления", icon: Bell },
+		{ id: "history", label: "История", icon: ReceiptText },
+		{ id: "settings", label: "Профиль", icon: Settings },
+	];
 	const items = actor.role === "admin"
 		? [
 			{ id: "people", label: "Люди", icon: Users },
@@ -260,6 +276,8 @@ function BottomNav({
 			{ id: "audit", label: "Аудит", icon: Shield },
 			{ id: "settings", label: "Настройки", icon: Settings },
 		]
+		: actor.role === "production_manager"
+			? productionItems
 		: [
 			{ id: "home", label: "Главная", icon: PackageCheck },
 			...catalogItem,
@@ -272,17 +290,21 @@ function BottomNav({
 			{items.map((item) => (
 				<button
 					aria-current={activeTab === item.id ? "page" : undefined}
+					aria-label={item.label}
 					className={activeTab === item.id ? "active" : ""}
 					onClick={() => onTabChange(item.id)}
 					type="button"
 					key={item.id}
 				>
-					<item.icon aria-hidden size={20} />
-					<span>{item.label}</span>
+					<item.icon aria-hidden className="bottom-nav-icon" size={20} />
 				</button>
 			))}
 		</nav>
 	);
+}
+
+function isProductionTab(tab: string): tab is "home" | "notifications" | "history" {
+	return tab === "home" || tab === "notifications" || tab === "history";
 }
 
 function LoadingScreen() {

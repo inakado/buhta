@@ -53,6 +53,7 @@ Policy layer отвечает за доменные разрешения. Тек
 - `admin` получает все baseline permissions.
 - `/users` handlers защищены permission `users.manage`; сейчас это только `admin`.
 - `/catalog/*` handlers защищены permission `catalog.manage`; сейчас это `admin` и `director`.
+- `/production/*` handlers защищены permission `production.manage`; сейчас это `admin` и `production_manager`.
 
 Текущие baseline permissions:
 

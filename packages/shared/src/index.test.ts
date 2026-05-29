@@ -6,13 +6,18 @@ import {
 	moneyCents,
 	permissionsForRole,
 	quantity,
+	rublePriceToCents,
 	ROLES,
 	subtractMoneyCents,
 	subtractQuantity,
+	CreatePackagingIntakeRequestSchema,
+	CreateProductBatchRequestSchema,
 	CreateUserRequestSchema,
 	CreateProductTemplateRequestSchema,
 	CreateRawMaterialTypeRequestSchema,
+	CreateRawMaterialIntakeRequestSchema,
 	LoginSchema,
+	ProductionOptionsResponseSchema,
 	ProductTemplateSchema,
 	UpdateRawMaterialTypeRequestSchema,
 	UpdateUserRoleRequestSchema,
@@ -40,7 +45,12 @@ describe("shared contracts", () => {
 		expect(addMoneyCents(left, right)).toBe(1300);
 		expect(subtractMoneyCents(left, right)).toBe(800);
 		expect(formatMoneyCents(left)).toBe("10.50");
+		expect(rublePriceToCents("1200")).toBe(120000);
+		expect(rublePriceToCents("950.50")).toBe(95050);
+		expect(rublePriceToCents("950,5")).toBe(95050);
 		expect(() => moneyCents(10.5)).toThrow();
+		expect(() => rublePriceToCents("10.999")).toThrow();
+		expect(() => rublePriceToCents("-1")).toThrow();
 		expect(() => subtractMoneyCents(right, left)).toThrow();
 	});
 
@@ -86,6 +96,7 @@ describe("shared contracts", () => {
 				name: "Икра горбуши",
 				rawMaterialTypeId: "raw-1",
 				packagingTypeId: "pack-1",
+				priceCents: 125000,
 			}).success,
 		).toBe(true);
 		expect(
@@ -94,6 +105,7 @@ describe("shared contracts", () => {
 				name: "Икра горбуши",
 				rawMaterialTypeId: "raw-1",
 				packagingTypeId: "pack-1",
+				priceCents: 125000,
 				active: true,
 				createdAt: new Date(0).toISOString(),
 				updatedAt: new Date(0).toISOString(),
@@ -111,5 +123,41 @@ describe("shared contracts", () => {
 				},
 			}).success,
 		).toBe(true);
+	});
+
+	it("validates production contracts", () => {
+		expect(
+			CreateRawMaterialIntakeRequestSchema.safeParse({
+				rawMaterialTypeId: "raw-1",
+				quantity: 12.5,
+			}).success,
+		).toBe(true);
+		expect(
+			CreatePackagingIntakeRequestSchema.safeParse({
+				packagingTypeId: "pack-1",
+				quantity: 12,
+			}).success,
+		).toBe(true);
+		expect(
+			CreateProductBatchRequestSchema.safeParse({
+				productTemplateId: "template-1",
+				quantity: 10,
+				consumedRawMaterialQuantity: 2.5,
+			}).success,
+		).toBe(true);
+		expect(
+			ProductionOptionsResponseSchema.safeParse({
+				rawMaterialTypes: [],
+				packagingTypes: [],
+				productTemplates: [],
+			}).success,
+		).toBe(true);
+		expect(
+			CreateProductBatchRequestSchema.safeParse({
+				productTemplateId: "template-1",
+				quantity: 0,
+				consumedRawMaterialQuantity: 2.5,
+			}).success,
+		).toBe(false);
 	});
 });

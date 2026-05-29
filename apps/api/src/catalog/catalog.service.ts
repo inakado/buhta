@@ -276,6 +276,7 @@ export class CatalogService {
 					name: input.name,
 					rawMaterialTypeId: input.rawMaterialTypeId,
 					packagingTypeId: input.packagingTypeId,
+					priceCents: input.priceCents,
 				},
 				include: {
 					rawMaterialType: true,
@@ -291,6 +292,7 @@ export class CatalogService {
 					name: record.name,
 					rawMaterialTypeId: record.rawMaterialTypeId,
 					packagingTypeId: record.packagingTypeId,
+					priceCents: record.priceCents,
 				},
 			});
 			return mapProductTemplate(record);
@@ -489,6 +491,9 @@ function buildProductTemplateUpdateData(
 	}
 	if (input.packagingTypeId !== undefined) {
 		data.packagingTypeId = input.packagingTypeId;
+	}
+	if (input.priceCents !== undefined) {
+		data.priceCents = input.priceCents;
 	}
 	if (input.active !== undefined) {
 		data.active = input.active;

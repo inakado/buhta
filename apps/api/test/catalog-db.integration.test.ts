@@ -140,6 +140,7 @@ describe("CatalogService real Postgres integration", () => {
 			name: "catalog-integration-template",
 			rawMaterialTypeId: rawMaterialType.id,
 			packagingTypeId: packagingType.id,
+			priceCents: 125000,
 		});
 
 		expect(productTemplate).toMatchObject({
@@ -171,6 +172,7 @@ describe("CatalogService real Postgres integration", () => {
 				name: "catalog-integration-rejected-template",
 				rawMaterialTypeId: rawMaterialType.id,
 				packagingTypeId: packagingType.id,
+				priceCents: 125000,
 			}),
 		).rejects.toMatchObject({
 			code: "DOMAIN_RULE_VIOLATION",
@@ -207,6 +209,7 @@ describe("CatalogService real Postgres integration", () => {
 				name: "catalog-integration-missing-template",
 				rawMaterialTypeId: "missing-raw",
 				packagingTypeId: "missing-pack",
+				priceCents: 125000,
 			}),
 		).rejects.toThrow(AppError);
 	});

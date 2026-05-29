@@ -44,6 +44,18 @@ describe("PolicyRegistry", () => {
 		expect(actor?.permissions).not.toContain("users.manage");
 	});
 
+	it("gives production manager production access without catalog management", () => {
+		const actor = registry.buildActor({
+			id: "pm1",
+			username: "production-manager",
+			name: "Production Manager",
+			role: "production_manager",
+		});
+
+		expect(actor?.permissions).toContain("production.manage");
+		expect(actor?.permissions).not.toContain("catalog.manage");
+	});
+
 	it("rejects missing identity fields and unknown roles", () => {
 		expect(registry.buildActor({ username: "no-id", role: "director" })).toBeNull();
 		expect(registry.buildActor({ id: "u1", username: "x", role: "owner" })).toBeNull();

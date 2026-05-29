@@ -34,6 +34,7 @@
   - `policy` — roles/permissions registry, `RequirePermission`, `PolicyGuard`;
   - `users` — минимальное backend-управление пользователями и ролями для администратора;
   - `catalog` — минимальные справочники сырья, тары, распределителей и шаблонов продукции;
+  - `production` — поступления сырья/тары, текущие балансы цеха и выпуск партии продукции;
   - `operations` — baseline operation/idempotency services;
   - `common/errors` — единый `AppError` и mapper в `{ error: { code, message, details } }`;
   - `health` — публичный health contract.
@@ -42,6 +43,7 @@
   - error response shape;
   - money-in-cents и quantity helpers;
   - catalog contracts для сырья, тары, распределителей и шаблонов продукции;
+  - production contracts для поступлений, балансов цеха и выпуска партии;
   - health constants.
 - Foundation data flow:
 
@@ -104,7 +106,22 @@ Catalog management пишет audit operations:
 - `catalog.product_template.update`;
 - `catalog.product_template.archive`.
 
-Справочники отключаются через `active=false`, без физического удаления. Шаблон продукции на текущем этапе хранит только название и связи на активные вид сырья и вид тары; цены, фасовки, нормативы и остатки не входят в catalog foundation.
+Production baseline пишет audit operations:
+
+- `production.raw_material_intake.create`;
+- `production.packaging_intake.create`;
+- `production.product_batch.create`.
+
+Справочники отключаются через `active=false`, без физического удаления. Шаблон продукции хранит название, связи на активные вид сырья и вид тары, а также цену за единицу в `priceCents`. Фасовки, нормативы и остатки не входят в catalog foundation.
+
+Production balance baseline:
+
+- `raw_material_balance` — текущий остаток сырья в цеху по виду сырья;
+- `packaging_balance` — текущий остаток тары в цеху по виду тары;
+- `raw_material_intake` и `packaging_intake` — факты поступления;
+- `product_batch` — выпущенная партия в статусе `in_workshop` со snapshot названий, единиц учета и цены.
+
+Поступления и выпуск выполняются в Prisma transaction. Выпуск партии использует conditional decrement: сырье и тара списываются только если текущего остатка достаточно, иначе операция отклоняется и партия не создается.
 
 Базовый принцип для следующих доменных операций:
 

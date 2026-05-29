@@ -30,6 +30,7 @@ export type Distributor = z.infer<typeof DistributorSchema>;
 export const ProductTemplateSchema = CatalogEntitySchema.extend({
 	rawMaterialTypeId: z.string().min(1),
 	packagingTypeId: z.string().min(1),
+	priceCents: z.number().int().nonnegative(),
 	rawMaterialType: RawMaterialTypeSchema.pick({
 		id: true,
 		name: true,
@@ -124,6 +125,7 @@ export const CreateProductTemplateRequestSchema = z.object({
 	name: NameSchema,
 	rawMaterialTypeId: z.string().min(1),
 	packagingTypeId: z.string().min(1),
+	priceCents: z.number().int().positive(),
 });
 
 export type CreateProductTemplateRequest = z.infer<typeof CreateProductTemplateRequestSchema>;
