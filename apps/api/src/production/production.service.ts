@@ -119,6 +119,7 @@ export class ProductionService {
 				entityId: input.rawMaterialTypeId,
 				details: {
 					rawMaterialTypeId: input.rawMaterialTypeId,
+					rawMaterialTypeName: rawMaterialType.name,
 					quantity: input.quantity,
 					unit: rawMaterialType.unit,
 					comment: input.comment,
@@ -166,6 +167,7 @@ export class ProductionService {
 				entityId: input.packagingTypeId,
 				details: {
 					packagingTypeId: input.packagingTypeId,
+					packagingTypeName: packagingType.name,
 					quantity: input.quantity,
 					unit: packagingType.unit,
 					comment: input.comment,
@@ -273,6 +275,12 @@ export class ProductionService {
 				details: {
 					productTemplateId: template.id,
 					productName: template.name,
+					rawMaterialTypeId: template.rawMaterialTypeId,
+					rawMaterialTypeName: template.rawMaterialType.name,
+					rawMaterialUnit: template.rawMaterialType.unit,
+					packagingTypeId: template.packagingTypeId,
+					packagingTypeName: template.packagingType.name,
+					packagingUnit: template.packagingType.unit,
 					quantity: input.quantity,
 					consumedRawMaterialQuantity: input.consumedRawMaterialQuantity,
 					consumedPackagingQuantity,

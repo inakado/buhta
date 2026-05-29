@@ -170,7 +170,28 @@ describe("ProductionService real Postgres integration", () => {
 					entityId: rawMaterialType.id,
 				},
 			}),
-		).resolves.toBeTruthy();
+		).resolves.toMatchObject({
+			details: expect.objectContaining({
+				rawMaterialTypeId: rawMaterialType.id,
+				rawMaterialTypeName: "production-integration-intake-raw",
+				unit: "кг",
+			}),
+		});
+		await expect(
+			prisma.auditLog.findFirstOrThrow({
+				where: {
+					actorUserId: actor.userId,
+					action: "production.packaging_intake.create",
+					entityId: packagingType.id,
+				},
+			}),
+		).resolves.toMatchObject({
+			details: expect.objectContaining({
+				packagingTypeId: packagingType.id,
+				packagingTypeName: "production-integration-intake-pack",
+				unit: "шт",
+			}),
+		});
 	});
 
 	it("returns active production options without requiring catalog management", async () => {
@@ -234,7 +255,24 @@ describe("ProductionService real Postgres integration", () => {
 		]);
 		expect(Number(rawBalance.quantity)).toBe(9.25);
 		expect(Number(packagingBalance.quantity)).toBe(6);
-		expect(auditLog).toBeTruthy();
+		expect(auditLog.details).toMatchObject({
+			productName: "production-integration-release-template",
+			rawMaterialTypeName: "production-integration-release-raw",
+			packagingTypeName: "production-integration-release-pack",
+			priceCents: 88050,
+		});
+		await prisma.rawMaterialType.update({
+			where: { id: rawMaterialType.id },
+			data: { name: "production-integration-release-raw-renamed" },
+		});
+		await prisma.packagingType.update({
+			where: { id: packagingType.id },
+			data: { name: "production-integration-release-pack-renamed" },
+		});
+		await expect(prisma.productBatch.findUniqueOrThrow({ where: { id: batch.id } })).resolves.toMatchObject({
+			rawMaterialTypeName: "production-integration-release-raw",
+			packagingTypeName: "production-integration-release-pack",
+		});
 	});
 
 	it("rejects product batch when raw material balance is not enough", async () => {

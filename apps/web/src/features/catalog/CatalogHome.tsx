@@ -12,6 +12,10 @@ import type {
 } from "@buhta/shared";
 import { formatMoneyCents, moneyCents, rublePriceToCents } from "@buhta/shared";
 import {
+	archiveDistributor,
+	archivePackagingType,
+	archiveProductTemplate,
+	archiveRawMaterialType,
 	createDistributor,
 	createPackagingType,
 	createProductTemplate,
@@ -98,6 +102,7 @@ export function CatalogHome({ online }: { online: boolean }) {
 					queryKey={["catalog", "raw-material-types"]}
 					title="Виды сырья"
 					unitLabel="Единица измерения"
+					archiveItem={archiveRawMaterialType}
 					updateItem={updateRawMaterialType}
 				/>
 			) : null}
@@ -111,6 +116,7 @@ export function CatalogHome({ online }: { online: boolean }) {
 					queryKey={["catalog", "packaging-types"]}
 					title="Виды тары"
 					unitLabel="Единица учета"
+					archiveItem={archivePackagingType}
 					updateItem={updatePackagingType}
 				/>
 			) : null}
@@ -123,6 +129,7 @@ export function CatalogHome({ online }: { online: boolean }) {
 					online={online}
 					queryKey={["catalog", "distributors"]}
 					title="Распределители"
+					archiveItem={archiveDistributor}
 					updateItem={updateDistributor}
 				/>
 			) : null}
@@ -134,6 +141,7 @@ export function CatalogHome({ online }: { online: boolean }) {
 					online={online}
 					packagingTypes={packagingTypes.data?.packagingTypes ?? []}
 					rawMaterialTypes={rawMaterialTypes.data?.rawMaterialTypes ?? []}
+					archiveItem={archiveProductTemplate}
 				/>
 			) : null}
 		</section>
@@ -141,6 +149,7 @@ export function CatalogHome({ online }: { online: boolean }) {
 }
 
 function SimpleCatalogSection({
+	archiveItem,
 	createItem,
 	items,
 	loading,
@@ -150,6 +159,7 @@ function SimpleCatalogSection({
 	unitLabel,
 	updateItem,
 }: {
+	archiveItem: (id: string) => Promise<unknown>;
 	createItem: (input: SimpleCatalogInput) => Promise<unknown>;
 	items: SimpleCatalogItem[];
 	loading: boolean;
@@ -162,6 +172,10 @@ function SimpleCatalogSection({
 	const queryClient = useQueryClient();
 	const [name, setName] = useState("");
 	const [unit, setUnit] = useState("");
+	const [showArchived, setShowArchived] = useState(false);
+	const activeItems = useMemo(() => items.filter((item) => item.active), [items]);
+	const archivedItems = useMemo(() => items.filter((item) => !item.active), [items]);
+	const visibleItems = showArchived ? archivedItems : activeItems;
 	const createMutation = useMutation({
 		mutationFn: createItem,
 		onSuccess: async () => {
@@ -172,6 +186,12 @@ function SimpleCatalogSection({
 	});
 	const updateMutation = useMutation({
 		mutationFn: ({ id, input }: { id: string; input: SimpleCatalogUpdate }) => updateItem(id, input),
+		onSuccess: async () => {
+			await queryClient.invalidateQueries({ queryKey });
+		},
+	});
+	const archiveMutation = useMutation({
+		mutationFn: archiveItem,
 		onSuccess: async () => {
 			await queryClient.invalidateQueries({ queryKey });
 		},
@@ -208,20 +228,33 @@ function SimpleCatalogSection({
 				</button>
 			</form>
 
-			<CatalogListState loading={loading} count={items.length} />
+			<CatalogArchiveHeader
+				archivedCount={archivedItems.length}
+				showArchived={showArchived}
+				onToggle={() => setShowArchived((current) => !current)}
+			/>
+
+			<CatalogListState
+				count={visibleItems.length}
+				emptyLabel={showArchived ? "В архиве пока пусто" : "Активных записей пока нет"}
+				loading={loading}
+			/>
 
 			<div className="list-stack">
-				{items.map((item) => (
+				{visibleItems.map((item) => (
 					<SimpleCatalogListItem
 						item={item}
 						key={item.id}
 						online={online}
-						pending={updateMutation.isPending}
+						pending={updateMutation.isPending || archiveMutation.isPending}
 						{...(unitLabel ? { unitLabel } : {})}
+						archiveItem={() => archiveMutation.mutate(item.id)}
+						restoreItem={() => updateMutation.mutate({ id: item.id, input: { active: true } })}
 						updateItem={(input) => updateMutation.mutate({ id: item.id, input })}
 					/>
 				))}
 				{updateMutation.isError ? <p className="form-error">{updateMutation.error.message}</p> : null}
+				{archiveMutation.isError ? <p className="form-error">{archiveMutation.error.message}</p> : null}
 			</div>
 		</div>
 	);
@@ -232,12 +265,16 @@ function SimpleCatalogListItem({
 	online,
 	pending,
 	unitLabel,
+	archiveItem,
+	restoreItem,
 	updateItem,
 }: {
 	item: SimpleCatalogItem;
 	online: boolean;
 	pending: boolean;
 	unitLabel?: string;
+	archiveItem: () => void;
+	restoreItem: () => void;
 	updateItem: (input: SimpleCatalogUpdate) => void;
 }) {
 	const [editing, setEditing] = useState(false);
@@ -286,11 +323,16 @@ function SimpleCatalogListItem({
 				{unitLabel ? <p>{unitValue}</p> : null}
 			</div>
 			<div className="entity-actions">
-				<StatusButton active={item.active} disabled={!online || pending} onToggle={() => updateItem({ active: !item.active })} />
+				<ArchiveButton
+					active={item.active}
+					disabled={!online || pending}
+					onArchive={archiveItem}
+					onRestore={restoreItem}
+				/>
 				<button
 					aria-label={`Редактировать ${item.name}`}
 					className="secondary-icon-button"
-					disabled={!online || pending}
+					disabled={!online || pending || !item.active}
 					onClick={() => setEditing(true)}
 					title="Редактировать"
 					type="button"
@@ -308,12 +350,14 @@ function ProductTemplatesSection({
 	online,
 	packagingTypes,
 	rawMaterialTypes,
+	archiveItem,
 }: {
 	items: ProductTemplate[];
 	loading: boolean;
 	online: boolean;
 	packagingTypes: PackagingType[];
 	rawMaterialTypes: RawMaterialType[];
+	archiveItem: (id: string) => Promise<unknown>;
 }) {
 	const queryClient = useQueryClient();
 	const activeRawMaterialTypes = useMemo(
@@ -329,6 +373,10 @@ function ProductTemplatesSection({
 	const [packagingTypeId, setPackagingTypeId] = useState("");
 	const [priceRubles, setPriceRubles] = useState("");
 	const [priceError, setPriceError] = useState("");
+	const [showArchived, setShowArchived] = useState(false);
+	const activeItems = useMemo(() => items.filter((item) => item.active), [items]);
+	const archivedItems = useMemo(() => items.filter((item) => !item.active), [items]);
+	const visibleItems = showArchived ? archivedItems : activeItems;
 	const createMutation = useMutation({
 		mutationFn: createProductTemplate,
 		onSuccess: async () => {
@@ -342,6 +390,12 @@ function ProductTemplatesSection({
 	});
 	const updateMutation = useMutation({
 		mutationFn: ({ id, input }: { id: string; input: UpdateProductTemplateRequest }) => updateProductTemplate(id, input),
+		onSuccess: async () => {
+			await queryClient.invalidateQueries({ queryKey: ["catalog", "product-templates"] });
+		},
+	});
+	const archiveMutation = useMutation({
+		mutationFn: archiveItem,
 		onSuccess: async () => {
 			await queryClient.invalidateQueries({ queryKey: ["catalog", "product-templates"] });
 		},
@@ -430,21 +484,34 @@ function ProductTemplatesSection({
 				</button>
 			</form>
 
-			<CatalogListState loading={loading} count={items.length} />
+			<CatalogArchiveHeader
+				archivedCount={archivedItems.length}
+				showArchived={showArchived}
+				onToggle={() => setShowArchived((current) => !current)}
+			/>
+
+			<CatalogListState
+				count={visibleItems.length}
+				emptyLabel={showArchived ? "В архиве пока пусто" : "Активных шаблонов пока нет"}
+				loading={loading}
+			/>
 
 			<div className="list-stack">
-				{items.map((item) => (
+				{visibleItems.map((item) => (
 					<ProductTemplateListItem
 						item={item}
 						key={item.id}
 						online={online}
 						packagingTypes={activePackagingTypes}
-						pending={updateMutation.isPending}
+						pending={updateMutation.isPending || archiveMutation.isPending}
 						rawMaterialTypes={activeRawMaterialTypes}
+						archiveItem={() => archiveMutation.mutate(item.id)}
+						restoreItem={() => updateMutation.mutate({ id: item.id, input: { active: true } })}
 						updateItem={(input) => updateMutation.mutate({ id: item.id, input })}
 					/>
 				))}
 				{updateMutation.isError ? <p className="form-error">{updateMutation.error.message}</p> : null}
+				{archiveMutation.isError ? <p className="form-error">{archiveMutation.error.message}</p> : null}
 			</div>
 		</div>
 	);
@@ -456,6 +523,8 @@ function ProductTemplateListItem({
 	packagingTypes,
 	pending,
 	rawMaterialTypes,
+	archiveItem,
+	restoreItem,
 	updateItem,
 }: {
 	item: ProductTemplate;
@@ -463,6 +532,8 @@ function ProductTemplateListItem({
 	packagingTypes: PackagingType[];
 	pending: boolean;
 	rawMaterialTypes: RawMaterialType[];
+	archiveItem: () => void;
+	restoreItem: () => void;
 	updateItem: (input: UpdateProductTemplateRequest) => void;
 }) {
 	const [editing, setEditing] = useState(false);
@@ -548,11 +619,16 @@ function ProductTemplateListItem({
 				<p>{formatPriceRubles(item.priceCents)} ₽</p>
 			</div>
 			<div className="entity-actions">
-				<StatusButton active={item.active} disabled={!online || pending} onToggle={() => updateItem({ active: !item.active })} />
+				<ArchiveButton
+					active={item.active}
+					disabled={!online || pending}
+					onArchive={archiveItem}
+					onRestore={restoreItem}
+				/>
 				<button
 					aria-label={`Редактировать ${item.name}`}
 					className="secondary-icon-button"
-					disabled={!online || pending}
+					disabled={!online || pending || !item.active}
 					onClick={() => setEditing(true)}
 					title="Редактировать"
 					type="button"
@@ -564,35 +640,64 @@ function ProductTemplateListItem({
 	);
 }
 
-function StatusButton({
+function ArchiveButton({
 	active,
 	disabled,
-	onToggle,
+	onArchive,
+	onRestore,
 }: {
 	active: boolean;
 	disabled: boolean;
-	onToggle: () => void;
+	onArchive: () => void;
+	onRestore: () => void;
 }) {
 	return (
 		<button
-			className={active ? "status-button active" : "status-button inactive"}
+			className={active ? "status-button archive" : "status-button restore"}
 			disabled={disabled}
-			onClick={onToggle}
+			onClick={active ? onArchive : onRestore}
 			type="button"
 		>
-			{active ? <Check aria-hidden size={14} /> : <Archive aria-hidden size={14} />}
-			{active ? "Активен" : "Неактивен"}
+			{active ? <Archive aria-hidden size={14} /> : <Check aria-hidden size={14} />}
+			{active ? "В архив" : "Вернуть"}
 		</button>
 	);
 }
 
-function CatalogListState({ count, loading }: { count: number; loading: boolean }) {
+function CatalogArchiveHeader({
+	archivedCount,
+	showArchived,
+	onToggle,
+}: {
+	archivedCount: number;
+	showArchived: boolean;
+	onToggle: () => void;
+}) {
+	return (
+		<div className="catalog-list-header">
+			<span>{showArchived ? "Архив" : "Активные записи"}</span>
+			<button className="secondary-button compact-button" onClick={onToggle} type="button">
+				{showArchived ? "Показать активные" : `Архив (${archivedCount})`}
+			</button>
+		</div>
+	);
+}
+
+function CatalogListState({
+	count,
+	emptyLabel,
+	loading,
+}: {
+	count: number;
+	emptyLabel: string;
+	loading: boolean;
+}) {
 	if (loading) {
 		return <p className="muted">Загрузка справочника</p>;
 	}
 
 	if (count === 0) {
-		return <p className="muted">Записей пока нет</p>;
+		return <p className="muted">{emptyLabel}</p>;
 	}
 
 	return null;

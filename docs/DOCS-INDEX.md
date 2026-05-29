@@ -9,6 +9,7 @@
 - `docs/ARCHITECTURE-PRINCIPLES.md` — общие архитектурные и инженерные принципы.
 - `docs/TECH-STACK.md` — выбранный базовый стек, auth-направление и Docker-dev принцип.
 - `docs/DEVELOPMENT.md` — dev/test/docs runbook и целевой Docker-contour.
+- `docs/FOR-HUMANS.md` — короткая человеческая инструкция: как поднять dev-версию, API, frontend, БД и прогнать проверки.
 - `docs/DECISIONS.md` — короткий журнал принятых архитектурных решений.
 - `docs/PLANS.md` — правила execution plans и lifecycle инициатив.
 - `docs/ARCHITECTURE.md` — placeholder для будущей карты модулей и потоков данных.
@@ -21,6 +22,7 @@
 - `docs/exec-plans/deferred-roadmap.md` — отложенные идеи, которые не являются активной задачей.
 - `docs/exec-plans/tech-debt-tracker.md` — признанный техдолг после появления кода или harness.
 - `docs/exec-plans/active/2026-05-27-v1-roadmap.md` — долгоживущая roadmap/meta-plan полной v1.
+- `docs/exec-plans/active/2026-05-29-production-distributor-transfer.md` — активный план этапа Production → Distributor Transfer.
 - `docs/exec-plans/completed/2026-05-29-production-intake-and-release.md` — завершенный план производственного baseline: цена шаблона, поступления сырья/тары, выпуск партии.
 - `docs/exec-plans/completed/2026-05-28-catalog-foundation.md` — завершенный этап справочников: сырье, тара, распределители, шаблоны продукции.
 - `docs/exec-plans/completed/2026-05-28-admin-login-and-mobile-shell.md` — завершенный этап: admin-managed login/password, пользователи, mobile/PWA shell.

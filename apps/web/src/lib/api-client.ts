@@ -132,6 +132,13 @@ export async function updateRawMaterialType(
 	});
 }
 
+export async function archiveRawMaterialType(id: string): Promise<RawMaterialTypeResponse> {
+	return fetchJson<RawMaterialTypeResponse>(`/catalog/raw-material-types/${id}/archive`, {
+		method: "PATCH",
+		body: JSON.stringify({}),
+	});
+}
+
 export async function listPackagingTypes(): Promise<PackagingTypesListResponse> {
 	return fetchJson<PackagingTypesListResponse>("/catalog/packaging-types");
 }
@@ -153,6 +160,13 @@ export async function updatePackagingType(
 	});
 }
 
+export async function archivePackagingType(id: string): Promise<PackagingTypeResponse> {
+	return fetchJson<PackagingTypeResponse>(`/catalog/packaging-types/${id}/archive`, {
+		method: "PATCH",
+		body: JSON.stringify({}),
+	});
+}
+
 export async function listDistributors(): Promise<DistributorsListResponse> {
 	return fetchJson<DistributorsListResponse>("/catalog/distributors");
 }
@@ -168,6 +182,13 @@ export async function updateDistributor(id: string, input: UpdateDistributorRequ
 	return fetchJson<DistributorResponse>(`/catalog/distributors/${id}`, {
 		method: "PATCH",
 		body: JSON.stringify(input),
+	});
+}
+
+export async function archiveDistributor(id: string): Promise<DistributorResponse> {
+	return fetchJson<DistributorResponse>(`/catalog/distributors/${id}/archive`, {
+		method: "PATCH",
+		body: JSON.stringify({}),
 	});
 }
 
@@ -191,6 +212,13 @@ export async function updateProductTemplate(
 	return fetchJson<ProductTemplateResponse>(`/catalog/product-templates/${id}`, {
 		method: "PATCH",
 		body: JSON.stringify(input),
+	});
+}
+
+export async function archiveProductTemplate(id: string): Promise<ProductTemplateResponse> {
+	return fetchJson<ProductTemplateResponse>(`/catalog/product-templates/${id}/archive`, {
+		method: "PATCH",
+		body: JSON.stringify({}),
 	});
 }
 
