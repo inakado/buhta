@@ -1,0 +1,283 @@
+"use client";
+
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { FormEvent, useEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
+import { ArrowLeft, Check, Edit3, Plus, Search, UserPlus, Users } from "lucide-react";
+import type { Client } from "@buhta/shared";
+import {
+	createClient,
+	listClients,
+	updateClient,
+	type CurrentActor,
+} from "../../lib/api-client";
+
+type ClientsMode = "list" | "create" | "edit";
+type SuccessNotice = {
+	id: number;
+	message: string;
+};
+
+export function ClientsHome({
+	actor,
+	online,
+}: {
+	actor: CurrentActor;
+	online: boolean;
+}) {
+	const [mode, setMode] = useState<ClientsMode>("list");
+	const [editingClient, setEditingClient] = useState<Client | null>(null);
+	const [searchDraft, setSearchDraft] = useState("");
+	const [activeSearch, setActiveSearch] = useState("");
+	const [successNotice, setSuccessNotice] = useState<SuccessNotice | null>(null);
+	const successNoticeId = useRef(0);
+	const canManage = actor.permissions.includes("client.manage");
+	const clients = useQuery({
+		queryKey: ["clients", activeSearch],
+		queryFn: () => listClients(activeSearch),
+	});
+
+	useEffect(() => {
+		if (!successNotice) {
+			return;
+		}
+
+		const timeoutId = window.setTimeout(() => {
+			setSuccessNotice((current) => current?.id === successNotice.id ? null : current);
+		}, 3000);
+
+		return () => window.clearTimeout(timeoutId);
+	}, [successNotice]);
+
+	function showSuccess(message: string) {
+		successNoticeId.current += 1;
+		setMode("list");
+		setEditingClient(null);
+		setSuccessNotice({
+			id: successNoticeId.current,
+			message,
+		});
+	}
+
+	function handleSearch(event: FormEvent<HTMLFormElement>) {
+		event.preventDefault();
+		setActiveSearch(searchDraft.trim());
+	}
+
+	if (mode === "create" && canManage) {
+		return (
+			<ClientDetailScreen title="Добавить клиента" onBack={() => setMode("list")}>
+				<ClientForm
+					onSuccess={() => showSuccess("Клиент добавлен")}
+					online={online}
+				/>
+			</ClientDetailScreen>
+		);
+	}
+
+	if (mode === "edit" && canManage && editingClient) {
+		return (
+			<ClientDetailScreen title="Редактировать клиента" onBack={() => setMode("list")}>
+				<ClientForm
+					client={editingClient}
+					onSuccess={() => showSuccess("Клиент обновлен")}
+					online={online}
+				/>
+			</ClientDetailScreen>
+		);
+	}
+
+	return (
+		<section className="screen-stack">
+			<div className="summary-card compact-summary">
+				<div>
+					<p className="summary-label">Клиенты</p>
+					<strong>{clients.isLoading ? "Загрузка" : `${clients.data?.clients.length ?? 0} клиентов`}</strong>
+					<p className="summary-note">
+						{canManage ? "База для будущих продаж" : "Просмотр клиентской базы"}
+					</p>
+				</div>
+				<Users aria-hidden size={28} />
+			</div>
+
+			<form className="client-search" onSubmit={handleSearch}>
+				<label className="field">
+					<span>Поиск</span>
+					<div className="input-shell">
+						<Search aria-hidden size={18} />
+						<input
+							onChange={(event) => setSearchDraft(event.target.value)}
+							placeholder="Имя или телефон"
+							type="search"
+							value={searchDraft}
+						/>
+					</div>
+				</label>
+				<button className="secondary-button compact-button" type="submit">
+					Найти
+				</button>
+			</form>
+
+			{canManage ? (
+				<button className="primary-button" onClick={() => setMode("create")} type="button" disabled={!online}>
+					<UserPlus aria-hidden size={18} />
+					Добавить клиента
+				</button>
+			) : null}
+
+			{clients.isLoading ? <p className="muted">Загрузка клиентов</p> : null}
+			{clients.isError ? <p className="form-error">{clients.error.message}</p> : null}
+			{!clients.isLoading && !clients.isError && clients.data?.clients.length === 0 ? (
+				<p className="muted">{activeSearch ? "Клиенты не найдены." : "Клиентов пока нет."}</p>
+			) : null}
+
+			<ClientList
+				canManage={canManage}
+				clients={clients.data?.clients ?? []}
+				onEdit={(client) => {
+					setEditingClient(client);
+					setMode("edit");
+				}}
+			/>
+
+			{successNotice ? <ClientsSuccessNotice notice={successNotice} /> : null}
+		</section>
+	);
+}
+
+function ClientDetailScreen({
+	children,
+	onBack,
+	title,
+}: {
+	children: ReactNode;
+	onBack: () => void;
+	title: string;
+}) {
+	return (
+		<section className="screen-stack" aria-label={title}>
+			<button className="secondary-button production-back-button" onClick={onBack} type="button">
+				<ArrowLeft aria-hidden size={20} />
+				Назад
+			</button>
+			{children}
+		</section>
+	);
+}
+
+function ClientForm({
+	client,
+	onSuccess,
+	online,
+}: {
+	client?: Client;
+	onSuccess: () => void;
+	online: boolean;
+}) {
+	const queryClient = useQueryClient();
+	const [name, setName] = useState(client?.name ?? "");
+	const [phone, setPhone] = useState(client?.phone ?? "");
+	const [description, setDescription] = useState(client?.description ?? "");
+	const [localError, setLocalError] = useState("");
+	const mutation = useMutation({
+		mutationFn: () => client
+			? updateClient(client.id, { name, phone, description })
+			: createClient({ name, phone, description }),
+		onSuccess: async () => {
+			setName("");
+			setPhone("");
+			setDescription("");
+			setLocalError("");
+			await queryClient.invalidateQueries({ queryKey: ["clients"] });
+			onSuccess();
+		},
+	});
+
+	function handleSubmit(event: FormEvent<HTMLFormElement>) {
+		event.preventDefault();
+		setLocalError("");
+
+		if (!name.trim()) {
+			setLocalError("Введите имя клиента.");
+			return;
+		}
+
+		if (!phone.trim()) {
+			setLocalError("Введите телефон клиента.");
+			return;
+		}
+
+		mutation.mutate();
+	}
+
+	return (
+		<form className="form-panel" onSubmit={handleSubmit}>
+			<div className="section-heading compact">
+				<h2>{client ? "Редактировать клиента" : "Добавить клиента"}</h2>
+			</div>
+			<label className="field">
+				<span>Имя</span>
+				<input onChange={(event) => setName(event.target.value)} required type="text" value={name} />
+			</label>
+			<label className="field">
+				<span>Телефон</span>
+				<input onChange={(event) => setPhone(event.target.value)} required type="tel" value={phone} />
+			</label>
+			<label className="field">
+				<span>Описание</span>
+				<textarea onChange={(event) => setDescription(event.target.value)} rows={3} value={description} />
+			</label>
+			{localError ? <p className="form-error">{localError}</p> : null}
+			{mutation.isError ? <p className="form-error">{mutation.error.message}</p> : null}
+			<button className="primary-button" disabled={!online || mutation.isPending} type="submit">
+				<Plus aria-hidden size={18} />
+				{client ? "Сохранить" : "Добавить"}
+			</button>
+		</form>
+	);
+}
+
+function ClientList({
+	canManage,
+	clients,
+	onEdit,
+}: {
+	canManage: boolean;
+	clients: Client[];
+	onEdit: (client: Client) => void;
+}) {
+	return (
+		<div className="list-stack">
+			{clients.map((client) => (
+				<article className="entity-card" key={client.id}>
+					<div>
+						<strong>{client.name}</strong>
+						<p>{client.phone}</p>
+						{client.description ? <p>{client.description}</p> : null}
+					</div>
+					{canManage ? (
+						<div className="entity-actions">
+							<button
+								aria-label={`Редактировать ${client.name}`}
+								className="secondary-icon-button"
+								onClick={() => onEdit(client)}
+								type="button"
+							>
+								<Edit3 aria-hidden size={17} />
+							</button>
+						</div>
+					) : null}
+				</article>
+			))}
+		</div>
+	);
+}
+
+function ClientsSuccessNotice({ notice }: { notice: SuccessNotice }) {
+	return (
+		<div className="success-notice" role="status" aria-live="polite" key={notice.id}>
+			<Check aria-hidden size={18} />
+			<span>{notice.message}</span>
+		</div>
+	);
+}

@@ -5,6 +5,7 @@ import { AuthSpikeController } from "./auth/auth-spike.controller";
 import { AuthMeController } from "./auth/auth-me.controller";
 import { auth } from "./auth/auth";
 import { CatalogModule } from "./catalog/catalog.module";
+import { ClientsModule } from "./clients/clients.module";
 import { AppErrorFilter } from "./common/errors/app-error.filter";
 import { DistributorModule } from "./distributor/distributor.module";
 import { HealthController } from "./health/health.controller";
@@ -26,6 +27,7 @@ import { UsersModule } from "./users/users.module";
 		OperationsModule,
 		UsersModule,
 		CatalogModule,
+		ClientsModule,
 		ProductionModule,
 		DistributorModule,
 	],

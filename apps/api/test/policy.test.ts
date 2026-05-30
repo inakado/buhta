@@ -69,6 +69,38 @@ describe("PolicyRegistry", () => {
 		}
 	});
 
+	it("keeps client read and manage permissions separated", () => {
+		const director = registry.buildActor({
+			id: "director",
+			username: "director",
+			name: "Director",
+			role: "director",
+		});
+		const productionManager = registry.buildActor({
+			id: "production-manager",
+			username: "production-manager",
+			name: "Production Manager",
+			role: "production_manager",
+		});
+
+		expect(director?.permissions).toContain("client.read");
+		expect(director?.permissions).not.toContain("client.manage");
+		expect(productionManager?.permissions).not.toContain("client.read");
+		expect(productionManager?.permissions).not.toContain("client.manage");
+
+		for (const role of ["admin", "commercial_manager", "distributor_worker", "courier"] as const) {
+			const actor = registry.buildActor({
+				id: `user-${role}`,
+				username: role,
+				name: role,
+				role,
+			});
+
+			expect(actor?.permissions).toContain("client.read");
+			expect(actor?.permissions).toContain("client.manage");
+		}
+	});
+
 	it("rejects missing identity fields and unknown roles", () => {
 		expect(registry.buildActor({ username: "no-id", role: "director" })).toBeNull();
 		expect(registry.buildActor({ id: "u1", username: "x", role: "owner" })).toBeNull();
@@ -138,5 +170,31 @@ describe("PolicyGuard", () => {
 				}),
 			),
 		).toThrow(ForbiddenException);
+	});
+
+	it("rejects client API permissions for wrong roles", () => {
+		const directorRequest: RequestWithActor = {
+			user: {
+				id: "director",
+				username: "director",
+				name: "Director",
+				role: "director",
+			},
+		};
+		const directorWriteGuard = new PolicyGuard(reflectorWithPermission("client.manage"), registry);
+		expect(() => directorWriteGuard.canActivate(contextWithRequest(directorRequest))).toThrow(ForbiddenException);
+
+		const productionManagerRequest: RequestWithActor = {
+			user: {
+				id: "pm",
+				username: "pm",
+				name: "Production Manager",
+				role: "production_manager",
+			},
+		};
+		const productionReadGuard = new PolicyGuard(reflectorWithPermission("client.read"), registry);
+		expect(() => productionReadGuard.canActivate(contextWithRequest(productionManagerRequest))).toThrow(
+			ForbiddenException,
+		);
 	});
 });

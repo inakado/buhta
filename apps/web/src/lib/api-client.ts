@@ -1,4 +1,7 @@
 import type {
+	ClientResponse,
+	ClientsListResponse,
+	CreateClientRequest,
 	CreateDistributorRequest,
 	CreatePackagingTypeRequest,
 	CreatePackagingIntakeRequest,
@@ -30,6 +33,7 @@ import type {
 	RawMaterialTypesListResponse,
 	ResetUserPasswordResponse,
 	Role,
+	UpdateClientRequest,
 	UpdateDistributorRequest,
 	UpdatePackagingTypeRequest,
 	UpdateProductTemplateRequest,
@@ -111,6 +115,29 @@ export async function resetUserPassword(userId: string): Promise<ResetUserPasswo
 	return fetchJson<ResetUserPasswordResponse>(`/users/${userId}/reset-password`, {
 		method: "POST",
 		body: JSON.stringify({}),
+	});
+}
+
+export async function listClients(search?: string): Promise<ClientsListResponse> {
+	const params = new URLSearchParams();
+	if (search?.trim()) {
+		params.set("search", search.trim());
+	}
+	const query = params.toString();
+	return fetchJson<ClientsListResponse>(`/clients${query ? `?${query}` : ""}`);
+}
+
+export async function createClient(input: CreateClientRequest): Promise<ClientResponse> {
+	return fetchJson<ClientResponse>("/clients", {
+		method: "POST",
+		body: JSON.stringify(input),
+	});
+}
+
+export async function updateClient(id: string, input: UpdateClientRequest): Promise<ClientResponse> {
+	return fetchJson<ClientResponse>(`/clients/${id}`, {
+		method: "PATCH",
+		body: JSON.stringify(input),
 	});
 }
 

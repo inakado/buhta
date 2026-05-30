@@ -34,6 +34,7 @@
   - `policy` — roles/permissions registry, `RequirePermission`, `PolicyGuard`;
   - `users` — минимальное backend-управление пользователями и ролями для администратора;
   - `catalog` — минимальные справочники сырья, тары, распределителей и шаблонов продукции;
+  - `clients` — общая база клиентов, поиск, создание и редактирование текущей карточки клиента;
   - `production` — поступления сырья/тары, текущие балансы цеха и выпуск партии продукции;
   - `distributor` — read-only товарные остатки распределителя из projection table;
   - `operations` — baseline operation/idempotency services;
@@ -44,6 +45,7 @@
   - error response shape;
   - money-in-cents и quantity helpers;
   - catalog contracts для сырья, тары, распределителей и шаблонов продукции;
+  - client contracts для списка, поиска, создания и редактирования клиентов;
   - production contracts для поступлений, балансов цеха и выпуска партии;
   - distributor contracts для read-only inventory summary и строк остатков;
   - health constants.
@@ -108,6 +110,11 @@ Catalog management пишет audit operations:
 - `catalog.product_template.update`;
 - `catalog.product_template.archive`.
 
+Clients foundation пишет audit operations:
+
+- `client.create`;
+- `client.update`.
+
 Production baseline пишет audit operations:
 
 - `production.raw_material_intake.create`;
@@ -132,6 +139,8 @@ Production balance baseline:
 Выпуск партии в той же transaction создает `workshop_product_balance` с количеством выпущенной продукции. Перемещение на распределитель использует conditional decrement `workshop_product_balance.quantity >= requestedQuantity` и upsert/increment `distributor_product_balance`. `ProductBatch.status` не является источником доступного остатка, потому что партия может быть перемещена частично.
 
 Distributor inventory read model строится из ненулевых строк `distributor_product_balance` с join на `product_batch` и `distributor`. API считает `stockValueCents = quantity * product_batch.priceCents`, возвращает общий summary и summary по распределителям. Read endpoint не создает `operation`/`audit_log` и не моделирует cash balance.
+
+Client master data хранится в таблице `client`. Телефон нормализуется в `phoneNormalized` удалением всех нецифровых символов и защищается unique constraint. Клиентская карточка является mutable master data: создание и редактирование пишут `operation`/`audit_log`, но будущие продажи должны ссылаться на `clientId` и показывать актуальные имя/телефон/описание через join на `Client`, а не хранить старые ошибочные данные как operational source of truth.
 
 Базовый принцип для следующих доменных операций:
 

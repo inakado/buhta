@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { Client } from "@buhta/shared";
 import HomePage from "./page";
 
 const adminActorResponse = {
@@ -9,7 +10,7 @@ const adminActorResponse = {
 		login: "admin",
 		displayName: "Admin",
 		role: "admin",
-		permissions: ["users.manage", "catalog.manage"],
+		permissions: ["users.manage", "catalog.manage", "client.read", "client.manage"],
 	},
 };
 
@@ -31,7 +32,18 @@ const commercialActorResponse = {
 		login: "commercial-manager",
 		displayName: "Commercial Manager",
 		role: "commercial_manager",
-		permissions: ["distributor.stock.read", "distributor.sale.create"],
+		permissions: ["distributor.stock.read", "distributor.sale.create", "client.read", "client.manage"],
+	},
+};
+
+const directorActorResponse = {
+	authenticated: true,
+	actor: {
+		userId: "seed-director",
+		login: "director",
+		displayName: "Director",
+		role: "director",
+		permissions: ["distributor.stock.read", "client.read"],
 	},
 };
 
@@ -58,6 +70,19 @@ const distributorInventoryResponse = {
 		priceCents: 125000,
 		quantity: 2,
 		stockValueCents: 250000,
+		updatedAt: new Date(0).toISOString(),
+	}],
+};
+
+const clientsResponse: { clients: Client[] } = {
+	clients: [{
+		id: "client1",
+		name: "Иван Петров",
+		phone: "+7 (999) 123-45-67",
+		phoneNormalized: "79991234567",
+		description: "Постоянный клиент",
+		createdByUserId: "seed-commercial-manager",
+		createdAt: new Date(0).toISOString(),
 		updatedAt: new Date(0).toISOString(),
 	}],
 };
@@ -810,5 +835,259 @@ describe("HomePage", () => {
 		expect(await screen.findByText((_, element) => element?.textContent === "Товарный баланс 2500.00 ₽")).toBeTruthy();
 		expect(screen.getByText("Икра горбуши")).toBeTruthy();
 		expect(screen.getByText("Распределитель Центральный")).toBeTruthy();
+	});
+
+	it("lets a commercial manager create and edit clients", async () => {
+		let clients = [...clientsResponse.clients];
+		const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+			const url = String(input);
+			const method = init?.method ?? "GET";
+
+			if (url.endsWith("/auth/me")) {
+				return jsonResponse(commercialActorResponse);
+			}
+
+			if (url.endsWith("/distributor/inventory")) {
+				return jsonResponse(distributorInventoryResponse);
+			}
+
+			if (url.includes("/clients") && method === "POST") {
+				const body = JSON.parse(String(init?.body)) as { name: string; phone: string; description?: string };
+				const created = {
+					id: "client2",
+					name: body.name,
+					phone: body.phone,
+					phoneNormalized: "79998887766",
+					description: body.description ?? null,
+					createdByUserId: "seed-commercial-manager",
+					createdAt: new Date(0).toISOString(),
+					updatedAt: new Date(0).toISOString(),
+				};
+				clients = [...clients, created];
+				return jsonResponse({ client: created });
+			}
+
+			if (url.endsWith("/clients/client1") && method === "PATCH") {
+				const body = JSON.parse(String(init?.body)) as { name: string; phone: string; description?: string };
+				const updated = {
+					...clients[0]!,
+					name: body.name,
+					phone: body.phone,
+					phoneNormalized: "79991112233",
+					description: body.description || null,
+					updatedAt: new Date(1).toISOString(),
+				};
+				clients = [updated, ...clients.slice(1)];
+				return jsonResponse({ client: updated });
+			}
+
+			if (url.includes("/clients")) {
+				return jsonResponse({ clients });
+			}
+
+			return jsonResponse({ error: { message: "Unexpected request" } }, 500);
+		});
+
+		vi.stubGlobal("fetch", fetchMock);
+
+		render(<HomePage />);
+
+		fireEvent.click(await screen.findByRole("button", { name: "Клиенты" }));
+		expect(await screen.findByText("Иван Петров")).toBeTruthy();
+		fireEvent.click(screen.getByRole("button", { name: "Добавить клиента" }));
+		fireEvent.change(await screen.findByLabelText("Имя"), { target: { value: "Анна" } });
+		fireEvent.change(screen.getByLabelText("Телефон"), { target: { value: "+7 (999) 888-77-66" } });
+		fireEvent.change(screen.getByLabelText("Описание"), { target: { value: "Новый клиент" } });
+		fireEvent.click(screen.getByRole("button", { name: "Добавить" }));
+
+		await waitFor(() => {
+			expect(fetchMock).toHaveBeenCalledWith(
+				expect.stringContaining("/clients"),
+				expect.objectContaining({
+					method: "POST",
+					body: JSON.stringify({
+						name: "Анна",
+						phone: "+7 (999) 888-77-66",
+						description: "Новый клиент",
+					}),
+				}),
+			);
+		});
+		expect(await screen.findByText("Клиент добавлен")).toBeTruthy();
+		expect(screen.queryByLabelText("Имя")).toBeNull();
+
+		fireEvent.click(screen.getByRole("button", { name: "Редактировать Иван Петров" }));
+		fireEvent.change(await screen.findByLabelText("Имя"), { target: { value: "Иван Новый" } });
+		fireEvent.change(screen.getByLabelText("Телефон"), { target: { value: "+7 (999) 111-22-33" } });
+		fireEvent.change(screen.getByLabelText("Описание"), { target: { value: "" } });
+		fireEvent.click(screen.getByRole("button", { name: "Сохранить" }));
+
+		await waitFor(() => {
+			expect(fetchMock).toHaveBeenCalledWith(
+				expect.stringContaining("/clients/client1"),
+				expect.objectContaining({
+					method: "PATCH",
+					body: JSON.stringify({
+						name: "Иван Новый",
+						phone: "+7 (999) 111-22-33",
+						description: "",
+					}),
+				}),
+			);
+		});
+		expect(await screen.findByText("Клиент обновлен")).toBeTruthy();
+	});
+
+	it("shows clients read-only for a director and hides clients for production manager", async () => {
+		const directorFetch = vi.fn(async (input: RequestInfo | URL) => {
+			const url = String(input);
+
+			if (url.endsWith("/auth/me")) {
+				return jsonResponse(directorActorResponse);
+			}
+
+			if (url.endsWith("/distributor/inventory")) {
+				return jsonResponse(distributorInventoryResponse);
+			}
+
+			if (url.includes("/clients")) {
+				return jsonResponse(clientsResponse);
+			}
+
+			return jsonResponse({ error: { message: "Unexpected request" } }, 500);
+		});
+
+		vi.stubGlobal("fetch", directorFetch);
+		render(<HomePage />);
+
+		fireEvent.click(await screen.findByRole("button", { name: "Клиенты" }));
+		expect(await screen.findByText("Иван Петров")).toBeTruthy();
+		expect(screen.queryByRole("button", { name: "Добавить клиента" })).toBeNull();
+		expect(screen.queryByRole("button", { name: "Редактировать Иван Петров" })).toBeNull();
+
+		cleanup();
+		vi.unstubAllGlobals();
+
+		const productionFetch = vi.fn(async (input: RequestInfo | URL) => {
+			const url = String(input);
+
+			if (url.endsWith("/auth/me")) {
+				return jsonResponse(productionActorResponse);
+			}
+
+			if (url.endsWith("/production/summary")) {
+				return jsonResponse({
+					summary: {
+						readyProductUnits: 0,
+						rawMaterialKinds: 0,
+						rawMaterialTotal: 0,
+						rawMaterialUnit: "кг",
+						packagingKinds: 0,
+						packagingTotal: 0,
+						packagingUnit: "шт",
+					},
+				});
+			}
+
+			if (url.endsWith("/production/raw-material-balances")) {
+				return jsonResponse({ rawMaterialBalances: [] });
+			}
+
+			if (url.endsWith("/production/packaging-balances")) {
+				return jsonResponse({ packagingBalances: [] });
+			}
+
+			if (url.endsWith("/production/workshop-product-balances")) {
+				return jsonResponse({ workshopProductBalances: [] });
+			}
+
+			if (url.endsWith("/production/transfer-options")) {
+				return jsonResponse({ distributors: [], workshopProductBalances: [] });
+			}
+
+			if (url.endsWith("/production/product-batches")) {
+				return jsonResponse({ productBatches: [] });
+			}
+
+			if (url.endsWith("/production/options")) {
+				return jsonResponse({ rawMaterialTypes: [], packagingTypes: [], productTemplates: [] });
+			}
+
+			return jsonResponse({ error: { message: "Unexpected request" } }, 500);
+		});
+
+		vi.stubGlobal("fetch", productionFetch);
+		render(<HomePage />);
+
+		expect(await screen.findByText("Заведующий производством")).toBeTruthy();
+		expect(screen.queryByRole("button", { name: "Клиенты" })).toBeNull();
+	});
+
+	it("keeps client backend errors inline and disables writes offline", async () => {
+		const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+			const url = String(input);
+			const method = init?.method ?? "GET";
+
+			if (url.endsWith("/auth/me")) {
+				return jsonResponse(commercialActorResponse);
+			}
+
+			if (url.endsWith("/distributor/inventory")) {
+				return jsonResponse(distributorInventoryResponse);
+			}
+
+			if (url.includes("/clients") && method === "POST") {
+				return jsonResponse({ error: { message: "Клиент с таким телефоном уже существует" } }, 409);
+			}
+
+			if (url.includes("/clients")) {
+				return jsonResponse({ clients: [] });
+			}
+
+			return jsonResponse({ error: { message: "Unexpected request" } }, 500);
+		});
+
+		vi.stubGlobal("fetch", fetchMock);
+
+		render(<HomePage />);
+
+		fireEvent.click(await screen.findByRole("button", { name: "Клиенты" }));
+		fireEvent.click(await screen.findByRole("button", { name: "Добавить клиента" }));
+		fireEvent.change(await screen.findByLabelText("Имя"), { target: { value: "Иван" } });
+		fireEvent.change(screen.getByLabelText("Телефон"), { target: { value: "+7 (999) 123-45-67" } });
+		fireEvent.click(screen.getByRole("button", { name: "Добавить" }));
+
+		expect(await screen.findByText("Клиент с таким телефоном уже существует")).toBeTruthy();
+		expect(screen.getByRole("heading", { name: "Добавить клиента" })).toBeTruthy();
+		expect(screen.queryByText("Клиент добавлен")).toBeNull();
+
+		cleanup();
+		vi.unstubAllGlobals();
+		Object.defineProperty(window.navigator, "onLine", { configurable: true, value: false });
+		vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
+			const url = String(input);
+
+			if (url.endsWith("/auth/me")) {
+				return jsonResponse(commercialActorResponse);
+			}
+
+			if (url.endsWith("/distributor/inventory")) {
+				return jsonResponse(distributorInventoryResponse);
+			}
+
+			if (url.includes("/clients")) {
+				return jsonResponse({ clients: [] });
+			}
+
+			return jsonResponse({ error: { message: "Unexpected request" } }, 500);
+		}));
+
+		render(<HomePage />);
+
+		fireEvent.click(await screen.findByRole("button", { name: "Клиенты" }));
+		await waitFor(() => {
+			expect(screen.getByRole("button", { name: "Добавить клиента" }).hasAttribute("disabled")).toBe(true);
+		});
+		Object.defineProperty(window.navigator, "onLine", { configurable: true, value: true });
 	});
 });

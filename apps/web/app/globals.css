@@ -365,6 +365,7 @@ button:disabled {
 
 .field input,
 .field select,
+.field textarea,
 .input-shell {
 	width: 100%;
 	min-height: 46px;
@@ -375,8 +376,16 @@ button:disabled {
 }
 
 .field input,
-.field select {
+.field select,
+.field textarea {
 	padding: 0 12px;
+}
+
+.field textarea {
+	min-height: 86px;
+	resize: vertical;
+	padding-top: 12px;
+	line-height: 1.35;
 }
 
 .field select,
@@ -393,6 +402,13 @@ button:disabled {
 .input-shell {
 	gap: 8px;
 	padding: 0 10px;
+}
+
+.client-search {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	align-items: end;
+	gap: 8px;
 }
 
 .input-shell input {
@@ -688,6 +704,7 @@ button:disabled {
 	font-size: 11px;
 }
 
+.success-notice,
 .production-success-notice {
 	position: absolute;
 	right: 28px;

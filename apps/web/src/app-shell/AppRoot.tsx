@@ -14,6 +14,7 @@ import { useState } from "react";
 import type { Role } from "@buhta/shared";
 import { LoginForm } from "../auth/LoginForm";
 import { CatalogHome } from "../features/catalog/CatalogHome";
+import { ClientsHome } from "../features/clients/ClientsHome";
 import { DistributorInventoryHome } from "../features/distributor/DistributorInventoryHome";
 import { ProductionHome } from "../features/production/ProductionHome";
 import { AdminHome } from "../roles/admin/AdminHome";
@@ -149,6 +150,10 @@ function RoleHome({
 		return <CatalogHome online={online} />;
 	}
 
+	if (activeTab === "clients" && actor.permissions.includes("client.read")) {
+		return <ClientsHome actor={actor} online={online} />;
+	}
+
 	if (actor.role === "production_manager") {
 		if (activeTab === "distributor") {
 			return <DistributorInventoryHome />;
@@ -273,6 +278,9 @@ function BottomNav({
 	const catalogItem = actor.permissions.includes("catalog.manage")
 		? [{ id: "catalog", label: "Каталог", icon: ClipboardList }]
 		: [];
+	const clientsItem = actor.permissions.includes("client.read")
+		? [{ id: "clients", label: "Клиенты", icon: Users }]
+		: [];
 	const productionItems = [
 		{ id: "home", label: "Главная", icon: PackageCheck },
 		{ id: "distributor", label: "Распределитель", icon: Box },
@@ -284,6 +292,7 @@ function BottomNav({
 		? [
 			{ id: "people", label: "Люди", icon: Users },
 			...catalogItem,
+			...clientsItem,
 			{ id: "audit", label: "Аудит", icon: Shield },
 			{ id: "settings", label: "Настройки", icon: Settings },
 		]
@@ -292,6 +301,7 @@ function BottomNav({
 		: [
 			{ id: "home", label: "Главная", icon: PackageCheck },
 			...catalogItem,
+			...clientsItem,
 			{ id: "sale", label: "Продажа", icon: ReceiptText },
 			{ id: "settings", label: "Профиль", icon: Settings },
 		];

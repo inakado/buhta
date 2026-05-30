@@ -22,9 +22,13 @@ import {
 	ProductionOptionsResponseSchema,
 	ProductionTransferOptionsResponseSchema,
 	ProductTemplateSchema,
+	CreateClientRequestSchema,
+	ClientSearchQuerySchema,
+	UpdateClientRequestSchema,
 	UpdateRawMaterialTypeRequestSchema,
 	UpdateUserRoleRequestSchema,
 	UserSummarySchema,
+	normalizeClientPhone,
 } from "./index";
 
 describe("shared contracts", () => {
@@ -37,8 +41,18 @@ describe("shared contracts", () => {
 	it("keeps baseline permissions explicit by role", () => {
 		expect(permissionsForRole("admin")).toContain("users.manage");
 		expect(permissionsForRole("director")).toContain("catalog.manage");
+		expect(permissionsForRole("director")).toContain("client.read");
+		expect(permissionsForRole("director")).not.toContain("client.manage");
 		expect(permissionsForRole("director")).toContain("cash.withdraw");
+		expect(permissionsForRole("commercial_manager")).toContain("client.read");
+		expect(permissionsForRole("commercial_manager")).toContain("client.manage");
+		expect(permissionsForRole("distributor_worker")).toContain("client.read");
+		expect(permissionsForRole("distributor_worker")).toContain("client.manage");
+		expect(permissionsForRole("courier")).toContain("client.read");
+		expect(permissionsForRole("courier")).toContain("client.manage");
 		expect(permissionsForRole("courier")).not.toContain("cash.withdraw");
+		expect(permissionsForRole("production_manager")).not.toContain("client.read");
+		expect(permissionsForRole("production_manager")).not.toContain("client.manage");
 	});
 
 	it("handles money only as integer cents", () => {
@@ -262,5 +276,43 @@ describe("shared contracts", () => {
 				items: [],
 			}).success,
 		).toBe(false);
+	});
+
+	it("validates client contracts", () => {
+		expect(normalizeClientPhone("+7 (999) 123-45-67")).toBe("79991234567");
+		expect(
+			CreateClientRequestSchema.parse({
+				name: " Иван ",
+				phone: " +7 (999) 123-45-67 ",
+				description: " Покупает икру ",
+			}),
+		).toEqual({
+			name: "Иван",
+			phone: "+7 (999) 123-45-67",
+			description: "Покупает икру",
+		});
+		expect(
+			CreateClientRequestSchema.parse({
+				name: "Иван",
+				phone: "+7 (999) 123-45-67",
+				description: "",
+			}),
+		).toEqual({
+			name: "Иван",
+			phone: "+7 (999) 123-45-67",
+			description: null,
+		});
+		expect(CreateClientRequestSchema.safeParse({ name: "", phone: "+7" }).success).toBe(false);
+		expect(CreateClientRequestSchema.safeParse({ name: "Иван", phone: "" }).success).toBe(false);
+		expect(CreateClientRequestSchema.safeParse({ name: "Иван", phone: "---" }).success).toBe(false);
+		expect(UpdateClientRequestSchema.safeParse({}).success).toBe(false);
+		expect(UpdateClientRequestSchema.safeParse({ name: "" }).success).toBe(false);
+		expect(UpdateClientRequestSchema.safeParse({ phone: "---" }).success).toBe(false);
+		expect(UpdateClientRequestSchema.safeParse({ description: "" }).success).toBe(true);
+		expect(ClientSearchQuerySchema.parse({ search: " Иван ", limit: "20" })).toEqual({
+			search: "Иван",
+			limit: 20,
+		});
+		expect(ClientSearchQuerySchema.safeParse({ search: "x".repeat(101) }).success).toBe(false);
 	});
 });

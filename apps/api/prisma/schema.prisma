@@ -26,6 +26,7 @@ model User {
   operations         Operation[]         @relation("OperationActor")
   auditLogs          AuditLog[]          @relation("AuditActor")
   idempotencyRecords IdempotencyRecord[] @relation("IdempotencyActor")
+  createdClients     Client[]            @relation("ClientCreatedBy")
 
   @@map("user")
 }
@@ -174,6 +175,22 @@ model Distributor {
   productTransfers ProductTransfer[]
 
   @@map("distributor")
+}
+
+model Client {
+  id              String   @id @default(cuid())
+  name            String
+  phone           String
+  phoneNormalized String   @unique
+  description     String?
+  createdByUserId String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  createdBy       User     @relation("ClientCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+
+  @@index([name])
+  @@index([createdByUserId])
+  @@map("client")
 }
 
 model ProductTemplate {
