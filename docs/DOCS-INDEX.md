@@ -22,6 +22,7 @@
 - `docs/exec-plans/deferred-roadmap.md` — отложенные идеи, которые не являются активной задачей.
 - `docs/exec-plans/tech-debt-tracker.md` — признанный техдолг после появления кода или harness.
 - `docs/exec-plans/active/2026-05-27-v1-roadmap.md` — долгоживущая roadmap/meta-plan полной v1.
+- `docs/exec-plans/active/2026-05-30-clients-foundation.md` — активный этап Clients Foundation: база клиентов, права чтения/редактирования, API и mobile UI перед продажами.
 - `docs/exec-plans/completed/2026-05-30-distributor-inventory-read-model.md` — завершенный этап Distributor Inventory Read Model: read-only остатки и товарный баланс распределителя.
 - `docs/exec-plans/completed/2026-05-29-production-distributor-transfer.md` — завершенный этап Production → Distributor Transfer: перемещение продукции из цеха на распределитель.
 - `docs/exec-plans/completed/2026-05-29-production-intake-and-release.md` — завершенный план производственного baseline: цена шаблона, поступления сырья/тары, выпуск партии.
