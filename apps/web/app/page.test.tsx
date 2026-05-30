@@ -306,6 +306,19 @@ describe("HomePage", () => {
 				});
 			}
 
+			if (url.endsWith("/production/raw-material-intakes") && method === "POST") {
+				return jsonResponse({
+					rawMaterialBalance: {
+						id: "raw-balance1",
+						typeId: "raw1",
+						name: "Горбуша",
+						unit: "кг",
+						quantity: 15.5,
+						updatedAt: new Date(0).toISOString(),
+					},
+				});
+			}
+
 			if (url.endsWith("/production/packaging-balances")) {
 				return jsonResponse({
 					packagingBalances: [{
@@ -316,6 +329,19 @@ describe("HomePage", () => {
 						quantity: 8,
 						updatedAt: new Date(0).toISOString(),
 					}],
+				});
+			}
+
+			if (url.endsWith("/production/packaging-intakes") && method === "POST") {
+				return jsonResponse({
+					packagingBalance: {
+						id: "pack-balance1",
+						typeId: "pack1",
+						name: "Банка",
+						unit: "шт",
+						quantity: 18,
+						updatedAt: new Date(0).toISOString(),
+					},
 				});
 			}
 
@@ -511,6 +537,44 @@ describe("HomePage", () => {
 		expect(screen.queryByRole("navigation", { name: "Основная навигация" })?.textContent).not.toContain("Выпуск");
 		expect(screen.queryByText("Икра горбуши")).toBeNull();
 
+		fireEvent.click(screen.getByRole("button", { name: "Добавить сырье" }));
+		expect(await screen.findByRole("heading", { name: "Приход сырья" })).toBeTruthy();
+		fireEvent.change(await screen.findByLabelText("Вид сырья"), { target: { value: "raw1" } });
+		fireEvent.change(screen.getByLabelText("Количество"), { target: { value: "-1" } });
+		fireEvent.click(screen.getByRole("button", { name: "Записать приход" }));
+		expect(await screen.findByText("Количество: введите положительное число.")).toBeTruthy();
+		expect(screen.queryByText("Сырье добавлено")).toBeNull();
+		fireEvent.change(screen.getByLabelText("Количество"), { target: { value: "3" } });
+		fireEvent.click(screen.getByRole("button", { name: "Записать приход" }));
+		await waitFor(() => {
+			expect(fetchMock).toHaveBeenCalledWith(
+				expect.stringContaining("/production/raw-material-intakes"),
+				expect.objectContaining({
+					method: "POST",
+					body: JSON.stringify({ rawMaterialTypeId: "raw1", quantity: 3 }),
+				}),
+			);
+		});
+		expect(await screen.findByText("Сырье добавлено")).toBeTruthy();
+		expect(screen.queryByLabelText("Вид сырья")).toBeNull();
+
+		fireEvent.click(screen.getByRole("button", { name: "Добавить тару" }));
+		expect(await screen.findByRole("heading", { name: "Приход тары" })).toBeTruthy();
+		fireEvent.change(await screen.findByLabelText("Вид тары"), { target: { value: "pack1" } });
+		fireEvent.change(screen.getByLabelText("Количество"), { target: { value: "10" } });
+		fireEvent.click(screen.getByRole("button", { name: "Записать приход" }));
+		await waitFor(() => {
+			expect(fetchMock).toHaveBeenCalledWith(
+				expect.stringContaining("/production/packaging-intakes"),
+				expect.objectContaining({
+					method: "POST",
+					body: JSON.stringify({ packagingTypeId: "pack1", quantity: 10 }),
+				}),
+			);
+		});
+		expect(await screen.findByText("Тара добавлена")).toBeTruthy();
+		expect(screen.queryByLabelText("Вид тары")).toBeNull();
+
 		fireEvent.click(await screen.findByRole("button", { name: /Сырье 1 видов/ }));
 		expect(await screen.findByRole("heading", { name: "Сырье" })).toBeTruthy();
 		expect(screen.getByText("12.5 кг")).toBeTruthy();
@@ -537,6 +601,10 @@ describe("HomePage", () => {
 		expect(screen.queryByRole("button", { name: "Сырье" })).toBeNull();
 		expect(screen.queryByRole("button", { name: "Тара" })).toBeNull();
 		fireEvent.change(await screen.findByLabelText("Шаблон продукции"), { target: { value: "template1" } });
+		expect(screen.getByText((_, element) =>
+			element?.className === "muted"
+			&& (element.textContent?.includes("Доступно: 12.5 кг сырья · 8 шт тары") ?? false),
+		)).toBeTruthy();
 		fireEvent.change(screen.getByLabelText("Количество продукции, шт"), { target: { value: "4" } });
 		fireEvent.change(screen.getByLabelText("Расход сырья, кг"), { target: { value: "6.25" } });
 		fireEvent.click(screen.getByRole("button", { name: "Выпустить" }));
@@ -555,7 +623,8 @@ describe("HomePage", () => {
 			);
 		});
 
-		fireEvent.click(screen.getByRole("button", { name: "Назад" }));
+		expect(await screen.findByText("Выпуск записан")).toBeTruthy();
+		expect(screen.queryByLabelText("Шаблон продукции")).toBeNull();
 		fireEvent.click(screen.getByRole("button", { name: "На распределитель" }));
 		expect(await screen.findByRole("heading", { name: "На распределитель" })).toBeTruthy();
 		fireEvent.change(await screen.findByLabelText("Продукция"), { target: { value: "batch1" } });
@@ -579,11 +648,143 @@ describe("HomePage", () => {
 			);
 		});
 
+		expect(await screen.findByText("Перемещено на распределитель")).toBeTruthy();
+		expect(screen.queryByLabelText("Количество, шт")).toBeNull();
 		fireEvent.click(screen.getByRole("button", { name: "Распределитель" }));
 		expect(await screen.findByText("Товар на распределителе")).toBeTruthy();
 		expect(await screen.findByText((_, element) => element?.textContent === "Товарный баланс 2500.00 ₽")).toBeTruthy();
 		expect(screen.getAllByText("2 шт").length).toBeGreaterThan(0);
 		expect(screen.getByText("Икра горбуши")).toBeTruthy();
+	});
+
+	it("keeps production backend errors inline without success notice", async () => {
+		const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+			const url = String(input);
+			const method = init?.method ?? "GET";
+
+			if (url.endsWith("/auth/me")) {
+				return jsonResponse(productionActorResponse);
+			}
+
+			if (url.endsWith("/production/summary")) {
+				return jsonResponse({
+					summary: {
+						readyProductUnits: 0,
+						rawMaterialKinds: 1,
+						rawMaterialTotal: 12.5,
+						rawMaterialUnit: "кг",
+						packagingKinds: 1,
+						packagingTotal: 8,
+						packagingUnit: "шт",
+					},
+				});
+			}
+
+			if (url.endsWith("/production/raw-material-balances")) {
+				return jsonResponse({
+					rawMaterialBalances: [{
+						id: "raw-balance1",
+						typeId: "raw1",
+						name: "Горбуша",
+						unit: "кг",
+						quantity: 12.5,
+						updatedAt: new Date(0).toISOString(),
+					}],
+				});
+			}
+
+			if (url.endsWith("/production/packaging-balances")) {
+				return jsonResponse({
+					packagingBalances: [{
+						id: "pack-balance1",
+						typeId: "pack1",
+						name: "Банка",
+						unit: "шт",
+						quantity: 8,
+						updatedAt: new Date(0).toISOString(),
+					}],
+				});
+			}
+
+			if (url.endsWith("/production/workshop-product-balances")) {
+				return jsonResponse({ workshopProductBalances: [] });
+			}
+
+			if (url.endsWith("/production/transfer-options")) {
+				return jsonResponse({ distributors: [], workshopProductBalances: [] });
+			}
+
+			if (url.endsWith("/production/product-batches") && method === "POST") {
+				return jsonResponse({ error: { message: "Недостаточно сырья" } }, 400);
+			}
+
+			if (url.endsWith("/production/product-batches")) {
+				return jsonResponse({ productBatches: [] });
+			}
+
+			if (url.endsWith("/production/options")) {
+				return jsonResponse({
+					rawMaterialTypes: [{
+						id: "raw1",
+						name: "Горбуша",
+						unit: "кг",
+						active: true,
+						createdAt: new Date(0).toISOString(),
+						updatedAt: new Date(0).toISOString(),
+					}],
+					packagingTypes: [{
+						id: "pack1",
+						name: "Банка",
+						unit: "шт",
+						active: true,
+						createdAt: new Date(0).toISOString(),
+						updatedAt: new Date(0).toISOString(),
+					}],
+					productTemplates: [{
+						id: "template1",
+						name: "Икра горбуши",
+						rawMaterialTypeId: "raw1",
+						rawMaterialType: {
+							id: "raw1",
+							name: "Горбуша",
+							unit: "кг",
+							active: true,
+							createdAt: new Date(0).toISOString(),
+							updatedAt: new Date(0).toISOString(),
+						},
+						packagingTypeId: "pack1",
+						packagingType: {
+							id: "pack1",
+							name: "Банка",
+							unit: "шт",
+							active: true,
+							createdAt: new Date(0).toISOString(),
+							updatedAt: new Date(0).toISOString(),
+						},
+						priceCents: 125000,
+						active: true,
+						createdAt: new Date(0).toISOString(),
+						updatedAt: new Date(0).toISOString(),
+					}],
+				});
+			}
+
+			return jsonResponse({ error: { message: "Unexpected request" } }, 500);
+		});
+
+		vi.stubGlobal("fetch", fetchMock);
+
+		render(<HomePage />);
+
+		fireEvent.click(await screen.findByRole("button", { name: "Выпустить" }));
+		fireEvent.change(await screen.findByLabelText("Шаблон продукции"), { target: { value: "template1" } });
+		fireEvent.change(screen.getByLabelText("Количество продукции, шт"), { target: { value: "4" } });
+		fireEvent.change(screen.getByLabelText("Расход сырья, кг"), { target: { value: "6.25" } });
+		fireEvent.click(screen.getByRole("button", { name: "Выпустить" }));
+
+		expect(await screen.findByText("Недостаточно сырья")).toBeTruthy();
+		expect(screen.getByRole("heading", { name: "Выпуск продукции" })).toBeTruthy();
+		expect(screen.queryByText("Выпуск записан")).toBeNull();
 	});
 
 	it("renders distributor inventory on commercial manager home", async () => {

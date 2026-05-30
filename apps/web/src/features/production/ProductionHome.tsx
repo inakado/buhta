@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
 	ArrowRightLeft,
 	ArrowLeft,
@@ -43,6 +43,10 @@ import {
 
 type ProductionTab = "home" | "notifications" | "history";
 type ProductionScreen = "raw-intake" | "packaging-intake" | "batch-release" | "transfer" | "raw-stock" | "packaging-stock" | "products";
+type SuccessNotice = {
+	id: number;
+	message: string;
+};
 
 export function ProductionHome({
 	activeTab,
@@ -52,6 +56,8 @@ export function ProductionHome({
 	online: boolean;
 }) {
 	const [activeScreen, setActiveScreen] = useState<ProductionScreen | null>(null);
+	const [successNotice, setSuccessNotice] = useState<SuccessNotice | null>(null);
+	const successNoticeId = useRef(0);
 	const summary = useQuery({
 		queryKey: ["production", "summary"],
 		queryFn: getProductionSummary,
@@ -87,11 +93,33 @@ export function ProductionHome({
 		}
 	}, [activeTab]);
 
+	useEffect(() => {
+		if (!successNotice) {
+			return;
+		}
+
+		const timeoutId = window.setTimeout(() => {
+			setSuccessNotice((current) => current?.id === successNotice.id ? null : current);
+		}, 3000);
+
+		return () => window.clearTimeout(timeoutId);
+	}, [successNotice]);
+
+	function handleActionSuccess(message: string) {
+		successNoticeId.current += 1;
+		setActiveScreen(null);
+		setSuccessNotice({
+			id: successNoticeId.current,
+			message,
+		});
+	}
+
 	if (activeTab === "home" && activeScreen) {
 		return (
 			<ProductionDetailScreen
 				mode={activeScreen}
 				onBack={() => setActiveScreen(null)}
+				onActionSuccess={handleActionSuccess}
 				online={online}
 				packagingBalances={packagingBalances.data?.packagingBalances ?? []}
 				packagingBalancesLoading={packagingBalances.isLoading}
@@ -180,12 +208,15 @@ export function ProductionHome({
 					<span>Добавить тару</span>
 				</button>
 			</div>
+
+			{successNotice ? <ProductionSuccessNotice notice={successNotice} /> : null}
 		</section>
 	);
 }
 
 function ProductionDetailScreen({
 	mode,
+	onActionSuccess,
 	onBack,
 	online,
 	packagingBalances,
@@ -202,6 +233,7 @@ function ProductionDetailScreen({
 	workshopProductBalancesLoading,
 }: {
 	mode: ProductionScreen;
+	onActionSuccess: (message: string) => void;
 	onBack: () => void;
 	online: boolean;
 	packagingBalances: ProductionBalanceItem[];
@@ -246,6 +278,7 @@ function ProductionDetailScreen({
 					emptyText="Сначала директор или администратор должен добавить активный вид сырья."
 					items={activeRawMaterialTypes}
 					kind="raw"
+					onActionSuccess={onActionSuccess}
 					online={online}
 					title="Приход сырья"
 				/>
@@ -255,20 +288,27 @@ function ProductionDetailScreen({
 					emptyText="Сначала директор или администратор должен добавить активный вид тары."
 					items={activePackagingTypes}
 					kind="packaging"
+					onActionSuccess={onActionSuccess}
 					online={online}
 					title="Приход тары"
 				/>
 			) : null}
 			{mode === "batch-release" ? (
 				<ProductBatchForm
+					onActionSuccess={onActionSuccess}
 					online={online}
+					packagingBalances={packagingBalances}
+					packagingBalancesLoading={packagingBalancesLoading}
 					productTemplates={activeProductTemplates}
+					rawMaterialBalances={rawMaterialBalances}
+					rawMaterialBalancesLoading={rawMaterialBalancesLoading}
 				/>
 			) : null}
 			{mode === "transfer" ? (
 				<ProductTransferForm
 					distributors={transferDistributors}
 					loading={transferOptionsLoading}
+					onActionSuccess={onActionSuccess}
 					online={online}
 					workshopProductBalances={transferWorkshopProductBalances}
 				/>
@@ -305,12 +345,14 @@ function IntakeForm({
 	emptyText,
 	items,
 	kind,
+	onActionSuccess,
 	online,
 	title,
 }: {
 	emptyText: string;
 	items: Array<RawMaterialType | PackagingType>;
 	kind: "raw" | "packaging";
+	onActionSuccess: (message: string) => void;
 	online: boolean;
 	title: string;
 }) {
@@ -341,6 +383,7 @@ function IntakeForm({
 			setComment("");
 			setLocalError("");
 			await invalidateProduction(queryClient);
+			onActionSuccess(kind === "raw" ? "Сырье добавлено" : "Тара добавлена");
 		},
 	});
 	const selectedItem = items.find((item) => item.id === typeId);
@@ -401,11 +444,21 @@ function IntakeForm({
 }
 
 function ProductBatchForm({
+	onActionSuccess,
 	online,
+	packagingBalances,
+	packagingBalancesLoading,
 	productTemplates,
+	rawMaterialBalances,
+	rawMaterialBalancesLoading,
 }: {
+	onActionSuccess: (message: string) => void;
 	online: boolean;
+	packagingBalances: ProductionBalanceItem[];
+	packagingBalancesLoading: boolean;
 	productTemplates: ProductTemplate[];
+	rawMaterialBalances: ProductionBalanceItem[];
+	rawMaterialBalancesLoading: boolean;
 }) {
 	const queryClient = useQueryClient();
 	const [productTemplateId, setProductTemplateId] = useState("");
@@ -414,6 +467,21 @@ function ProductBatchForm({
 	const [comment, setComment] = useState("");
 	const [localError, setLocalError] = useState("");
 	const selectedTemplate = productTemplates.find((item) => item.id === productTemplateId);
+	const selectedRawMaterialBalance = rawMaterialBalances.find((item) =>
+		item.typeId === selectedTemplate?.rawMaterialTypeId
+	);
+	const selectedPackagingBalance = packagingBalances.find((item) =>
+		item.typeId === selectedTemplate?.packagingTypeId
+	);
+	const stockLine = selectedTemplate
+		? formatReleaseStockLine({
+			packagingAvailable: selectedPackagingBalance?.quantity ?? 0,
+			packagingUnit: selectedTemplate.packagingType.unit,
+			rawAvailable: selectedRawMaterialBalance?.quantity ?? 0,
+			rawUnit: selectedTemplate.rawMaterialType.unit,
+			stockLoading: rawMaterialBalancesLoading || packagingBalancesLoading,
+		})
+		: "";
 	const mutation = useMutation({
 		mutationFn: () => createProductBatch({
 			productTemplateId,
@@ -428,6 +496,7 @@ function ProductBatchForm({
 			setComment("");
 			setLocalError("");
 			await invalidateProduction(queryClient);
+			onActionSuccess("Выпуск записан");
 		},
 	});
 
@@ -467,6 +536,8 @@ function ProductBatchForm({
 			{selectedTemplate ? (
 				<p className="muted">
 					{selectedTemplate.rawMaterialType.name} / {selectedTemplate.packagingType.name}
+					<br />
+					{stockLine}
 				</p>
 			) : null}
 			<label className="field">
@@ -512,11 +583,13 @@ function ProductBatchForm({
 function ProductTransferForm({
 	distributors,
 	loading,
+	onActionSuccess,
 	online,
 	workshopProductBalances,
 }: {
 	distributors: Distributor[];
 	loading: boolean;
+	onActionSuccess: (message: string) => void;
 	online: boolean;
 	workshopProductBalances: WorkshopProductBalanceItem[];
 }) {
@@ -542,6 +615,7 @@ function ProductTransferForm({
 			setComment("");
 			setLocalError("");
 			await invalidateProduction(queryClient);
+			onActionSuccess("Перемещено на распределитель");
 		},
 	});
 
@@ -791,6 +865,26 @@ function buildStockItems(
 		.filter((item) => item.quantity > 0);
 }
 
+function formatReleaseStockLine({
+	packagingAvailable,
+	packagingUnit,
+	rawAvailable,
+	rawUnit,
+	stockLoading,
+}: {
+	packagingAvailable: number;
+	packagingUnit: string;
+	rawAvailable: number;
+	rawUnit: string;
+	stockLoading: boolean;
+}): string {
+	if (stockLoading) {
+		return "Доступно: загрузка остатков";
+	}
+
+	return `Доступно: ${formatQuantity(rawAvailable)} ${rawUnit} сырья · ${formatQuantity(packagingAvailable)} ${packagingUnit} тары`;
+}
+
 function StockAggregateCard({
 	icon: Icon,
 	kinds,
@@ -846,6 +940,15 @@ function ProductionPlaceholder({
 				<Icon aria-hidden size={28} />
 			</div>
 		</section>
+	);
+}
+
+function ProductionSuccessNotice({ notice }: { notice: SuccessNotice }) {
+	return (
+		<div className="production-success-notice" role="status" aria-live="polite" key={notice.id}>
+			<Check aria-hidden size={18} />
+			<span>{notice.message}</span>
+		</div>
 	);
 }
 
