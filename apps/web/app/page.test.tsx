@@ -20,8 +20,46 @@ const productionActorResponse = {
 		login: "production-manager",
 		displayName: "Production Manager",
 		role: "production_manager",
-		permissions: ["production.manage"],
+		permissions: ["production.manage", "distributor.stock.read"],
 	},
+};
+
+const commercialActorResponse = {
+	authenticated: true,
+	actor: {
+		userId: "seed-commercial-manager",
+		login: "commercial-manager",
+		displayName: "Commercial Manager",
+		role: "commercial_manager",
+		permissions: ["distributor.stock.read", "distributor.sale.create"],
+	},
+};
+
+const distributorInventoryResponse = {
+	summary: {
+		distributorCount: 1,
+		stockItemCount: 1,
+		totalUnits: 2,
+		totalStockValueCents: 250000,
+	},
+	distributorSummaries: [{
+		distributorId: "dist1",
+		distributorName: "Распределитель Центральный",
+		stockItemCount: 1,
+		totalUnits: 2,
+		totalStockValueCents: 250000,
+	}],
+	items: [{
+		id: "distributor-balance1",
+		distributorId: "dist1",
+		distributorName: "Распределитель Центральный",
+		productBatchId: "batch1",
+		productName: "Икра горбуши",
+		priceCents: 125000,
+		quantity: 2,
+		stockValueCents: 250000,
+		updatedAt: new Date(0).toISOString(),
+	}],
 };
 
 function jsonResponse(body: unknown, status = 200) {
@@ -458,6 +496,10 @@ describe("HomePage", () => {
 				});
 			}
 
+			if (url.endsWith("/distributor/inventory")) {
+				return jsonResponse(distributorInventoryResponse);
+			}
+
 			return jsonResponse({ error: { message: "Unexpected request" } }, 500);
 		});
 
@@ -517,7 +559,7 @@ describe("HomePage", () => {
 		fireEvent.click(screen.getByRole("button", { name: "На распределитель" }));
 		expect(await screen.findByRole("heading", { name: "На распределитель" })).toBeTruthy();
 		fireEvent.change(await screen.findByLabelText("Продукция"), { target: { value: "batch1" } });
-		fireEvent.change(screen.getByLabelText("Распределитель"), { target: { value: "dist1" } });
+		fireEvent.change(screen.getByRole("combobox", { name: "Распределитель" }), { target: { value: "dist1" } });
 		fireEvent.change(screen.getByLabelText("Количество, шт"), { target: { value: "2" } });
 		fireEvent.change(screen.getByLabelText("Комментарий"), { target: { value: "На Центральный" } });
 		fireEvent.click(screen.getByRole("button", { name: "Переместить" }));
@@ -536,5 +578,36 @@ describe("HomePage", () => {
 				}),
 			);
 		});
+
+		fireEvent.click(screen.getByRole("button", { name: "Распределитель" }));
+		expect(await screen.findByText("Товар на распределителе")).toBeTruthy();
+		expect(await screen.findByText((_, element) => element?.textContent === "Товарный баланс 2500.00 ₽")).toBeTruthy();
+		expect(screen.getAllByText("2 шт").length).toBeGreaterThan(0);
+		expect(screen.getByText("Икра горбуши")).toBeTruthy();
+	});
+
+	it("renders distributor inventory on commercial manager home", async () => {
+		const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+			const url = String(input);
+
+			if (url.endsWith("/auth/me")) {
+				return jsonResponse(commercialActorResponse);
+			}
+
+			if (url.endsWith("/distributor/inventory")) {
+				return jsonResponse(distributorInventoryResponse);
+			}
+
+			return jsonResponse({ error: { message: "Unexpected request" } }, 500);
+		});
+
+		vi.stubGlobal("fetch", fetchMock);
+
+		render(<HomePage />);
+
+		expect(await screen.findByText("Товар на распределителе")).toBeTruthy();
+		expect(await screen.findByText((_, element) => element?.textContent === "Товарный баланс 2500.00 ₽")).toBeTruthy();
+		expect(screen.getByText("Икра горбуши")).toBeTruthy();
+		expect(screen.getByText("Распределитель Центральный")).toBeTruthy();
 	});
 });

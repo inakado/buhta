@@ -647,6 +647,13 @@ button:disabled {
 	align-items: flex-start;
 }
 
+.inventory-item-main {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	min-width: 0;
+}
+
 .production-history-meta {
 	flex: 0 0 auto;
 	text-align: right;

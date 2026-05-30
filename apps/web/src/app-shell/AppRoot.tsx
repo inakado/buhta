@@ -14,6 +14,7 @@ import { useState } from "react";
 import type { Role } from "@buhta/shared";
 import { LoginForm } from "../auth/LoginForm";
 import { CatalogHome } from "../features/catalog/CatalogHome";
+import { DistributorInventoryHome } from "../features/distributor/DistributorInventoryHome";
 import { ProductionHome } from "../features/production/ProductionHome";
 import { AdminHome } from "../roles/admin/AdminHome";
 import { ROLE_LABELS } from "../lib/role-labels";
@@ -148,13 +149,18 @@ function RoleHome({
 		return <CatalogHome online={online} />;
 	}
 
-	if (actor.role === "production_manager" && isProductionTab(activeTab)) {
-		return (
-			<ProductionHome
-				activeTab={activeTab}
-				online={online}
-			/>
-		);
+	if (actor.role === "production_manager") {
+		if (activeTab === "distributor") {
+			return <DistributorInventoryHome />;
+		}
+		if (isProductionTab(activeTab)) {
+			return (
+				<ProductionHome
+					activeTab={activeTab}
+					online={online}
+				/>
+			);
+		}
 	}
 
 	if (actor.role === "admin") {
@@ -168,6 +174,10 @@ function RoleHome({
 	if (activeTab !== "home") {
 		const tabTitle = activeTab === "sale" ? "Продажа" : "Профиль";
 		return <PlaceholderScreen title={tabTitle} text="Раздел будет подключен на следующем этапе." icon={Settings} />;
+	}
+
+	if (actor.permissions.includes("distributor.stock.read")) {
+		return <DistributorInventoryHome />;
 	}
 
 	const roleConfig = roleHomeConfig[actor.role];
@@ -265,6 +275,7 @@ function BottomNav({
 		: [];
 	const productionItems = [
 		{ id: "home", label: "Главная", icon: PackageCheck },
+		{ id: "distributor", label: "Распределитель", icon: Box },
 		{ id: "notifications", label: "Уведомления", icon: Bell },
 		{ id: "history", label: "История", icon: ReceiptText },
 		{ id: "settings", label: "Профиль", icon: Settings },

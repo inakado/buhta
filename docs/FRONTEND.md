@@ -354,6 +354,10 @@ apps/web/
 
 Production UI не читает `/catalog/*`, потому что `production_manager` не имеет права управления справочниками. Для форм производства используются read-only endpoints под `production.manage`.
 
+Read-only экран остатков распределителя живет в `features/distributor/DistributorInventoryHome.tsx` и читает `GET /distributor/inventory`. Он показывает количество товара, товарный баланс в рублях, строки по партиям с ценой партии и имя распределителя. Денежный cash balance, продажи, клиенты и курьерская загрузка на этом экране не появляются.
+
+Для `production_manager` экран подключен отдельной нижней вкладкой `Распределитель`, чтобы не смешивать production home с read-only остатками распределителя. Для остальных не-admin ролей с `distributor.stock.read` home показывает distributor inventory; вкладка `Продажа` остается placeholder до sales этапа. `admin` имеет backend read access, но отдельный admin UI для этого этапа не добавлен.
+
 ## 11. Что пока не фиксируем
 
 - финальную навигацию;

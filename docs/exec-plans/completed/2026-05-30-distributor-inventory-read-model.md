@@ -1,6 +1,6 @@
 # Distributor Inventory Read Model Plan
 
-Статус: `Active`
+Статус: `Completed`
 Дата: 2026-05-30
 Roadmap stage: `6. Inventory, Courier, Sales, Cash` -> `Distributor Inventory Read Model`
 
@@ -20,7 +20,7 @@ Backend должен читать существующую projection table `dis
 
 ## Анализ текущего состояния
 
-Сейчас уже есть:
+Исходное состояние до этапа:
 
 - `Distributor` как справочник с `active`;
 - `ProductBatch` со snapshot названия продукции и `priceCents`;
@@ -30,7 +30,7 @@ Backend должен читать существующую projection table `dis
 - placeholder-экраны для директора, коммерческого руководителя, работника распределителя и курьера;
 - production UI заведующего производством с отдельным производственным flow.
 
-Сейчас нет:
+На старте этапа не было:
 
 - отдельного read API для товарных остатков распределителя;
 - distributor summary с количеством единиц и рублевым товарным балансом;
@@ -40,6 +40,16 @@ Backend должен читать существующую projection table `dis
 - тестов read-доступа к остаткам распределителя.
 
 Важный вывод: этот этап должен быть read-only. Он не должен добавлять продажи, клиентов, cash balance, курьерскую загрузку или новые товарные операции.
+
+## Фактический результат
+
+- Добавлены shared contracts `DistributorInventoryItem`, `DistributorInventorySummary`, `DistributorInventoryDistributorSummary`, `DistributorInventoryResponse`.
+- Добавлен backend module `distributor` с `GET /distributor/inventory` под `distributor.stock.read`.
+- Read model возвращает только `DistributorProductBalance.quantity > 0`, считает `stockValueCents` из snapshot цены `ProductBatch.priceCents`, общий summary и summary по распределителям.
+- Read endpoint не пишет `operation` и `audit_log`.
+- Добавлен `DistributorInventoryHome` в web: товарный остаток, товарный баланс в рублях, строки по партиям и empty/loading/error states.
+- `production_manager` получил нижнюю вкладку `Распределитель`; остальные не-admin роли с `distributor.stock.read` видят distributor inventory на home; admin UI не добавлен по scope, backend access покрыт policy.
+- Cash balance, продажи, клиенты, courier operations и новые permissions не добавлялись.
 
 ## Scope
 
@@ -457,3 +467,33 @@ Mitigation:
 - targeted и полный verification contour выполнены;
 - docs обновлены;
 - plan перемещен в `completed`, roadmap обновлен.
+
+## Выполненные проверки
+
+Targeted проверки перед переносом в completed:
+
+```bash
+corepack pnpm --filter @buhta/shared test
+corepack pnpm --filter @buhta/api typecheck
+corepack pnpm --filter @buhta/api exec vitest run test/distributor-controller.test.ts test/distributor-inventory-db.integration.test.ts test/policy.test.ts
+corepack pnpm --filter @buhta/web test -- app/page.test.tsx
+corepack pnpm --filter @buhta/web typecheck
+```
+
+Финальный полный verification contour:
+
+```bash
+corepack pnpm lint
+corepack pnpm lint:boundaries
+corepack pnpm typecheck
+corepack pnpm test
+corepack pnpm docs:check
+corepack pnpm build
+corepack pnpm audit
+```
+
+Notes:
+
+- `corepack pnpm test` запускался вне sandbox из-за real Postgres integration tests на `localhost:5433`.
+- Первый `corepack pnpm build` в sandbox упал на Turbopack port binding (`Operation not permitted`); повтор вне sandbox прошел.
+- Browser sanity check: Next dev server на `localhost:3002`, mocked auth/inventory responses, подтверждены `Товар на распределителе`, `Икра горбуши`, `Товарный баланс 2500.00 ₽` и вкладка `Продажа`.

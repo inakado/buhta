@@ -1,8 +1,8 @@
 import { ExecutionContext, ForbiddenException, UnauthorizedException } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import { describe, expect, it } from "vitest";
-import type { Permission } from "@buhta/shared";
-import type { RequestWithActor } from "../src/policy/actor";
+import { allRoles, type Permission } from "@buhta/shared";
+import type { Actor, RequestWithActor } from "../src/policy/actor";
 import { PolicyGuard } from "../src/policy/policy.guard";
 import { PolicyRegistry } from "../src/policy/policy.registry";
 
@@ -56,6 +56,19 @@ describe("PolicyRegistry", () => {
 		expect(actor?.permissions).not.toContain("catalog.manage");
 	});
 
+	it("allows every v1 role to read distributor stock", () => {
+		for (const role of allRoles()) {
+			const actor = registry.buildActor({
+				id: `user-${role}`,
+				username: role,
+				name: role,
+				role,
+			});
+
+			expect(actor?.permissions).toContain("distributor.stock.read");
+		}
+	});
+
 	it("rejects missing identity fields and unknown roles", () => {
 		expect(registry.buildActor({ username: "no-id", role: "director" })).toBeNull();
 		expect(registry.buildActor({ id: "u1", username: "x", role: "owner" })).toBeNull();
@@ -92,6 +105,34 @@ describe("PolicyGuard", () => {
 						id: "u2",
 						username: "courier",
 						name: "Courier",
+						role: "courier",
+					},
+				}),
+			),
+		).toThrow(ForbiddenException);
+	});
+
+	it("rejects distributor stock reads when an artificial actor lacks permission", () => {
+		const limitedRegistry = {
+			buildActor: () => ({
+				userId: "limited-user",
+				login: "limited-user",
+				displayName: "Limited User",
+				role: "courier",
+				permissions: [],
+			}),
+			hasPermission: (actor: Actor, permission: Permission) => actor.permissions.includes(permission),
+			permissionsForRole: () => [],
+		} as PolicyRegistry;
+		const guard = new PolicyGuard(reflectorWithPermission("distributor.stock.read"), limitedRegistry);
+
+		expect(() =>
+			guard.canActivate(
+				contextWithRequest({
+					user: {
+						id: "limited-user",
+						username: "limited-user",
+						name: "Limited User",
 						role: "courier",
 					},
 				}),

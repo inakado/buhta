@@ -1,0 +1,95 @@
+"use client";
+
+import { useQuery } from "@tanstack/react-query";
+import { Box, PackageCheck } from "lucide-react";
+import {
+	formatMoneyCents,
+	moneyCents,
+	type DistributorInventoryItem,
+} from "@buhta/shared";
+import { getDistributorInventory } from "../../lib/api-client";
+
+export function DistributorInventoryHome() {
+	const inventory = useQuery({
+		queryKey: ["distributor", "inventory"],
+		queryFn: getDistributorInventory,
+	});
+	const data = inventory.data;
+
+	return (
+		<section className="screen-stack">
+			<div className="summary-card">
+				<div>
+					<p className="summary-label">Товар на распределителе</p>
+					<strong>{inventory.isLoading ? "Загрузка" : `${data?.summary.totalUnits ?? 0} шт`}</strong>
+					<p className="summary-note">
+						Товарный баланс {formatRubles(data?.summary.totalStockValueCents ?? 0)} ₽
+					</p>
+				</div>
+				<Box aria-hidden size={30} />
+			</div>
+
+			<div className="section-heading">
+				<h2>Остатки</h2>
+				<span>{data?.summary.stockItemCount ?? 0} позиций</span>
+			</div>
+
+			{inventory.isLoading ? <p className="muted">Загрузка остатков распределителя</p> : null}
+			{inventory.isError ? <p className="form-error">{inventory.error.message}</p> : null}
+			{!inventory.isLoading && !inventory.isError && data?.items.length === 0 ? (
+				<p className="muted">На распределителе пока нет продукции.</p>
+			) : null}
+
+			{data && data.distributorSummaries.length > 1 ? (
+				<div className="production-stock-stack">
+					{data.distributorSummaries.map((summary) => (
+						<div className="stock-aggregate-card" key={summary.distributorId}>
+							<div className="production-row-icon">
+								<Box aria-hidden size={18} />
+							</div>
+							<div className="stock-aggregate-body">
+								<strong>{summary.distributorName}</strong>
+								<p>{summary.stockItemCount} позиций</p>
+							</div>
+							<div className="stock-aggregate-value">
+								<strong>{summary.totalUnits} шт</strong>
+								<span>{formatRubles(summary.totalStockValueCents)} ₽</span>
+							</div>
+						</div>
+					))}
+				</div>
+			) : null}
+
+			<DistributorInventoryList items={data?.items ?? []} />
+		</section>
+	);
+}
+
+function DistributorInventoryList({ items }: { items: DistributorInventoryItem[] }) {
+	return (
+		<div className="list-stack">
+			{items.map((item) => (
+				<article className="entity-card production-history-card" key={item.id}>
+					<div className="inventory-item-main">
+						<div className="production-row-icon">
+							<PackageCheck aria-hidden size={18} />
+						</div>
+						<div>
+							<strong>{item.productName}</strong>
+							<p>{item.distributorName}</p>
+						</div>
+					</div>
+					<div className="production-history-meta">
+						<strong>{item.quantity} шт</strong>
+						<span>{formatRubles(item.stockValueCents)} ₽</span>
+						<span>{formatRubles(item.priceCents)} ₽/шт</span>
+					</div>
+				</article>
+			))}
+		</div>
+	);
+}
+
+function formatRubles(priceCents: number): string {
+	return formatMoneyCents(moneyCents(priceCents));
+}

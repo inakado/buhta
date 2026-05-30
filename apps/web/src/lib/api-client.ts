@@ -9,6 +9,7 @@ import type {
 	CreateRawMaterialTypeRequest,
 	CreateUserRequest,
 	CreateUserResponse,
+	DistributorInventoryResponse,
 	DistributorResponse,
 	DistributorsListResponse,
 	PackagingBalancesResponse,
@@ -284,6 +285,10 @@ export async function createProductTransfer(
 		method: "POST",
 		body: JSON.stringify(input),
 	});
+}
+
+export async function getDistributorInventory(): Promise<DistributorInventoryResponse> {
+	return fetchJson<DistributorInventoryResponse>("/distributor/inventory");
 }
 
 async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {

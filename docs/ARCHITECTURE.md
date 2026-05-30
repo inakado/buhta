@@ -35,6 +35,7 @@
   - `users` — минимальное backend-управление пользователями и ролями для администратора;
   - `catalog` — минимальные справочники сырья, тары, распределителей и шаблонов продукции;
   - `production` — поступления сырья/тары, текущие балансы цеха и выпуск партии продукции;
+  - `distributor` — read-only товарные остатки распределителя из projection table;
   - `operations` — baseline operation/idempotency services;
   - `common/errors` — единый `AppError` и mapper в `{ error: { code, message, details } }`;
   - `health` — публичный health contract.
@@ -44,6 +45,7 @@
   - money-in-cents и quantity helpers;
   - catalog contracts для сырья, тары, распределителей и шаблонов продукции;
   - production contracts для поступлений, балансов цеха и выпуска партии;
+  - distributor contracts для read-only inventory summary и строк остатков;
   - health constants.
 - Foundation data flow:
 
@@ -128,6 +130,8 @@ Production balance baseline:
 Поступления и выпуск выполняются в Prisma transaction. Выпуск партии использует conditional decrement: сырье и тара списываются только если текущего остатка достаточно, иначе операция отклоняется и партия не создается.
 
 Выпуск партии в той же transaction создает `workshop_product_balance` с количеством выпущенной продукции. Перемещение на распределитель использует conditional decrement `workshop_product_balance.quantity >= requestedQuantity` и upsert/increment `distributor_product_balance`. `ProductBatch.status` не является источником доступного остатка, потому что партия может быть перемещена частично.
+
+Distributor inventory read model строится из ненулевых строк `distributor_product_balance` с join на `product_batch` и `distributor`. API считает `stockValueCents = quantity * product_batch.priceCents`, возвращает общий summary и summary по распределителям. Read endpoint не создает `operation`/`audit_log` и не моделирует cash balance.
 
 Базовый принцип для следующих доменных операций:
 

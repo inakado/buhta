@@ -17,6 +17,7 @@ import {
 	CreateProductTemplateRequestSchema,
 	CreateRawMaterialTypeRequestSchema,
 	CreateRawMaterialIntakeRequestSchema,
+	DistributorInventoryResponseSchema,
 	LoginSchema,
 	ProductionOptionsResponseSchema,
 	ProductionTransferOptionsResponseSchema,
@@ -194,5 +195,72 @@ describe("shared contracts", () => {
 				workshopProductBalances: [],
 			}).success,
 		).toBe(true);
+	});
+
+	it("validates distributor inventory contracts", () => {
+		expect(
+			DistributorInventoryResponseSchema.safeParse({
+				summary: {
+					distributorCount: 0,
+					stockItemCount: 0,
+					totalUnits: 0,
+					totalStockValueCents: 0,
+				},
+				distributorSummaries: [],
+				items: [],
+			}).success,
+		).toBe(true);
+		expect(
+			DistributorInventoryResponseSchema.safeParse({
+				summary: {
+					distributorCount: 1,
+					stockItemCount: 1,
+					totalUnits: 4,
+					totalStockValueCents: 500000,
+				},
+				distributorSummaries: [{
+					distributorId: "dist-1",
+					distributorName: "Распределитель Центральный",
+					stockItemCount: 1,
+					totalUnits: 4,
+					totalStockValueCents: 500000,
+				}],
+				items: [{
+					id: "balance-1",
+					distributorId: "dist-1",
+					distributorName: "Распределитель Центральный",
+					productBatchId: "batch-1",
+					productName: "Икра горбуши",
+					priceCents: 125000,
+					quantity: 4,
+					stockValueCents: 500000,
+					updatedAt: new Date(0).toISOString(),
+				}],
+			}).success,
+		).toBe(true);
+		expect(
+			DistributorInventoryResponseSchema.safeParse({
+				summary: {
+					distributorCount: 1,
+					stockItemCount: 1,
+					totalUnits: -1,
+					totalStockValueCents: 500000,
+				},
+				distributorSummaries: [],
+				items: [],
+			}).success,
+		).toBe(false);
+		expect(
+			DistributorInventoryResponseSchema.safeParse({
+				summary: {
+					distributorCount: 1,
+					stockItemCount: 1,
+					totalUnits: 1,
+					totalStockValueCents: 10.5,
+				},
+				distributorSummaries: [],
+				items: [],
+			}).success,
+		).toBe(false);
 	});
 });
