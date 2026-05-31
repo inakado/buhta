@@ -21,6 +21,7 @@
 - `docs/QUALITY_SCORE.md` — черновая шкала оценки зрелости проекта.
 - `docs/exec-plans/deferred-roadmap.md` — отложенные идеи, которые не являются активной задачей.
 - `docs/exec-plans/tech-debt-tracker.md` — признанный техдолг после появления кода или harness.
+- `docs/exec-plans/active/2026-05-31-frontend-role-screen-recomposition.md` — активный draft-план frontend перекройки role screens по структуре локального мока без смены текущей дизайн-системы.
 - `docs/exec-plans/active/2026-05-27-v1-roadmap.md` — долгоживущая roadmap/meta-plan полной v1.
 - `docs/exec-plans/completed/2026-05-31-courier-sales-and-cash-balance.md` — завершенный этап Courier Sales And Courier Cash Balance: продажа курьером и наличный баланс курьера.
 - `docs/exec-plans/completed/2026-05-31-courier-load-and-balance.md` — завершенный этап Courier Load And Courier Balance: загрузка товара курьером и товарный баланс курьера.
