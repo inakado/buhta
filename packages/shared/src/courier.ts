@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { PaymentMethodSchema } from "./distributor";
 
 const NonNegativeIntegerSchema = z.number().int().nonnegative();
 const PositiveIntegerSchema = z.number().int().positive();
@@ -110,3 +111,79 @@ export const CourierLoadResponseSchema = z.object({
 });
 
 export type CourierLoadResponse = z.infer<typeof CourierLoadResponseSchema>;
+
+export const CourierSaleOptionSchema = z.object({
+	courierProductBalanceId: z.string(),
+	courierUserId: z.string(),
+	courierLogin: z.string(),
+	courierDisplayName: z.string(),
+	productBatchId: z.string(),
+	productName: z.string(),
+	unitPriceCents: NonNegativeIntegerSchema,
+	availableQuantity: NonNegativeIntegerSchema,
+	stockValueCents: NonNegativeIntegerSchema,
+	updatedAt: z.string(),
+});
+
+export type CourierSaleOption = z.infer<typeof CourierSaleOptionSchema>;
+
+export const CourierSaleOptionsResponseSchema = z.object({
+	items: z.array(CourierSaleOptionSchema),
+});
+
+export type CourierSaleOptionsResponse = z.infer<typeof CourierSaleOptionsResponseSchema>;
+
+export const CreateCourierSaleRequestSchema = z.object({
+	courierProductBalanceId: z.string().min(1),
+	clientId: z.string().min(1),
+	quantity: PositiveIntegerSchema,
+	paymentMethod: PaymentMethodSchema,
+	courierUserId: z.string().min(1).optional(),
+	comment: OptionalCommentSchema,
+});
+
+export type CreateCourierSaleRequest = z.infer<typeof CreateCourierSaleRequestSchema>;
+
+export const CourierCashBalanceItemSchema = z.object({
+	courierUserId: z.string(),
+	courierLogin: z.string(),
+	courierDisplayName: z.string(),
+	amountCents: NonNegativeIntegerSchema,
+	updatedAt: z.string().nullable(),
+});
+
+export type CourierCashBalanceItem = z.infer<typeof CourierCashBalanceItemSchema>;
+
+export const CourierCashBalancesResponseSchema = z.object({
+	totalAmountCents: NonNegativeIntegerSchema,
+	courierCount: NonNegativeIntegerSchema,
+	items: z.array(CourierCashBalanceItemSchema),
+});
+
+export type CourierCashBalancesResponse = z.infer<typeof CourierCashBalancesResponseSchema>;
+
+export const CourierSaleSchema = z.object({
+	id: z.string(),
+	courierProductBalanceId: z.string(),
+	courierUserId: z.string(),
+	productBatchId: z.string(),
+	clientId: z.string(),
+	quantity: PositiveIntegerSchema,
+	unitPriceCents: NonNegativeIntegerSchema,
+	totalCents: NonNegativeIntegerSchema,
+	paymentMethod: PaymentMethodSchema,
+	comment: z.string().nullable(),
+	operationId: z.string(),
+	actorUserId: z.string(),
+	createdAt: z.string(),
+});
+
+export type CourierSale = z.infer<typeof CourierSaleSchema>;
+
+export const CourierSaleResponseSchema = z.object({
+	sale: CourierSaleSchema,
+	courierProductBalance: CourierProductBalanceItemSchema,
+	cashBalance: CourierCashBalanceItemSchema,
+});
+
+export type CourierSaleResponse = z.infer<typeof CourierSaleResponseSchema>;

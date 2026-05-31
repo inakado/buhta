@@ -28,7 +28,9 @@ model User {
   idempotencyRecords IdempotencyRecord[]     @relation("IdempotencyActor")
   createdClients     Client[]                @relation("ClientCreatedBy")
   courierBalances    CourierProductBalance[] @relation("CourierProductBalanceCourier")
+  courierCashBalance CourierCashBalance?     @relation("CourierCashBalanceCourier")
   courierLoads       CourierLoad[]           @relation("CourierLoadCourier")
+  courierSales       CourierSale[]           @relation("CourierSaleCourier")
 
   @@map("user")
 }
@@ -97,6 +99,7 @@ model Operation {
   productTransfers   ProductTransfer[]
   distributorSales   DistributorSale[]
   courierLoads       CourierLoad[]
+  courierSales       CourierSale[]
 
   @@unique([actorUserId, idempotencyKey])
   @@index([actorUserId])
@@ -195,6 +198,7 @@ model Client {
   updatedAt        DateTime          @updatedAt
   createdBy        User              @relation("ClientCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
   distributorSales DistributorSale[]
+  courierSales     CourierSale[]
 
   @@index([name])
   @@index([createdByUserId])
@@ -297,6 +301,7 @@ model ProductBatch {
   distributorSales            DistributorSale[]
   courierBalances             CourierProductBalance[]
   courierLoads                CourierLoad[]
+  courierSales                CourierSale[]
 
   @@index([productTemplateId])
   @@index([actorUserId])
@@ -389,18 +394,29 @@ model DistributorSale {
 }
 
 model CourierProductBalance {
-  id             String       @id @default(cuid())
+  id             String        @id @default(cuid())
   courierUserId  String
   productBatchId String
   quantity       Int
-  updatedAt      DateTime     @updatedAt
-  courier        User         @relation("CourierProductBalanceCourier", fields: [courierUserId], references: [id], onDelete: Restrict)
-  productBatch   ProductBatch @relation(fields: [productBatchId], references: [id], onDelete: Restrict)
+  updatedAt      DateTime      @updatedAt
+  courier        User          @relation("CourierProductBalanceCourier", fields: [courierUserId], references: [id], onDelete: Restrict)
+  productBatch   ProductBatch  @relation(fields: [productBatchId], references: [id], onDelete: Restrict)
+  sales          CourierSale[]
 
   @@unique([courierUserId, productBatchId])
   @@index([courierUserId])
   @@index([productBatchId])
   @@map("courier_product_balance")
+}
+
+model CourierCashBalance {
+  id            String   @id @default(cuid())
+  courierUserId String   @unique
+  amountCents   Int      @default(0)
+  updatedAt     DateTime @updatedAt
+  courier       User     @relation("CourierCashBalanceCourier", fields: [courierUserId], references: [id], onDelete: Restrict)
+
+  @@map("courier_cash_balance")
 }
 
 model CourierLoad {
@@ -426,4 +442,33 @@ model CourierLoad {
   @@index([actorUserId])
   @@index([createdAt])
   @@map("courier_load")
+}
+
+model CourierSale {
+  id                      String                @id @default(cuid())
+  courierProductBalanceId String
+  courierUserId           String
+  productBatchId          String
+  clientId                String
+  quantity                Int
+  unitPriceCents          Int
+  totalCents              Int
+  paymentMethod           String
+  comment                 String?
+  operationId             String                @unique
+  actorUserId             String
+  createdAt               DateTime              @default(now())
+  courierProductBalance   CourierProductBalance @relation(fields: [courierProductBalanceId], references: [id], onDelete: Restrict)
+  courier                 User                  @relation("CourierSaleCourier", fields: [courierUserId], references: [id], onDelete: Restrict)
+  productBatch            ProductBatch          @relation(fields: [productBatchId], references: [id], onDelete: Restrict)
+  client                  Client                @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  operation               Operation             @relation(fields: [operationId], references: [id], onDelete: Restrict)
+
+  @@index([courierProductBalanceId])
+  @@index([courierUserId])
+  @@index([productBatchId])
+  @@index([clientId])
+  @@index([actorUserId])
+  @@index([createdAt])
+  @@map("courier_sale")
 }

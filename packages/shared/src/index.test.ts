@@ -15,9 +15,13 @@ import {
 	CreateProductTransferRequestSchema,
 	CreateDistributorSaleRequestSchema,
 	CreateCourierLoadRequestSchema,
+	CreateCourierSaleRequestSchema,
 	CreateUserRequestSchema,
+	CourierCashBalancesResponseSchema,
 	CourierLoadOptionsResponseSchema,
 	CourierProductBalancesResponseSchema,
+	CourierSaleOptionsResponseSchema,
+	CourierSaleResponseSchema,
 	CreateProductTemplateRequestSchema,
 	CreateRawMaterialTypeRequestSchema,
 	CreateRawMaterialIntakeRequestSchema,
@@ -50,22 +54,30 @@ describe("shared contracts", () => {
 		expect(permissionsForRole("director")).toContain("client.read");
 		expect(permissionsForRole("director")).not.toContain("client.manage");
 		expect(permissionsForRole("director")).toContain("courier.stock.read");
+		expect(permissionsForRole("director")).toContain("courier.cash.read");
 		expect(permissionsForRole("director")).not.toContain("courier.stock.load");
+		expect(permissionsForRole("director")).not.toContain("courier.sale.create");
 		expect(permissionsForRole("director")).toContain("cash.withdraw");
 		expect(permissionsForRole("commercial_manager")).toContain("client.read");
 		expect(permissionsForRole("commercial_manager")).toContain("client.manage");
 		expect(permissionsForRole("commercial_manager")).toContain("courier.stock.read");
+		expect(permissionsForRole("commercial_manager")).toContain("courier.cash.read");
 		expect(permissionsForRole("commercial_manager")).not.toContain("courier.stock.load");
+		expect(permissionsForRole("commercial_manager")).not.toContain("courier.sale.create");
 		expect(permissionsForRole("distributor_worker")).toContain("client.read");
 		expect(permissionsForRole("distributor_worker")).toContain("client.manage");
 		expect(permissionsForRole("distributor_worker")).not.toContain("courier.stock.read");
+		expect(permissionsForRole("distributor_worker")).not.toContain("courier.cash.read");
 		expect(permissionsForRole("courier")).toContain("client.read");
 		expect(permissionsForRole("courier")).toContain("client.manage");
 		expect(permissionsForRole("courier")).toContain("courier.stock.read");
 		expect(permissionsForRole("courier")).toContain("courier.stock.load");
+		expect(permissionsForRole("courier")).toContain("courier.cash.read");
+		expect(permissionsForRole("courier")).toContain("courier.sale.create");
 		expect(permissionsForRole("courier")).not.toContain("cash.withdraw");
 		expect(permissionsForRole("production_manager")).not.toContain("client.read");
 		expect(permissionsForRole("production_manager")).not.toContain("client.manage");
+		expect(permissionsForRole("production_manager")).not.toContain("courier.cash.read");
 	});
 
 	it("handles money only as integer cents", () => {
@@ -446,6 +458,122 @@ describe("shared contracts", () => {
 				items: [],
 			}).success,
 		).toBe(false);
+	});
+
+	it("validates courier sale and cash balance contracts", () => {
+		expect(
+			CreateCourierSaleRequestSchema.parse({
+				courierProductBalanceId: "courier-balance-1",
+				clientId: "client-1",
+				quantity: 2,
+				paymentMethod: "cash",
+				comment: " Продажа курьером ",
+			}),
+		).toEqual({
+			courierProductBalanceId: "courier-balance-1",
+			clientId: "client-1",
+			quantity: 2,
+			paymentMethod: "cash",
+			comment: "Продажа курьером",
+		});
+		expect(
+			CreateCourierSaleRequestSchema.safeParse({
+				courierProductBalanceId: "courier-balance-1",
+				clientId: "client-1",
+				quantity: 0,
+				paymentMethod: "cash",
+			}).success,
+		).toBe(false);
+		expect(
+			CreateCourierSaleRequestSchema.safeParse({
+				courierProductBalanceId: "courier-balance-1",
+				clientId: "client-1",
+				quantity: 1.5,
+				paymentMethod: "cash",
+			}).success,
+		).toBe(false);
+		expect(
+			CreateCourierSaleRequestSchema.safeParse({
+				courierProductBalanceId: "courier-balance-1",
+				clientId: "client-1",
+				quantity: 1,
+				paymentMethod: "card",
+			}).success,
+		).toBe(false);
+		expect(
+			CourierSaleOptionsResponseSchema.safeParse({
+				items: [{
+					courierProductBalanceId: "courier-balance-1",
+					courierUserId: "courier-1",
+					courierLogin: "courier",
+					courierDisplayName: "Курьер",
+					productBatchId: "batch-1",
+					productName: "Икра горбуши",
+					unitPriceCents: 125000,
+					availableQuantity: 4,
+					stockValueCents: 500000,
+					updatedAt: new Date(0).toISOString(),
+				}],
+			}).success,
+		).toBe(true);
+		expect(
+			CourierCashBalancesResponseSchema.safeParse({
+				totalAmountCents: 0,
+				courierCount: 1,
+				items: [{
+					courierUserId: "courier-1",
+					courierLogin: "courier",
+					courierDisplayName: "Курьер",
+					amountCents: 0,
+					updatedAt: null,
+				}],
+			}).success,
+		).toBe(true);
+		expect(
+			CourierCashBalancesResponseSchema.safeParse({
+				totalAmountCents: 10.5,
+				courierCount: 1,
+				items: [],
+			}).success,
+		).toBe(false);
+		expect(
+			CourierSaleResponseSchema.safeParse({
+				sale: {
+					id: "sale-1",
+					courierProductBalanceId: "courier-balance-1",
+					courierUserId: "courier-1",
+					productBatchId: "batch-1",
+					clientId: "client-1",
+					quantity: 2,
+					unitPriceCents: 125000,
+					totalCents: 250000,
+					paymentMethod: "cashless",
+					comment: null,
+					operationId: "operation-1",
+					actorUserId: "courier-1",
+					createdAt: new Date(0).toISOString(),
+				},
+				courierProductBalance: {
+					id: "courier-balance-1",
+					courierUserId: "courier-1",
+					courierLogin: "courier",
+					courierDisplayName: "Курьер",
+					productBatchId: "batch-1",
+					productName: "Икра горбуши",
+					unitPriceCents: 125000,
+					quantity: 2,
+					stockValueCents: 250000,
+					updatedAt: new Date(0).toISOString(),
+				},
+				cashBalance: {
+					courierUserId: "courier-1",
+					courierLogin: "courier",
+					courierDisplayName: "Курьер",
+					amountCents: 0,
+					updatedAt: null,
+				},
+			}).success,
+		).toBe(true);
 	});
 
 	it("validates client contracts", () => {

@@ -1,9 +1,13 @@
 import { Injectable } from "@nestjs/common";
 import type {
+	CourierCashBalancesResponse,
 	CourierLoadOptionsResponse,
 	CourierLoadResponse,
 	CourierProductBalancesResponse,
+	CourierSaleOptionsResponse,
+	CourierSaleResponse,
 	CreateCourierLoadRequest,
+	CreateCourierSaleRequest,
 } from "@buhta/shared";
 import type { Prisma } from "../generated/prisma/client";
 import { AppError } from "../common/errors/app-error";
@@ -13,7 +17,10 @@ import { prisma } from "../prisma/client";
 import {
 	mapCourierLoad,
 	mapCourierLoadOption,
+	mapCourierCashBalanceItem,
 	mapCourierProductBalanceItem,
+	mapCourierSale,
+	mapCourierSaleOption,
 	mapDistributorBalanceAfter,
 	summarizeCourierProductBalances,
 } from "./courier.mapper";
@@ -68,6 +75,53 @@ export class CourierService {
 		return {
 			summary,
 			courierSummaries,
+			items,
+		};
+	}
+
+	async getSaleOptions(actor: Actor): Promise<CourierSaleOptionsResponse> {
+		if (!canCreateCourierSale(actor.role)) {
+			throw new AppError("FORBIDDEN", "Courier sale options are not available for this role");
+		}
+
+		const balances = await prisma.courierProductBalance.findMany({
+			where: {
+				quantity: { gt: 0 },
+				...(actor.role === "courier" ? { courierUserId: actor.userId } : {}),
+			},
+			include: {
+				courier: true,
+				productBatch: true,
+			},
+			orderBy: [
+				{ courier: { name: "asc" } },
+				{ productBatch: { productName: "asc" } },
+				{ updatedAt: "desc" },
+			],
+		});
+
+		return {
+			items: balances.map(mapCourierSaleOption),
+		};
+	}
+
+	async getCashBalances(actor: Actor): Promise<CourierCashBalancesResponse> {
+		if (!canReadCashBalances(actor.role)) {
+			throw new AppError("FORBIDDEN", "Courier cash balances are not available for this role");
+		}
+
+		const couriers = await prisma.user.findMany({
+			where: actor.role === "courier"
+				? { id: actor.userId, role: "courier" }
+				: { role: "courier" },
+			include: { courierCashBalance: true },
+			orderBy: { name: "asc" },
+		});
+		const items = couriers.map((courier) => mapCourierCashBalanceItem(courier, courier.courierCashBalance));
+
+		return {
+			totalAmountCents: items.reduce((sum, item) => sum + item.amountCents, 0),
+			courierCount: items.length,
 			items,
 		};
 	}
@@ -218,10 +272,163 @@ export class CourierService {
 			courierProductBalance: mapCourierProductBalanceItem(result.courierBalanceAfter),
 		};
 	}
+
+	async createCourierSale(actor: Actor, input: CreateCourierSaleRequest): Promise<CourierSaleResponse> {
+		const targetCourierUserId = resolveSaleTargetCourierUserId(actor, input);
+		const comment = input.comment?.trim() || undefined;
+
+		const result = await prisma.$transaction(async (tx) => {
+			const courier = await tx.user.findUnique({
+				where: { id: targetCourierUserId },
+			});
+			if (!courier) {
+				throw new AppError("NOT_FOUND", "Courier user not found", { id: targetCourierUserId });
+			}
+			if (courier.role !== "courier") {
+				throw new AppError("DOMAIN_RULE_VIOLATION", "Target user is not a courier", {
+					id: targetCourierUserId,
+					role: courier.role,
+				});
+			}
+
+			const balanceBefore = await tx.courierProductBalance.findUnique({
+				where: { id: input.courierProductBalanceId },
+				include: {
+					courier: true,
+					productBatch: true,
+				},
+			});
+			if (!balanceBefore) {
+				throw new AppError("NOT_FOUND", "Courier product balance not found", {
+					id: input.courierProductBalanceId,
+				});
+			}
+			if (balanceBefore.courierUserId !== targetCourierUserId) {
+				throw new AppError("DOMAIN_RULE_VIOLATION", "Courier product balance belongs to another courier", {
+					courierProductBalanceId: input.courierProductBalanceId,
+					courierUserId: targetCourierUserId,
+				});
+			}
+
+			const client = await tx.client.findUnique({ where: { id: input.clientId } });
+			if (!client) {
+				throw new AppError("NOT_FOUND", "Client not found", { id: input.clientId });
+			}
+
+			const decrement = await tx.courierProductBalance.updateMany({
+				where: {
+					id: input.courierProductBalanceId,
+					courierUserId: targetCourierUserId,
+					quantity: { gte: input.quantity },
+				},
+				data: {
+					quantity: { decrement: input.quantity },
+				},
+			});
+			if (decrement.count !== 1) {
+				throw new AppError("DOMAIN_RULE_VIOLATION", "Not enough courier product balance", {
+					courierProductBalanceId: input.courierProductBalanceId,
+				});
+			}
+
+			const courierBalanceAfter = await tx.courierProductBalance.findUniqueOrThrow({
+				where: { id: input.courierProductBalanceId },
+				include: {
+					courier: true,
+					productBatch: true,
+				},
+			});
+			const courierStockBalanceAfter = courierBalanceAfter.quantity;
+			const courierStockBalanceBefore = courierStockBalanceAfter + input.quantity;
+			const unitPriceCents = balanceBefore.productBatch.priceCents;
+			const totalCents = input.quantity * unitPriceCents;
+
+			const cashResult = input.paymentMethod === "cash"
+				? await incrementCourierCashBalance(tx, targetCourierUserId, totalCents)
+				: await readCourierCashBalance(tx, targetCourierUserId);
+
+			const operation = await tx.operation.create({
+				data: {
+					type: "courier.sale.create",
+					status: OPERATION_STATUS.succeeded,
+					actorUserId: actor.userId,
+				},
+			});
+
+			const saleData: Prisma.CourierSaleUncheckedCreateInput = {
+				courierProductBalanceId: input.courierProductBalanceId,
+				courierUserId: targetCourierUserId,
+				productBatchId: balanceBefore.productBatchId,
+				clientId: input.clientId,
+				quantity: input.quantity,
+				unitPriceCents,
+				totalCents,
+				paymentMethod: input.paymentMethod,
+				operationId: operation.id,
+				actorUserId: actor.userId,
+			};
+			if (comment !== undefined) {
+				saleData.comment = comment;
+			}
+
+			const sale = await tx.courierSale.create({
+				data: saleData,
+			});
+
+			await tx.auditLog.create({
+				data: {
+					operationId: operation.id,
+					actorUserId: actor.userId,
+					action: "courier.sale.create",
+					entityType: "courier_sale",
+					entityId: sale.id,
+					details: {
+						courierSaleId: sale.id,
+						courierProductBalanceId: input.courierProductBalanceId,
+						courierUserId: targetCourierUserId,
+						courierLogin: courier.username ?? courier.displayUsername ?? courier.email ?? courier.id,
+						productBatchId: balanceBefore.productBatchId,
+						productName: balanceBefore.productBatch.productName,
+						clientId: input.clientId,
+						quantity: input.quantity,
+						unitPriceCents,
+						totalCents,
+						paymentMethod: input.paymentMethod,
+						courierStockBalanceBefore,
+						courierStockBalanceAfter,
+						courierCashBalanceBefore: cashResult.beforeAmountCents,
+						courierCashBalanceAfter: cashResult.afterAmountCents,
+						comment: comment ?? null,
+					} satisfies Prisma.InputJsonValue,
+				},
+			});
+
+			return {
+				sale,
+				courier,
+				courierBalanceAfter,
+				cashBalanceAfter: cashResult.balance,
+			};
+		});
+
+		return {
+			sale: mapCourierSale(result.sale),
+			courierProductBalance: mapCourierProductBalanceItem(result.courierBalanceAfter),
+			cashBalance: mapCourierCashBalanceItem(result.courier, result.cashBalanceAfter),
+		};
+	}
 }
 
 function canReadBalances(role: Actor["role"]): boolean {
 	return role === "admin" || role === "director" || role === "commercial_manager" || role === "courier";
+}
+
+function canReadCashBalances(role: Actor["role"]): boolean {
+	return role === "admin" || role === "director" || role === "commercial_manager" || role === "courier";
+}
+
+function canCreateCourierSale(role: Actor["role"]): boolean {
+	return role === "admin" || role === "courier";
 }
 
 function resolveTargetCourierUserId(actor: Actor, input: CreateCourierLoadRequest): string {
@@ -242,4 +449,60 @@ function resolveTargetCourierUserId(actor: Actor, input: CreateCourierLoadReques
 	}
 
 	throw new AppError("FORBIDDEN", "Only courier can load product to own balance");
+}
+
+function resolveSaleTargetCourierUserId(actor: Actor, input: CreateCourierSaleRequest): string {
+	if (actor.role === "courier") {
+		if (input.courierUserId !== undefined) {
+			throw new AppError("VALIDATION_ERROR", "Courier cannot choose a courier user for self sale");
+		}
+
+		return actor.userId;
+	}
+
+	if (actor.role === "admin") {
+		if (!input.courierUserId) {
+			throw new AppError("VALIDATION_ERROR", "courierUserId is required for admin courier sale");
+		}
+
+		return input.courierUserId;
+	}
+
+	throw new AppError("FORBIDDEN", "Only courier can sell product from own balance");
+}
+
+async function incrementCourierCashBalance(
+	tx: Prisma.TransactionClient,
+	courierUserId: string,
+	totalCents: number,
+) {
+	const balance = await tx.courierCashBalance.upsert({
+		where: { courierUserId },
+		create: {
+			courierUserId,
+			amountCents: totalCents,
+		},
+		update: {
+			amountCents: { increment: totalCents },
+		},
+	});
+
+	return {
+		balance,
+		beforeAmountCents: balance.amountCents - totalCents,
+		afterAmountCents: balance.amountCents,
+	};
+}
+
+async function readCourierCashBalance(tx: Prisma.TransactionClient, courierUserId: string) {
+	const balance = await tx.courierCashBalance.findUnique({
+		where: { courierUserId },
+	});
+	const amountCents = balance?.amountCents ?? 0;
+
+	return {
+		balance,
+		beforeAmountCents: amountCents,
+		afterAmountCents: amountCents,
+	};
 }

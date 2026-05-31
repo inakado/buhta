@@ -1,6 +1,6 @@
 # Courier Sales And Courier Cash Balance Plan
 
-Статус: `Active`
+Статус: `Completed`
 Дата: 2026-05-31
 Roadmap stage: `6. Inventory, Courier, Sales, Cash` -> `Courier Sales`
 
@@ -20,6 +20,31 @@ Roadmap stage: `6. Inventory, Courier, Sales, Cash` -> `Courier Sales`
 Коммерческий руководитель и Директор должны видеть товарные и наличные балансы курьеров read-only. Администратор должен иметь backend-доступ к courier sale endpoints как супер-пользователь, но отдельный admin UI в этом этапе не делаем.
 
 Backend должен выполнять продажу транзакционно: validate -> policy -> resolve courier scope -> validate client -> conditional decrement courier stock -> optional cash increment -> operation/audit -> response.
+
+## Фактический Результат
+
+Реализовано:
+
+- shared contracts для courier sale options, запроса продажи, ответа продажи и read model наличных балансов курьеров;
+- permission `courier.cash.read` отдельно от `courier.sale.create`;
+- Prisma-модели `CourierCashBalance` и `CourierSale` с DB check constraints для денежных сумм, количества и способа оплаты;
+- operation type `courier.sale.create`;
+- backend routes `GET /courier/sale-options`, `GET /courier/cash-balances`, `POST /courier/sales`;
+- транзакционная продажа курьером: conditional decrement `courier_product_balance`, cash-only upsert/increment `courier_cash_balance`, `Operation`, `CourierSale`, `AuditLog`;
+- cash audit before/after считается от результата cash increment, а не от предварительного read;
+- read model наличных балансов возвращает всех видимых курьеров, включая строки `0 ₽` без `CourierCashBalance`;
+- service-level scope: курьер продает только со своего баланса и не передает `courierUserId`, коммерческий руководитель и Директор читают cash/product балансы без права продажи, администратор имеет backend-доступ с явным `courierUserId`;
+- mobile UI курьера для продажи со своего баланса;
+- наличный баланс на home курьера;
+- read-only наличные балансы курьеров на экране `Курьеры` для коммерческого руководителя и Директора;
+- профильные SoR-документы обновлены по фактической реализации.
+
+Не реализовано намеренно:
+
+- сгрузка товара и наличных курьером;
+- возврат наличных на распределитель;
+- отдельный admin UI для продажи курьером;
+- корректировки, отмены, отчеты и audit UI.
 
 ## Текущий Контекст
 
@@ -705,23 +730,29 @@ Admin-only variant:
 
 ## Full Verification
 
-Перед завершением этапа:
+Фактически выполнено перед завершением этапа:
 
-- `corepack pnpm --filter @buhta/shared test`;
-- `corepack pnpm --filter @buhta/api typecheck`;
-- targeted API/controller/policy/integration tests;
-- `corepack pnpm --filter @buhta/web typecheck`;
-- targeted web tests;
-- `corepack pnpm docs:check`;
-- `corepack pnpm lint`;
-- `corepack pnpm lint:boundaries`;
-- `corepack pnpm typecheck`;
-- `corepack pnpm test`;
-- `corepack pnpm build`;
-- `corepack pnpm audit`;
-- `corepack pnpm smoke`;
-- browser sanity для courier sale flow;
-- browser sanity для commercial/director read-only courier balances.
+- `corepack pnpm --filter @buhta/shared test` — passed, 12 tests;
+- `corepack pnpm --filter @buhta/api typecheck` — passed;
+- `corepack pnpm --filter @buhta/web typecheck` — passed;
+- `corepack pnpm --filter @buhta/api exec vitest run test/courier-controller.test.ts test/courier-db.integration.test.ts test/policy.test.ts` — passed, 30 tests, outside sandbox for local PostgreSQL;
+- `corepack pnpm --filter @buhta/web test -- app/page.test.tsx` — passed, 20 tests;
+- `corepack pnpm docs:check` — passed;
+- `corepack pnpm lint` — passed;
+- `corepack pnpm lint:boundaries` — passed;
+- `corepack pnpm typecheck` — passed;
+- `corepack pnpm test` — passed: shared 12, API 107, web 20 tests;
+- `corepack pnpm build` — passed outside sandbox; sandbox run failed with Turbopack `EPERM` while binding to a local port;
+- `corepack pnpm audit` — passed, no known vulnerabilities;
+- `corepack pnpm smoke` — passed outside sandbox: API health and web home.
+
+Browser sanity:
+
+- real browser opened `http://localhost:3001`;
+- login screen rendered;
+- courier login attempt was blocked by runtime CORS response from the already-running local API: preflight did not include `Access-Control-Allow-Credentials: true`;
+- repository code has `app.enableCors({ credentials: true })`, so this looks like a stale/local API process issue rather than an implementation regression in this stage;
+- courier sale and commercial read-only UI are covered by component tests and backend integration tests listed above.
 
 Примечание: real Postgres integration tests, Prisma migrate/deploy, `pnpm build`, `pnpm smoke` и `pnpm audit` могут требовать запуск вне sandbox по уже зафиксированным ограничениям `docs/DEVELOPMENT.md`.
 

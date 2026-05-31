@@ -1,20 +1,26 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { PackageCheck, Truck } from "lucide-react";
+import { Banknote, PackageCheck, Truck } from "lucide-react";
 import {
+	type CourierCashBalanceItem,
 	formatMoneyCents,
 	moneyCents,
 	type CourierProductBalanceItem,
 } from "@buhta/shared";
-import { getCourierProductBalances } from "../../lib/api-client";
+import { getCourierCashBalances, getCourierProductBalances } from "../../lib/api-client";
 
 export function CourierBalanceHome({ mode = "own" }: { mode?: "own" | "all" }) {
 	const balances = useQuery({
 		queryKey: ["courier", "product-balances"],
 		queryFn: getCourierProductBalances,
 	});
+	const cashBalances = useQuery({
+		queryKey: ["courier", "cash-balances"],
+		queryFn: getCourierCashBalances,
+	});
 	const data = balances.data;
+	const cashData = cashBalances.data;
 	const title = mode === "own" ? "Баланс курьера" : "Балансы курьеров";
 
 	return (
@@ -24,11 +30,20 @@ export function CourierBalanceHome({ mode = "own" }: { mode?: "own" | "all" }) {
 					<p className="summary-label">{title}</p>
 					<strong>{balances.isLoading ? "Загрузка" : `${data?.summary.totalUnits ?? 0} шт`}</strong>
 					<p className="summary-note">
-						Товарный баланс {formatRubles(data?.summary.totalStockValueCents ?? 0)} ₽
+						Товар {formatRubles(data?.summary.totalStockValueCents ?? 0)} ₽ · Наличные{" "}
+						{formatRubles(cashData?.totalAmountCents ?? 0)} ₽
 					</p>
 				</div>
 				<Truck aria-hidden size={30} />
 			</div>
+
+			<CourierCashPanel
+				isError={cashBalances.isError}
+				isLoading={cashBalances.isLoading}
+				items={cashData?.items ?? []}
+				mode={mode}
+				totalAmountCents={cashData?.totalAmountCents ?? 0}
+			/>
 
 			<div className="section-heading">
 				<h2>Остатки</h2>
@@ -63,6 +78,69 @@ export function CourierBalanceHome({ mode = "own" }: { mode?: "own" | "all" }) {
 
 			<CourierBalanceList items={data?.items ?? []} showCourier={mode === "all"} />
 		</section>
+	);
+}
+
+function CourierCashPanel({
+	isError,
+	isLoading,
+	items,
+	mode,
+	totalAmountCents,
+}: {
+	isError: boolean;
+	isLoading: boolean;
+	items: CourierCashBalanceItem[];
+	mode: "own" | "all";
+	totalAmountCents: number;
+}) {
+	if (mode === "own") {
+		const ownItem = items[0];
+
+		return (
+			<div className="entity-card production-history-card">
+				<div className="inventory-item-main">
+					<div className="production-row-icon">
+						<Banknote aria-hidden size={18} />
+					</div>
+					<div>
+						<strong>Наличные</strong>
+						<p>{isLoading ? "Загрузка cash-баланса" : "Баланс курьера"}</p>
+					</div>
+				</div>
+				<div className="production-history-meta">
+					<strong>{formatRubles(ownItem?.amountCents ?? 0)} ₽</strong>
+					<span>{ownItem?.updatedAt ? "Обновлен" : "Операций нет"}</span>
+				</div>
+				{isError ? <p className="form-error">Не удалось загрузить cash-баланс</p> : null}
+			</div>
+		);
+	}
+
+	return (
+		<div className="production-stock-stack">
+			<div className="section-heading compact">
+				<h2>Наличные</h2>
+				<span>{formatRubles(totalAmountCents)} ₽</span>
+			</div>
+			{isLoading ? <p className="muted">Загрузка cash-балансов</p> : null}
+			{isError ? <p className="form-error">Не удалось загрузить cash-балансы</p> : null}
+			{items.map((item) => (
+				<div className="stock-aggregate-card" key={item.courierUserId}>
+					<div className="production-row-icon">
+						<Banknote aria-hidden size={18} />
+					</div>
+					<div className="stock-aggregate-body">
+						<strong>{item.courierDisplayName}</strong>
+						<p>@{item.courierLogin}</p>
+					</div>
+					<div className="stock-aggregate-value">
+						<strong>{formatRubles(item.amountCents)} ₽</strong>
+						<span>{item.updatedAt ? "Есть операции" : "0 ₽ без операций"}</span>
+					</div>
+				</div>
+			))}
+		</div>
 	);
 }
 

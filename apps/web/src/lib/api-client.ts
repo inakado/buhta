@@ -3,6 +3,7 @@ import type {
 	ClientsListResponse,
 	CreateClientRequest,
 	CreateCourierLoadRequest,
+	CreateCourierSaleRequest,
 	CreateDistributorRequest,
 	CreateDistributorSaleRequest,
 	CreatePackagingTypeRequest,
@@ -14,9 +15,12 @@ import type {
 	CreateRawMaterialTypeRequest,
 	CreateUserRequest,
 	CreateUserResponse,
+	CourierCashBalancesResponse,
 	CourierLoadOptionsResponse,
 	CourierLoadResponse,
 	CourierProductBalancesResponse,
+	CourierSaleOptionsResponse,
+	CourierSaleResponse,
 	DistributorCashBalancesResponse,
 	DistributorInventoryResponse,
 	DistributorSaleOptionsResponse,
@@ -334,8 +338,23 @@ export async function getCourierProductBalances(): Promise<CourierProductBalance
 	return fetchJson<CourierProductBalancesResponse>("/courier/product-balances");
 }
 
+export async function getCourierCashBalances(): Promise<CourierCashBalancesResponse> {
+	return fetchJson<CourierCashBalancesResponse>("/courier/cash-balances");
+}
+
 export async function createCourierLoad(input: CreateCourierLoadRequest): Promise<CourierLoadResponse> {
 	return fetchJson<CourierLoadResponse>("/courier/loads", {
+		method: "POST",
+		body: JSON.stringify(input),
+	});
+}
+
+export async function getCourierSaleOptions(): Promise<CourierSaleOptionsResponse> {
+	return fetchJson<CourierSaleOptionsResponse>("/courier/sale-options");
+}
+
+export async function createCourierSale(input: CreateCourierSaleRequest): Promise<CourierSaleResponse> {
+	return fetchJson<CourierSaleResponse>("/courier/sales", {
 		method: "POST",
 		body: JSON.stringify(input),
 	});

@@ -36,6 +36,7 @@ const commercialActorResponse = {
 			"distributor.stock.read",
 			"distributor.cash.read",
 			"courier.stock.read",
+			"courier.cash.read",
 			"distributor.sale.create",
 			"client.read",
 			"client.manage",
@@ -50,7 +51,7 @@ const directorActorResponse = {
 		login: "director",
 		displayName: "Director",
 		role: "director",
-		permissions: ["distributor.stock.read", "distributor.cash.read", "courier.stock.read", "client.read"],
+		permissions: ["distributor.stock.read", "distributor.cash.read", "courier.stock.read", "courier.cash.read", "client.read"],
 	},
 };
 
@@ -61,7 +62,15 @@ const courierActorResponse = {
 		login: "courier",
 		displayName: "Courier",
 		role: "courier",
-		permissions: ["distributor.stock.read", "courier.stock.read", "courier.stock.load", "client.read", "client.manage"],
+		permissions: [
+			"distributor.stock.read",
+			"courier.stock.read",
+			"courier.stock.load",
+			"courier.cash.read",
+			"courier.sale.create",
+			"client.read",
+			"client.manage",
+		],
 	},
 };
 
@@ -150,6 +159,33 @@ const courierLoadOptionsResponse = {
 		distributorProductBalanceId: "distributor-balance1",
 		distributorId: "dist1",
 		distributorName: "Распределитель Центральный",
+		productBatchId: "batch1",
+		productName: "Икра горбуши",
+		unitPriceCents: 125000,
+		availableQuantity: 2,
+		stockValueCents: 250000,
+		updatedAt: new Date(0).toISOString(),
+	}],
+};
+
+const courierCashBalancesResponse = {
+	totalAmountCents: 70000,
+	courierCount: 1,
+	items: [{
+		courierUserId: "seed-courier",
+		courierLogin: "courier",
+		courierDisplayName: "Courier",
+		amountCents: 70000,
+		updatedAt: new Date(0).toISOString(),
+	}],
+};
+
+const courierSaleOptionsResponse = {
+	items: [{
+		courierProductBalanceId: "courier-balance1",
+		courierUserId: "seed-courier",
+		courierLogin: "courier",
+		courierDisplayName: "Courier",
 		productBatchId: "batch1",
 		productName: "Икра горбуши",
 		unitPriceCents: 125000,
@@ -945,6 +981,10 @@ describe("HomePage", () => {
 				return jsonResponse(courierProductBalancesResponse);
 			}
 
+			if (url.endsWith("/courier/cash-balances")) {
+				return jsonResponse(courierCashBalancesResponse);
+			}
+
 			if (url.endsWith("/courier/load-options")) {
 				return jsonResponse(courierLoadOptionsResponse);
 			}
@@ -984,6 +1024,8 @@ describe("HomePage", () => {
 		render(<HomePage />);
 
 		expect(await screen.findByText("Баланс курьера")).toBeTruthy();
+		expect(await screen.findByText("Наличные")).toBeTruthy();
+		expect(screen.getByText("700.00 ₽")).toBeTruthy();
 		expect(await screen.findByText("Икра горбуши")).toBeTruthy();
 		fireEvent.click(await screen.findByRole("button", { name: "Загрузка" }));
 		expect(await screen.findByRole("heading", { name: "Детали загрузки" })).toBeTruthy();
@@ -1008,6 +1050,99 @@ describe("HomePage", () => {
 		expect(await screen.findByText("Загрузка записана")).toBeTruthy();
 	});
 
+	it("lets courier sell product from own balance", async () => {
+		const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+			const url = String(input);
+			const method = init?.method ?? "GET";
+
+			if (url.endsWith("/auth/me")) {
+				return jsonResponse(courierActorResponse);
+			}
+
+			if (url.endsWith("/courier/product-balances")) {
+				return jsonResponse(courierProductBalancesResponse);
+			}
+
+			if (url.endsWith("/courier/cash-balances")) {
+				return jsonResponse(courierCashBalancesResponse);
+			}
+
+			if (url.endsWith("/courier/sale-options")) {
+				return jsonResponse(courierSaleOptionsResponse);
+			}
+
+			if (url.endsWith("/courier/sales") && method === "POST") {
+				return jsonResponse({
+					sale: {
+						id: "courier-sale1",
+						courierProductBalanceId: "courier-balance1",
+						courierUserId: "seed-courier",
+						productBatchId: "batch1",
+						clientId: "client1",
+						quantity: 1,
+						unitPriceCents: 125000,
+						totalCents: 125000,
+						paymentMethod: "cash",
+						comment: "Доставка",
+						operationId: "op1",
+						actorUserId: "seed-courier",
+						createdAt: new Date(0).toISOString(),
+					},
+					courierProductBalance: {
+						...courierProductBalancesResponse.items[0],
+						quantity: 1,
+						stockValueCents: 125000,
+					},
+					cashBalance: {
+						...courierCashBalancesResponse.items[0],
+						amountCents: 195000,
+						updatedAt: new Date(1).toISOString(),
+					},
+				});
+			}
+
+			if (url.includes("/clients")) {
+				return jsonResponse(clientsResponse);
+			}
+
+			return jsonResponse({ error: { message: "Unexpected request" } }, 500);
+		});
+
+		vi.stubGlobal("fetch", fetchMock);
+
+		render(<HomePage />);
+
+		expect(await screen.findByText("Баланс курьера")).toBeTruthy();
+		fireEvent.click(await screen.findByRole("button", { name: "Продажа" }));
+		expect(await screen.findByText("Продажа курьера")).toBeTruthy();
+		fireEvent.change(await screen.findByLabelText("Клиент"), { target: { value: "client1" } });
+		fireEvent.change(await screen.findByLabelText("Продукция"), { target: { value: "courier-balance1" } });
+		fireEvent.change(screen.getByLabelText("Количество, шт"), { target: { value: "1" } });
+		fireEvent.change(screen.getByLabelText("Способ оплаты"), { target: { value: "cash" } });
+		fireEvent.change(screen.getByLabelText("Комментарий"), { target: { value: "Доставка" } });
+		fireEvent.click(screen.getByRole("button", { name: "Записать продажу" }));
+
+		await waitFor(() => {
+			expect(fetchMock).toHaveBeenCalledWith(
+				expect.stringContaining("/courier/sales"),
+				expect.objectContaining({
+					method: "POST",
+					body: JSON.stringify({
+						courierProductBalanceId: "courier-balance1",
+						clientId: "client1",
+						quantity: 1,
+						paymentMethod: "cash",
+						comment: "Доставка",
+					}),
+				}),
+			);
+		});
+		expect(await screen.findByText("Продажа записана")).toBeTruthy();
+		await waitFor(() => {
+			expect(screen.getAllByText("Баланс курьера").length).toBeGreaterThan(0);
+		});
+	});
+
 	it("shows courier balances read-only to commercial manager", async () => {
 		const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
 			const url = String(input);
@@ -1026,6 +1161,10 @@ describe("HomePage", () => {
 
 			if (url.endsWith("/courier/product-balances")) {
 				return jsonResponse(courierProductBalancesResponse);
+			}
+
+			if (url.endsWith("/courier/cash-balances")) {
+				return jsonResponse(courierCashBalancesResponse);
 			}
 
 			return jsonResponse({ error: { message: "Unexpected request" } }, 500);
@@ -1060,6 +1199,10 @@ describe("HomePage", () => {
 
 			if (url.endsWith("/courier/product-balances")) {
 				return jsonResponse(courierProductBalancesResponse);
+			}
+
+			if (url.endsWith("/courier/cash-balances")) {
+				return jsonResponse(courierCashBalancesResponse);
 			}
 
 			return jsonResponse({ error: { message: "Unexpected request" } }, 500);

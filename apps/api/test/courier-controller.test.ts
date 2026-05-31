@@ -8,7 +8,7 @@ const actor: Actor = {
 	login: "courier",
 	displayName: "Courier",
 	role: "courier",
-	permissions: ["courier.stock.read", "courier.stock.load"],
+	permissions: ["courier.stock.read", "courier.stock.load", "courier.cash.read", "courier.sale.create"],
 };
 
 describe("CourierController", () => {
@@ -119,6 +119,110 @@ describe("CourierController", () => {
 			controller.createLoad(actor, {
 				distributorProductBalanceId: "balance1",
 				quantity: 0,
+			}),
+		).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+	});
+
+	it("returns courier sale options and cash balances through service", async () => {
+		const saleOptions = {
+			items: [{
+				courierProductBalanceId: "courier-balance1",
+				courierUserId: "courier1",
+				courierLogin: "courier",
+				courierDisplayName: "Courier",
+				productBatchId: "batch1",
+				productName: "Икра горбуши",
+				unitPriceCents: 125000,
+				availableQuantity: 2,
+				stockValueCents: 250000,
+				updatedAt: new Date(0).toISOString(),
+			}],
+		};
+		const cashBalances = {
+			totalAmountCents: 0,
+			courierCount: 1,
+			items: [{
+				courierUserId: "courier1",
+				courierLogin: "courier",
+				courierDisplayName: "Courier",
+				amountCents: 0,
+				updatedAt: null,
+			}],
+		};
+		const courierService = {
+			getSaleOptions: vi.fn().mockResolvedValue(saleOptions),
+			getCashBalances: vi.fn().mockResolvedValue(cashBalances),
+		} as unknown as CourierService;
+		const controller = new CourierController(courierService);
+
+		await expect(controller.saleOptions(actor)).resolves.toEqual(saleOptions);
+		await expect(controller.cashBalances(actor)).resolves.toEqual(cashBalances);
+		expect(courierService.getSaleOptions).toHaveBeenCalledWith(actor);
+		expect(courierService.getCashBalances).toHaveBeenCalledWith(actor);
+	});
+
+	it("validates and creates courier sale through service", async () => {
+		const response = {
+			sale: {
+				id: "sale1",
+				courierProductBalanceId: "courier-balance1",
+				courierUserId: "courier1",
+				productBatchId: "batch1",
+				clientId: "client1",
+				quantity: 2,
+				unitPriceCents: 125000,
+				totalCents: 250000,
+				paymentMethod: "cash",
+				comment: null,
+				operationId: "op1",
+				actorUserId: "courier1",
+				createdAt: new Date(0).toISOString(),
+			},
+			courierProductBalance: {
+				id: "courier-balance1",
+				courierUserId: "courier1",
+				courierLogin: "courier",
+				courierDisplayName: "Courier",
+				productBatchId: "batch1",
+				productName: "Икра горбуши",
+				unitPriceCents: 125000,
+				quantity: 0,
+				stockValueCents: 0,
+				updatedAt: new Date(0).toISOString(),
+			},
+			cashBalance: {
+				courierUserId: "courier1",
+				courierLogin: "courier",
+				courierDisplayName: "Courier",
+				amountCents: 250000,
+				updatedAt: new Date(0).toISOString(),
+			},
+		};
+		const courierService = {
+			createCourierSale: vi.fn().mockResolvedValue(response),
+		} as unknown as CourierService;
+		const controller = new CourierController(courierService);
+
+		await expect(
+			controller.createSale(actor, {
+				courierProductBalanceId: "courier-balance1",
+				clientId: "client1",
+				quantity: 2,
+				paymentMethod: "cash",
+			}),
+		).resolves.toEqual(response);
+		expect(courierService.createCourierSale).toHaveBeenCalledWith(actor, {
+			courierProductBalanceId: "courier-balance1",
+			clientId: "client1",
+			quantity: 2,
+			paymentMethod: "cash",
+		});
+		await expect(
+			controller.createSale(actor, {
+				courierProductBalanceId: "courier-balance1",
+				clientId: "client1",
+				quantity: 0,
+				paymentMethod: "cash",
 			}),
 		).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
 	});

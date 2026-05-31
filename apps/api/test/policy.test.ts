@@ -197,6 +197,52 @@ describe("PolicyRegistry", () => {
 			expect(actor?.permissions).not.toContain("courier.stock.read");
 		}
 	});
+
+	it("keeps courier cash read and sale write permissions separated", () => {
+		for (const role of ["admin", "director", "commercial_manager", "courier"] as const) {
+			const actor = registry.buildActor({
+				id: `courier-cash-${role}`,
+				username: role,
+				name: role,
+				role,
+			});
+
+			expect(actor?.permissions).toContain("courier.cash.read");
+		}
+
+		for (const role of ["admin", "courier"] as const) {
+			const actor = registry.buildActor({
+				id: `courier-sale-${role}`,
+				username: role,
+				name: role,
+				role,
+			});
+
+			expect(actor?.permissions).toContain("courier.sale.create");
+		}
+
+		for (const role of ["director", "commercial_manager", "production_manager", "distributor_worker"] as const) {
+			const actor = registry.buildActor({
+				id: `no-courier-sale-${role}`,
+				username: role,
+				name: role,
+				role,
+			});
+
+			expect(actor?.permissions).not.toContain("courier.sale.create");
+		}
+
+		for (const role of ["production_manager", "distributor_worker"] as const) {
+			const actor = registry.buildActor({
+				id: `no-courier-cash-${role}`,
+				username: role,
+				name: role,
+				role,
+			});
+
+			expect(actor?.permissions).not.toContain("courier.cash.read");
+		}
+	});
 });
 
 describe("PolicyGuard", () => {

@@ -17,6 +17,7 @@ import { CatalogHome } from "../features/catalog/CatalogHome";
 import { ClientsHome } from "../features/clients/ClientsHome";
 import { CourierBalanceHome } from "../features/courier/CourierBalanceHome";
 import { CourierLoadHome } from "../features/courier/CourierLoadHome";
+import { CourierSaleHome } from "../features/courier/CourierSaleHome";
 import { DistributorInventoryHome } from "../features/distributor/DistributorInventoryHome";
 import { ProductionHome } from "../features/production/ProductionHome";
 import { DistributorSaleHome } from "../features/sales/DistributorSaleHome";
@@ -230,6 +231,14 @@ function RoleHome({
 		if (activeTab === "sale" && actor.permissions.includes("distributor.sale.create")) {
 			return (
 				<DistributorSaleHome
+					onSaleSuccess={() => onActionSuccess("Продажа записана")}
+					online={online}
+				/>
+			);
+		}
+		if (activeTab === "sale" && actor.permissions.includes("courier.sale.create")) {
+			return (
+				<CourierSaleHome
 					onSaleSuccess={() => onActionSuccess("Продажа записана")}
 					online={online}
 				/>

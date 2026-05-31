@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Inject, Post, UseGuards } from "@nestjs/common";
-import { CreateCourierLoadRequestSchema } from "@buhta/shared";
+import { CreateCourierLoadRequestSchema, CreateCourierSaleRequestSchema } from "@buhta/shared";
 import type { z } from "zod";
 import { CurrentActor } from "../auth/actor.decorator";
 import { AppError } from "../common/errors/app-error";
@@ -25,12 +25,33 @@ export class CourierController {
 		return this.courierService.getProductBalances(requireActor(actor));
 	}
 
+	@Get("sale-options")
+	@RequirePermission("courier.sale.create")
+	async saleOptions(@CurrentActor() actor: Actor | undefined) {
+		return this.courierService.getSaleOptions(requireActor(actor));
+	}
+
+	@Get("cash-balances")
+	@RequirePermission("courier.cash.read")
+	async cashBalances(@CurrentActor() actor: Actor | undefined) {
+		return this.courierService.getCashBalances(requireActor(actor));
+	}
+
 	@Post("loads")
 	@RequirePermission("courier.stock.load")
 	async createLoad(@CurrentActor() actor: Actor | undefined, @Body() body: unknown) {
 		return this.courierService.createCourierLoad(
 			requireActor(actor),
 			parseBody(CreateCourierLoadRequestSchema, body, "Invalid courier load payload"),
+		);
+	}
+
+	@Post("sales")
+	@RequirePermission("courier.sale.create")
+	async createSale(@CurrentActor() actor: Actor | undefined, @Body() body: unknown) {
+		return this.courierService.createCourierSale(
+			requireActor(actor),
+			parseBody(CreateCourierSaleRequestSchema, body, "Invalid courier sale payload"),
 		);
 	}
 }

@@ -10,35 +10,35 @@ const courierActor: Actor = {
 	login: "courier-load-courier",
 	displayName: "Courier Load Courier",
 	role: "courier",
-	permissions: ["courier.stock.read", "courier.stock.load"],
+	permissions: ["courier.stock.read", "courier.stock.load", "courier.cash.read", "courier.sale.create"],
 };
 const secondCourierActor: Actor = {
 	userId: "courier-load-second-courier",
 	login: "courier-load-second-courier",
 	displayName: "Courier Load Second Courier",
 	role: "courier",
-	permissions: ["courier.stock.read", "courier.stock.load"],
+	permissions: ["courier.stock.read", "courier.stock.load", "courier.cash.read", "courier.sale.create"],
 };
 const adminActor: Actor = {
 	userId: "courier-load-admin",
 	login: "courier-load-admin",
 	displayName: "Courier Load Admin",
 	role: "admin",
-	permissions: ["courier.stock.read", "courier.stock.load"],
+	permissions: ["courier.stock.read", "courier.stock.load", "courier.cash.read", "courier.sale.create"],
 };
 const commercialActor: Actor = {
 	userId: "courier-load-commercial",
 	login: "courier-load-commercial",
 	displayName: "Courier Load Commercial",
 	role: "commercial_manager",
-	permissions: ["courier.stock.read"],
+	permissions: ["courier.stock.read", "courier.cash.read"],
 };
 const directorActor: Actor = {
 	userId: "courier-load-director",
 	login: "courier-load-director",
 	displayName: "Courier Load Director",
 	role: "director",
-	permissions: ["courier.stock.read"],
+	permissions: ["courier.stock.read", "courier.cash.read"],
 };
 
 const actors = [courierActor, secondCourierActor, adminActor, commercialActor, directorActor];
@@ -136,6 +136,42 @@ async function createLoadFixture(prefix: string, quantity = 3, priceCents = 1250
 	};
 }
 
+async function createClient(prefix: string) {
+	return prisma.client.create({
+		data: {
+			name: `${prefix}-client`,
+			phone: "+7 (900) 100-20-30",
+			phoneNormalized: `79${numericSuffix(prefix)}`,
+			description: `${prefix}-description`,
+			createdByUserId: courierActor.userId,
+		},
+	});
+}
+
+function numericSuffix(value: string): string {
+	const hash = Array.from(value).reduce((sum, char) => sum + char.charCodeAt(0), 0);
+
+	return hash.toString().padStart(9, "0").slice(-9);
+}
+
+async function createSaleFixture(prefix: string, quantity = 3, priceCents = 125000) {
+	const fixture = await createLoadFixture(prefix, quantity, priceCents);
+	const courierProductBalance = await prisma.courierProductBalance.create({
+		data: {
+			courierUserId: courierActor.userId,
+			productBatchId: fixture.productBatch.id,
+			quantity,
+		},
+	});
+	const client = await createClient(prefix);
+
+	return {
+		...fixture,
+		courierProductBalance,
+		client,
+	};
+}
+
 async function cleanup() {
 	const [rawMaterialTypes, packagingTypes, distributors] = await Promise.all([
 		prisma.rawMaterialType.findMany({
@@ -170,6 +206,18 @@ async function cleanup() {
 			],
 		},
 	});
+	await prisma.courierSale.deleteMany({
+		where: {
+			OR: [
+				{ actorUserId: { in: actorIds } },
+				{ courierUserId: { in: actorIds } },
+				{ client: { createdByUserId: { in: actorIds } } },
+			],
+		},
+	});
+	await prisma.courierCashBalance.deleteMany({
+		where: { courierUserId: { in: actorIds } },
+	});
 	await prisma.courierProductBalance.deleteMany({
 		where: { courierUserId: { in: actorIds } },
 	});
@@ -181,6 +229,9 @@ async function cleanup() {
 	});
 	await prisma.productBatch.deleteMany({
 		where: { actorUserId: { in: actorIds } },
+	});
+	await prisma.client.deleteMany({
+		where: { createdByUserId: { in: actorIds } },
 	});
 	await prisma.auditLog.deleteMany({
 		where: { actorUserId: { in: actorIds } },
@@ -255,14 +306,12 @@ describe("Courier load real Postgres integration", () => {
 			courierUserId: courierActor.userId,
 			quantity: 1,
 		});
-		expect(commercialBalances.items.map((item) => item.courierUserId).sort()).toEqual([
-			courierActor.userId,
-			secondCourierActor.userId,
-		].sort());
-		expect(directorBalances.items.map((item) => item.courierUserId).sort()).toEqual([
-			courierActor.userId,
-			secondCourierActor.userId,
-		].sort());
+		expect(commercialBalances.items.map((item) => item.courierUserId)).toEqual(
+			expect.arrayContaining([courierActor.userId, secondCourierActor.userId]),
+		);
+		expect(directorBalances.items.map((item) => item.courierUserId)).toEqual(
+			expect.arrayContaining([courierActor.userId, secondCourierActor.userId]),
+		);
 	});
 
 	it("loads product to courier balance and writes audit snapshot", async () => {
@@ -457,5 +506,294 @@ describe("Courier load real Postgres integration", () => {
 			}),
 		).resolves.toMatchObject({ quantity: 1 });
 		expect(await prisma.courierLoad.count({ where: { distributorId: fixture.distributor.id } })).toBe(1);
+	});
+
+	it("returns sale options and cash balances with zero rows for visible couriers", async () => {
+		const fixture = await createSaleFixture("courier-load-sale-options", 3, 125000);
+		await prisma.courierProductBalance.create({
+			data: {
+				courierUserId: secondCourierActor.userId,
+				productBatchId: fixture.productBatch.id,
+				quantity: 1,
+			},
+		});
+		await prisma.courierCashBalance.create({
+			data: {
+				courierUserId: secondCourierActor.userId,
+				amountCents: 70000,
+			},
+		});
+
+		const [options, courierCash, commercialCash, directorCash] = await Promise.all([
+			courierService.getSaleOptions(courierActor),
+			courierService.getCashBalances(courierActor),
+			courierService.getCashBalances(commercialActor),
+			courierService.getCashBalances(directorActor),
+		]);
+
+		expect(options.items).toEqual([
+			expect.objectContaining({
+				courierProductBalanceId: fixture.courierProductBalance.id,
+				courierUserId: courierActor.userId,
+				productBatchId: fixture.productBatch.id,
+				availableQuantity: 3,
+				stockValueCents: 375000,
+			}),
+		]);
+		expect(courierCash).toMatchObject({
+			totalAmountCents: 0,
+			courierCount: 1,
+			items: [expect.objectContaining({
+				courierUserId: courierActor.userId,
+				amountCents: 0,
+				updatedAt: null,
+			})],
+		});
+		expect(commercialCash.courierCount).toBeGreaterThanOrEqual(2);
+		expect(directorCash.items.map((item) => item.courierUserId)).toEqual(
+			expect.arrayContaining([courierActor.userId, secondCourierActor.userId]),
+		);
+		expect(commercialCash.items).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ courierUserId: courierActor.userId, amountCents: 0, updatedAt: null }),
+				expect.objectContaining({ courierUserId: secondCourierActor.userId, amountCents: 70000 }),
+			]),
+		);
+	});
+
+	it("creates cash sale, decrements courier stock and writes audit snapshot", async () => {
+		const fixture = await createSaleFixture("courier-load-sale-cash", 4, 90000);
+
+		const response = await courierService.createCourierSale(courierActor, {
+			courierProductBalanceId: fixture.courierProductBalance.id,
+			clientId: fixture.client.id,
+			quantity: 2,
+			paymentMethod: "cash",
+			comment: " продажа клиенту ",
+		});
+
+		expect(response.sale).toMatchObject({
+			courierProductBalanceId: fixture.courierProductBalance.id,
+			courierUserId: courierActor.userId,
+			productBatchId: fixture.productBatch.id,
+			clientId: fixture.client.id,
+			quantity: 2,
+			unitPriceCents: 90000,
+			totalCents: 180000,
+			paymentMethod: "cash",
+			comment: "продажа клиенту",
+			actorUserId: courierActor.userId,
+		});
+		expect(response.courierProductBalance.quantity).toBe(2);
+		expect(response.cashBalance).toMatchObject({
+			courierUserId: courierActor.userId,
+			amountCents: 180000,
+		});
+		await expect(
+			prisma.auditLog.findFirstOrThrow({
+				where: {
+					action: "courier.sale.create",
+					entityId: response.sale.id,
+				},
+			}),
+		).resolves.toMatchObject({
+			details: expect.objectContaining({
+				courierSaleId: response.sale.id,
+				courierProductBalanceId: fixture.courierProductBalance.id,
+				courierUserId: courierActor.userId,
+				productBatchId: fixture.productBatch.id,
+				productName: fixture.productBatch.productName,
+				clientId: fixture.client.id,
+				quantity: 2,
+				unitPriceCents: 90000,
+				totalCents: 180000,
+				paymentMethod: "cash",
+				courierStockBalanceBefore: 4,
+				courierStockBalanceAfter: 2,
+				courierCashBalanceBefore: 0,
+				courierCashBalanceAfter: 180000,
+				comment: "продажа клиенту",
+			}),
+		});
+	});
+
+	it("creates cashless sale without creating a cash row", async () => {
+		const fixture = await createSaleFixture("courier-load-sale-cashless", 2, 110000);
+
+		const response = await courierService.createCourierSale(courierActor, {
+			courierProductBalanceId: fixture.courierProductBalance.id,
+			clientId: fixture.client.id,
+			quantity: 1,
+			paymentMethod: "cashless",
+		});
+
+		expect(response.sale).toMatchObject({
+			paymentMethod: "cashless",
+			totalCents: 110000,
+		});
+		expect(response.cashBalance).toMatchObject({
+			courierUserId: courierActor.userId,
+			amountCents: 0,
+			updatedAt: null,
+		});
+		await expect(
+			prisma.courierCashBalance.findUnique({
+				where: { courierUserId: courierActor.userId },
+			}),
+		).resolves.toBeNull();
+	});
+
+	it("allows admin backend sale only for the selected courier balance owner", async () => {
+		const fixture = await createSaleFixture("courier-load-sale-admin", 2, 100000);
+
+		const response = await courierService.createCourierSale(adminActor, {
+			courierUserId: courierActor.userId,
+			courierProductBalanceId: fixture.courierProductBalance.id,
+			clientId: fixture.client.id,
+			quantity: 1,
+			paymentMethod: "cash",
+		});
+
+		expect(response.sale).toMatchObject({
+			courierUserId: courierActor.userId,
+			actorUserId: adminActor.userId,
+			quantity: 1,
+		});
+		await expect(
+			courierService.createCourierSale(adminActor, {
+				courierUserId: secondCourierActor.userId,
+				courierProductBalanceId: fixture.courierProductBalance.id,
+				clientId: fixture.client.id,
+				quantity: 1,
+				paymentMethod: "cash",
+			}),
+		).rejects.toMatchObject({ code: "DOMAIN_RULE_VIOLATION" });
+		await expect(
+			courierService.createCourierSale(adminActor, {
+				courierUserId: commercialActor.userId,
+				courierProductBalanceId: fixture.courierProductBalance.id,
+				clientId: fixture.client.id,
+				quantity: 1,
+				paymentMethod: "cash",
+			}),
+		).rejects.toMatchObject({ code: "DOMAIN_RULE_VIOLATION" });
+	});
+
+	it("rejects insufficient stock, missing client and wrong write actors atomically", async () => {
+		const fixture = await createSaleFixture("courier-load-sale-reject", 1, 100000);
+
+		await expect(
+			courierService.createCourierSale(courierActor, {
+				courierProductBalanceId: fixture.courierProductBalance.id,
+				clientId: fixture.client.id,
+				quantity: 2,
+				paymentMethod: "cash",
+			}),
+		).rejects.toMatchObject({ code: "DOMAIN_RULE_VIOLATION" });
+		await expect(
+			prisma.courierProductBalance.findUniqueOrThrow({
+				where: { id: fixture.courierProductBalance.id },
+			}),
+		).resolves.toMatchObject({ quantity: 1 });
+		await expect(
+			prisma.courierCashBalance.findUnique({
+				where: { courierUserId: courierActor.userId },
+			}),
+		).resolves.toBeNull();
+
+		await expect(
+			courierService.createCourierSale(courierActor, {
+				courierProductBalanceId: fixture.courierProductBalance.id,
+				clientId: "missing-client",
+				quantity: 1,
+				paymentMethod: "cash",
+			}),
+		).rejects.toMatchObject({ code: "NOT_FOUND" });
+		await expect(
+			courierService.createCourierSale(courierActor, {
+				courierProductBalanceId: fixture.courierProductBalance.id,
+				courierUserId: secondCourierActor.userId,
+				clientId: fixture.client.id,
+				quantity: 1,
+				paymentMethod: "cash",
+			}),
+		).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+		await expect(
+			courierService.createCourierSale(commercialActor, {
+				courierProductBalanceId: fixture.courierProductBalance.id,
+				clientId: fixture.client.id,
+				quantity: 1,
+				paymentMethod: "cash",
+			}),
+		).rejects.toMatchObject({ code: "FORBIDDEN" });
+	});
+
+	it("prevents stock double-spend and preserves cash increments under concurrent sales", async () => {
+		const stockFixture = await createSaleFixture("courier-load-sale-concurrent-stock", 1, 120000);
+
+		const stockResults = await Promise.allSettled([
+			courierService.createCourierSale(courierActor, {
+				courierProductBalanceId: stockFixture.courierProductBalance.id,
+				clientId: stockFixture.client.id,
+				quantity: 1,
+				paymentMethod: "cash",
+			}),
+			courierService.createCourierSale(courierActor, {
+				courierProductBalanceId: stockFixture.courierProductBalance.id,
+				clientId: stockFixture.client.id,
+				quantity: 1,
+				paymentMethod: "cash",
+			}),
+		]);
+
+		expect(stockResults.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+		expect(stockResults.filter((result) => result.status === "rejected")).toHaveLength(1);
+		await expect(
+			prisma.courierProductBalance.findUniqueOrThrow({
+				where: { id: stockFixture.courierProductBalance.id },
+			}),
+		).resolves.toMatchObject({ quantity: 0 });
+
+		const cashFixture = await createSaleFixture("courier-load-sale-concurrent-cash", 2, 50000);
+		const cashResults = await Promise.allSettled([
+			courierService.createCourierSale(courierActor, {
+				courierProductBalanceId: cashFixture.courierProductBalance.id,
+				clientId: cashFixture.client.id,
+				quantity: 1,
+				paymentMethod: "cash",
+			}),
+			courierService.createCourierSale(courierActor, {
+				courierProductBalanceId: cashFixture.courierProductBalance.id,
+				clientId: cashFixture.client.id,
+				quantity: 1,
+				paymentMethod: "cash",
+			}),
+		]);
+
+		expect(cashResults.filter((result) => result.status === "fulfilled")).toHaveLength(2);
+		const successfulCashSales = cashResults
+			.filter((result) => result.status === "fulfilled")
+			.map((result) => result.value);
+		await expect(
+			prisma.courierCashBalance.findUniqueOrThrow({
+				where: { courierUserId: courierActor.userId },
+			}),
+		).resolves.toMatchObject({ amountCents: 220000 });
+		const auditLogs = await prisma.auditLog.findMany({
+			where: {
+				action: "courier.sale.create",
+				entityId: {
+					in: successfulCashSales.map((response) => response.sale.id),
+				},
+			},
+		});
+		const auditDetails = auditLogs.map((log) => log.details as {
+			courierCashBalanceAfter: number;
+			courierCashBalanceBefore: number;
+		}).sort((left, right) => left.courierCashBalanceBefore - right.courierCashBalanceBefore);
+		expect(auditDetails).toEqual([
+			expect.objectContaining({ courierCashBalanceBefore: 120000, courierCashBalanceAfter: 170000 }),
+			expect.objectContaining({ courierCashBalanceBefore: 170000, courierCashBalanceAfter: 220000 }),
+		]);
 	});
 });

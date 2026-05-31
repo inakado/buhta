@@ -1,9 +1,12 @@
 import type {
+	CourierCashBalanceItem,
 	CourierLoad,
 	CourierLoadOption,
 	CourierProductBalanceItem,
 	CourierProductBalancesCourierSummary,
 	CourierProductBalancesSummary,
+	CourierSale,
+	CourierSaleOption,
 } from "@buhta/shared";
 
 type UserRecord = {
@@ -45,6 +48,11 @@ type CourierBalanceRecord = {
 	productBatch: ProductBatchRecord;
 };
 
+type CourierCashBalanceRecord = {
+	amountCents: number;
+	updatedAt: Date;
+};
+
 type CourierLoadRecord = {
 	id: string;
 	courierUserId: string;
@@ -52,6 +60,22 @@ type CourierLoadRecord = {
 	distributorId: string;
 	productBatchId: string;
 	quantity: number;
+	comment: string | null;
+	operationId: string;
+	actorUserId: string;
+	createdAt: Date;
+};
+
+type CourierSaleRecord = {
+	id: string;
+	courierProductBalanceId: string;
+	courierUserId: string;
+	productBatchId: string;
+	clientId: string;
+	quantity: number;
+	unitPriceCents: number;
+	totalCents: number;
+	paymentMethod: string;
 	comment: string | null;
 	operationId: string;
 	actorUserId: string;
@@ -103,6 +127,38 @@ export function mapCourierProductBalanceItem(record: CourierBalanceRecord): Cour
 	};
 }
 
+export function mapCourierSaleOption(record: CourierBalanceRecord): CourierSaleOption {
+	const courierLogin = loginForUser(record.courier);
+
+	return {
+		courierProductBalanceId: record.id,
+		courierUserId: record.courierUserId,
+		courierLogin,
+		courierDisplayName: displayNameForUser(record.courier, courierLogin),
+		productBatchId: record.productBatchId,
+		productName: record.productBatch.productName,
+		unitPriceCents: record.productBatch.priceCents,
+		availableQuantity: record.quantity,
+		stockValueCents: record.quantity * record.productBatch.priceCents,
+		updatedAt: record.updatedAt.toISOString(),
+	};
+}
+
+export function mapCourierCashBalanceItem(
+	courier: UserRecord,
+	cashBalance: CourierCashBalanceRecord | null,
+): CourierCashBalanceItem {
+	const courierLogin = loginForUser(courier);
+
+	return {
+		courierUserId: courier.id,
+		courierLogin,
+		courierDisplayName: displayNameForUser(courier, courierLogin),
+		amountCents: cashBalance?.amountCents ?? 0,
+		updatedAt: cashBalance?.updatedAt.toISOString() ?? null,
+	};
+}
+
 export function mapCourierLoad(record: CourierLoadRecord): CourierLoad {
 	return {
 		id: record.id,
@@ -111,6 +167,24 @@ export function mapCourierLoad(record: CourierLoadRecord): CourierLoad {
 		distributorId: record.distributorId,
 		productBatchId: record.productBatchId,
 		quantity: record.quantity,
+		comment: record.comment,
+		operationId: record.operationId,
+		actorUserId: record.actorUserId,
+		createdAt: record.createdAt.toISOString(),
+	};
+}
+
+export function mapCourierSale(record: CourierSaleRecord): CourierSale {
+	return {
+		id: record.id,
+		courierProductBalanceId: record.courierProductBalanceId,
+		courierUserId: record.courierUserId,
+		productBatchId: record.productBatchId,
+		clientId: record.clientId,
+		quantity: record.quantity,
+		unitPriceCents: record.unitPriceCents,
+		totalCents: record.totalCents,
+		paymentMethod: record.paymentMethod === "cashless" ? "cashless" : "cash",
 		comment: record.comment,
 		operationId: record.operationId,
 		actorUserId: record.actorUserId,
@@ -157,4 +231,8 @@ export function summarizeCourierProductBalances(items: CourierProductBalanceItem
 
 function loginForUser(user: UserRecord): string {
 	return user.username ?? user.displayUsername ?? user.email ?? user.id;
+}
+
+function displayNameForUser(user: UserRecord, fallback: string): string {
+	return user.name ?? user.displayUsername ?? fallback;
 }
