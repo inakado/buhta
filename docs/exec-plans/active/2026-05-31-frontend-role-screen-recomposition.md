@@ -460,6 +460,23 @@ Backend, Prisma и shared contracts не должны изменяться в э
 7. Full verification.
    - full relevant commands from `Verification commands`.
 
+## Checkpoint Results
+
+### 2026-06-01 — Checkpoint 1: `RoleHomeRouter` + neutral primitives baseline
+
+Фактический результат:
+
+- `RoleHomeRouter` вынесен из `AppRoot` в отдельный app-shell boundary.
+- `AppRoot` остался владельцем session flow, query client, active tab, bottom navigation и global success notice.
+- `onTabChange` передан в `RoleHomeRouter` как явный контракт для следующих role home passes.
+- Neutral `ui/*` primitives не созданы в этом checkpoint: router-only pass не дал реального повторного использования, а план требует extract-as-needed.
+
+Выполненные проверки:
+
+- `pnpm --filter @buhta/web lint` — ok.
+- `pnpm --filter @buhta/web typecheck` — ok.
+- `pnpm --filter @buhta/web test -- --runInBand apps/web/app/page.test.tsx` — ok, 20 tests passed.
+
 ## Тестовый план
 
 ### Component tests
