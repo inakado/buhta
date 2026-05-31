@@ -35,6 +35,7 @@ const commercialActorResponse = {
 		permissions: [
 			"distributor.stock.read",
 			"distributor.cash.read",
+			"courier.stock.read",
 			"distributor.sale.create",
 			"client.read",
 			"client.manage",
@@ -49,7 +50,18 @@ const directorActorResponse = {
 		login: "director",
 		displayName: "Director",
 		role: "director",
-		permissions: ["distributor.stock.read", "distributor.cash.read", "client.read"],
+		permissions: ["distributor.stock.read", "distributor.cash.read", "courier.stock.read", "client.read"],
+	},
+};
+
+const courierActorResponse = {
+	authenticated: true,
+	actor: {
+		userId: "seed-courier",
+		login: "courier",
+		displayName: "Courier",
+		role: "courier",
+		permissions: ["distributor.stock.read", "courier.stock.read", "courier.stock.load", "client.read", "client.manage"],
 	},
 };
 
@@ -91,6 +103,49 @@ const distributorCashBalancesResponse = {
 };
 
 const distributorSaleOptionsResponse = {
+	items: [{
+		distributorProductBalanceId: "distributor-balance1",
+		distributorId: "dist1",
+		distributorName: "Распределитель Центральный",
+		productBatchId: "batch1",
+		productName: "Икра горбуши",
+		unitPriceCents: 125000,
+		availableQuantity: 2,
+		stockValueCents: 250000,
+		updatedAt: new Date(0).toISOString(),
+	}],
+};
+
+const courierProductBalancesResponse = {
+	summary: {
+		courierCount: 1,
+		stockItemCount: 1,
+		totalUnits: 2,
+		totalStockValueCents: 250000,
+	},
+	courierSummaries: [{
+		courierUserId: "seed-courier",
+		courierLogin: "courier",
+		courierDisplayName: "Courier",
+		stockItemCount: 1,
+		totalUnits: 2,
+		totalStockValueCents: 250000,
+	}],
+	items: [{
+		id: "courier-balance1",
+		courierUserId: "seed-courier",
+		courierLogin: "courier",
+		courierDisplayName: "Courier",
+		productBatchId: "batch1",
+		productName: "Икра горбуши",
+		unitPriceCents: 125000,
+		quantity: 2,
+		stockValueCents: 250000,
+		updatedAt: new Date(0).toISOString(),
+	}],
+};
+
+const courierLoadOptionsResponse = {
 	items: [{
 		distributorProductBalanceId: "distributor-balance1",
 		distributorId: "dist1",
@@ -875,6 +930,149 @@ describe("HomePage", () => {
 		expect(screen.getByText("1250.00 ₽")).toBeTruthy();
 		expect(screen.getByText("Икра горбуши")).toBeTruthy();
 		expect(screen.getByText("Распределитель Центральный")).toBeTruthy();
+	});
+
+	it("lets courier load product to own balance", async () => {
+		const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+			const url = String(input);
+			const method = init?.method ?? "GET";
+
+			if (url.endsWith("/auth/me")) {
+				return jsonResponse(courierActorResponse);
+			}
+
+			if (url.endsWith("/courier/product-balances")) {
+				return jsonResponse(courierProductBalancesResponse);
+			}
+
+			if (url.endsWith("/courier/load-options")) {
+				return jsonResponse(courierLoadOptionsResponse);
+			}
+
+			if (url.endsWith("/courier/loads") && method === "POST") {
+				return jsonResponse({
+					load: {
+						id: "load1",
+						courierUserId: "seed-courier",
+						distributorProductBalanceId: "distributor-balance1",
+						distributorId: "dist1",
+						productBatchId: "batch1",
+						quantity: 1,
+						comment: "На доставку",
+						operationId: "op1",
+						actorUserId: "seed-courier",
+						createdAt: new Date(0).toISOString(),
+					},
+					distributorProductBalance: {
+						...distributorInventoryResponse.items[0],
+						quantity: 1,
+						stockValueCents: 125000,
+					},
+					courierProductBalance: {
+						...courierProductBalancesResponse.items[0],
+						quantity: 3,
+						stockValueCents: 375000,
+					},
+				});
+			}
+
+			return jsonResponse({ error: { message: "Unexpected request" } }, 500);
+		});
+
+		vi.stubGlobal("fetch", fetchMock);
+
+		render(<HomePage />);
+
+		expect(await screen.findByText("Баланс курьера")).toBeTruthy();
+		expect(await screen.findByText("Икра горбуши")).toBeTruthy();
+		fireEvent.click(await screen.findByRole("button", { name: "Загрузка" }));
+		expect(await screen.findByRole("heading", { name: "Детали загрузки" })).toBeTruthy();
+		fireEvent.change(await screen.findByLabelText("Продукция"), { target: { value: "distributor-balance1" } });
+		fireEvent.change(screen.getByLabelText("Количество, шт"), { target: { value: "1" } });
+		fireEvent.change(screen.getByLabelText("Комментарий"), { target: { value: "На доставку" } });
+		fireEvent.click(screen.getByRole("button", { name: "Записать загрузку" }));
+
+		await waitFor(() => {
+			expect(fetchMock).toHaveBeenCalledWith(
+				expect.stringContaining("/courier/loads"),
+				expect.objectContaining({
+					method: "POST",
+					body: JSON.stringify({
+						distributorProductBalanceId: "distributor-balance1",
+						quantity: 1,
+						comment: "На доставку",
+					}),
+				}),
+			);
+		});
+		expect(await screen.findByText("Загрузка записана")).toBeTruthy();
+	});
+
+	it("shows courier balances read-only to commercial manager", async () => {
+		const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+			const url = String(input);
+
+			if (url.endsWith("/auth/me")) {
+				return jsonResponse(commercialActorResponse);
+			}
+
+			if (url.endsWith("/distributor/inventory")) {
+				return jsonResponse(distributorInventoryResponse);
+			}
+
+			if (url.endsWith("/distributor/cash-balances")) {
+				return jsonResponse(distributorCashBalancesResponse);
+			}
+
+			if (url.endsWith("/courier/product-balances")) {
+				return jsonResponse(courierProductBalancesResponse);
+			}
+
+			return jsonResponse({ error: { message: "Unexpected request" } }, 500);
+		});
+
+		vi.stubGlobal("fetch", fetchMock);
+
+		render(<HomePage />);
+
+		fireEvent.click(await screen.findByRole("button", { name: "Курьеры" }));
+		expect(await screen.findByText("Балансы курьеров")).toBeTruthy();
+		expect(await screen.findByText("Courier · @courier")).toBeTruthy();
+		expect(screen.getByText("Икра горбуши")).toBeTruthy();
+		expect(screen.queryByRole("button", { name: "Записать загрузку" })).toBeNull();
+	});
+
+	it("shows courier balances read-only to director", async () => {
+		const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+			const url = String(input);
+
+			if (url.endsWith("/auth/me")) {
+				return jsonResponse(directorActorResponse);
+			}
+
+			if (url.endsWith("/distributor/inventory")) {
+				return jsonResponse(distributorInventoryResponse);
+			}
+
+			if (url.endsWith("/distributor/cash-balances")) {
+				return jsonResponse(distributorCashBalancesResponse);
+			}
+
+			if (url.endsWith("/courier/product-balances")) {
+				return jsonResponse(courierProductBalancesResponse);
+			}
+
+			return jsonResponse({ error: { message: "Unexpected request" } }, 500);
+		});
+
+		vi.stubGlobal("fetch", fetchMock);
+
+		render(<HomePage />);
+
+		fireEvent.click(await screen.findByRole("button", { name: "Курьеры" }));
+		expect(await screen.findByText("Балансы курьеров")).toBeTruthy();
+		expect(await screen.findByText("Courier · @courier")).toBeTruthy();
+		expect(screen.queryByRole("button", { name: "Записать загрузку" })).toBeNull();
 	});
 
 	it("lets a commercial manager create a client inside distributor sale and records sale", async () => {

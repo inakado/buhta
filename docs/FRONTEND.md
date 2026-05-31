@@ -370,6 +370,10 @@ Read-only экран остатков распределителя живет в
 
 Экран продажи с распределителя живет в `features/sales/DistributorSaleHome.tsx` и подключается во вкладке `Продажа` для ролей с `distributor.sale.create`, кроме `admin`, для которого UI продажи пока не добавлен. Форма выбирает клиента из `GET /clients?search=...`, может раскрыть компактную мини-форму `Новый клиент` и создать клиента через `POST /clients`, затем выбирает товарную строку из `GET /distributor/sale-options`. Продажа отправляется в `POST /distributor/sales` по `distributorProductBalanceId`, количеству и способу оплаты. После успеха active tab становится `home`, форма очищается, обновляются inventory/sale-options/cash queries и показывается success notice `Продажа записана`. Ошибки остаются inline, offline блокирует submit.
 
+Экран курьерского баланса живет в `features/courier/CourierBalanceHome.tsx` и читает `GET /courier/product-balances`. У курьера home показывает только собственный товарный баланс. У коммерческого руководителя и Директора вкладка `Курьеры` показывает read-only балансы всех курьеров с summary по каждому курьеру. `admin` имеет backend read access, но отдельный admin UI для этого этапа не добавлен.
+
+Экран загрузки курьера живет в `features/courier/CourierLoadHome.tsx` и подключается во вкладке `Загрузка` только для роли `courier`. Форма выбирает строку товара из `GET /courier/load-options`, показывает доступное количество, цену партии и сумму загрузки, затем отправляет `POST /courier/loads` без `courierUserId`. После успеха active tab становится `home`, обновляются courier balances, load options и distributor inventory, а пользователь видит success notice `Загрузка записана`. Ошибки остаются inline, offline и pending-состояние блокируют submit.
+
 ## 11. Что пока не фиксируем
 
 - финальную навигацию;

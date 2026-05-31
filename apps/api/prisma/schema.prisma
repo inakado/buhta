@@ -8,25 +8,27 @@ datasource db {
 }
 
 model User {
-  id                 String              @id
+  id                 String                  @id
   name               String
-  email              String              @unique
-  emailVerified      Boolean             @default(false)
+  email              String                  @unique
+  emailVerified      Boolean                 @default(false)
   image              String?
-  username           String?             @unique
+  username           String?                 @unique
   displayUsername    String?
-  role               String              @default("courier")
-  banned             Boolean?            @default(false)
+  role               String                  @default("courier")
+  banned             Boolean?                @default(false)
   banReason          String?
   banExpires         DateTime?
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
+  createdAt          DateTime                @default(now())
+  updatedAt          DateTime                @updatedAt
   sessions           Session[]
   accounts           Account[]
-  operations         Operation[]         @relation("OperationActor")
-  auditLogs          AuditLog[]          @relation("AuditActor")
-  idempotencyRecords IdempotencyRecord[] @relation("IdempotencyActor")
-  createdClients     Client[]            @relation("ClientCreatedBy")
+  operations         Operation[]             @relation("OperationActor")
+  auditLogs          AuditLog[]              @relation("AuditActor")
+  idempotencyRecords IdempotencyRecord[]     @relation("IdempotencyActor")
+  createdClients     Client[]                @relation("ClientCreatedBy")
+  courierBalances    CourierProductBalance[] @relation("CourierProductBalanceCourier")
+  courierLoads       CourierLoad[]           @relation("CourierLoadCourier")
 
   @@map("user")
 }
@@ -94,6 +96,7 @@ model Operation {
   productBatches     ProductBatch[]
   productTransfers   ProductTransfer[]
   distributorSales   DistributorSale[]
+  courierLoads       CourierLoad[]
 
   @@unique([actorUserId, idempotencyKey])
   @@index([actorUserId])
@@ -139,12 +142,12 @@ model IdempotencyRecord {
 }
 
 model RawMaterialType {
-  id               String            @id @default(cuid())
-  name             String            @unique
+  id               String              @id @default(cuid())
+  name             String              @unique
   unit             String
-  active           Boolean           @default(true)
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
+  active           Boolean             @default(true)
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
   productTemplates ProductTemplate[]
   balance          RawMaterialBalance?
   intakes          RawMaterialIntake[]
@@ -176,20 +179,21 @@ model Distributor {
   productTransfers ProductTransfer[]
   cashBalance      DistributorCashBalance?
   sales            DistributorSale[]
+  courierLoads     CourierLoad[]
 
   @@map("distributor")
 }
 
 model Client {
-  id              String   @id @default(cuid())
-  name            String
-  phone           String
-  phoneNormalized String   @unique
-  description     String?
-  createdByUserId String
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  createdBy       User     @relation("ClientCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  id               String            @id @default(cuid())
+  name             String
+  phone            String
+  phoneNormalized  String            @unique
+  description      String?
+  createdByUserId  String
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  createdBy        User              @relation("ClientCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
   distributorSales DistributorSale[]
 
   @@index([name])
@@ -268,7 +272,7 @@ model PackagingIntake {
 }
 
 model ProductBatch {
-  id                          String          @id @default(cuid())
+  id                          String                      @id @default(cuid())
   productTemplateId           String
   productName                 String
   rawMaterialTypeId           String
@@ -279,18 +283,20 @@ model ProductBatch {
   packagingUnit               String
   priceCents                  Int
   quantity                    Int
-  consumedRawMaterialQuantity Decimal         @db.Decimal(12, 3)
-  consumedPackagingQuantity   Decimal         @db.Decimal(12, 3)
-  status                      String          @default("in_workshop")
-  operationId                 String          @unique
+  consumedRawMaterialQuantity Decimal                     @db.Decimal(12, 3)
+  consumedPackagingQuantity   Decimal                     @db.Decimal(12, 3)
+  status                      String                      @default("in_workshop")
+  operationId                 String                      @unique
   actorUserId                 String
-  createdAt                   DateTime        @default(now())
-  productTemplate             ProductTemplate @relation(fields: [productTemplateId], references: [id], onDelete: Restrict)
-  operation                   Operation       @relation(fields: [operationId], references: [id], onDelete: Restrict)
+  createdAt                   DateTime                    @default(now())
+  productTemplate             ProductTemplate             @relation(fields: [productTemplateId], references: [id], onDelete: Restrict)
+  operation                   Operation                   @relation(fields: [operationId], references: [id], onDelete: Restrict)
   workshopBalance             WorkshopProductBalance?
   distributorBalances         DistributorProductBalance[]
   transfers                   ProductTransfer[]
   distributorSales            DistributorSale[]
+  courierBalances             CourierProductBalance[]
+  courierLoads                CourierLoad[]
 
   @@index([productTemplateId])
   @@index([actorUserId])
@@ -309,14 +315,15 @@ model WorkshopProductBalance {
 }
 
 model DistributorProductBalance {
-  id             String       @id @default(cuid())
+  id             String            @id @default(cuid())
   distributorId  String
   productBatchId String
   quantity       Int
-  updatedAt      DateTime     @updatedAt
-  distributor    Distributor  @relation(fields: [distributorId], references: [id], onDelete: Restrict)
-  productBatch   ProductBatch @relation(fields: [productBatchId], references: [id], onDelete: Restrict)
+  updatedAt      DateTime          @updatedAt
+  distributor    Distributor       @relation(fields: [distributorId], references: [id], onDelete: Restrict)
+  productBatch   ProductBatch      @relation(fields: [productBatchId], references: [id], onDelete: Restrict)
   sales          DistributorSale[]
+  courierLoads   CourierLoad[]
 
   @@unique([distributorId, productBatchId])
   @@index([distributorId])
@@ -379,4 +386,44 @@ model DistributorSale {
   @@index([actorUserId])
   @@index([createdAt])
   @@map("distributor_sale")
+}
+
+model CourierProductBalance {
+  id             String       @id @default(cuid())
+  courierUserId  String
+  productBatchId String
+  quantity       Int
+  updatedAt      DateTime     @updatedAt
+  courier        User         @relation("CourierProductBalanceCourier", fields: [courierUserId], references: [id], onDelete: Restrict)
+  productBatch   ProductBatch @relation(fields: [productBatchId], references: [id], onDelete: Restrict)
+
+  @@unique([courierUserId, productBatchId])
+  @@index([courierUserId])
+  @@index([productBatchId])
+  @@map("courier_product_balance")
+}
+
+model CourierLoad {
+  id                          String                    @id @default(cuid())
+  courierUserId               String
+  distributorProductBalanceId String
+  distributorId               String
+  productBatchId              String
+  quantity                    Int
+  comment                     String?
+  operationId                 String                    @unique
+  actorUserId                 String
+  createdAt                   DateTime                  @default(now())
+  courier                     User                      @relation("CourierLoadCourier", fields: [courierUserId], references: [id], onDelete: Restrict)
+  distributorProductBalance   DistributorProductBalance @relation(fields: [distributorProductBalanceId], references: [id], onDelete: Restrict)
+  distributor                 Distributor               @relation(fields: [distributorId], references: [id], onDelete: Restrict)
+  productBatch                ProductBatch              @relation(fields: [productBatchId], references: [id], onDelete: Restrict)
+  operation                   Operation                 @relation(fields: [operationId], references: [id], onDelete: Restrict)
+
+  @@index([courierUserId])
+  @@index([distributorId])
+  @@index([productBatchId])
+  @@index([actorUserId])
+  @@index([createdAt])
+  @@map("courier_load")
 }

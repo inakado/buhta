@@ -7,6 +7,7 @@ import { auth } from "./auth/auth";
 import { CatalogModule } from "./catalog/catalog.module";
 import { ClientsModule } from "./clients/clients.module";
 import { AppErrorFilter } from "./common/errors/app-error.filter";
+import { CourierModule } from "./courier/courier.module";
 import { DistributorModule } from "./distributor/distributor.module";
 import { HealthController } from "./health/health.controller";
 import { OperationsModule } from "./operations/operations.module";
@@ -30,6 +31,7 @@ import { UsersModule } from "./users/users.module";
 		ClientsModule,
 		ProductionModule,
 		DistributorModule,
+		CourierModule,
 	],
 	controllers: [HealthController, AuthMeController, AuthSpikeController],
 	providers: [

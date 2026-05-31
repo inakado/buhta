@@ -151,6 +151,52 @@ describe("PolicyRegistry", () => {
 		expect(registry.buildActor({ username: "no-id", role: "director" })).toBeNull();
 		expect(registry.buildActor({ id: "u1", username: "x", role: "owner" })).toBeNull();
 	});
+
+	it("keeps courier stock read and load permissions separated", () => {
+		for (const role of ["admin", "director", "commercial_manager", "courier"] as const) {
+			const actor = registry.buildActor({
+				id: `courier-read-${role}`,
+				username: role,
+				name: role,
+				role,
+			});
+
+			expect(actor?.permissions).toContain("courier.stock.read");
+		}
+
+		for (const role of ["admin", "courier"] as const) {
+			const actor = registry.buildActor({
+				id: `courier-load-${role}`,
+				username: role,
+				name: role,
+				role,
+			});
+
+			expect(actor?.permissions).toContain("courier.stock.load");
+		}
+
+		for (const role of ["director", "commercial_manager", "production_manager", "distributor_worker"] as const) {
+			const actor = registry.buildActor({
+				id: `no-courier-load-${role}`,
+				username: role,
+				name: role,
+				role,
+			});
+
+			expect(actor?.permissions).not.toContain("courier.stock.load");
+		}
+
+		for (const role of ["production_manager", "distributor_worker"] as const) {
+			const actor = registry.buildActor({
+				id: `no-courier-read-${role}`,
+				username: role,
+				name: role,
+				role,
+			});
+
+			expect(actor?.permissions).not.toContain("courier.stock.read");
+		}
+	});
 });
 
 describe("PolicyGuard", () => {

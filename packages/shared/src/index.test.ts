@@ -14,7 +14,10 @@ import {
 	CreateProductBatchRequestSchema,
 	CreateProductTransferRequestSchema,
 	CreateDistributorSaleRequestSchema,
+	CreateCourierLoadRequestSchema,
 	CreateUserRequestSchema,
+	CourierLoadOptionsResponseSchema,
+	CourierProductBalancesResponseSchema,
 	CreateProductTemplateRequestSchema,
 	CreateRawMaterialTypeRequestSchema,
 	CreateRawMaterialIntakeRequestSchema,
@@ -46,13 +49,20 @@ describe("shared contracts", () => {
 		expect(permissionsForRole("director")).toContain("catalog.manage");
 		expect(permissionsForRole("director")).toContain("client.read");
 		expect(permissionsForRole("director")).not.toContain("client.manage");
+		expect(permissionsForRole("director")).toContain("courier.stock.read");
+		expect(permissionsForRole("director")).not.toContain("courier.stock.load");
 		expect(permissionsForRole("director")).toContain("cash.withdraw");
 		expect(permissionsForRole("commercial_manager")).toContain("client.read");
 		expect(permissionsForRole("commercial_manager")).toContain("client.manage");
+		expect(permissionsForRole("commercial_manager")).toContain("courier.stock.read");
+		expect(permissionsForRole("commercial_manager")).not.toContain("courier.stock.load");
 		expect(permissionsForRole("distributor_worker")).toContain("client.read");
 		expect(permissionsForRole("distributor_worker")).toContain("client.manage");
+		expect(permissionsForRole("distributor_worker")).not.toContain("courier.stock.read");
 		expect(permissionsForRole("courier")).toContain("client.read");
 		expect(permissionsForRole("courier")).toContain("client.manage");
+		expect(permissionsForRole("courier")).toContain("courier.stock.read");
+		expect(permissionsForRole("courier")).toContain("courier.stock.load");
 		expect(permissionsForRole("courier")).not.toContain("cash.withdraw");
 		expect(permissionsForRole("production_manager")).not.toContain("client.read");
 		expect(permissionsForRole("production_manager")).not.toContain("client.manage");
@@ -350,6 +360,89 @@ describe("shared contracts", () => {
 		expect(
 			DistributorCashBalancesResponseSchema.safeParse({
 				totalAmountCents: 10.5,
+				items: [],
+			}).success,
+		).toBe(false);
+	});
+
+	it("validates courier load and balance contracts", () => {
+		expect(
+			CreateCourierLoadRequestSchema.parse({
+				distributorProductBalanceId: "balance-1",
+				quantity: 2,
+				comment: " Загрузка курьера ",
+			}),
+		).toEqual({
+			distributorProductBalanceId: "balance-1",
+			quantity: 2,
+			comment: "Загрузка курьера",
+		});
+		expect(
+			CreateCourierLoadRequestSchema.safeParse({
+				distributorProductBalanceId: "balance-1",
+				quantity: 0,
+			}).success,
+		).toBe(false);
+		expect(
+			CreateCourierLoadRequestSchema.safeParse({
+				distributorProductBalanceId: "balance-1",
+				quantity: 1.5,
+			}).success,
+		).toBe(false);
+		expect(
+			CourierLoadOptionsResponseSchema.safeParse({
+				items: [{
+					distributorProductBalanceId: "balance-1",
+					distributorId: "dist-1",
+					distributorName: "Распределитель Центральный",
+					productBatchId: "batch-1",
+					productName: "Икра горбуши",
+					unitPriceCents: 125000,
+					availableQuantity: 4,
+					stockValueCents: 500000,
+					updatedAt: new Date(0).toISOString(),
+				}],
+			}).success,
+		).toBe(true);
+		expect(
+			CourierProductBalancesResponseSchema.safeParse({
+				summary: {
+					courierCount: 1,
+					stockItemCount: 1,
+					totalUnits: 4,
+					totalStockValueCents: 500000,
+				},
+				courierSummaries: [{
+					courierUserId: "courier-1",
+					courierLogin: "courier",
+					courierDisplayName: "Курьер",
+					stockItemCount: 1,
+					totalUnits: 4,
+					totalStockValueCents: 500000,
+				}],
+				items: [{
+					id: "courier-balance-1",
+					courierUserId: "courier-1",
+					courierLogin: "courier",
+					courierDisplayName: "Курьер",
+					productBatchId: "batch-1",
+					productName: "Икра горбуши",
+					unitPriceCents: 125000,
+					quantity: 4,
+					stockValueCents: 500000,
+					updatedAt: new Date(0).toISOString(),
+				}],
+			}).success,
+		).toBe(true);
+		expect(
+			CourierProductBalancesResponseSchema.safeParse({
+				summary: {
+					courierCount: 1,
+					stockItemCount: 1,
+					totalUnits: -1,
+					totalStockValueCents: 500000,
+				},
+				courierSummaries: [],
 				items: [],
 			}).success,
 		).toBe(false);

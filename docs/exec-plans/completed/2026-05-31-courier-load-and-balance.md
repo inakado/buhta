@@ -1,6 +1,6 @@
 # Courier Load And Courier Balance Plan
 
-Статус: `Active`
+Статус: `Completed`
 Дата: 2026-05-31
 Roadmap stage: `6. Inventory, Courier, Sales, Cash` -> `Courier Load And Courier Balance`
 
@@ -18,6 +18,28 @@ Roadmap stage: `6. Inventory, Courier, Sales, Cash` -> `Courier Load And Courier
 Коммерческий руководитель и Директор должны уметь видеть товарные балансы курьеров для контроля, но не оформлять загрузку за курьера. Администратор должен иметь backend-доступ к courier endpoints как супер-пользователь, но отдельный admin UI в этом этапе не делаем.
 
 Backend должен выполнять загрузку транзакционно: validate -> policy -> conditional decrement distributor stock -> increment courier stock -> operation/audit -> response.
+
+## Фактический Результат
+
+Реализовано:
+
+- shared contracts для вариантов загрузки, запроса загрузки, ответа загрузки и read model курьерских товарных балансов;
+- permission `courier.stock.read` отдельно от `courier.stock.load`;
+- Prisma-модели `CourierProductBalance` и `CourierLoad` с DB constraints на неотрицательный остаток и положительное количество загрузки;
+- operation type `courier.stock.load.create`;
+- backend module `courier` с routes `GET /courier/load-options`, `GET /courier/product-balances`, `POST /courier/loads`;
+- транзакционная загрузка: conditional decrement остатка распределителя, upsert/increment баланса курьера, `Operation`, `CourierLoad`, `AuditLog`;
+- service-level scope: курьер читает только собственный товарный баланс и не может выбрать `courierUserId`, коммерческий руководитель и Директор читают балансы всех курьеров без права загрузки, администратор имеет backend-доступ;
+- mobile UI курьера для собственного баланса и загрузки товара;
+- read-only UI балансов курьеров для коммерческого руководителя и Директора;
+- профильные SoR-документы обновлены по фактической реализации.
+
+Не реализовано намеренно:
+
+- продажа курьером;
+- наличный баланс курьера;
+- сгрузка товара и наличных курьером;
+- отдельный admin UI для курьерской загрузки.
 
 ## Текущий Контекст
 
@@ -591,6 +613,28 @@ Full verification перед завершением этапа:
 
 Примечание: real Postgres integration tests, Prisma migrate/deploy, `pnpm build` и `pnpm audit` могут требовать запуск вне sandbox по уже зафиксированным ограничениям `docs/DEVELOPMENT.md`.
 
+Фактически выполненные проверки:
+
+- `corepack pnpm --filter @buhta/api exec prisma format`;
+- `corepack pnpm --filter @buhta/api prisma:generate`;
+- `corepack pnpm --filter @buhta/api prisma:deploy` вне sandbox, потому что Prisma schema engine требовал доступ к локальному Postgres;
+- `corepack pnpm --filter @buhta/shared test`;
+- `corepack pnpm --filter @buhta/api typecheck`;
+- `corepack pnpm --filter @buhta/api exec vitest run test/courier-controller.test.ts test/courier-db.integration.test.ts test/policy.test.ts` вне sandbox для real Postgres;
+- `corepack pnpm --filter @buhta/web typecheck`;
+- `corepack pnpm --filter @buhta/web test -- app/page.test.tsx`;
+- `corepack pnpm docs:check`;
+- `corepack pnpm lint`;
+- `corepack pnpm lint:boundaries`;
+- `corepack pnpm typecheck`;
+- `corepack pnpm test` вне sandbox, потому что sandbox возвращал Prisma `EPERM` на real Postgres integration tests;
+- `corepack pnpm build` вне sandbox, потому что sandbox возвращал Turbopack `EPERM` при сборке web;
+- `corepack pnpm audit`;
+- `corepack pnpm smoke` вне sandbox, потому что sandbox блокировал connect к localhost;
+- browser sanity через локальный web: admin login, отсутствие admin UI вкладки курьеров, создание courier-пользователя, courier login, экран собственного баланса, экран загрузки, успешная загрузка товара и обновление баланса.
+
+Commercial/director read-only UI дополнительно покрыт `apps/web/app/page.test.tsx`.
+
 ## Затронутые Документы
 
 Обновить во время или после реализации:
@@ -601,7 +645,7 @@ Full verification перед завершением этапа:
 - `docs/HANDLER-MAP.md` — добавить фактические courier endpoints после реализации;
 - `docs/SECURITY.md` — добавить `courier.stock.read` и разделение read/load permissions;
 - `docs/exec-plans/active/2026-05-27-v1-roadmap.md` — обновить прогресс после завершения этапа;
-- `docs/DOCS-INDEX.md` — добавить plan и после завершения перенести ссылку в completed.
+- `docs/DOCS-INDEX.md` — ссылка на план обновлена на completed.
 
 ## Затронутые Модули И Файлы
 
@@ -667,7 +711,7 @@ Rollback:
 - docs обновлены по фактической реализации;
 - план перемещен в `docs/exec-plans/completed/` с фактически выполненными проверками.
 
-## Открытые Вопросы
+## Закрытые Вопросы
 
-1. Нужен ли коммерческому руководителю и Директору отдельный summary по каждому курьеру уже в этом этапе, или достаточно общего списка строк баланса с группировкой по имени курьера?
-2. Нужно ли seed-ить отдельного demo courier user для ручной проверки courier UI, или достаточно создавать пользователя через текущую админку перед browser sanity?
+1. Для коммерческого руководителя и Директора добавлен общий read-only экран балансов курьеров с summary по каждому курьеру и списком строк.
+2. Отдельный demo seed для courier UI в этом этапе не добавлен; flow покрыт компонентными тестами и backend integration tests.

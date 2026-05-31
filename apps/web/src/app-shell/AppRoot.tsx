@@ -15,6 +15,8 @@ import type { Role } from "@buhta/shared";
 import { LoginForm } from "../auth/LoginForm";
 import { CatalogHome } from "../features/catalog/CatalogHome";
 import { ClientsHome } from "../features/clients/ClientsHome";
+import { CourierBalanceHome } from "../features/courier/CourierBalanceHome";
+import { CourierLoadHome } from "../features/courier/CourierLoadHome";
 import { DistributorInventoryHome } from "../features/distributor/DistributorInventoryHome";
 import { ProductionHome } from "../features/production/ProductionHome";
 import { DistributorSaleHome } from "../features/sales/DistributorSaleHome";
@@ -186,6 +188,14 @@ function RoleHome({
 		return <ClientsHome actor={actor} online={online} />;
 	}
 
+	if (
+		activeTab === "couriers"
+		&& actor.permissions.includes("courier.stock.read")
+		&& (actor.role === "director" || actor.role === "commercial_manager")
+	) {
+		return <CourierBalanceHome mode="all" />;
+	}
+
 	if (actor.role === "production_manager") {
 		if (activeTab === "distributor") {
 			return <DistributorInventoryHome showCashBalance={actor.permissions.includes("distributor.cash.read")} />;
@@ -209,6 +219,14 @@ function RoleHome({
 	}
 
 	if (activeTab !== "home") {
+		if (activeTab === "load" && actor.permissions.includes("courier.stock.load")) {
+			return (
+				<CourierLoadHome
+					onLoadSuccess={() => onActionSuccess("Загрузка записана")}
+					online={online}
+				/>
+			);
+		}
 		if (activeTab === "sale" && actor.permissions.includes("distributor.sale.create")) {
 			return (
 				<DistributorSaleHome
@@ -222,6 +240,10 @@ function RoleHome({
 	}
 
 	if (actor.permissions.includes("distributor.stock.read")) {
+		if (actor.role === "courier") {
+			return <CourierBalanceHome mode="own" />;
+		}
+
 		return <DistributorInventoryHome showCashBalance={actor.permissions.includes("distributor.cash.read")} />;
 	}
 
@@ -321,6 +343,16 @@ function BottomNav({
 	const clientsItem = actor.permissions.includes("client.read")
 		? [{ id: "clients", label: "Клиенты", icon: Users }]
 		: [];
+	const courierBalancesItem = actor.permissions.includes("courier.stock.read")
+		&& (actor.role === "director" || actor.role === "commercial_manager")
+		? [{ id: "couriers", label: "Курьеры", icon: Truck }]
+		: [];
+	const courierItems = [
+		{ id: "home", label: "Баланс", icon: PackageCheck },
+		{ id: "load", label: "Загрузка", icon: Truck },
+		{ id: "sale", label: "Продажа", icon: ReceiptText },
+		{ id: "settings", label: "Профиль", icon: Settings },
+	];
 	const productionItems = [
 		{ id: "home", label: "Главная", icon: PackageCheck },
 		{ id: "distributor", label: "Распределитель", icon: Box },
@@ -333,15 +365,19 @@ function BottomNav({
 			{ id: "people", label: "Люди", icon: Users },
 			...catalogItem,
 			...clientsItem,
+			...courierBalancesItem,
 			{ id: "audit", label: "Аудит", icon: Shield },
 			{ id: "settings", label: "Настройки", icon: Settings },
 		]
 		: actor.role === "production_manager"
 			? productionItems
-		: [
+			: actor.role === "courier"
+				? courierItems
+				: [
 			{ id: "home", label: "Главная", icon: PackageCheck },
 			...catalogItem,
 			...clientsItem,
+			...courierBalancesItem,
 			{ id: "sale", label: "Продажа", icon: ReceiptText },
 			{ id: "settings", label: "Профиль", icon: Settings },
 		];

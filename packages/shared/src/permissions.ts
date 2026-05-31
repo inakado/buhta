@@ -9,6 +9,7 @@ export const PERMISSIONS = [
 	"client.read",
 	"client.manage",
 	"distributor.sale.create",
+	"courier.stock.read",
 	"courier.stock.load",
 	"courier.sale.create",
 	"courier.unload.create",
@@ -29,6 +30,7 @@ export const ROLE_PERMISSIONS = {
 		"catalog.manage",
 		"distributor.stock.read",
 		"distributor.cash.read",
+		"courier.stock.read",
 		"client.read",
 		"cash.withdraw",
 		"discount.assign",
@@ -45,6 +47,7 @@ export const ROLE_PERMISSIONS = {
 	commercial_manager: [
 		"distributor.stock.read",
 		"distributor.cash.read",
+		"courier.stock.read",
 		"client.read",
 		"client.manage",
 		"distributor.sale.create",
@@ -62,6 +65,7 @@ export const ROLE_PERMISSIONS = {
 	],
 	courier: [
 		"distributor.stock.read",
+		"courier.stock.read",
 		"client.read",
 		"client.manage",
 		"courier.stock.load",
