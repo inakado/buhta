@@ -22,6 +22,7 @@
 - `docs/exec-plans/deferred-roadmap.md` — отложенные идеи, которые не являются активной задачей.
 - `docs/exec-plans/tech-debt-tracker.md` — признанный техдолг после появления кода или harness.
 - `docs/exec-plans/active/2026-05-27-v1-roadmap.md` — долгоживущая roadmap/meta-plan полной v1.
+- `docs/exec-plans/active/2026-05-31-courier-sales-and-cash-balance.md` — активный план этапа Courier Sales And Courier Cash Balance: продажа курьером и наличный баланс курьера.
 - `docs/exec-plans/completed/2026-05-31-courier-load-and-balance.md` — завершенный этап Courier Load And Courier Balance: загрузка товара курьером и товарный баланс курьера.
 - `docs/exec-plans/completed/2026-05-30-distributor-sales.md` — завершенный этап Sales From Distributor: продажа с распределителя, списание товарного остатка и наличный баланс.
 - `docs/exec-plans/completed/2026-05-30-clients-foundation.md` — завершенный этап Clients Foundation: база клиентов, права чтения/редактирования, API и mobile UI перед продажами.
