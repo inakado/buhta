@@ -9,14 +9,15 @@ import {
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
-import { Bell, Box, ClipboardList, LogOut, PackageCheck, ReceiptText, Settings, Shield, Truck, Users } from "lucide-react";
-import { useState } from "react";
+import { Bell, Box, Check, ClipboardList, LogOut, PackageCheck, ReceiptText, Settings, Shield, Truck, Users } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import type { Role } from "@buhta/shared";
 import { LoginForm } from "../auth/LoginForm";
 import { CatalogHome } from "../features/catalog/CatalogHome";
 import { ClientsHome } from "../features/clients/ClientsHome";
 import { DistributorInventoryHome } from "../features/distributor/DistributorInventoryHome";
 import { ProductionHome } from "../features/production/ProductionHome";
+import { DistributorSaleHome } from "../features/sales/DistributorSaleHome";
 import { AdminHome } from "../roles/admin/AdminHome";
 import { ROLE_LABELS } from "../lib/role-labels";
 import { getCurrentActor, isUnauthorizedError, signOut, type CurrentActor } from "../lib/api-client";
@@ -89,6 +90,8 @@ function AppShell({ actor }: { actor: CurrentActor }) {
 	const online = useOnlineStatus();
 	const queryClient = useQueryClient();
 	const [activeTab, setActiveTab] = useState(actor.role === "admin" ? "people" : "home");
+	const [successNotice, setSuccessNotice] = useState<{ id: number; message: string } | null>(null);
+	const successNoticeId = useRef(0);
 	const logout = useMutation({
 		mutationFn: signOut,
 		onSettled: async () => {
@@ -99,6 +102,26 @@ function AppShell({ actor }: { actor: CurrentActor }) {
 		completeLocalSignOut(queryClient);
 		logout.mutate();
 	}
+	function showSuccessOnHome(message: string) {
+		successNoticeId.current += 1;
+		setActiveTab("home");
+		setSuccessNotice({
+			id: successNoticeId.current,
+			message,
+		});
+	}
+
+	useEffect(() => {
+		if (!successNotice) {
+			return;
+		}
+
+		const timeoutId = window.setTimeout(() => {
+			setSuccessNotice((current) => current?.id === successNotice.id ? null : current);
+		}, 3000);
+
+		return () => window.clearTimeout(timeoutId);
+	}, [successNotice]);
 
 	return (
 		<main className="app-page">
@@ -122,7 +145,14 @@ function AppShell({ actor }: { actor: CurrentActor }) {
 					logout={handleLogout}
 					logoutPending={logout.isPending}
 					online={online}
+					onActionSuccess={showSuccessOnHome}
 				/>
+				{successNotice ? (
+					<div className="success-notice" role="status" aria-live="polite">
+						<Check aria-hidden size={17} />
+						{successNotice.message}
+					</div>
+				) : null}
 				<BottomNav activeTab={activeTab} onTabChange={setActiveTab} actor={actor} />
 			</div>
 		</main>
@@ -135,12 +165,14 @@ function RoleHome({
 	logout,
 	logoutPending,
 	online,
+	onActionSuccess,
 }: {
 	actor: CurrentActor;
 	activeTab: string;
 	logout: () => void;
 	logoutPending: boolean;
 	online: boolean;
+	onActionSuccess: (message: string) => void;
 }) {
 	if (activeTab === "settings") {
 		return <SettingsScreen actor={actor} logout={logout} logoutPending={logoutPending} />;
@@ -156,7 +188,7 @@ function RoleHome({
 
 	if (actor.role === "production_manager") {
 		if (activeTab === "distributor") {
-			return <DistributorInventoryHome />;
+			return <DistributorInventoryHome showCashBalance={actor.permissions.includes("distributor.cash.read")} />;
 		}
 		if (isProductionTab(activeTab)) {
 			return (
@@ -177,12 +209,20 @@ function RoleHome({
 	}
 
 	if (activeTab !== "home") {
+		if (activeTab === "sale" && actor.permissions.includes("distributor.sale.create")) {
+			return (
+				<DistributorSaleHome
+					onSaleSuccess={() => onActionSuccess("Продажа записана")}
+					online={online}
+				/>
+			);
+		}
 		const tabTitle = activeTab === "sale" ? "Продажа" : "Профиль";
 		return <PlaceholderScreen title={tabTitle} text="Раздел будет подключен на следующем этапе." icon={Settings} />;
 	}
 
 	if (actor.permissions.includes("distributor.stock.read")) {
-		return <DistributorInventoryHome />;
+		return <DistributorInventoryHome showCashBalance={actor.permissions.includes("distributor.cash.read")} />;
 	}
 
 	const roleConfig = roleHomeConfig[actor.role];

@@ -411,6 +411,27 @@ button:disabled {
 	gap: 8px;
 }
 
+.client-search .compact-button {
+	min-height: 46px;
+	padding: 0 16px;
+}
+
+.nested-form {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	margin-top: 10px;
+	padding-top: 10px;
+	border-top: 1px solid var(--line);
+}
+
+.inline-error {
+	display: block;
+	margin-top: 6px;
+	color: #b42318;
+	font-size: 12px;
+}
+
 .input-shell input {
 	flex: 1;
 	min-width: 0;

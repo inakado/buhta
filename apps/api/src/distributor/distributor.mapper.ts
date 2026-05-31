@@ -1,4 +1,7 @@
 import type {
+	DistributorCashBalanceItem,
+	DistributorSale,
+	DistributorSaleStockItem,
 	DistributorInventoryDistributorSummary,
 	DistributorInventoryItem,
 	DistributorInventorySummary,
@@ -21,6 +24,33 @@ type DistributorInventoryRecord = {
 	};
 };
 
+type DistributorCashBalanceRecord = {
+	amountCents: number;
+	updatedAt: Date;
+	distributor: {
+		id: string;
+		name: string;
+	};
+};
+
+type DistributorSaleOptionRecord = DistributorInventoryRecord;
+
+type DistributorSaleRecord = {
+	id: string;
+	distributorProductBalanceId: string;
+	distributorId: string;
+	productBatchId: string;
+	clientId: string;
+	quantity: number;
+	unitPriceCents: number;
+	totalCents: number;
+	paymentMethod: string;
+	comment: string | null;
+	operationId: string;
+	actorUserId: string;
+	createdAt: Date;
+};
+
 export function mapDistributorInventoryItem(record: DistributorInventoryRecord): DistributorInventoryItem {
 	const stockValueCents = record.quantity * record.productBatch.priceCents;
 
@@ -34,6 +64,61 @@ export function mapDistributorInventoryItem(record: DistributorInventoryRecord):
 		quantity: record.quantity,
 		stockValueCents,
 		updatedAt: record.updatedAt.toISOString(),
+	};
+}
+
+export function mapDistributorSaleStockItem(record: DistributorSaleOptionRecord): DistributorSaleStockItem {
+	const stockValueCents = record.quantity * record.productBatch.priceCents;
+
+	return {
+		distributorProductBalanceId: record.id,
+		distributorId: record.distributorId,
+		distributorName: record.distributor.name,
+		productBatchId: record.productBatchId,
+		productName: record.productBatch.productName,
+		unitPriceCents: record.productBatch.priceCents,
+		availableQuantity: record.quantity,
+		stockValueCents,
+		updatedAt: record.updatedAt.toISOString(),
+	};
+}
+
+export function mapDistributorCashBalanceItem(
+	distributor: { id: string; name: string },
+	balance: { amountCents: number; updatedAt: Date } | null,
+): DistributorCashBalanceItem {
+	return {
+		distributorId: distributor.id,
+		distributorName: distributor.name,
+		amountCents: balance?.amountCents ?? 0,
+		updatedAt: balance?.updatedAt.toISOString() ?? null,
+	};
+}
+
+export function mapDistributorCashBalanceRecord(record: DistributorCashBalanceRecord): DistributorCashBalanceItem {
+	return {
+		distributorId: record.distributor.id,
+		distributorName: record.distributor.name,
+		amountCents: record.amountCents,
+		updatedAt: record.updatedAt.toISOString(),
+	};
+}
+
+export function mapDistributorSale(record: DistributorSaleRecord): DistributorSale {
+	return {
+		id: record.id,
+		distributorProductBalanceId: record.distributorProductBalanceId,
+		distributorId: record.distributorId,
+		productBatchId: record.productBatchId,
+		clientId: record.clientId,
+		quantity: record.quantity,
+		unitPriceCents: record.unitPriceCents,
+		totalCents: record.totalCents,
+		paymentMethod: record.paymentMethod === "cash" ? "cash" : "cashless",
+		comment: record.comment,
+		operationId: record.operationId,
+		actorUserId: record.actorUserId,
+		createdAt: record.createdAt.toISOString(),
 	};
 }
 

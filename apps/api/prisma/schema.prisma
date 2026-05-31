@@ -93,6 +93,7 @@ model Operation {
   packagingIntakes   PackagingIntake[]
   productBatches     ProductBatch[]
   productTransfers   ProductTransfer[]
+  distributorSales   DistributorSale[]
 
   @@unique([actorUserId, idempotencyKey])
   @@index([actorUserId])
@@ -173,6 +174,8 @@ model Distributor {
   updatedAt        DateTime                    @updatedAt
   productBalances  DistributorProductBalance[]
   productTransfers ProductTransfer[]
+  cashBalance      DistributorCashBalance?
+  sales            DistributorSale[]
 
   @@map("distributor")
 }
@@ -187,6 +190,7 @@ model Client {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   createdBy       User     @relation("ClientCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  distributorSales DistributorSale[]
 
   @@index([name])
   @@index([createdByUserId])
@@ -286,6 +290,7 @@ model ProductBatch {
   workshopBalance             WorkshopProductBalance?
   distributorBalances         DistributorProductBalance[]
   transfers                   ProductTransfer[]
+  distributorSales            DistributorSale[]
 
   @@index([productTemplateId])
   @@index([actorUserId])
@@ -311,6 +316,7 @@ model DistributorProductBalance {
   updatedAt      DateTime     @updatedAt
   distributor    Distributor  @relation(fields: [distributorId], references: [id], onDelete: Restrict)
   productBatch   ProductBatch @relation(fields: [productBatchId], references: [id], onDelete: Restrict)
+  sales          DistributorSale[]
 
   @@unique([distributorId, productBatchId])
   @@index([distributorId])
@@ -335,4 +341,42 @@ model ProductTransfer {
   @@index([distributorId])
   @@index([actorUserId])
   @@map("product_transfer")
+}
+
+model DistributorCashBalance {
+  id            String      @id @default(cuid())
+  distributorId String      @unique
+  amountCents   Int         @default(0)
+  updatedAt     DateTime    @updatedAt
+  distributor   Distributor @relation(fields: [distributorId], references: [id], onDelete: Restrict)
+
+  @@map("distributor_cash_balance")
+}
+
+model DistributorSale {
+  id                          String                    @id @default(cuid())
+  distributorProductBalanceId String
+  distributorId               String
+  productBatchId              String
+  clientId                    String
+  quantity                    Int
+  unitPriceCents              Int
+  totalCents                  Int
+  paymentMethod               String
+  comment                     String?
+  operationId                 String                    @unique
+  actorUserId                 String
+  createdAt                   DateTime                  @default(now())
+  distributorProductBalance   DistributorProductBalance @relation(fields: [distributorProductBalanceId], references: [id], onDelete: Restrict)
+  distributor                 Distributor               @relation(fields: [distributorId], references: [id], onDelete: Restrict)
+  productBatch                ProductBatch              @relation(fields: [productBatchId], references: [id], onDelete: Restrict)
+  client                      Client                    @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  operation                   Operation                 @relation(fields: [operationId], references: [id], onDelete: Restrict)
+
+  @@index([distributorId])
+  @@index([productBatchId])
+  @@index([clientId])
+  @@index([actorUserId])
+  @@index([createdAt])
+  @@map("distributor_sale")
 }

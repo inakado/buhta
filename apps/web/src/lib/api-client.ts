@@ -3,6 +3,7 @@ import type {
 	ClientsListResponse,
 	CreateClientRequest,
 	CreateDistributorRequest,
+	CreateDistributorSaleRequest,
 	CreatePackagingTypeRequest,
 	CreatePackagingIntakeRequest,
 	CreateProductBatchRequest,
@@ -12,7 +13,10 @@ import type {
 	CreateRawMaterialTypeRequest,
 	CreateUserRequest,
 	CreateUserResponse,
+	DistributorCashBalancesResponse,
 	DistributorInventoryResponse,
+	DistributorSaleOptionsResponse,
+	DistributorSaleResponse,
 	DistributorResponse,
 	DistributorsListResponse,
 	PackagingBalancesResponse,
@@ -316,6 +320,23 @@ export async function createProductTransfer(
 
 export async function getDistributorInventory(): Promise<DistributorInventoryResponse> {
 	return fetchJson<DistributorInventoryResponse>("/distributor/inventory");
+}
+
+export async function getDistributorSaleOptions(): Promise<DistributorSaleOptionsResponse> {
+	return fetchJson<DistributorSaleOptionsResponse>("/distributor/sale-options");
+}
+
+export async function getDistributorCashBalances(): Promise<DistributorCashBalancesResponse> {
+	return fetchJson<DistributorCashBalancesResponse>("/distributor/cash-balances");
+}
+
+export async function createDistributorSale(
+	input: CreateDistributorSaleRequest,
+): Promise<DistributorSaleResponse> {
+	return fetchJson<DistributorSaleResponse>("/distributor/sales", {
+		method: "POST",
+		body: JSON.stringify(input),
+	});
 }
 
 async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {

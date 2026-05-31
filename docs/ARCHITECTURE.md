@@ -122,6 +122,10 @@ Production baseline пишет audit operations:
 - `production.product_batch.create`;
 - `production.product_transfer.create`.
 
+Distributor sales пишет audit operations:
+
+- `distributor.sale.create`.
+
 Справочники отключаются через `active=false`, без физического удаления. Шаблон продукции хранит название, связи на активные вид сырья и вид тары, а также цену за единицу в `priceCents`. Фасовки, нормативы и остатки не входят в catalog foundation.
 
 Production balance baseline:
@@ -141,6 +145,8 @@ Production balance baseline:
 Distributor inventory read model строится из ненулевых строк `distributor_product_balance` с join на `product_batch` и `distributor`. API считает `stockValueCents = quantity * product_batch.priceCents`, возвращает общий summary и summary по распределителям. Read endpoint не создает `operation`/`audit_log` и не моделирует cash balance.
 
 Client master data хранится в таблице `client`. Телефон нормализуется в `phoneNormalized` удалением всех нецифровых символов и защищается unique constraint. Клиентская карточка является mutable master data: создание и редактирование пишут `operation`/`audit_log`, но будущие продажи должны ссылаться на `clientId` и показывать актуальные имя/телефон/описание через join на `Client`, а не хранить старые ошибочные данные как operational source of truth.
+
+Distributor sales добавляет `distributor_sale` как typed fact продажи и `distributor_cash_balance` как projection наличного баланса распределителя. Продажа создается по `distributorProductBalanceId`: backend сам загружает распределитель, партию и цену, затем в одной transaction делает conditional decrement товарного остатка, при наличной оплате upsert/increment cash projection, создает `Operation`, `DistributorSale` и `AuditLog`. `DistributorSale` хранит `unitPriceCents` и `totalCents`, поэтому будущие отчеты и корректировки не зависят от текущей цены шаблона или join-пересчета старого факта.
 
 Базовый принцип для следующих доменных операций:
 

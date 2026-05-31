@@ -5,16 +5,23 @@ import { Box, PackageCheck } from "lucide-react";
 import {
 	formatMoneyCents,
 	moneyCents,
+	type DistributorCashBalanceItem,
 	type DistributorInventoryItem,
 } from "@buhta/shared";
-import { getDistributorInventory } from "../../lib/api-client";
+import { getDistributorCashBalances, getDistributorInventory } from "../../lib/api-client";
 
-export function DistributorInventoryHome() {
+export function DistributorInventoryHome({ showCashBalance = false }: { showCashBalance?: boolean }) {
 	const inventory = useQuery({
 		queryKey: ["distributor", "inventory"],
 		queryFn: getDistributorInventory,
 	});
+	const cashBalances = useQuery({
+		queryKey: ["distributor", "cash-balances"],
+		queryFn: getDistributorCashBalances,
+		enabled: showCashBalance,
+	});
 	const data = inventory.data;
+	const cashData = cashBalances.data;
 
 	return (
 		<section className="screen-stack">
@@ -28,6 +35,15 @@ export function DistributorInventoryHome() {
 				</div>
 				<Box aria-hidden size={30} />
 			</div>
+
+			{showCashBalance ? (
+				<DistributorCashSummary
+					isError={cashBalances.isError}
+					isLoading={cashBalances.isLoading}
+					items={cashData?.items ?? []}
+					totalAmountCents={cashData?.totalAmountCents ?? 0}
+				/>
+			) : null}
 
 			<div className="section-heading">
 				<h2>Остатки</h2>
@@ -62,6 +78,32 @@ export function DistributorInventoryHome() {
 
 			<DistributorInventoryList items={data?.items ?? []} />
 		</section>
+	);
+}
+
+function DistributorCashSummary({
+	isError,
+	isLoading,
+	items,
+	totalAmountCents,
+}: {
+	isError: boolean;
+	isLoading: boolean;
+	items: DistributorCashBalanceItem[];
+	totalAmountCents: number;
+}) {
+	return (
+		<div className="summary-card compact-summary">
+			<div>
+				<p className="summary-label">Наличные на распределителе</p>
+				<strong>{isLoading ? "Загрузка" : `${formatRubles(totalAmountCents)} ₽`}</strong>
+				<p className="summary-note">
+					{items.length > 1 ? `${items.length} распределителя` : "Денежный баланс"}
+				</p>
+				{isError ? <span className="inline-error">Не удалось загрузить наличные</span> : null}
+			</div>
+			<Box aria-hidden size={28} />
+		</div>
 	);
 }
 

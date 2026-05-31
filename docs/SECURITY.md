@@ -71,6 +71,8 @@ Policy layer отвечает за доменные разрешения. Тек
 
 Read-only товарные остатки распределителя защищены `distributor.stock.read`. Это право есть у всех v1 ролей, включая `admin`, но endpoint не создает операции, не меняет остатки и не раскрывает наличный денежный баланс.
 
+Продажа с распределителя разделяет права чтения и записи: `GET /distributor/sale-options` и `POST /distributor/sales` требуют `distributor.sale.create`, а `GET /distributor/cash-balances` требует `distributor.cash.read`. Роли без `distributor.cash.read` не должны получать наличный баланс распределителя ни через API, ни через UI.
+
 Минимальная матрица ролей в коде:
 
 | Permission | Роли |

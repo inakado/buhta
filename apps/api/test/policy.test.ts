@@ -101,6 +101,52 @@ describe("PolicyRegistry", () => {
 		}
 	});
 
+	it("keeps distributor sale and cash permissions separated", () => {
+		for (const role of ["admin", "commercial_manager", "distributor_worker"] as const) {
+			const actor = registry.buildActor({
+				id: `sale-${role}`,
+				username: role,
+				name: role,
+				role,
+			});
+
+			expect(actor?.permissions).toContain("distributor.sale.create");
+		}
+
+		for (const role of ["director", "production_manager", "courier"] as const) {
+			const actor = registry.buildActor({
+				id: `no-sale-${role}`,
+				username: role,
+				name: role,
+				role,
+			});
+
+			expect(actor?.permissions).not.toContain("distributor.sale.create");
+		}
+
+		for (const role of ["admin", "director", "commercial_manager", "distributor_worker"] as const) {
+			const actor = registry.buildActor({
+				id: `cash-${role}`,
+				username: role,
+				name: role,
+				role,
+			});
+
+			expect(actor?.permissions).toContain("distributor.cash.read");
+		}
+
+		for (const role of ["production_manager", "courier"] as const) {
+			const actor = registry.buildActor({
+				id: `no-cash-${role}`,
+				username: role,
+				name: role,
+				role,
+			});
+
+			expect(actor?.permissions).not.toContain("distributor.cash.read");
+		}
+	});
+
 	it("rejects missing identity fields and unknown roles", () => {
 		expect(registry.buildActor({ username: "no-id", role: "director" })).toBeNull();
 		expect(registry.buildActor({ id: "u1", username: "x", role: "owner" })).toBeNull();
@@ -196,5 +242,45 @@ describe("PolicyGuard", () => {
 		expect(() => productionReadGuard.canActivate(contextWithRequest(productionManagerRequest))).toThrow(
 			ForbiddenException,
 		);
+	});
+
+	it("rejects distributor sale and cash permissions for wrong roles", () => {
+		const productionManagerRequest: RequestWithActor = {
+			user: {
+				id: "pm",
+				username: "pm",
+				name: "Production Manager",
+				role: "production_manager",
+			},
+		};
+		const courierRequest: RequestWithActor = {
+			user: {
+				id: "courier",
+				username: "courier",
+				name: "Courier",
+				role: "courier",
+			},
+		};
+		const directorRequest: RequestWithActor = {
+			user: {
+				id: "director",
+				username: "director",
+				name: "Director",
+				role: "director",
+			},
+		};
+
+		expect(() =>
+			new PolicyGuard(reflectorWithPermission("distributor.sale.create"), registry)
+				.canActivate(contextWithRequest(productionManagerRequest)),
+		).toThrow(ForbiddenException);
+		expect(() =>
+			new PolicyGuard(reflectorWithPermission("distributor.cash.read"), registry)
+				.canActivate(contextWithRequest(courierRequest)),
+		).toThrow(ForbiddenException);
+		expect(() =>
+			new PolicyGuard(reflectorWithPermission("distributor.sale.create"), registry)
+				.canActivate(contextWithRequest(directorRequest)),
+		).toThrow(ForbiddenException);
 	});
 });

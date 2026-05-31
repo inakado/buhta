@@ -362,11 +362,13 @@ Success notice не должен быть черным, потому что по
 
 Production UI не читает `/catalog/*`, потому что `production_manager` не имеет права управления справочниками. Для форм производства используются read-only endpoints под `production.manage`.
 
-Read-only экран остатков распределителя живет в `features/distributor/DistributorInventoryHome.tsx` и читает `GET /distributor/inventory`. Он показывает количество товара, товарный баланс в рублях, строки по партиям с ценой партии и имя распределителя. Денежный cash balance, продажи, клиенты и курьерская загрузка на этом экране не появляются.
+Read-only экран остатков распределителя живет в `features/distributor/DistributorInventoryHome.tsx` и читает `GET /distributor/inventory`. Он показывает количество товара, товарный баланс в рублях, строки по партиям с ценой партии и имя распределителя. Для ролей с `distributor.cash.read` этот экран дополнительно читает `GET /distributor/cash-balances` и показывает наличный баланс распределителя. Для ролей без этого permission cash balance не запрашивается и не отображается.
 
-Для `production_manager` экран подключен отдельной нижней вкладкой `Распределитель`, чтобы не смешивать production home с read-only остатками распределителя. Для остальных не-admin ролей с `distributor.stock.read` home показывает distributor inventory; вкладка `Продажа` остается placeholder до sales этапа. `admin` имеет backend read access, но отдельный admin UI для этого этапа не добавлен.
+Для `production_manager` экран подключен отдельной нижней вкладкой `Распределитель`, чтобы не смешивать production home с read-only остатками распределителя. Для остальных не-admin ролей с `distributor.stock.read` home показывает distributor inventory. `admin` имеет backend read access, но отдельный admin UI для этого этапа не добавлен.
 
 Экран клиентов живет в `features/clients/ClientsHome.tsx` и подключается отдельной вкладкой `Клиенты` для ролей с `client.read`. Роли с `client.manage` видят создание и редактирование клиента, директор видит read-only список и поиск. `production_manager` вкладку клиентов не видит. После успешного создания или редактирования форма возвращает пользователя к списку и показывает compact success notice: `Клиент добавлен` или `Клиент обновлен`. Backend errors остаются inline в форме.
+
+Экран продажи с распределителя живет в `features/sales/DistributorSaleHome.tsx` и подключается во вкладке `Продажа` для ролей с `distributor.sale.create`, кроме `admin`, для которого UI продажи пока не добавлен. Форма выбирает клиента из `GET /clients?search=...`, может раскрыть компактную мини-форму `Новый клиент` и создать клиента через `POST /clients`, затем выбирает товарную строку из `GET /distributor/sale-options`. Продажа отправляется в `POST /distributor/sales` по `distributorProductBalanceId`, количеству и способу оплаты. После успеха active tab становится `home`, форма очищается, обновляются inventory/sale-options/cash queries и показывается success notice `Продажа записана`. Ошибки остаются inline, offline блокирует submit.
 
 ## 11. Что пока не фиксируем
 

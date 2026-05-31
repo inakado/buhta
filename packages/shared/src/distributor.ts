@@ -1,6 +1,12 @@
 import { z } from "zod";
 
 const NonNegativeIntegerSchema = z.number().int().nonnegative();
+const PositiveIntegerSchema = z.number().int().positive();
+const OptionalCommentSchema = z.string().trim().max(500).optional();
+
+export const PaymentMethodSchema = z.enum(["cash", "cashless"]);
+
+export type PaymentMethod = z.infer<typeof PaymentMethodSchema>;
 
 export const DistributorInventoryItemSchema = z.object({
 	id: z.string(),
@@ -44,3 +50,75 @@ export const DistributorInventoryResponseSchema = z.object({
 });
 
 export type DistributorInventoryResponse = z.infer<typeof DistributorInventoryResponseSchema>;
+
+export const DistributorSaleStockItemSchema = z.object({
+	distributorProductBalanceId: z.string(),
+	distributorId: z.string(),
+	distributorName: z.string(),
+	productBatchId: z.string(),
+	productName: z.string(),
+	unitPriceCents: NonNegativeIntegerSchema,
+	availableQuantity: NonNegativeIntegerSchema,
+	stockValueCents: NonNegativeIntegerSchema,
+	updatedAt: z.string(),
+});
+
+export type DistributorSaleStockItem = z.infer<typeof DistributorSaleStockItemSchema>;
+
+export const DistributorSaleOptionsResponseSchema = z.object({
+	items: z.array(DistributorSaleStockItemSchema),
+});
+
+export type DistributorSaleOptionsResponse = z.infer<typeof DistributorSaleOptionsResponseSchema>;
+
+export const CreateDistributorSaleRequestSchema = z.object({
+	distributorProductBalanceId: z.string().min(1),
+	clientId: z.string().min(1),
+	quantity: PositiveIntegerSchema,
+	paymentMethod: PaymentMethodSchema,
+	comment: OptionalCommentSchema,
+});
+
+export type CreateDistributorSaleRequest = z.infer<typeof CreateDistributorSaleRequestSchema>;
+
+export const DistributorCashBalanceItemSchema = z.object({
+	distributorId: z.string(),
+	distributorName: z.string(),
+	amountCents: NonNegativeIntegerSchema,
+	updatedAt: z.string().nullable(),
+});
+
+export type DistributorCashBalanceItem = z.infer<typeof DistributorCashBalanceItemSchema>;
+
+export const DistributorCashBalancesResponseSchema = z.object({
+	totalAmountCents: NonNegativeIntegerSchema,
+	items: z.array(DistributorCashBalanceItemSchema),
+});
+
+export type DistributorCashBalancesResponse = z.infer<typeof DistributorCashBalancesResponseSchema>;
+
+export const DistributorSaleSchema = z.object({
+	id: z.string(),
+	distributorProductBalanceId: z.string(),
+	distributorId: z.string(),
+	productBatchId: z.string(),
+	clientId: z.string(),
+	quantity: PositiveIntegerSchema,
+	unitPriceCents: NonNegativeIntegerSchema,
+	totalCents: NonNegativeIntegerSchema,
+	paymentMethod: PaymentMethodSchema,
+	comment: z.string().nullable(),
+	operationId: z.string(),
+	actorUserId: z.string(),
+	createdAt: z.string(),
+});
+
+export type DistributorSale = z.infer<typeof DistributorSaleSchema>;
+
+export const DistributorSaleResponseSchema = z.object({
+	sale: DistributorSaleSchema,
+	distributorProductBalance: DistributorInventoryItemSchema,
+	cashBalance: DistributorCashBalanceItemSchema.nullable(),
+});
+
+export type DistributorSaleResponse = z.infer<typeof DistributorSaleResponseSchema>;

@@ -10,7 +10,7 @@ const adminActorResponse = {
 		login: "admin",
 		displayName: "Admin",
 		role: "admin",
-		permissions: ["users.manage", "catalog.manage", "client.read", "client.manage"],
+		permissions: ["users.manage", "catalog.manage", "client.read", "client.manage", "distributor.sale.create"],
 	},
 };
 
@@ -32,7 +32,13 @@ const commercialActorResponse = {
 		login: "commercial-manager",
 		displayName: "Commercial Manager",
 		role: "commercial_manager",
-		permissions: ["distributor.stock.read", "distributor.sale.create", "client.read", "client.manage"],
+		permissions: [
+			"distributor.stock.read",
+			"distributor.cash.read",
+			"distributor.sale.create",
+			"client.read",
+			"client.manage",
+		],
 	},
 };
 
@@ -43,7 +49,7 @@ const directorActorResponse = {
 		login: "director",
 		displayName: "Director",
 		role: "director",
-		permissions: ["distributor.stock.read", "client.read"],
+		permissions: ["distributor.stock.read", "distributor.cash.read", "client.read"],
 	},
 };
 
@@ -69,6 +75,30 @@ const distributorInventoryResponse = {
 		productName: "Икра горбуши",
 		priceCents: 125000,
 		quantity: 2,
+		stockValueCents: 250000,
+		updatedAt: new Date(0).toISOString(),
+	}],
+};
+
+const distributorCashBalancesResponse = {
+	totalAmountCents: 125000,
+	items: [{
+		distributorId: "dist1",
+		distributorName: "Распределитель Центральный",
+		amountCents: 125000,
+		updatedAt: new Date(0).toISOString(),
+	}],
+};
+
+const distributorSaleOptionsResponse = {
+	items: [{
+		distributorProductBalanceId: "distributor-balance1",
+		distributorId: "dist1",
+		distributorName: "Распределитель Центральный",
+		productBatchId: "batch1",
+		productName: "Икра горбуши",
+		unitPriceCents: 125000,
+		availableQuantity: 2,
 		stockValueCents: 250000,
 		updatedAt: new Date(0).toISOString(),
 	}],
@@ -551,6 +581,10 @@ describe("HomePage", () => {
 				return jsonResponse(distributorInventoryResponse);
 			}
 
+			if (url.endsWith("/distributor/cash-balances")) {
+				return jsonResponse(distributorCashBalancesResponse);
+			}
+
 			return jsonResponse({ error: { message: "Unexpected request" } }, 500);
 		});
 
@@ -824,6 +858,10 @@ describe("HomePage", () => {
 				return jsonResponse(distributorInventoryResponse);
 			}
 
+			if (url.endsWith("/distributor/cash-balances")) {
+				return jsonResponse(distributorCashBalancesResponse);
+			}
+
 			return jsonResponse({ error: { message: "Unexpected request" } }, 500);
 		});
 
@@ -833,8 +871,140 @@ describe("HomePage", () => {
 
 		expect(await screen.findByText("Товар на распределителе")).toBeTruthy();
 		expect(await screen.findByText((_, element) => element?.textContent === "Товарный баланс 2500.00 ₽")).toBeTruthy();
+		expect(await screen.findByText("Наличные на распределителе")).toBeTruthy();
+		expect(screen.getByText("1250.00 ₽")).toBeTruthy();
 		expect(screen.getByText("Икра горбуши")).toBeTruthy();
 		expect(screen.getByText("Распределитель Центральный")).toBeTruthy();
+	});
+
+	it("lets a commercial manager create a client inside distributor sale and records sale", async () => {
+		let clients = [...clientsResponse.clients];
+		const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+			const url = String(input);
+			const method = init?.method ?? "GET";
+
+			if (url.endsWith("/auth/me")) {
+				return jsonResponse(commercialActorResponse);
+			}
+
+			if (url.endsWith("/distributor/inventory")) {
+				return jsonResponse(distributorInventoryResponse);
+			}
+
+			if (url.endsWith("/distributor/cash-balances")) {
+				return jsonResponse(distributorCashBalancesResponse);
+			}
+
+			if (url.endsWith("/distributor/sale-options")) {
+				return jsonResponse(distributorSaleOptionsResponse);
+			}
+
+			if (url.endsWith("/distributor/sales") && method === "POST") {
+				return jsonResponse({
+					sale: {
+						id: "sale1",
+						distributorProductBalanceId: "distributor-balance1",
+						distributorId: "dist1",
+						productBatchId: "batch1",
+						clientId: "client2",
+						quantity: 1,
+						unitPriceCents: 125000,
+						totalCents: 125000,
+						paymentMethod: "cash",
+						comment: "Первый заказ",
+						operationId: "op1",
+						actorUserId: "seed-commercial-manager",
+						createdAt: new Date(0).toISOString(),
+					},
+					distributorProductBalance: {
+						...distributorInventoryResponse.items[0],
+						quantity: 1,
+						stockValueCents: 125000,
+					},
+					cashBalance: {
+						distributorId: "dist1",
+						distributorName: "Распределитель Центральный",
+						amountCents: 250000,
+						updatedAt: new Date(1).toISOString(),
+					},
+				});
+			}
+
+			if (url.includes("/clients") && method === "POST") {
+				const body = JSON.parse(String(init?.body)) as { name: string; phone: string; description?: string };
+				const created = {
+					id: "client2",
+					name: body.name,
+					phone: body.phone,
+					phoneNormalized: "79998887766",
+					description: body.description ?? null,
+					createdByUserId: "seed-commercial-manager",
+					createdAt: new Date(0).toISOString(),
+					updatedAt: new Date(0).toISOString(),
+				};
+				clients = [...clients, created];
+				return jsonResponse({ client: created });
+			}
+
+			if (url.includes("/clients")) {
+				return jsonResponse({ clients });
+			}
+
+			return jsonResponse({ error: { message: "Unexpected request" } }, 500);
+		});
+
+		vi.stubGlobal("fetch", fetchMock);
+
+		render(<HomePage />);
+
+		fireEvent.click(await screen.findByRole("button", { name: "Продажа" }));
+		expect(await screen.findByText("Новая продажа")).toBeTruthy();
+		fireEvent.click(screen.getByRole("button", { name: "Новый клиент" }));
+		fireEvent.change(await screen.findByLabelText("Имя нового клиента"), { target: { value: "Анна" } });
+		fireEvent.change(screen.getByLabelText("Телефон нового клиента"), { target: { value: "+7 (999) 888-77-66" } });
+		fireEvent.click(screen.getByRole("button", { name: "Создать клиента" }));
+
+		await waitFor(() => {
+			expect(fetchMock).toHaveBeenCalledWith(
+				expect.stringContaining("/clients"),
+				expect.objectContaining({
+					method: "POST",
+					body: JSON.stringify({
+						name: "Анна",
+						phone: "+7 (999) 888-77-66",
+						description: "",
+					}),
+				}),
+			);
+		});
+
+		fireEvent.change(await screen.findByLabelText("Продукция"), { target: { value: "distributor-balance1" } });
+		expect(screen.getByText((_, element) =>
+			element?.textContent === "Доступно: 2 шт · 1250.00 ₽/шт",
+		)).toBeTruthy();
+		fireEvent.change(screen.getByLabelText("Количество, шт"), { target: { value: "1" } });
+		fireEvent.change(screen.getByLabelText("Способ оплаты"), { target: { value: "cash" } });
+		fireEvent.change(screen.getByLabelText("Комментарий"), { target: { value: "Первый заказ" } });
+		fireEvent.click(screen.getByRole("button", { name: "Записать продажу" }));
+
+		await waitFor(() => {
+			expect(fetchMock).toHaveBeenCalledWith(
+				expect.stringContaining("/distributor/sales"),
+				expect.objectContaining({
+					method: "POST",
+					body: JSON.stringify({
+						distributorProductBalanceId: "distributor-balance1",
+						clientId: "client2",
+						quantity: 1,
+						paymentMethod: "cash",
+						comment: "Первый заказ",
+					}),
+				}),
+			);
+		});
+		expect(await screen.findByText("Продажа записана")).toBeTruthy();
+		expect(await screen.findByText("Товар на распределителе")).toBeTruthy();
+		expect(screen.queryByText("Детали продажи")).toBeNull();
 	});
 
 	it("lets a commercial manager create and edit clients", async () => {
@@ -849,6 +1019,10 @@ describe("HomePage", () => {
 
 			if (url.endsWith("/distributor/inventory")) {
 				return jsonResponse(distributorInventoryResponse);
+			}
+
+			if (url.endsWith("/distributor/cash-balances")) {
+				return jsonResponse(distributorCashBalancesResponse);
 			}
 
 			if (url.includes("/clients") && method === "POST") {
@@ -950,6 +1124,10 @@ describe("HomePage", () => {
 				return jsonResponse(distributorInventoryResponse);
 			}
 
+			if (url.endsWith("/distributor/cash-balances")) {
+				return jsonResponse(distributorCashBalancesResponse);
+			}
+
 			if (url.includes("/clients")) {
 				return jsonResponse(clientsResponse);
 			}
@@ -1036,6 +1214,10 @@ describe("HomePage", () => {
 				return jsonResponse(distributorInventoryResponse);
 			}
 
+			if (url.endsWith("/distributor/cash-balances")) {
+				return jsonResponse(distributorCashBalancesResponse);
+			}
+
 			if (url.includes("/clients") && method === "POST") {
 				return jsonResponse({ error: { message: "Клиент с таким телефоном уже существует" } }, 409);
 			}
@@ -1073,6 +1255,10 @@ describe("HomePage", () => {
 
 			if (url.endsWith("/distributor/inventory")) {
 				return jsonResponse(distributorInventoryResponse);
+			}
+
+			if (url.endsWith("/distributor/cash-balances")) {
+				return jsonResponse(distributorCashBalancesResponse);
 			}
 
 			if (url.includes("/clients")) {

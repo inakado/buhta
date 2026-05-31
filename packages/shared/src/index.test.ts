@@ -13,11 +13,14 @@ import {
 	CreatePackagingIntakeRequestSchema,
 	CreateProductBatchRequestSchema,
 	CreateProductTransferRequestSchema,
+	CreateDistributorSaleRequestSchema,
 	CreateUserRequestSchema,
 	CreateProductTemplateRequestSchema,
 	CreateRawMaterialTypeRequestSchema,
 	CreateRawMaterialIntakeRequestSchema,
+	DistributorCashBalancesResponseSchema,
 	DistributorInventoryResponseSchema,
+	DistributorSaleOptionsResponseSchema,
 	LoginSchema,
 	ProductionOptionsResponseSchema,
 	ProductionTransferOptionsResponseSchema,
@@ -273,6 +276,80 @@ describe("shared contracts", () => {
 					totalStockValueCents: 10.5,
 				},
 				distributorSummaries: [],
+				items: [],
+			}).success,
+		).toBe(false);
+	});
+
+	it("validates distributor sale contracts", () => {
+		expect(
+			CreateDistributorSaleRequestSchema.parse({
+				distributorProductBalanceId: "balance-1",
+				clientId: "client-1",
+				quantity: 2,
+				paymentMethod: "cash",
+				comment: " Продажа клиенту ",
+			}),
+		).toEqual({
+			distributorProductBalanceId: "balance-1",
+			clientId: "client-1",
+			quantity: 2,
+			paymentMethod: "cash",
+			comment: "Продажа клиенту",
+		});
+		expect(
+			CreateDistributorSaleRequestSchema.safeParse({
+				distributorProductBalanceId: "balance-1",
+				clientId: "client-1",
+				quantity: 0,
+				paymentMethod: "cash",
+			}).success,
+		).toBe(false);
+		expect(
+			CreateDistributorSaleRequestSchema.safeParse({
+				distributorProductBalanceId: "balance-1",
+				clientId: "client-1",
+				quantity: 1.5,
+				paymentMethod: "cash",
+			}).success,
+		).toBe(false);
+		expect(
+			CreateDistributorSaleRequestSchema.safeParse({
+				distributorProductBalanceId: "balance-1",
+				clientId: "client-1",
+				quantity: 1,
+				paymentMethod: "card",
+			}).success,
+		).toBe(false);
+		expect(
+			DistributorSaleOptionsResponseSchema.safeParse({
+				items: [{
+					distributorProductBalanceId: "balance-1",
+					distributorId: "dist-1",
+					distributorName: "Распределитель Центральный",
+					productBatchId: "batch-1",
+					productName: "Икра горбуши",
+					unitPriceCents: 125000,
+					availableQuantity: 4,
+					stockValueCents: 500000,
+					updatedAt: new Date(0).toISOString(),
+				}],
+			}).success,
+		).toBe(true);
+		expect(
+			DistributorCashBalancesResponseSchema.safeParse({
+				totalAmountCents: 0,
+				items: [{
+					distributorId: "dist-1",
+					distributorName: "Распределитель Центральный",
+					amountCents: 0,
+					updatedAt: null,
+				}],
+			}).success,
+		).toBe(true);
+		expect(
+			DistributorCashBalancesResponseSchema.safeParse({
+				totalAmountCents: 10.5,
 				items: [],
 			}).success,
 		).toBe(false);

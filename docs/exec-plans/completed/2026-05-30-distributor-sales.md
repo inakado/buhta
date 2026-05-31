@@ -1,6 +1,6 @@
 # Distributor Sales Plan
 
-Статус: `Active`
+Статус: `Completed`
 Дата: 2026-05-30
 Roadmap stage: `6. Inventory, Courier, Sales, Cash` -> `Sales From Distributor`
 
@@ -30,6 +30,49 @@ Roadmap stage: `6. Inventory, Courier, Sales, Cash` -> `Sales From Distributor`
 - продавец не вводит цену вручную;
 - клиентская карточка является mutable master data: продажа хранит `clientId`, UI показывает актуальные имя/телефон клиента;
 - cash balance распределителя не равен товарному балансу в рублях и должен храниться отдельной projection table.
+
+## Фактический Результат
+
+- Добавлены shared contracts для `PaymentMethod`, sale options, `CreateDistributorSaleRequest`, `DistributorCashBalancesResponse` и `DistributorSaleResponse`.
+- Добавлены Prisma-модели `DistributorCashBalance` и `DistributorSale` с migration `20260530130000_distributor_sales`.
+- Добавлен operation type `distributor.sale.create`.
+- `DistributorService` получил:
+  - `getSaleOptions()` для строк товарного остатка, доступных продаже;
+  - `getCashBalances()` для наличного баланса распределителя с `0 ₽` до первой cash-операции;
+  - `createDistributorSale()` с transactional conditional decrement товарного остатка и cash upsert/increment только для `cash`.
+- Добавлены endpoints:
+  - `GET /distributor/sale-options` под `distributor.sale.create`;
+  - `GET /distributor/cash-balances` под `distributor.cash.read`;
+  - `POST /distributor/sales` под `distributor.sale.create`.
+- `DistributorSale` хранит `unitPriceCents` и `totalCents`; клиент хранится как `clientId` без snapshot имени/телефона.
+- Audit details продажи фиксируют товар, распределитель, цену, сумму, способ оплаты и balances before/after.
+- Frontend получил `features/sales/DistributorSaleHome.tsx`: выбор клиента, раскрываемая мини-форма нового клиента, выбор товарной строки, количество, способ оплаты, итог и комментарий.
+- После успешной продажи вкладка переключается на distributor home и показывает notice `Продажа записана`.
+- `DistributorInventoryHome` показывает cash balance только ролям с `distributor.cash.read`; роли без права не делают cash fetch.
+
+## Выполненные Проверки
+
+Targeted проверки во время реализации:
+
+- `corepack pnpm --filter @buhta/shared test` — прошел.
+- `corepack pnpm --filter @buhta/api typecheck` — прошел.
+- `corepack pnpm --filter @buhta/api prisma:deploy` — в sandbox упал на schema engine из-за доступа к `localhost:5433`, вне sandbox прошел и применил migration `20260530130000_distributor_sales`.
+- `corepack pnpm --filter @buhta/api exec vitest run test/distributor-controller.test.ts test/distributor-sales-db.integration.test.ts test/policy.test.ts` — в sandbox упал на real Postgres доступе, вне sandbox прошел: 3 files, 21 tests.
+- `corepack pnpm --filter @buhta/web typecheck` — прошел.
+- `corepack pnpm --filter @buhta/web test -- app/page.test.tsx` — прошел: 2 files, 16 tests.
+- `corepack pnpm --filter @buhta/api lint` — прошел.
+- `corepack pnpm --filter @buhta/web lint` — прошел.
+
+Финальные проверки полного контура:
+
+- `corepack pnpm lint` — прошел.
+- `corepack pnpm lint:boundaries` — прошел.
+- `corepack pnpm typecheck` — прошел.
+- `corepack pnpm test` — в sandbox упал на real Postgres integration tests из-за доступа к БД, вне sandbox прошел: API 18 files / 88 tests, web 2 files / 16 tests, shared 1 file / 10 tests.
+- `corepack pnpm docs:check` — прошел.
+- `corepack pnpm build` — в sandbox упал из-за Turbopack `binding to a port / Operation not permitted`, вне sandbox прошел.
+- `corepack pnpm audit` — прошел, уязвимости не найдены.
+- Browser sanity на временном `PORT=3004 corepack pnpm dev:web` с mock API — вкладка `Продажа`, выбор клиента/товара, submit продажи и возврат на distributor home проверены; временный dev server остановлен.
 
 ## Scope
 
