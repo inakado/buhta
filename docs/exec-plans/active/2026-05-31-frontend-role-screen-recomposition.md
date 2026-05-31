@@ -104,9 +104,9 @@ Frontend уже имеет рабочий mobile-first PWA shell:
 
 ### `05-commercial.html`
 
-- Берем: role home `Продажи`, верхний summary/overview, secondary balance cards, quick actions, stock entry point, clients entry point.
+- Берем: role home `Продажи`, real distributor inventory/cash overview, primary sale entry, inline stock list.
 - Адаптируем: вместо demo-блока “Продажи сегодня” показываем только реальные distributor inventory/cash данные.
-- Не берем: fake revenue, fake latest sales, notification flow без backend.
+- Не берем: fake revenue, fake latest sales, notification flow без backend, action tiles `Остатки`/`Клиенты`/`Курьеры`, которые дублируют нижнюю навигацию.
 
 ### `14-distributor.html`
 
@@ -221,10 +221,7 @@ Frontend уже имеет рабочий mobile-first PWA shell:
   - остаток распределителя из `GET /distributor/inventory`;
   - наличные распределителя из `GET /distributor/cash-balances`;
 - primary action `Продать`;
-- quick actions:
-  - `Остатки`;
-  - `Клиенты`;
-  - `Курьеры`;
+- `Остатки`, `Клиенты`, `Курьеры` не выводить отдельными плитками на home, потому что эти переходы уже есть в нижней навигации;
 - stock list на основе существующего distributor inventory;
 - переходы к уже существующим sale, clients и courier balances flows.
 
@@ -240,7 +237,8 @@ Frontend уже имеет рабочий mobile-first PWA shell:
 Checkpoint:
 
 - targeted component test commercial manager home;
-- targeted component test перехода к sale/clients/couriers;
+- targeted component test перехода к sale через primary action;
+- targeted component test перехода к clients/couriers через нижнюю навигацию;
 - проверка, что query keys distributor inventory/cash остаются теми же.
 
 ### 5. Distributor Worker Screen
@@ -448,7 +446,7 @@ Backend, Prisma и shared contracts не должны изменяться в э
 1. `RoleHomeRouter` + neutral primitives baseline.
    - targeted tests: session/logout, production route, existing commercial route smoke.
 2. Commercial manager.
-   - targeted tests: commercial home, sale/clients/couriers navigation.
+   - targeted tests: commercial home, sale primary action, clients/couriers bottom navigation.
 3. Distributor worker + distributor sale composition.
    - targeted tests: distributor home, sale payload, query invalidation, error keeps form state.
 4. Courier home + load.
@@ -477,15 +475,34 @@ Backend, Prisma и shared contracts не должны изменяться в э
 - `pnpm --filter @buhta/web typecheck` — ok.
 - `pnpm --filter @buhta/web test -- --runInBand apps/web/app/page.test.tsx` — ok, 20 tests passed.
 
+### 2026-06-01 — Checkpoint 2: Commercial manager
+
+Фактический результат:
+
+- Добавлен `CommercialManagerHome` в `apps/web/src/roles/commercial-manager/`.
+- Commercial home теперь собирается через `RoleHomeRouter`, а не через generic distributor inventory fallback.
+- Структура сверена с `05-commercial.html`, но фейковые `Продажи сегодня`, `Последние продажи` и notification flow не добавлены.
+- По UI-review из home убраны заголовок `Действия` и плитки `Остатки`/`Клиенты`/`Курьеры`, потому что они дублируют нижнюю навигацию.
+- На home остались реальные summary `Остаток распределителя`, `Наличные`, primary action tile `Продать` и inline stock list.
+- Доменный список остатков вынесен в `features/distributor/DistributorStockList.tsx`; neutral `ui/*` primitives не добавлялись, потому что повторного нейтрального использования в этом pass не возникло.
+
+Выполненные проверки:
+
+- `pnpm --filter @buhta/web test -- --runInBand apps/web/app/page.test.tsx` — ok, 20 tests passed.
+- `pnpm --filter @buhta/web lint` — ok.
+- `pnpm --filter @buhta/web typecheck` — ok.
+- Browser plugin path заблокировал localhost (`net::ERR_BLOCKED_BY_CLIENT`), fallback через Playwright на `http://localhost:3001` — ok: commercial home рендерится, `Продать` остается action tile, переход ведет в `Детали продажи`.
+
 ## Тестовый план
 
 ### Component tests
 
 - Commercial manager:
   - видит home с остатком распределителя и наличными;
-  - видит действия `Продать`, `Остатки`, `Клиенты`, `Курьеры`;
-  - может перейти к продаже с распределителя;
-  - может перейти к клиентам.
+  - видит primary action tile `Продать`;
+  - не видит заголовок `Действия` и дублирующие action tiles `Остатки`, `Клиенты`, `Курьеры`;
+  - может перейти к продаже с распределителя через primary action;
+  - может перейти к клиентам и курьерам через нижнюю навигацию.
 - Distributor worker:
   - видит distributor home;
   - видит товарный и cash summary;
@@ -559,7 +576,7 @@ pnpm docs:check
 pnpm dev:web
 ```
 
-После UI-проверки зафиксировать результат в этом плане перед переносом в `completed`.
+После UI-проверки зафиксировать результат в этом плане перед переводом в `completed`.
 
 ## Риски и rollback
 

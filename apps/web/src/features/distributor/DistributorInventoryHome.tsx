@@ -1,14 +1,10 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Box, PackageCheck } from "lucide-react";
-import {
-	formatMoneyCents,
-	moneyCents,
-	type DistributorCashBalanceItem,
-	type DistributorInventoryItem,
-} from "@buhta/shared";
+import { Box } from "lucide-react";
+import { formatMoneyCents, moneyCents, type DistributorCashBalanceItem } from "@buhta/shared";
 import { getDistributorCashBalances, getDistributorInventory } from "../../lib/api-client";
+import { DistributorStockList } from "./DistributorStockList";
 
 export function DistributorInventoryHome({ showCashBalance = false }: { showCashBalance?: boolean }) {
 	const inventory = useQuery({
@@ -76,7 +72,7 @@ export function DistributorInventoryHome({ showCashBalance = false }: { showCash
 				</div>
 			) : null}
 
-			<DistributorInventoryList items={data?.items ?? []} />
+			<DistributorStockList items={data?.items ?? []} />
 		</section>
 	);
 }
@@ -103,31 +99,6 @@ function DistributorCashSummary({
 				{isError ? <span className="inline-error">Не удалось загрузить наличные</span> : null}
 			</div>
 			<Box aria-hidden size={28} />
-		</div>
-	);
-}
-
-function DistributorInventoryList({ items }: { items: DistributorInventoryItem[] }) {
-	return (
-		<div className="list-stack">
-			{items.map((item) => (
-				<article className="entity-card production-history-card" key={item.id}>
-					<div className="inventory-item-main">
-						<div className="production-row-icon">
-							<PackageCheck aria-hidden size={18} />
-						</div>
-						<div>
-							<strong>{item.productName}</strong>
-							<p>{item.distributorName}</p>
-						</div>
-					</div>
-					<div className="production-history-meta">
-						<strong>{item.quantity} шт</strong>
-						<span>{formatRubles(item.stockValueCents)} ₽</span>
-						<span>{formatRubles(item.priceCents)} ₽/шт</span>
-					</div>
-				</article>
-			))}
 		</div>
 	);
 }

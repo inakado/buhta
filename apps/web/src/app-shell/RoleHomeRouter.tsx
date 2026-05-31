@@ -13,6 +13,7 @@ import { DistributorSaleHome } from "../features/sales/DistributorSaleHome";
 import { ROLE_LABELS } from "../lib/role-labels";
 import type { CurrentActor } from "../lib/api-client";
 import { AdminHome } from "../roles/admin/AdminHome";
+import { CommercialManagerHome } from "../roles/commercial-manager/CommercialManagerHome";
 
 type RoleHomeRouterProps = {
 	actor: CurrentActor;
@@ -31,7 +32,7 @@ export function RoleHomeRouter({
 	logoutPending,
 	online,
 	onActionSuccess,
-	onTabChange: _onTabChange,
+	onTabChange,
 }: RoleHomeRouterProps) {
 	if (activeTab === "settings") {
 		return <SettingsScreen actor={actor} logout={logout} logoutPending={logoutPending} />;
@@ -107,6 +108,15 @@ export function RoleHomeRouter({
 	if (actor.permissions.includes("distributor.stock.read")) {
 		if (actor.role === "courier") {
 			return <CourierBalanceHome mode="own" />;
+		}
+
+		if (actor.role === "commercial_manager") {
+			return (
+				<CommercialManagerHome
+					onTabChange={onTabChange}
+					showCashBalance={actor.permissions.includes("distributor.cash.read")}
+				/>
+			);
 		}
 
 		return <DistributorInventoryHome showCashBalance={actor.permissions.includes("distributor.cash.read")} />;
