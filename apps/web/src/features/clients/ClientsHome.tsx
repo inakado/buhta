@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { ArrowLeft, Check, Edit3, Plus, Search, UserPlus, Users } from "lucide-react";
+import { ArrowLeft, Check, Edit3, Plus, Search, UserPlus } from "lucide-react";
 import type { Client } from "@buhta/shared";
 import {
 	createClient,
@@ -89,15 +89,9 @@ export function ClientsHome({
 
 	return (
 		<section className="screen-stack">
-			<div className="summary-card compact-summary">
-				<div>
-					<p className="summary-label">Клиенты</p>
-					<strong>{clients.isLoading ? "Загрузка" : `${clients.data?.clients.length ?? 0} клиентов`}</strong>
-					<p className="summary-note">
-						{canManage ? "База для будущих продаж" : "Просмотр клиентской базы"}
-					</p>
-				</div>
-				<Users aria-hidden size={28} />
+			<div className="section-heading compact">
+				<h2>Клиенты</h2>
+				<span>{clients.isLoading ? "Загрузка" : `${clients.data?.clients.length ?? 0} клиентов`}</span>
 			</div>
 
 			<form className="client-search" onSubmit={handleSearch}>

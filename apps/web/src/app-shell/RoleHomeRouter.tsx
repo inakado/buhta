@@ -79,6 +79,14 @@ export function RoleHomeRouter({
 		return <AdminHome actor={actor} />;
 	}
 
+	if (
+		activeTab === "distributor"
+		&& actor.role === "commercial_manager"
+		&& actor.permissions.includes("distributor.stock.read")
+	) {
+		return <DistributorInventoryHome showCashBalance={actor.permissions.includes("distributor.cash.read")} />;
+	}
+
 	if (activeTab !== "home") {
 		if (activeTab === "load" && actor.permissions.includes("courier.stock.load")) {
 			return (

@@ -2,7 +2,13 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { Banknote, Truck } from "lucide-react";
-import { type CourierCashBalanceItem, formatMoneyCents, moneyCents } from "@buhta/shared";
+import {
+	type CourierCashBalanceItem,
+	type CourierProductBalanceItem,
+	type CourierProductBalancesCourierSummary,
+	formatMoneyCents,
+	moneyCents,
+} from "@buhta/shared";
 import { getCourierCashBalances, getCourierProductBalances } from "../../lib/api-client";
 import { CourierStockList } from "./CourierStockList";
 
@@ -18,121 +24,148 @@ export function CourierBalanceHome({ mode = "own" }: { mode?: "own" | "all" }) {
 	const data = balances.data;
 	const cashData = cashBalances.data;
 	const title = mode === "own" ? "Баланс курьера" : "Балансы курьеров";
+	const totalUnits = data?.summary.totalUnits ?? 0;
+	const totalStockValueCents = data?.summary.totalStockValueCents ?? 0;
+	const totalCashCents = cashData?.totalAmountCents ?? 0;
+	const stockItemCount = data?.summary.stockItemCount ?? 0;
 
 	return (
 		<section className="screen-stack">
-			<div className="summary-card">
-				<div>
-					<p className="summary-label">{title}</p>
-					<strong>{balances.isLoading ? "Загрузка" : `${data?.summary.totalUnits ?? 0} шт`}</strong>
-					<p className="summary-note">
-						Товар {formatRubles(data?.summary.totalStockValueCents ?? 0)} ₽ · Наличные{" "}
-						{formatRubles(cashData?.totalAmountCents ?? 0)} ₽
-					</p>
-				</div>
-				<Truck aria-hidden size={30} />
+			<div className="section-heading">
+				<h2>{title}</h2>
+				<span>{stockItemCount} позиций</span>
 			</div>
 
-			<CourierCashPanel
-				isError={cashBalances.isError}
-				isLoading={cashBalances.isLoading}
-				items={cashData?.items ?? []}
-				mode={mode}
-				totalAmountCents={cashData?.totalAmountCents ?? 0}
-			/>
-
-			<div className="section-heading">
-				<h2>Остатки</h2>
-				<span>{data?.summary.stockItemCount ?? 0} позиций</span>
+			<div className="inventory-overview-strip">
+				<div>
+					<span>Товар</span>
+					<strong>{balances.isLoading ? "Загрузка" : `${totalUnits} шт`}</strong>
+				</div>
+				<div>
+					<span>Стоимость</span>
+					<strong>{formatRubles(totalStockValueCents)} ₽</strong>
+				</div>
+				<div>
+					<span>Наличные</span>
+					<strong>{cashBalances.isLoading ? "Загрузка" : `${formatRubles(totalCashCents)} ₽`}</strong>
+				</div>
 			</div>
 
 			{balances.isLoading ? <p className="muted">Загрузка баланса курьера</p> : null}
 			{balances.isError ? <p className="form-error">{balances.error.message}</p> : null}
+			{cashBalances.isError ? <p className="form-error">Не удалось загрузить cash-балансы</p> : null}
 			{!balances.isLoading && !balances.isError && data?.items.length === 0 ? (
 				<p className="muted">У курьера пока нет продукции.</p>
 			) : null}
 
-			{mode === "all" && data && data.courierSummaries.length > 1 ? (
-				<div className="production-stock-stack">
-					{data.courierSummaries.map((summary) => (
-						<div className="stock-aggregate-card" key={summary.courierUserId}>
-							<div className="production-row-icon">
-								<Truck aria-hidden size={18} />
-							</div>
-							<div className="stock-aggregate-body">
-								<strong>{summary.courierDisplayName}</strong>
-								<p>@{summary.courierLogin} · {summary.stockItemCount} позиций</p>
-							</div>
-							<div className="stock-aggregate-value">
-								<strong>{summary.totalUnits} шт</strong>
-								<span>{formatRubles(summary.totalStockValueCents)} ₽</span>
-							</div>
-						</div>
-					))}
-				</div>
-			) : null}
+			{mode === "own" ? <CourierCashPanel items={cashData?.items ?? []} /> : null}
 
-			<CourierStockList items={data?.items ?? []} showCourier={mode === "all"} />
+			<CourierPeopleList
+				cashItems={cashData?.items ?? []}
+				productItems={data?.items ?? []}
+				summaries={data?.courierSummaries ?? []}
+				mode={mode}
+			/>
+
+			{mode === "own" ? (
+				<>
+					<div className="section-heading">
+						<h2>Остатки</h2>
+						<span>{stockItemCount} позиций</span>
+					</div>
+					<CourierStockList items={data?.items ?? []} />
+				</>
+			) : null}
 		</section>
 	);
 }
 
 function CourierCashPanel({
-	isError,
-	isLoading,
 	items,
-	mode,
-	totalAmountCents,
 }: {
-	isError: boolean;
-	isLoading: boolean;
 	items: CourierCashBalanceItem[];
-	mode: "own" | "all";
-	totalAmountCents: number;
 }) {
-	if (mode === "own") {
-		const ownItem = items[0];
+	const ownItem = items[0];
 
-		return (
-			<div className="entity-card production-history-card">
-				<div className="inventory-item-main">
-					<div className="production-row-icon">
-						<Banknote aria-hidden size={18} />
-					</div>
-					<div>
-						<strong>Наличные</strong>
-						<p>{isLoading ? "Загрузка cash-баланса" : "Баланс курьера"}</p>
-					</div>
+	return (
+		<div className="entity-card production-history-card">
+			<div className="inventory-item-main">
+				<div className="production-row-icon">
+					<Banknote aria-hidden size={18} />
 				</div>
-				<div className="production-history-meta">
-					<strong>{formatRubles(ownItem?.amountCents ?? 0)} ₽</strong>
-					<span>{ownItem?.updatedAt ? "Обновлен" : "Операций нет"}</span>
+				<div>
+					<strong>Наличные</strong>
+					<p>Баланс курьера</p>
 				</div>
-				{isError ? <p className="form-error">Не удалось загрузить cash-баланс</p> : null}
 			</div>
-		);
+			<div className="production-history-meta">
+				<strong>{formatRubles(ownItem?.amountCents ?? 0)} ₽</strong>
+				<span>{ownItem?.updatedAt ? "Обновлен" : "Операций нет"}</span>
+			</div>
+		</div>
+	);
+}
+
+function CourierPeopleList({
+	cashItems,
+	productItems,
+	summaries,
+	mode,
+}: {
+	cashItems: CourierCashBalanceItem[];
+	productItems: CourierProductBalanceItem[];
+	summaries: CourierProductBalancesCourierSummary[];
+	mode: "own" | "all";
+}) {
+	if (mode !== "all" || summaries.length === 0) {
+		return null;
+	}
+	const cashByCourier = new Map(cashItems.map((item) => [item.courierUserId, item.amountCents]));
+	const productsByCourier = new Map<string, CourierProductBalanceItem[]>();
+	for (const item of productItems) {
+		const courierItems = productsByCourier.get(item.courierUserId) ?? [];
+		courierItems.push(item);
+		productsByCourier.set(item.courierUserId, courierItems);
 	}
 
 	return (
 		<div className="production-stock-stack">
 			<div className="section-heading compact">
-				<h2>Наличные</h2>
-				<span>{formatRubles(totalAmountCents)} ₽</span>
+				<h2>Курьеры</h2>
+				<span>{summaries.length}</span>
 			</div>
-			{isLoading ? <p className="muted">Загрузка cash-балансов</p> : null}
-			{isError ? <p className="form-error">Не удалось загрузить cash-балансы</p> : null}
-			{items.map((item) => (
-				<div className="stock-aggregate-card" key={item.courierUserId}>
+			{summaries.map((summary) => (
+				<div className="courier-balance-card" key={summary.courierUserId}>
 					<div className="production-row-icon">
-						<Banknote aria-hidden size={18} />
+						<Truck aria-hidden size={18} />
 					</div>
 					<div className="stock-aggregate-body">
-						<strong>{item.courierDisplayName}</strong>
-						<p>@{item.courierLogin}</p>
+						<strong>{summary.courierDisplayName}</strong>
+						<p>@{summary.courierLogin} · {summary.stockItemCount} позиций</p>
 					</div>
-					<div className="stock-aggregate-value">
-						<strong>{formatRubles(item.amountCents)} ₽</strong>
-						<span>{item.updatedAt ? "Есть операции" : "0 ₽ без операций"}</span>
+					<div className="courier-balance-values">
+						<div>
+							<strong>{summary.totalUnits} шт</strong>
+							<span>{formatRubles(summary.totalStockValueCents)} ₽ товар</span>
+						</div>
+						<div>
+							<strong>{formatRubles(cashByCourier.get(summary.courierUserId) ?? 0)} ₽</strong>
+							<span>наличные</span>
+						</div>
+					</div>
+					<div className="courier-product-stack">
+						{(productsByCourier.get(summary.courierUserId) ?? []).map((item) => (
+							<div className="courier-product-row" key={item.id}>
+								<div>
+									<strong>{item.productName}</strong>
+									<span>{formatRubles(item.unitPriceCents)} ₽/шт</span>
+								</div>
+								<div>
+									<strong>{item.quantity} шт</strong>
+									<span>{formatRubles(item.stockValueCents)} ₽</span>
+								</div>
+							</div>
+						))}
 					</div>
 				</div>
 			))}

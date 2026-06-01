@@ -18,6 +18,8 @@ export function CommercialManagerHome({
 			onSale={() => onTabChange("sale")}
 			saleDisabled={!online}
 			showCashBalance={showCashBalance}
+			showStockList={false}
+			summaryLayout="commercial"
 			stockSummaryLabel="Остаток распределителя"
 			title="Продажи"
 		/>

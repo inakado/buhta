@@ -2,7 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { Box } from "lucide-react";
-import { formatMoneyCents, moneyCents, type DistributorCashBalanceItem } from "@buhta/shared";
+import { formatMoneyCents, moneyCents } from "@buhta/shared";
 import { getDistributorCashBalances, getDistributorInventory } from "../../lib/api-client";
 import { DistributorStockList } from "./DistributorStockList";
 
@@ -18,36 +18,38 @@ export function DistributorInventoryHome({ showCashBalance = false }: { showCash
 	});
 	const data = inventory.data;
 	const cashData = cashBalances.data;
+	const totalUnits = data?.summary.totalUnits ?? 0;
+	const totalStockValueCents = data?.summary.totalStockValueCents ?? 0;
+	const totalCashCents = cashData?.totalAmountCents ?? 0;
+	const stockItemCount = data?.summary.stockItemCount ?? 0;
 
 	return (
 		<section className="screen-stack">
-			<div className="summary-card">
-				<div>
-					<p className="summary-label">Товар на распределителе</p>
-					<strong>{inventory.isLoading ? "Загрузка" : `${data?.summary.totalUnits ?? 0} шт`}</strong>
-					<p className="summary-note">
-						Товарный баланс {formatRubles(data?.summary.totalStockValueCents ?? 0)} ₽
-					</p>
-				</div>
-				<Box aria-hidden size={30} />
-			</div>
-
-			{showCashBalance ? (
-				<DistributorCashSummary
-					isError={cashBalances.isError}
-					isLoading={cashBalances.isLoading}
-					items={cashData?.items ?? []}
-					totalAmountCents={cashData?.totalAmountCents ?? 0}
-				/>
-			) : null}
-
 			<div className="section-heading">
 				<h2>Остатки</h2>
-				<span>{data?.summary.stockItemCount ?? 0} позиций</span>
+				<span>{stockItemCount} позиций</span>
+			</div>
+
+			<div className="inventory-overview-strip">
+				<div>
+					<span>Товар</span>
+					<strong>{inventory.isLoading ? "Загрузка" : `${totalUnits} шт`}</strong>
+				</div>
+				<div>
+					<span>Стоимость</span>
+					<strong>{formatRubles(totalStockValueCents)} ₽</strong>
+				</div>
+				{showCashBalance ? (
+					<div>
+						<span>Наличные</span>
+						<strong>{cashBalances.isLoading ? "Загрузка" : `${formatRubles(totalCashCents)} ₽`}</strong>
+					</div>
+				) : null}
 			</div>
 
 			{inventory.isLoading ? <p className="muted">Загрузка остатков распределителя</p> : null}
 			{inventory.isError ? <p className="form-error">{inventory.error.message}</p> : null}
+			{cashBalances.isError ? <p className="form-error">Не удалось загрузить наличные распределителя</p> : null}
 			{!inventory.isLoading && !inventory.isError && data?.items.length === 0 ? (
 				<p className="muted">На распределителе пока нет продукции.</p>
 			) : null}
@@ -74,32 +76,6 @@ export function DistributorInventoryHome({ showCashBalance = false }: { showCash
 
 			<DistributorStockList items={data?.items ?? []} />
 		</section>
-	);
-}
-
-function DistributorCashSummary({
-	isError,
-	isLoading,
-	items,
-	totalAmountCents,
-}: {
-	isError: boolean;
-	isLoading: boolean;
-	items: DistributorCashBalanceItem[];
-	totalAmountCents: number;
-}) {
-	return (
-		<div className="summary-card compact-summary">
-			<div>
-				<p className="summary-label">Наличные на распределителе</p>
-				<strong>{isLoading ? "Загрузка" : `${formatRubles(totalAmountCents)} ₽`}</strong>
-				<p className="summary-note">
-					{items.length > 1 ? `${items.length} распределителя` : "Денежный баланс"}
-				</p>
-				{isError ? <span className="inline-error">Не удалось загрузить наличные</span> : null}
-			</div>
-			<Box aria-hidden size={28} />
-		</div>
 	);
 }
 
