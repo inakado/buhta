@@ -197,6 +197,35 @@ describe("UsersService real Postgres integration", () => {
 		await expect(usersService.updateUserRole(adminActor, "missing-user", "director")).rejects.toThrow(AppError);
 	});
 
+	it("creates a credential when resetting password for a legacy user without account", async () => {
+		await ensureAdmin();
+		await ensureUser("director");
+
+		await prisma.account.deleteMany({
+			where: { userId: testUserId },
+		});
+
+		const result = await usersService.resetUserPassword(adminActor, testUserId, new Headers());
+
+		expect(result.user).toMatchObject({
+			id: testUserId,
+			login: testUserLogin,
+			role: "director",
+		});
+		expect(result.temporaryPassword).toMatch(/^Buh-/);
+		await expect(
+			prisma.account.findFirstOrThrow({
+				where: {
+					userId: testUserId,
+					providerId: "credential",
+				},
+			}),
+		).resolves.toMatchObject({
+			accountId: testUserId,
+			password: expect.any(String),
+		});
+	});
+
 	it("rejects admin password reset for the current actor", async () => {
 		await ensureAdmin();
 

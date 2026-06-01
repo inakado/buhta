@@ -1,4 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
+import { hashPassword } from "better-auth/crypto";
 import type { CreateUserRequest, Role, UserSummary } from "@buhta/shared";
 import { auth } from "../auth/auth";
 import { AppError } from "../common/errors/app-error";
@@ -120,13 +121,24 @@ export class UsersService {
 		const temporaryPassword = generateTemporaryPassword();
 
 		try {
-			await auth.api.setUserPassword({
-				body: {
+			const existingCredential = await prisma.account.findFirst({
+				where: {
 					userId,
-					newPassword: temporaryPassword,
+					providerId: "credential",
 				},
-				headers,
 			});
+
+			if (existingCredential) {
+				await auth.api.setUserPassword({
+					body: {
+						userId,
+						newPassword: temporaryPassword,
+					},
+					headers,
+				});
+			}
+
+			await this.ensureCredentialPassword(userId, temporaryPassword, existingCredential?.id);
 		} catch (error) {
 			throw this.mapAuthPasswordResetError(error, userId);
 		}
@@ -150,6 +162,32 @@ export class UsersService {
 			user: mapUserSummary(user),
 			temporaryPassword,
 		};
+	}
+
+	private async ensureCredentialPassword(
+		userId: string,
+		password: string,
+		existingCredentialId?: string,
+	): Promise<void> {
+		const passwordHash = await hashPassword(password);
+
+		if (existingCredentialId) {
+			await prisma.account.update({
+				where: { id: existingCredentialId },
+				data: { password: passwordHash },
+			});
+			return;
+		}
+
+		await prisma.account.create({
+			data: {
+				id: `${userId}-credential`,
+				accountId: userId,
+				providerId: "credential",
+				userId,
+				password: passwordHash,
+			},
+		});
 	}
 
 	private async resolveUniqueLogin(login: string | undefined, name: string): Promise<string> {
