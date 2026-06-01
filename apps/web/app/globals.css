@@ -318,10 +318,22 @@ button:disabled {
 	color: var(--base-black);
 }
 
+.action-tile.unavailable-action {
+	min-height: 108px;
+	border: 1px solid var(--line);
+	background: var(--surface-stock);
+}
+
 .action-tile span {
 	font-size: 16px;
 	font-weight: var(--font-weight-regular);
 	line-height: 1.15;
+}
+
+.action-tile small {
+	color: var(--text-muted);
+	font-size: 11px;
+	line-height: 1.2;
 }
 
 .catalog-tabs {
@@ -459,6 +471,33 @@ button:disabled {
 	border-color: var(--base-black);
 	background: var(--base-black);
 	color: var(--base-white);
+}
+
+.director-metric-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 8px;
+}
+
+.director-metric-card {
+	align-items: flex-start;
+	flex-direction: column;
+	min-height: 132px;
+}
+
+.director-metric-card p {
+	font-size: 12px;
+	text-transform: uppercase;
+}
+
+.director-metric-card strong {
+	font-size: 20px;
+}
+
+.director-metric-card span {
+	color: var(--text-muted);
+	font-size: 12px;
+	line-height: 1.25;
 }
 
 .inline-error {

@@ -15,6 +15,7 @@ import type { CurrentActor } from "../lib/api-client";
 import { AdminHome } from "../roles/admin/AdminHome";
 import { CommercialManagerHome } from "../roles/commercial-manager/CommercialManagerHome";
 import { CourierHome } from "../roles/courier/CourierHome";
+import { DirectorHome } from "../roles/director/DirectorHome";
 import { DistributorWorkerHome } from "../roles/distributor-worker/DistributorWorkerHome";
 
 type RoleHomeRouterProps = {
@@ -108,6 +109,10 @@ export function RoleHomeRouter({
 	}
 
 	if (actor.permissions.includes("distributor.stock.read")) {
+		if (actor.role === "director") {
+			return <DirectorHome />;
+		}
+
 		if (actor.role === "courier") {
 			return <CourierHome online={online} onTabChange={onTabChange} />;
 		}

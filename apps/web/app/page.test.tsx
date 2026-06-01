@@ -1440,6 +1440,65 @@ describe("HomePage", () => {
 		expect(screen.queryByRole("button", { name: "Записать загрузку" })).toBeNull();
 	});
 
+	it("shows director overview with real balances and unavailable management actions", async () => {
+		const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+			const url = String(input);
+			const method = init?.method ?? "GET";
+
+			if (method !== "GET") {
+				return jsonResponse({ error: { message: "Unexpected mutation" } }, 500);
+			}
+
+			if (url.endsWith("/auth/me")) {
+				return jsonResponse(directorActorResponse);
+			}
+
+			if (url.endsWith("/distributor/inventory")) {
+				return jsonResponse(distributorInventoryResponse);
+			}
+
+			if (url.endsWith("/distributor/cash-balances")) {
+				return jsonResponse(distributorCashBalancesResponse);
+			}
+
+			if (url.endsWith("/courier/product-balances")) {
+				return jsonResponse(courierProductBalancesResponse);
+			}
+
+			if (url.endsWith("/courier/cash-balances")) {
+				return jsonResponse(courierCashBalancesResponse);
+			}
+
+			return jsonResponse({ error: { message: "Unexpected request" } }, 500);
+		});
+
+		vi.stubGlobal("fetch", fetchMock);
+
+		render(<HomePage />);
+
+		expect(await screen.findByRole("heading", { name: "Контроль" })).toBeTruthy();
+		expect(screen.getByText("В обороте")).toBeTruthy();
+		expect(await screen.findByText("4 шт")).toBeTruthy();
+		expect(screen.getByText("Наличные в системе")).toBeTruthy();
+		expect(await screen.findByText("1950.00 ₽")).toBeTruthy();
+		expect(screen.getByRole("heading", { name: "Распределитель" })).toBeTruthy();
+		expect(screen.getByRole("heading", { name: "Курьеры" })).toBeTruthy();
+		expect(screen.getAllByText("Икра горбуши").length).toBeGreaterThan(1);
+		expect(screen.getByText("Courier · @courier")).toBeTruthy();
+		expect(screen.queryByText("Последние операции")).toBeNull();
+		expect(screen.queryByText("Продажи сегодня")).toBeNull();
+		expect(screen.queryByText("Статистика")).toBeNull();
+		expect(screen.queryByRole("button", { name: "Продажа" })).toBeNull();
+
+		for (const action of ["Назначить дисконт", "Списать наличные", "Отчеты", "История"]) {
+			const button = screen.getByRole("button", { name: `${action} пока недоступно` }) as HTMLButtonElement;
+			expect(button.disabled).toBe(true);
+			fireEvent.click(button);
+		}
+
+		expect(fetchMock.mock.calls.every(([, init]) => (init?.method ?? "GET") === "GET")).toBe(true);
+	});
+
 	it("lets a commercial manager create a client inside distributor sale and records sale", async () => {
 		let clients = [...clientsResponse.clients];
 		const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {

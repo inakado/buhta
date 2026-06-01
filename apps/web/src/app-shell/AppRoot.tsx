@@ -199,6 +199,13 @@ function BottomNav({
 			? productionItems
 			: actor.role === "courier"
 				? courierItems
+				: actor.role === "director"
+					? [
+			{ id: "home", label: "Главная", icon: PackageCheck },
+			...clientsItem,
+			...courierBalancesItem,
+			{ id: "settings", label: "Профиль", icon: Settings },
+		]
 				: [
 			{ id: "home", label: "Главная", icon: PackageCheck },
 			...catalogItem,

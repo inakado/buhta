@@ -546,6 +546,24 @@ Backend, Prisma и shared contracts не должны изменяться в э
 - `pnpm --filter @buhta/web typecheck` — ok.
 - In-app Browser на `http://localhost:3001` после restart dev server — ok: courier sale открывается, segmented control занимает две равные колонки, `Безнал` меняет summary на `Наличные не изменятся`, submit не перекрывается bottom nav, console без warning/error.
 
+### 2026-06-02 — Checkpoint 6: Director overview
+
+Фактический результат:
+
+- Добавлен `DirectorHome` в `apps/web/src/roles/director/`.
+- Director home теперь собирается через `RoleHomeRouter`, а не через generic distributor inventory fallback.
+- Структура сверена с `06-director.html`, но использованы только реальные read-only блоки: товар в обороте, наличные в системе, товарный баланс, остатки распределителя и балансы курьеров.
+- Fake `Продажи сегодня`, `Последние операции`, fake revenue/report numbers не добавлены.
+- Управленческие действия `Назначить дисконт`, `Списать наличные`, `Отчеты`, `История` оставлены disabled placeholders с явным статусом `Нужен backend этап`; мутации не отправляются.
+- Bottom navigation директора больше не показывает `Продажа`, потому что у роли нет sale write action.
+
+Выполненные проверки:
+
+- `pnpm --filter @buhta/web test -- --runInBand apps/web/app/page.test.tsx` — ok, 24 tests passed.
+- `pnpm --filter @buhta/web lint` — ok.
+- `pnpm --filter @buhta/web typecheck` — ok.
+- In-app Browser на `http://localhost:3001` — ok: director overview рендерится, action placeholders disabled, bottom nav без `Продажа`, console без warning/error.
+
 ## Тестовый план
 
 ### Component tests
