@@ -14,6 +14,7 @@ import { ROLE_LABELS } from "../lib/role-labels";
 import type { CurrentActor } from "../lib/api-client";
 import { AdminHome } from "../roles/admin/AdminHome";
 import { CommercialManagerHome } from "../roles/commercial-manager/CommercialManagerHome";
+import { DistributorWorkerHome } from "../roles/distributor-worker/DistributorWorkerHome";
 
 type RoleHomeRouterProps = {
 	actor: CurrentActor;
@@ -113,6 +114,17 @@ export function RoleHomeRouter({
 		if (actor.role === "commercial_manager") {
 			return (
 				<CommercialManagerHome
+					online={online}
+					onTabChange={onTabChange}
+					showCashBalance={actor.permissions.includes("distributor.cash.read")}
+				/>
+			);
+		}
+
+		if (actor.role === "distributor_worker") {
+			return (
+				<DistributorWorkerHome
+					online={online}
 					onTabChange={onTabChange}
 					showCashBalance={actor.permissions.includes("distributor.cash.read")}
 				/>

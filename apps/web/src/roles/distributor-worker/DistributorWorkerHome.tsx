@@ -2,24 +2,24 @@
 
 import { DistributorHomeOverview } from "../../features/distributor/DistributorHomeOverview";
 
-type CommercialManagerHomeProps = {
+type DistributorWorkerHomeProps = {
 	onTabChange: (tab: string) => void;
 	online: boolean;
 	showCashBalance?: boolean;
 };
 
-export function CommercialManagerHome({
+export function DistributorWorkerHome({
 	onTabChange,
 	online,
 	showCashBalance = false,
-}: CommercialManagerHomeProps) {
+}: DistributorWorkerHomeProps) {
 	return (
 		<DistributorHomeOverview
 			onSale={() => onTabChange("sale")}
 			saleDisabled={!online}
 			showCashBalance={showCashBalance}
-			stockSummaryLabel="Остаток распределителя"
-			title="Продажи"
+			stockSummaryLabel="Товар"
+			title="Распределитель"
 		/>
 	);
 }

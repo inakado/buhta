@@ -44,6 +44,23 @@ const commercialActorResponse = {
 	},
 };
 
+const distributorWorkerActorResponse = {
+	authenticated: true,
+	actor: {
+		userId: "seed-distributor-worker",
+		login: "distributor-worker",
+		displayName: "Distributor Worker",
+		role: "distributor_worker",
+		permissions: [
+			"distributor.stock.read",
+			"distributor.cash.read",
+			"distributor.sale.create",
+			"client.read",
+			"client.manage",
+		],
+	},
+};
+
 const directorActorResponse = {
 	authenticated: true,
 	actor: {
@@ -937,7 +954,7 @@ describe("HomePage", () => {
 		expect(screen.queryByText("Выпуск записан")).toBeNull();
 	});
 
-	it("renders commercial manager home and navigates through quick actions", async () => {
+	it("renders commercial manager home and navigates through sale action and bottom nav", async () => {
 		const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
 			const url = String(input);
 
@@ -1002,6 +1019,55 @@ describe("HomePage", () => {
 		expect(await screen.findByRole("heading", { name: "Продажи" })).toBeTruthy();
 		fireEvent.click(screen.getByRole("button", { name: "Курьеры" }));
 		expect(await screen.findByText("Балансы курьеров")).toBeTruthy();
+	});
+
+	it("renders distributor worker home without non-action tiles or courier management", async () => {
+		const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+			const url = String(input);
+
+			if (url.endsWith("/auth/me")) {
+				return jsonResponse(distributorWorkerActorResponse);
+			}
+
+			if (url.endsWith("/distributor/inventory")) {
+				return jsonResponse(distributorInventoryResponse);
+			}
+
+			if (url.endsWith("/distributor/cash-balances")) {
+				return jsonResponse(distributorCashBalancesResponse);
+			}
+
+			if (url.endsWith("/distributor/sale-options")) {
+				return jsonResponse(distributorSaleOptionsResponse);
+			}
+
+			if (url.includes("/clients")) {
+				return jsonResponse(clientsResponse);
+			}
+
+			return jsonResponse({ error: { message: "Unexpected request" } }, 500);
+		});
+
+		vi.stubGlobal("fetch", fetchMock);
+
+		render(<HomePage />);
+
+		expect(await screen.findByRole("heading", { name: "Распределитель" })).toBeTruthy();
+		expect(screen.getByText("Товар")).toBeTruthy();
+		expect(await screen.findByText("Наличные")).toBeTruthy();
+		const saleAction = screen.getByRole("button", { name: "Открыть продажу" });
+		expect(saleAction.className).toContain("action-tile");
+		expect(screen.queryByRole("heading", { name: "Действия" })).toBeNull();
+		expect(screen.queryByRole("button", { name: "Показать остатки" })).toBeNull();
+		expect(screen.queryByRole("button", { name: "Открыть клиентов" })).toBeNull();
+		expect(screen.queryByRole("button", { name: "Курьеры" })).toBeNull();
+		expect(screen.queryByText("Балансы курьеров")).toBeNull();
+		expect(screen.getByText("Икра горбуши")).toBeTruthy();
+		expect(screen.getByText("Распределитель Центральный")).toBeTruthy();
+
+		fireEvent.click(saleAction);
+		expect(await screen.findByText("Новая продажа")).toBeTruthy();
+		expect(screen.queryByText("Балансы курьеров")).toBeNull();
 	});
 
 	it("lets courier load product to own balance", async () => {

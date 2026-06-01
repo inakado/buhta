@@ -112,7 +112,7 @@ Frontend уже имеет рабочий mobile-first PWA shell:
 
 - Берем: role home `Распределитель`, товарный и cash summary, primary `Продать`, компактный список остатков, offline-disabled pattern.
 - Адаптируем: sale flow остается на текущем single-item API и существующих client endpoints.
-- Не берем: fake “Продажи сегодня” и history rows.
+- Не берем: fake “Продажи сегодня”, history rows и плитки, которые дублируют нижнюю навигацию или не запускают действие.
 
 ### `16-courier.html`
 
@@ -493,6 +493,24 @@ Backend, Prisma и shared contracts не должны изменяться в э
 - `pnpm --filter @buhta/web typecheck` — ok.
 - Browser plugin path заблокировал localhost (`net::ERR_BLOCKED_BY_CLIENT`), fallback через Playwright на `http://localhost:3001` — ok: commercial home рендерится, `Продать` остается action tile, переход ведет в `Детали продажи`.
 
+### 2026-06-01 — Checkpoint 3: Distributor worker + distributor sale entry
+
+Фактический результат:
+
+- Добавлен `DistributorWorkerHome` в `apps/web/src/roles/distributor-worker/`.
+- Commercial manager и distributor worker теперь используют общий доменный `DistributorHomeOverview` из `features/distributor`, без neutral `ui/*` primitives и без универсального role builder.
+- Worker home показывает `Распределитель`, товарный summary `Товар`, cash summary `Наличные`, action tile `Продать` и inline stock list.
+- Плитки `Остатки`, `Клиенты`, `Курьеры`, `История` не добавлены: остатки уже на home, клиенты доступны через нижнюю навигацию, курьеры не входят в права worker, history/audit UI не реализован.
+- Sale entry ведет в существующий `DistributorSaleHome`; форма продажи и backend-инварианты не копировались в role component.
+
+Выполненные проверки:
+
+- `pnpm --filter @buhta/web test -- --runInBand apps/web/app/page.test.tsx` — ok, 21 tests passed.
+- `pnpm --filter @buhta/web lint` — ok.
+- `pnpm --filter @buhta/web typecheck` — ok.
+- `pnpm lint:boundaries` — ok.
+- Playwright fallback на `http://localhost:3001` — ok: worker home рендерится без non-action tiles и без `Курьеры`, `Продать` ведет в `Детали продажи`.
+
 ## Тестовый план
 
 ### Component tests
@@ -506,7 +524,9 @@ Backend, Prisma и shared contracts не должны изменяться в э
 - Distributor worker:
   - видит distributor home;
   - видит товарный и cash summary;
-  - может перейти к продаже;
+  - видит primary action tile `Продать`;
+  - не видит заголовок `Действия` и non-action tiles;
+  - может перейти к продаже через primary action;
   - не видит courier management blocks.
 - Distributor sale:
   - client picker/create client работает;
