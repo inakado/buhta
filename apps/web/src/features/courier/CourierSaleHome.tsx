@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FormEvent, useState } from "react";
-import { Calculator, ReceiptText, Search, UserPlus } from "lucide-react";
+import { Banknote, Calculator, CreditCard, ReceiptText, Search, UserPlus } from "lucide-react";
 import { formatMoneyCents, moneyCents, type CourierSaleOption } from "@buhta/shared";
 import {
 	createClient,
@@ -39,6 +39,7 @@ export function CourierSaleHome({
 		queryKey: ["courier", "sale-options"],
 		queryFn: getCourierSaleOptions,
 	});
+	const selectedClient = clients.data?.clients.find((client) => client.id === selectedClientId);
 	const selectedStock = saleOptions.data?.items.find((item) =>
 		item.courierProductBalanceId === selectedBalanceId,
 	);
@@ -46,6 +47,12 @@ export function CourierSaleHome({
 	const saleTotalCents = selectedStock && Number.isInteger(parsedQuantity) && parsedQuantity > 0
 		? selectedStock.unitPriceCents * parsedQuantity
 		: 0;
+	const summaryQuantity = Number.isInteger(parsedQuantity) && parsedQuantity > 0
+		? `${parsedQuantity} шт`
+		: "Количество не задано";
+	const paymentEffect = paymentMethod === "cash"
+		? "Наличные увеличатся у курьера"
+		: "Наличные не изменятся";
 	const createClientMutation = useMutation({
 		mutationFn: () => createClient({
 			name: newClientName,
@@ -263,16 +270,10 @@ export function CourierSaleHome({
 						value={quantity}
 					/>
 				</label>
-				<label className="field">
-					<span>Способ оплаты</span>
-					<select
-						onChange={(event) => setPaymentMethod(event.target.value === "cashless" ? "cashless" : "cash")}
-						value={paymentMethod}
-					>
-						<option value="cash">Наличные</option>
-						<option value="cashless">Безнал</option>
-					</select>
-				</label>
+				<PaymentMethodSegmentedControl
+					onChange={setPaymentMethod}
+					value={paymentMethod}
+				/>
 				<label className="field">
 					<span>Комментарий</span>
 					<textarea onChange={(event) => setComment(event.target.value)} rows={2} value={comment} />
@@ -284,7 +285,14 @@ export function CourierSaleHome({
 						</div>
 						<div>
 							<strong>Итого</strong>
-							<p>{paymentMethod === "cash" ? "Наличные" : "Безнал"}</p>
+							<p>
+								{selectedClient?.name ?? (selectedClientId ? "Клиент выбран" : "Клиент не выбран")}
+								{" · "}
+								{selectedStock?.productName ?? "Товар не выбран"}
+								{" · "}
+								{summaryQuantity}
+							</p>
+							<p>{paymentEffect}</p>
 						</div>
 					</div>
 					<div className="production-history-meta">
@@ -299,6 +307,41 @@ export function CourierSaleHome({
 				</button>
 			</form>
 		</section>
+	);
+}
+
+function PaymentMethodSegmentedControl({
+	onChange,
+	value,
+}: {
+	onChange: (value: "cash" | "cashless") => void;
+	value: "cash" | "cashless";
+}) {
+	const options = [
+		{ icon: Banknote, label: "Наличные", value: "cash" as const },
+		{ icon: CreditCard, label: "Безнал", value: "cashless" as const },
+	];
+
+	return (
+		<div aria-labelledby="courier-payment-method-label" className="payment-segmented" role="group">
+			<span id="courier-payment-method-label">Способ оплаты</span>
+			{options.map((option) => {
+				const Icon = option.icon;
+				const active = value === option.value;
+				return (
+					<button
+						aria-pressed={active}
+						className={active ? "active" : ""}
+						key={option.value}
+						onClick={() => onChange(option.value)}
+						type="button"
+					>
+						<Icon aria-hidden size={17} />
+						{option.label}
+					</button>
+				);
+			})}
+		</div>
 	);
 }
 

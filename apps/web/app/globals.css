@@ -208,7 +208,7 @@ button:disabled {
 	flex: 1 1 auto;
 	min-height: 0;
 	overflow: auto;
-	padding-bottom: 8px;
+	padding-bottom: 92px;
 }
 
 .summary-card {
@@ -423,6 +423,42 @@ button:disabled {
 	margin-top: 10px;
 	padding-top: 10px;
 	border-top: 1px solid var(--line);
+}
+
+.payment-segmented {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 8px;
+	margin: 0;
+	padding: 0;
+}
+
+.payment-segmented > span {
+	grid-column: 1 / -1;
+	margin: 0 0 7px;
+	color: var(--text-muted);
+	font-size: 13px;
+	font-weight: var(--font-weight-label);
+}
+
+.payment-segmented button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	min-height: 46px;
+	border: 1px solid var(--line);
+	border-radius: 8px;
+	background: #fbfcfb;
+	color: var(--base-black);
+	font-size: 13px;
+	font-weight: var(--font-weight-emphasis);
+}
+
+.payment-segmented button.active {
+	border-color: var(--base-black);
+	background: var(--base-black);
+	color: var(--base-white);
 }
 
 .inline-error {

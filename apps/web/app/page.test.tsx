@@ -1238,7 +1238,7 @@ describe("HomePage", () => {
 						quantity: 1,
 						unitPriceCents: 125000,
 						totalCents: 125000,
-						paymentMethod: "cash",
+						paymentMethod: "cashless",
 						comment: "Доставка",
 						operationId: "op1",
 						actorUserId: "seed-courier",
@@ -1265,6 +1265,8 @@ describe("HomePage", () => {
 		});
 
 		vi.stubGlobal("fetch", fetchMock);
+		const requestCount = (path: string) =>
+			fetchMock.mock.calls.filter(([input]) => String(input).endsWith(path)).length;
 
 		render(<HomePage />);
 
@@ -1274,7 +1276,9 @@ describe("HomePage", () => {
 		fireEvent.change(await screen.findByLabelText("Клиент"), { target: { value: "client1" } });
 		fireEvent.change(await screen.findByLabelText("Продукция"), { target: { value: "courier-balance1" } });
 		fireEvent.change(screen.getByLabelText("Количество, шт"), { target: { value: "1" } });
-		fireEvent.change(screen.getByLabelText("Способ оплаты"), { target: { value: "cash" } });
+		fireEvent.click(screen.getByRole("button", { name: "Безнал" }));
+		expect(screen.getByRole("button", { name: "Безнал" }).getAttribute("aria-pressed")).toBe("true");
+		expect(screen.getByText("Наличные не изменятся")).toBeTruthy();
 		fireEvent.change(screen.getByLabelText("Комментарий"), { target: { value: "Доставка" } });
 		fireEvent.click(screen.getByRole("button", { name: "Записать продажу" }));
 
@@ -1287,7 +1291,7 @@ describe("HomePage", () => {
 						courierProductBalanceId: "courier-balance1",
 						clientId: "client1",
 						quantity: 1,
-						paymentMethod: "cash",
+						paymentMethod: "cashless",
 						comment: "Доставка",
 					}),
 				}),
@@ -1297,6 +1301,68 @@ describe("HomePage", () => {
 		await waitFor(() => {
 			expect(screen.getAllByText("Мой баланс").length).toBeGreaterThan(0);
 		});
+		await waitFor(() => {
+			expect(requestCount("/courier/product-balances")).toBeGreaterThan(1);
+			expect(requestCount("/courier/sale-options")).toBeGreaterThan(1);
+			expect(requestCount("/courier/cash-balances")).toBeGreaterThan(1);
+		});
+	});
+
+	it("keeps courier sale form state when backend rejects the sale", async () => {
+		const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+			const url = String(input);
+			const method = init?.method ?? "GET";
+
+			if (url.endsWith("/auth/me")) {
+				return jsonResponse(courierActorResponse);
+			}
+
+			if (url.endsWith("/courier/product-balances")) {
+				return jsonResponse(courierProductBalancesResponse);
+			}
+
+			if (url.endsWith("/courier/cash-balances")) {
+				return jsonResponse(courierCashBalancesResponse);
+			}
+
+			if (url.endsWith("/courier/sale-options")) {
+				return jsonResponse(courierSaleOptionsResponse);
+			}
+
+			if (url.endsWith("/courier/sales") && method === "POST") {
+				return jsonResponse({ error: { message: "Недостаточно товара у курьера" } }, 400);
+			}
+
+			if (url.includes("/clients")) {
+				return jsonResponse(clientsResponse);
+			}
+
+			return jsonResponse({ error: { message: "Unexpected request" } }, 500);
+		});
+
+		vi.stubGlobal("fetch", fetchMock);
+
+		render(<HomePage />);
+
+		fireEvent.click(await screen.findByRole("button", { name: "Открыть продажу" }));
+		expect(await screen.findByText((_, element) =>
+			element?.textContent === "Икра горбуши · 2 шт · 1250.00 ₽",
+		)).toBeTruthy();
+		fireEvent.change(await screen.findByLabelText("Клиент"), { target: { value: "client1" } });
+		fireEvent.change(await screen.findByLabelText("Продукция"), { target: { value: "courier-balance1" } });
+		fireEvent.change(screen.getByLabelText("Количество, шт"), { target: { value: "1" } });
+		fireEvent.click(screen.getByRole("button", { name: "Безнал" }));
+		fireEvent.change(screen.getByLabelText("Комментарий"), { target: { value: "Доставка" } });
+		fireEvent.click(screen.getByRole("button", { name: "Записать продажу" }));
+
+		expect(await screen.findByText("Недостаточно товара у курьера")).toBeTruthy();
+		expect((screen.getByLabelText("Клиент") as HTMLSelectElement).value).toBe("client1");
+		expect((screen.getByLabelText("Продукция") as HTMLSelectElement).value).toBe("courier-balance1");
+		expect((screen.getByLabelText("Количество, шт") as HTMLInputElement).value).toBe("1");
+		expect(screen.getByRole("button", { name: "Безнал" }).getAttribute("aria-pressed")).toBe("true");
+		expect((screen.getByLabelText("Комментарий") as HTMLTextAreaElement).value).toBe("Доставка");
+		expect(screen.queryByText("Продажа записана")).toBeNull();
+		expect(screen.getByRole("heading", { name: "Детали продажи" })).toBeTruthy();
 	});
 
 	it("shows courier balances read-only to commercial manager", async () => {

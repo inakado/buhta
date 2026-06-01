@@ -528,6 +528,24 @@ Backend, Prisma и shared contracts не должны изменяться в э
 - `pnpm --filter @buhta/web typecheck` — ok.
 - In-app Browser на `http://localhost:3001` — ok: courier home рендерится, `Продать`/`Загрузить` по одной action tile, `Сгрузить` отсутствует, `Загрузить` открывает `Детали загрузки`, console без warning/error.
 
+### 2026-06-02 — Checkpoint 5: Courier sale
+
+Фактический результат:
+
+- `CourierSaleHome` оставлен feature-компонентом: role home только открывает action `Продать`, новые плитки не добавлялись.
+- Select `Способ оплаты` заменен на segmented control `Наличные`/`Безнал` по структуре `13-sale-flow.html`.
+- Operation summary теперь показывает клиента, товар, количество, сумму и cash effect для выбранного способа оплаты.
+- Success behavior сохранен: после продажи пользователь возвращается на home через global success callback.
+- Query behavior сохранен и покрыт тестом: после продажи обновляются courier product balances, courier sale options и courier cash balances; backend error не сбрасывает клиента, товар, количество, способ оплаты и комментарий.
+- Для длинной формы добавлен нижний scroll padding, чтобы submit action не перекрывался bottom nav; отдельный sticky primitive не вводился.
+
+Выполненные проверки:
+
+- `pnpm --filter @buhta/web test -- --runInBand apps/web/app/page.test.tsx` — ok, 23 tests passed.
+- `pnpm --filter @buhta/web lint` — ok.
+- `pnpm --filter @buhta/web typecheck` — ok.
+- In-app Browser на `http://localhost:3001` после restart dev server — ok: courier sale открывается, segmented control занимает две равные колонки, `Безнал` меняет summary на `Наличные не изменятся`, submit не перекрывается bottom nav, console без warning/error.
+
 ## Тестовый план
 
 ### Component tests
