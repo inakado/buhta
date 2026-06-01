@@ -1,8 +1,8 @@
 # Frontend Role Screen Recomposition Plan
 
-Статус: `Draft`
+Статус: `Completed`
 Дата: 2026-05-31
-Последнее уточнение: 2026-06-01
+Последнее уточнение: 2026-06-02
 
 ## Цель
 
@@ -563,6 +563,24 @@ Backend, Prisma и shared contracts не должны изменяться в э
 - `pnpm --filter @buhta/web lint` — ok.
 - `pnpm --filter @buhta/web typecheck` — ok.
 - In-app Browser на `http://localhost:3001` — ok: director overview рендерится, action placeholders disabled, bottom nav без `Продажа`, console без warning/error.
+
+### 2026-06-02 — Checkpoint 7: Full verification
+
+Фактический результат:
+
+- Все role-screen checkpoints завершены: `RoleHomeRouter`, commercial manager, distributor worker, courier home/load, courier sale и director overview.
+- Plan закрыт: frontend role composition закреплена в `docs/FRONTEND.md`, backend/shared/Prisma changes в рамках frontend-plan не добавлялись.
+- Browser-smoke проверил основные role flows на живом `http://localhost:3001`: commercial manager home/sale entry, distributor worker home/sale entry, courier home/sale/load entry, director overview/disabled placeholders.
+- Browser console по smoke-flow без warning/error.
+- Захват screenshot через Browser CDP на финальном smoke завис по timeout; DOM snapshot и interaction proof получены, визуально критичных блокеров в smoke не найдено.
+
+Выполненные проверки:
+
+- `pnpm lint` — ok.
+- `pnpm lint:boundaries` — ok.
+- `pnpm typecheck` — ok.
+- `pnpm test` — ok при запуске вне sandbox: shared 12 tests, web 24 tests, api 108 tests. Sandbox-запуск падал на API integration tests из-за ограничений доступа к локальному Postgres/IPC.
+- `pnpm docs:check` — ok.
 
 ## Тестовый план
 
