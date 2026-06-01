@@ -1125,11 +1125,16 @@ describe("HomePage", () => {
 
 		render(<HomePage />);
 
-		expect(await screen.findByText("Баланс курьера")).toBeTruthy();
+		expect(await screen.findByRole("heading", { name: "Мой баланс" })).toBeTruthy();
+		expect(screen.getByText("Товар")).toBeTruthy();
 		expect(await screen.findByText("Наличные")).toBeTruthy();
 		expect(screen.getByText("700.00 ₽")).toBeTruthy();
 		expect(await screen.findByText("Икра горбуши")).toBeTruthy();
-		fireEvent.click(await screen.findByRole("button", { name: "Загрузка" }));
+		const loadAction = screen.getByRole("button", { name: "Открыть загрузку" });
+		expect(loadAction.className).toContain("action-tile");
+		expect(screen.getByRole("button", { name: "Открыть продажу" }).className).toContain("action-tile");
+		expect(screen.queryByRole("button", { name: "Сгрузить" })).toBeNull();
+		fireEvent.click(loadAction);
 		expect(await screen.findByRole("heading", { name: "Детали загрузки" })).toBeTruthy();
 		fireEvent.change(await screen.findByLabelText("Продукция"), { target: { value: "distributor-balance1" } });
 		fireEvent.change(screen.getByLabelText("Количество, шт"), { target: { value: "1" } });
@@ -1150,6 +1155,55 @@ describe("HomePage", () => {
 			);
 		});
 		expect(await screen.findByText("Загрузка записана")).toBeTruthy();
+	});
+
+	it("keeps courier load form state when backend rejects the load", async () => {
+		const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+			const url = String(input);
+			const method = init?.method ?? "GET";
+
+			if (url.endsWith("/auth/me")) {
+				return jsonResponse(courierActorResponse);
+			}
+
+			if (url.endsWith("/courier/product-balances")) {
+				return jsonResponse(courierProductBalancesResponse);
+			}
+
+			if (url.endsWith("/courier/cash-balances")) {
+				return jsonResponse(courierCashBalancesResponse);
+			}
+
+			if (url.endsWith("/courier/load-options")) {
+				return jsonResponse(courierLoadOptionsResponse);
+			}
+
+			if (url.endsWith("/courier/loads") && method === "POST") {
+				return jsonResponse({ error: { message: "Недостаточно товара на распределителе" } }, 400);
+			}
+
+			return jsonResponse({ error: { message: "Unexpected request" } }, 500);
+		});
+
+		vi.stubGlobal("fetch", fetchMock);
+
+		render(<HomePage />);
+
+		fireEvent.click(await screen.findByRole("button", { name: "Открыть загрузку" }));
+		expect(await screen.findByText((_, element) =>
+			element?.textContent === "Икра горбуши · 2 шт · 1250.00 ₽",
+		)).toBeTruthy();
+		fireEvent.change(await screen.findByLabelText("Продукция"), { target: { value: "distributor-balance1" } });
+		fireEvent.change(screen.getByLabelText("Количество, шт"), { target: { value: "1" } });
+		fireEvent.change(screen.getByLabelText("Комментарий"), { target: { value: "На доставку" } });
+		fireEvent.click(screen.getByRole("button", { name: "Записать загрузку" }));
+
+		expect(await screen.findByText("Недостаточно товара на распределителе")).toBeTruthy();
+		expect((screen.getByLabelText("Продукция") as HTMLSelectElement).value).toBe("distributor-balance1");
+		expect((screen.getByLabelText("Количество, шт") as HTMLInputElement).value).toBe("1");
+		expect((screen.getByLabelText("Комментарий") as HTMLTextAreaElement).value).toBe("На доставку");
+		expect(screen.queryByText("Загрузка записана")).toBeNull();
+		expect(screen.getByRole("heading", { name: "Детали загрузки" })).toBeTruthy();
 	});
 
 	it("lets courier sell product from own balance", async () => {
@@ -1214,8 +1268,8 @@ describe("HomePage", () => {
 
 		render(<HomePage />);
 
-		expect(await screen.findByText("Баланс курьера")).toBeTruthy();
-		fireEvent.click(await screen.findByRole("button", { name: "Продажа" }));
+		expect(await screen.findByRole("heading", { name: "Мой баланс" })).toBeTruthy();
+		fireEvent.click(await screen.findByRole("button", { name: "Открыть продажу" }));
 		expect(await screen.findByText("Продажа курьера")).toBeTruthy();
 		fireEvent.change(await screen.findByLabelText("Клиент"), { target: { value: "client1" } });
 		fireEvent.change(await screen.findByLabelText("Продукция"), { target: { value: "courier-balance1" } });
@@ -1241,7 +1295,7 @@ describe("HomePage", () => {
 		});
 		expect(await screen.findByText("Продажа записана")).toBeTruthy();
 		await waitFor(() => {
-			expect(screen.getAllByText("Баланс курьера").length).toBeGreaterThan(0);
+			expect(screen.getAllByText("Мой баланс").length).toBeGreaterThan(0);
 		});
 	});
 

@@ -116,9 +116,9 @@ Frontend уже имеет рабочий mobile-first PWA shell:
 
 ### `16-courier.html`
 
-- Берем: role home `Мой баланс`, cards `Товар` и `Наличные`, quick actions `Продать`, `Загрузить`, `Сгрузить`, own stock list.
+- Берем: role home `Мой баланс`, cards `Товар` и `Наличные`, quick actions `Продать`, `Загрузить`, own stock list.
 - Адаптируем: load flow выбирает одну позицию, потому что текущий backend принимает одну строку остатка.
-- Не берем: мультивыбор загрузки и реальную сгрузку до отдельного backend этапа.
+- Не берем: мультивыбор загрузки, fake “Продажи сегодня” и плитку `Сгрузить` до отдельного backend этапа.
 
 ### `13-sale-flow.html`
 
@@ -313,15 +313,14 @@ Checkpoint:
 - quick actions:
   - `Продать`;
   - `Загрузить`;
-  - `Сгрузить`;
 - own stock list;
-- `Сгрузить` disabled/placeholder до отдельного backend этапа.
+- `Сгрузить` не добавлять даже disabled/placeholder, пока нет backend flow.
 
 Checkpoint:
 
 - targeted component test courier home;
 - targeted component test load/sale entry points;
-- targeted component test unload placeholder is honest and non-mutating.
+- targeted component test `Сгрузить` отсутствует до backend flow.
 
 ### 8. Courier Load Flow
 
@@ -511,6 +510,24 @@ Backend, Prisma и shared contracts не должны изменяться в э
 - `pnpm lint:boundaries` — ok.
 - Playwright fallback на `http://localhost:3001` — ok: worker home рендерится без non-action tiles и без `Курьеры`, `Продать` ведет в `Детали продажи`.
 
+### 2026-06-02 — Checkpoint 4: Courier home + load
+
+Фактический результат:
+
+- Добавлен `CourierHome` в `apps/web/src/roles/courier/`.
+- Добавлен доменный `CourierHomeOverview` в `features/courier`, без neutral `ui/*` primitives и без универсального role builder.
+- Courier home теперь показывает `Мой баланс`, real summary `Товар`, real summary `Наличные`, action tiles `Продать` и `Загрузить`, inline stock list `Мой остаток`.
+- Плитка `Сгрузить` не добавлена: backend flow отсутствует, а не-action tiles больше не добавляем.
+- Read-only `CourierBalanceHome mode="all"` сохранен для директора/коммерческого и не получил action tiles.
+- Load flow остается на текущем single-item API; добавлен safety-net на backend error: выбранный товар, количество и комментарий не сбрасываются, success не показывается.
+
+Выполненные проверки:
+
+- `pnpm --filter @buhta/web test -- --runInBand apps/web/app/page.test.tsx` — ok, 22 tests passed.
+- `pnpm --filter @buhta/web lint` — ok.
+- `pnpm --filter @buhta/web typecheck` — ok.
+- In-app Browser на `http://localhost:3001` — ok: courier home рендерится, `Продать`/`Загрузить` по одной action tile, `Сгрузить` отсутствует, `Загрузить` открывает `Детали загрузки`, console без warning/error.
+
 ## Тестовый план
 
 ### Component tests
@@ -541,7 +558,7 @@ Backend, Prisma и shared contracts не должны изменяться в э
   - видит own balance;
   - может открыть load flow;
   - может открыть sale flow;
-  - unload action недоступен или ведет в честный placeholder.
+  - unload action отсутствует до backend flow.
 - Courier load:
   - submit отправляет `distributorProductBalanceId`, `quantity`, optional `comment`;
   - successful load invalidates courier product balances, courier load options and distributor inventory;

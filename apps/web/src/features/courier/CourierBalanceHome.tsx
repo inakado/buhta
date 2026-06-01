@@ -1,14 +1,10 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Banknote, PackageCheck, Truck } from "lucide-react";
-import {
-	type CourierCashBalanceItem,
-	formatMoneyCents,
-	moneyCents,
-	type CourierProductBalanceItem,
-} from "@buhta/shared";
+import { Banknote, Truck } from "lucide-react";
+import { type CourierCashBalanceItem, formatMoneyCents, moneyCents } from "@buhta/shared";
 import { getCourierCashBalances, getCourierProductBalances } from "../../lib/api-client";
+import { CourierStockList } from "./CourierStockList";
 
 export function CourierBalanceHome({ mode = "own" }: { mode?: "own" | "all" }) {
 	const balances = useQuery({
@@ -76,7 +72,7 @@ export function CourierBalanceHome({ mode = "own" }: { mode?: "own" | "all" }) {
 				</div>
 			) : null}
 
-			<CourierBalanceList items={data?.items ?? []} showCourier={mode === "all"} />
+			<CourierStockList items={data?.items ?? []} showCourier={mode === "all"} />
 		</section>
 	);
 }
@@ -139,37 +135,6 @@ function CourierCashPanel({
 						<span>{item.updatedAt ? "Есть операции" : "0 ₽ без операций"}</span>
 					</div>
 				</div>
-			))}
-		</div>
-	);
-}
-
-function CourierBalanceList({
-	items,
-	showCourier,
-}: {
-	items: CourierProductBalanceItem[];
-	showCourier: boolean;
-}) {
-	return (
-		<div className="list-stack">
-			{items.map((item) => (
-				<article className="entity-card production-history-card" key={item.id}>
-					<div className="inventory-item-main">
-						<div className="production-row-icon">
-							<PackageCheck aria-hidden size={18} />
-						</div>
-						<div>
-							<strong>{item.productName}</strong>
-							<p>{showCourier ? `${item.courierDisplayName} · @${item.courierLogin}` : "У курьера"}</p>
-						</div>
-					</div>
-					<div className="production-history-meta">
-						<strong>{item.quantity} шт</strong>
-						<span>{formatRubles(item.stockValueCents)} ₽</span>
-						<span>{formatRubles(item.unitPriceCents)} ₽/шт</span>
-					</div>
-				</article>
 			))}
 		</div>
 	);
