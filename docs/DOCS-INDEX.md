@@ -23,7 +23,7 @@
 - `docs/exec-plans/tech-debt-tracker.md` — признанный техдолг после появления кода или harness.
 - `docs/exec-plans/active/2026-05-27-v1-roadmap.md` — долгоживущая roadmap/meta-plan полной v1.
 - `docs/exec-plans/active/2026-06-02-role-home-working-cards.md` — draft-план редизайна первых экранов ролей: карточки перестают быть универсальными плашками и собираются под задачи конкретной роли.
-- `docs/exec-plans/completed/2026-05-31-frontend-role-screen-recomposition.md` — завершенный frontend этап: role screens приведены к единой mobile composition по структуре локального мока без смены текущей дизайн-системы.
+- `docs/exec-plans/completed/2026-05-31-frontend-role-screen-recomposition.md` — завершенный frontend этап: role screens приведены к единой mobile composition без смены текущей дизайн-системы.
 - `docs/exec-plans/completed/2026-05-31-courier-sales-and-cash-balance.md` — завершенный этап Courier Sales And Courier Cash Balance: продажа курьером и наличный баланс курьера.
 - `docs/exec-plans/completed/2026-05-31-courier-load-and-balance.md` — завершенный этап Courier Load And Courier Balance: загрузка товара курьером и товарный баланс курьера.
 - `docs/exec-plans/completed/2026-05-30-distributor-sales.md` — завершенный этап Sales From Distributor: продажа с распределителя, списание товарного остатка и наличный баланс.

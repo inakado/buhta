@@ -9,7 +9,7 @@ import {
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
-import { Bell, Box, Check, ClipboardList, Gauge, PackageCheck, ReceiptText, Settings, Shield, Truck, Users } from "lucide-react";
+import { Bell, Box, Check, ClipboardList, Factory, Gauge, PackageCheck, ReceiptText, Settings, Shield, Truck, Users } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { LoginForm } from "../auth/LoginForm";
 import { ROLE_LABELS } from "../lib/role-labels";
@@ -181,7 +181,7 @@ function BottomNav({
 		{ id: "settings", label: "Профиль", icon: Settings },
 	];
 	const productionItems = [
-		{ id: "home", label: "Главная", icon: PackageCheck },
+		{ id: "home", label: "Главная", icon: Factory },
 		{ id: "distributor", label: "Распределитель", icon: Box },
 		{ id: "notifications", label: "Уведомления", icon: Bell },
 		{ id: "history", label: "История", icon: ReceiptText },

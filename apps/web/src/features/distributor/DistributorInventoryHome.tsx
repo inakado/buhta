@@ -6,7 +6,13 @@ import { formatMoneyCents, moneyCents } from "@buhta/shared";
 import { getDistributorCashBalances, getDistributorInventory } from "../../lib/api-client";
 import { DistributorStockList } from "./DistributorStockList";
 
-export function DistributorInventoryHome({ showCashBalance = false }: { showCashBalance?: boolean }) {
+export function DistributorInventoryHome({
+	showCashBalance = false,
+	title = "Остатки",
+}: {
+	showCashBalance?: boolean;
+	title?: string;
+}) {
 	const inventory = useQuery({
 		queryKey: ["distributor", "inventory"],
 		queryFn: getDistributorInventory,
@@ -26,7 +32,7 @@ export function DistributorInventoryHome({ showCashBalance = false }: { showCash
 	return (
 		<section className="screen-stack">
 			<div className="section-heading">
-				<h2>Остатки</h2>
+				<h2>{title}</h2>
 				<span>{stockItemCount} позиций</span>
 			</div>
 
@@ -37,12 +43,12 @@ export function DistributorInventoryHome({ showCashBalance = false }: { showCash
 				</div>
 				<div>
 					<span>Стоимость</span>
-					<strong>{formatRubles(totalStockValueCents)} ₽</strong>
+					<MoneyValue valueCents={totalStockValueCents} />
 				</div>
 				{showCashBalance ? (
 					<div>
 						<span>Наличные</span>
-						<strong>{cashBalances.isLoading ? "Загрузка" : `${formatRubles(totalCashCents)} ₽`}</strong>
+						{cashBalances.isLoading ? <strong>Загрузка</strong> : <MoneyValue valueCents={totalCashCents} />}
 					</div>
 				) : null}
 			</div>
@@ -67,7 +73,7 @@ export function DistributorInventoryHome({ showCashBalance = false }: { showCash
 							</div>
 							<div className="stock-aggregate-value">
 								<strong>{summary.totalUnits} шт</strong>
-								<span>{formatRubles(summary.totalStockValueCents)} ₽</span>
+								<span>{formatRubles(summary.totalStockValueCents)}</span>
 							</div>
 						</div>
 					))}
@@ -79,6 +85,23 @@ export function DistributorInventoryHome({ showCashBalance = false }: { showCash
 	);
 }
 
+function MoneyValue({ valueCents }: { valueCents: number }) {
+	return (
+		<strong style={moneyValueStyle}>
+			<span>{formatMoneyCents(moneyCents(valueCents))}</span>
+			<span>₽</span>
+		</strong>
+	);
+}
+
+const moneyValueStyle = {
+	display: "inline-flex",
+	gap: 4,
+	lineHeight: 1,
+	whiteSpace: "nowrap",
+	wordBreak: "keep-all",
+} as const;
+
 function formatRubles(priceCents: number): string {
-	return formatMoneyCents(moneyCents(priceCents));
+	return `${formatMoneyCents(moneyCents(priceCents))}\u00A0₽`;
 }

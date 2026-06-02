@@ -18,15 +18,9 @@ Roadmap stage: `5. Production Flow`
 
 Для пользователя “история” не является отдельной функцией при поступлении. Пользователь выполняет действие `Добавить поступление сырья` или `Добавить поступление тары`, а backend внутри этой write-команды создает operation/audit запись и обновляет остаток транзакционно.
 
-## Обязательный просмотр локального мока
+## Структурные решения frontend
 
-Перед составлением плана просмотрена структура локального демо:
-
-- `/Users/Alex/Documents/VSCodeProjects/interface_demo/demos/bukta/index.html`;
-- `/Users/Alex/Documents/VSCodeProjects/interface_demo/demos/bukta/screens/09-production.html`;
-- `/Users/Alex/Documents/VSCodeProjects/interface_demo/demos/bukta/screens/09-production-variants.html`.
-
-Из мока берем структуру, а не стили один-в-один:
+Для начального production frontend зафиксирована структура:
 
 - production home: summary “Продукция в цеху”, агрегаты “Сырье” и “Тара”, быстрые действия;
 - raw material details: список остатков сырья с кнопкой добавления;
@@ -214,7 +208,7 @@ apps/web/src/features/production/
 
 Роль `production_manager` подключает feature, но не содержит всю бизнес-логику в одном файле.
 
-Из демо-мока берем:
+Для frontend берем:
 
 - home с агрегированными остатками;
 - drill-down на сырье/тару;
@@ -222,7 +216,7 @@ apps/web/src/features/production/
 - нижнюю навигацию: `Главная`, `Уведомления`, `История`, `Профиль`;
 - выпуск как быстрое действие на главной, а не как отдельный пункт нижнего меню.
 
-Корректировки относительно демо:
+Ограничения:
 
 - не показывать неработающие уведомления как полноценный backend flow, если notification module еще не реализован;
 - не добавлять декоративные warning states без реальных thresholds;
@@ -262,7 +256,7 @@ apps/web/src/features/production/
 6. Реализовать `ProductionModule`.
 7. Добавить transactional updates для поступлений сырья/тары.
 8. Добавить transactional release: проверка остатков, списание, создание партии, audit.
-9. Подключить production manager frontend по структуре из demo.
+9. Подключить production manager frontend по зафиксированной mobile-first структуре.
 10. Добавить loading/error/empty/offline states.
 11. Обновить SoR-документацию.
 12. Прогнать verification contour и browser/manual check.
@@ -370,7 +364,7 @@ Rollback: убрать tab/section уведомлений из production nav д
 - `production_manager` получил отдельный mobile flow: главная, уведомления-placeholder, история, профиль.
 - Быстрые действия на главной открывают отдельные экраны с кнопкой `Назад`: выпуск продукции, приход сырья, приход тары. В нижнем меню отдельной кнопки `Выпуск` нет.
 - Кликабельные карточки главной открывают отдельные экраны с кнопкой `Назад`: зеленый summary — список продукции в цеху, агрегаты `Сырье`/`Тара` — остатки по каждому активному виду.
-- По структуре использован локальный production demo: summary, агрегаты сырья/тары, быстрые действия, отдельные рабочие экраны, история.
+- Frontend structure: summary, агрегаты сырья/тары, быстрые действия, отдельные рабочие экраны, история.
 
 ## Выполненная верификация
 
@@ -397,6 +391,6 @@ Rollback: убрать tab/section уведомлений из production nav д
 - выпуск запрещает отрицательные остатки;
 - партия хранит snapshot цены и связанных справочников;
 - operation/audit records пишутся для поступлений и выпуска;
-- UI production manager соответствует структуре локального demo, но визуально остается в нашем стиле;
+- UI production manager соответствует зафиксированной mobile-first структуре и визуально остается в нашем стиле;
 - tests/docs/checks/browser verification выполнены;
 - plan-файл находится в `docs/exec-plans/completed/`.

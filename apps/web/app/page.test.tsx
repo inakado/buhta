@@ -700,7 +700,8 @@ describe("HomePage", () => {
 
 		render(<HomePage />);
 
-		expect(await screen.findByText("Продукция в цеху")).toBeTruthy();
+		expect(await screen.findByText("Цех")).toBeTruthy();
+		expect(await screen.findByRole("button", { name: "Продукция 4 шт" })).toBeTruthy();
 		expect(screen.queryByRole("navigation", { name: "Основная навигация" })?.textContent).not.toContain("Выпуск");
 		expect(screen.queryByText("Икра горбуши")).toBeNull();
 
@@ -742,21 +743,21 @@ describe("HomePage", () => {
 		expect(await screen.findByText("Тара добавлена")).toBeTruthy();
 		expect(screen.queryByLabelText("Вид тары")).toBeNull();
 
-		fireEvent.click(await screen.findByRole("button", { name: /Сырье 1 видов/ }));
+		fireEvent.click(await screen.findByRole("button", { name: /Сырье.*12.5 кг.*1 видов/ }));
 		expect(await screen.findByRole("heading", { name: "Сырье" })).toBeTruthy();
 		expect(screen.getByText("12.5 кг")).toBeTruthy();
 		expect(screen.queryByText("Икра осетр")).toBeNull();
 		expect(screen.queryByLabelText("Вид сырья")).toBeNull();
 		fireEvent.click(screen.getByRole("button", { name: "Назад" }));
 
-		fireEvent.click(screen.getByRole("button", { name: /Тара 1 видов/ }));
+		fireEvent.click(screen.getByRole("button", { name: /Тара.*8 шт.*1 видов/ }));
 		expect(await screen.findByRole("heading", { name: "Тара" })).toBeTruthy();
 		expect(screen.getByText("8 шт")).toBeTruthy();
 		expect(screen.queryByText("Коробка")).toBeNull();
 		expect(screen.queryByLabelText("Вид тары")).toBeNull();
 		fireEvent.click(screen.getByRole("button", { name: "Назад" }));
 
-		fireEvent.click(screen.getByRole("button", { name: /Продукция в цеху/ }));
+		fireEvent.click(screen.getByRole("button", { name: "Продукция 4 шт" }));
 		expect(await screen.findByRole("heading", { name: "Продукция в цеху" })).toBeTruthy();
 		expect(screen.getByText("Икра горбуши")).toBeTruthy();
 		expect(screen.getByText("Доступно 4 из 4 шт")).toBeTruthy();
@@ -772,7 +773,14 @@ describe("HomePage", () => {
 			element?.className === "muted"
 			&& (element.textContent?.includes("Доступно: 12.5 кг сырья · 8 шт тары") ?? false),
 		)).toBeTruthy();
+		fireEvent.change(screen.getByLabelText("Количество продукции, шт"), { target: { value: "9" } });
+		expect(screen.getByText("Не хватает тары: нужно 9 шт, доступно 8 шт.")).toBeTruthy();
+		expect((screen.getByRole("button", { name: "Выпустить" }) as HTMLButtonElement).disabled).toBe(true);
+		const callsBeforeBlockedRelease = fetchMock.mock.calls.length;
+		fireEvent.click(screen.getByRole("button", { name: "Выпустить" }));
+		expect(fetchMock).toHaveBeenCalledTimes(callsBeforeBlockedRelease);
 		fireEvent.change(screen.getByLabelText("Количество продукции, шт"), { target: { value: "4" } });
+		expect(screen.queryByText("Не хватает тары: нужно 9 шт, доступно 8 шт.")).toBeNull();
 		fireEvent.change(screen.getByLabelText("Расход сырья, кг"), { target: { value: "6.25" } });
 		fireEvent.click(screen.getByRole("button", { name: "Выпустить" }));
 
@@ -792,7 +800,7 @@ describe("HomePage", () => {
 
 		expect(await screen.findByText("Выпуск записан")).toBeTruthy();
 		expect(screen.queryByLabelText("Шаблон продукции")).toBeNull();
-		fireEvent.click(screen.getByRole("button", { name: "На распределитель" }));
+		fireEvent.click(screen.getByRole("button", { name: "Передать" }));
 		expect(await screen.findByRole("heading", { name: "На распределитель" })).toBeTruthy();
 		fireEvent.change(await screen.findByLabelText("Продукция"), { target: { value: "batch1" } });
 		fireEvent.change(screen.getByRole("combobox", { name: "Распределитель" }), { target: { value: "dist1" } });
@@ -818,7 +826,7 @@ describe("HomePage", () => {
 		expect(await screen.findByText("Перемещено на распределитель")).toBeTruthy();
 		expect(screen.queryByLabelText("Количество, шт")).toBeNull();
 		fireEvent.click(screen.getByRole("button", { name: "Распределитель" }));
-		expect(await screen.findByRole("heading", { name: "Остатки" })).toBeTruthy();
+		expect(await screen.findByRole("heading", { name: "На распределителе" })).toBeTruthy();
 		expect(screen.queryByText("Товар на распределителе")).toBeNull();
 		expect(screen.queryByText((_, element) => element?.textContent === "Товарный баланс 2500.00 ₽")).toBeNull();
 		expect(screen.getByText("Стоимость")).toBeTruthy();

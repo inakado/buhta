@@ -5,15 +5,10 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import {
 	ArrowRightLeft,
 	ArrowLeft,
-	Bell,
 	Check,
-	ChevronRight,
-	CirclePlus,
 	Factory,
 	FishSymbol,
 	Package,
-	PackageCheck,
-	PackagePlus,
 	type LucideIcon,
 } from "lucide-react";
 import {
@@ -40,6 +35,7 @@ import {
 	listRawMaterialBalances,
 	listWorkshopProductBalances,
 } from "../../lib/api-client";
+import { ProductionHomeOverview } from "./ProductionHomeOverview";
 
 type ProductionTab = "home" | "notifications" | "history";
 type ProductionScreen = "raw-intake" | "packaging-intake" | "batch-release" | "transfer" | "raw-stock" | "packaging-stock" | "products";
@@ -139,11 +135,12 @@ export function ProductionHome({
 
 	if (activeTab === "notifications") {
 		return (
-			<ProductionPlaceholder
-				icon={Bell}
-				title="Уведомления"
-				text="Здесь будут входящие уведомления от коммерческого директора."
-			/>
+			<section className="screen-stack">
+				<div className="section-heading">
+					<h2>Уведомления</h2>
+				</div>
+				<p className="muted">Раздел появится после подключения уведомлений.</p>
+			</section>
 		);
 	}
 
@@ -160,54 +157,22 @@ export function ProductionHome({
 
 	return (
 		<section className="screen-stack">
-			<button className="summary-card production-summary-button" onClick={() => setActiveScreen("products")} type="button">
-				<div>
-					<p className="summary-label">Продукция в цеху</p>
-					<strong>{summaryValue?.readyProductUnits ?? 0}</strong>
-					<p className="summary-note">единиц готово к дальнейшему перемещению</p>
-				</div>
-				<PackageCheck aria-hidden size={30} />
-			</button>
-
-			<div className="production-stock-stack">
-				<StockAggregateCard
-					icon={FishSymbol}
-					kinds={summaryValue?.rawMaterialKinds ?? 0}
-					label="Сырье"
-					loading={summary.isLoading}
-					onClick={() => setActiveScreen("raw-stock")}
-					total={summaryValue?.rawMaterialTotal ?? 0}
-					unit={summaryValue?.rawMaterialUnit ?? "кг"}
-				/>
-				<StockAggregateCard
-					icon={Package}
-					kinds={summaryValue?.packagingKinds ?? 0}
-					label="Тара"
-					loading={summary.isLoading}
-					onClick={() => setActiveScreen("packaging-stock")}
-					total={summaryValue?.packagingTotal ?? 0}
-					unit={summaryValue?.packagingUnit ?? "шт"}
-				/>
-			</div>
-
-			<div className="action-grid">
-				<button className="action-tile primary-action" onClick={() => setActiveScreen("batch-release")} type="button">
-					<Factory aria-hidden size={22} />
-					<span>Выпустить</span>
-				</button>
-				<button className="action-tile" disabled={!online} onClick={() => setActiveScreen("transfer")} type="button">
-					<ArrowRightLeft aria-hidden size={22} />
-					<span>На распределитель</span>
-				</button>
-				<button className="action-tile" onClick={() => setActiveScreen("raw-intake")} type="button">
-					<CirclePlus aria-hidden size={22} />
-					<span>Добавить сырье</span>
-				</button>
-				<button className="action-tile" onClick={() => setActiveScreen("packaging-intake")} type="button">
-					<PackagePlus aria-hidden size={22} />
-					<span>Добавить тару</span>
-				</button>
-			</div>
+			<ProductionHomeOverview
+				loading={summary.isLoading}
+				onOpenBatchRelease={() => setActiveScreen("batch-release")}
+				onOpenPackaging={() => setActiveScreen("packaging-stock")}
+				onOpenPackagingIntake={() => setActiveScreen("packaging-intake")}
+				onOpenProducts={() => setActiveScreen("products")}
+				onOpenRawIntake={() => setActiveScreen("raw-intake")}
+				onOpenRawMaterials={() => setActiveScreen("raw-stock")}
+				onOpenTransfer={() => setActiveScreen("transfer")}
+				online={online}
+				packagingKinds={summaryValue?.packagingKinds ?? 0}
+				packagingLabel={`${formatQuantity(summaryValue?.packagingTotal ?? 0)} ${summaryValue?.packagingUnit ?? "шт"}`}
+				rawMaterialKinds={summaryValue?.rawMaterialKinds ?? 0}
+				rawMaterialLabel={`${formatQuantity(summaryValue?.rawMaterialTotal ?? 0)} ${summaryValue?.rawMaterialUnit ?? "кг"}`}
+				readyProductUnits={summaryValue?.readyProductUnits ?? 0}
+			/>
 
 			{successNotice ? <ProductionSuccessNotice notice={successNotice} /> : null}
 		</section>
@@ -482,6 +447,17 @@ function ProductBatchForm({
 			stockLoading: rawMaterialBalancesLoading || packagingBalancesLoading,
 		})
 		: "";
+	const releaseWarning = selectedTemplate
+		? buildReleaseWarning({
+			packagingAvailable: selectedPackagingBalance?.quantity ?? 0,
+			packagingUnit: selectedTemplate.packagingType.unit,
+			productQuantity: parseOptionalPositiveInteger(quantity),
+			rawAvailable: selectedRawMaterialBalance?.quantity ?? 0,
+			rawQuantity: parseOptionalPositiveNumber(rawQuantity),
+			rawUnit: selectedTemplate.rawMaterialType.unit,
+			stockLoading: rawMaterialBalancesLoading || packagingBalancesLoading,
+		})
+		: "";
 	const mutation = useMutation({
 		mutationFn: () => createProductBatch({
 			productTemplateId,
@@ -566,11 +542,19 @@ function ProductBatchForm({
 				<span>Комментарий</span>
 				<input onChange={(event) => setComment(event.target.value)} type="text" value={comment} />
 			</label>
+			{releaseWarning ? <p className="form-warning">{releaseWarning}</p> : null}
 			{localError ? <p className="form-error">{localError}</p> : null}
 			{mutation.isError ? <p className="form-error">{mutation.error.message}</p> : null}
 			<button
 				className="primary-button"
-				disabled={!online || productTemplates.length === 0 || mutation.isPending}
+				disabled={
+					!online
+					|| productTemplates.length === 0
+					|| rawMaterialBalancesLoading
+					|| packagingBalancesLoading
+					|| Boolean(releaseWarning)
+					|| mutation.isPending
+				}
 				type="submit"
 			>
 				<Factory aria-hidden size={18} />
@@ -803,24 +787,96 @@ function WorkshopProductBalanceList({
 
 function ProductBatchList({ productBatches }: { productBatches: ProductBatch[] }) {
 	return (
-		<div className="list-stack">
+		<div className="inventory-table-list" role="table" aria-label="Последние выпуски" style={tableListStyle}>
+			<div className="inventory-table-head" role="row" style={tableHeadStyle}>
+				<span>Продукция</span>
+				<span style={rightAlignStyle}>Выпуск</span>
+				<span style={rightAlignStyle}>Сырье</span>
+			</div>
 			{productBatches.map((batch) => (
-				<article className="entity-card production-history-card" key={batch.id}>
-					<div>
-						<strong>{batch.productName}</strong>
-						<p>
-							{batch.quantity} шт · сырье {batch.consumedRawMaterialQuantity} {batch.rawMaterialUnit}
-						</p>
+				<div className="inventory-table-row" key={batch.id} role="row" style={tableRowStyle}>
+					<div className="inventory-table-product" role="cell" style={tableCellStyle}>
+						<strong style={primaryTextStyle}>{batch.productName}</strong>
+						<span style={secondaryTextStyle}>{formatDateTime(batch.createdAt)}</span>
 					</div>
-					<div className="production-history-meta">
-						<strong>{formatPriceRubles(batch.priceCents)} ₽</strong>
-						<span>{formatDateTime(batch.createdAt)}</span>
+					<div className="inventory-table-quantity" role="cell" style={rightCellStyle}>
+						<strong style={primaryTextStyle}>{batch.quantity} шт</strong>
+						<span style={secondaryTextStyle}>{formatPriceRubles(batch.priceCents)}&nbsp;₽/шт</span>
 					</div>
-				</article>
+					<div className="inventory-table-total" role="cell" style={rightCellStyle}>
+						<strong style={primaryTextStyle}>
+							{formatQuantity(batch.consumedRawMaterialQuantity)} {batch.rawMaterialUnit}
+						</strong>
+					</div>
+				</div>
 			))}
 		</div>
 	);
 }
+
+const tableListStyle = {
+	display: "flex",
+	flexDirection: "column",
+	marginInline: 10,
+} as const;
+
+const tableGridColumns = "minmax(0, 1.25fr) minmax(68px, .55fr) minmax(78px, .65fr)";
+
+const tableHeadStyle = {
+	alignItems: "center",
+	borderBottom: "1px solid var(--line)",
+	color: "var(--text-muted)",
+	columnGap: 10,
+	display: "grid",
+	fontSize: 11,
+	fontWeight: "var(--font-weight-label)",
+	gridTemplateColumns: tableGridColumns,
+	lineHeight: 1.15,
+	padding: "0 0 8px",
+} as const;
+
+const tableRowStyle = {
+	alignItems: "center",
+	borderBottom: "1px solid var(--line)",
+	columnGap: 10,
+	display: "grid",
+	gridTemplateColumns: tableGridColumns,
+	minHeight: 64,
+	padding: "11px 0",
+} as const;
+
+const tableCellStyle = {
+	minWidth: 0,
+} as const;
+
+const rightAlignStyle = {
+	textAlign: "right",
+} as const;
+
+const rightCellStyle = {
+	...tableCellStyle,
+	textAlign: "right",
+} as const;
+
+const primaryTextStyle = {
+	color: "var(--base-black)",
+	display: "block",
+	fontSize: 14,
+	fontVariantNumeric: "tabular-nums",
+	fontWeight: "var(--font-weight-emphasis)",
+	lineHeight: 1.15,
+	overflowWrap: "anywhere",
+	whiteSpace: "nowrap",
+} as const;
+
+const secondaryTextStyle = {
+	color: "var(--text-muted)",
+	display: "block",
+	fontSize: 11,
+	lineHeight: 1.15,
+	marginTop: 5,
+	overflowWrap: "anywhere",
+} as const;
 
 function BalanceRow({
 	icon: Icon,
@@ -885,64 +941,6 @@ function formatReleaseStockLine({
 	return `Доступно: ${formatQuantity(rawAvailable)} ${rawUnit} сырья · ${formatQuantity(packagingAvailable)} ${packagingUnit} тары`;
 }
 
-function StockAggregateCard({
-	icon: Icon,
-	kinds,
-	label,
-	loading,
-	onClick,
-	total,
-	unit,
-}: {
-	icon: LucideIcon;
-	kinds: number;
-	label: string;
-	loading: boolean;
-	onClick: () => void;
-	total: number;
-	unit: string;
-}) {
-	return (
-		<button className="stock-aggregate-card" disabled={loading} onClick={onClick} type="button">
-			<div className="production-row-icon">
-				<Icon aria-hidden size={18} />
-			</div>
-			<div className="stock-aggregate-body">
-				<strong>{label}</strong>
-				<p>{loading ? "Загрузка" : `${kinds} видов`}</p>
-			</div>
-			<div className="stock-aggregate-value">
-				<strong>
-					{formatQuantity(total)} {unit}
-				</strong>
-			</div>
-			<ChevronRight aria-hidden size={16} />
-		</button>
-	);
-}
-
-function ProductionPlaceholder({
-	icon: Icon,
-	text,
-	title,
-}: {
-	icon: typeof PackageCheck;
-	text: string;
-	title: string;
-}) {
-	return (
-		<section className="screen-stack">
-			<div className="summary-card compact-summary">
-				<div>
-					<p className="summary-label">{title}</p>
-					<strong>{text}</strong>
-				</div>
-				<Icon aria-hidden size={28} />
-			</div>
-		</section>
-	);
-}
-
 function ProductionSuccessNotice({ notice }: { notice: SuccessNotice }) {
 	return (
 		<div className="production-success-notice" role="status" aria-live="polite" key={notice.id}>
@@ -969,6 +967,61 @@ function parsePositiveInteger(value: string, label: string): number {
 	}
 
 	return parsed;
+}
+
+function parseOptionalPositiveNumber(value: string): number | null {
+	const normalized = value.trim().replace(",", ".");
+	if (!normalized) {
+		return null;
+	}
+
+	const parsed = Number(normalized);
+	return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+function parseOptionalPositiveInteger(value: string): number | null {
+	const parsed = parseOptionalPositiveNumber(value);
+	return parsed !== null && Number.isInteger(parsed) ? parsed : null;
+}
+
+function buildReleaseWarning({
+	packagingAvailable,
+	packagingUnit,
+	productQuantity,
+	rawAvailable,
+	rawQuantity,
+	rawUnit,
+	stockLoading,
+}: {
+	packagingAvailable: number;
+	packagingUnit: string;
+	productQuantity: number | null;
+	rawAvailable: number;
+	rawQuantity: number | null;
+	rawUnit: string;
+	stockLoading: boolean;
+}): string {
+	if (stockLoading) {
+		return "";
+	}
+
+	if (packagingAvailable <= 0) {
+		return "Для этого шаблона нет тары в цеху.";
+	}
+
+	if (rawAvailable <= 0) {
+		return "Для этого шаблона нет сырья в цеху.";
+	}
+
+	if (productQuantity !== null && productQuantity > packagingAvailable) {
+		return `Не хватает тары: нужно ${formatQuantity(productQuantity)} ${packagingUnit}, доступно ${formatQuantity(packagingAvailable)} ${packagingUnit}.`;
+	}
+
+	if (rawQuantity !== null && rawQuantity > rawAvailable) {
+		return `Не хватает сырья: нужно ${formatQuantity(rawQuantity)} ${rawUnit}, доступно ${formatQuantity(rawAvailable)} ${rawUnit}.`;
+	}
+
+	return "";
 }
 
 function formatQuantity(value: number): string {

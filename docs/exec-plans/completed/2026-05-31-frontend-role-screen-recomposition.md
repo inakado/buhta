@@ -6,7 +6,7 @@
 
 ## Цель
 
-Перекроить реализованные frontend-экраны ролей под композиционную структуру локального мока `/Users/Alex/Documents/VSCodeProjects/interface_demo/demos/bukta`, не меняя текущую дизайн-систему проекта.
+Перекроить реализованные frontend-экраны ролей под единую mobile-first композицию, не меняя текущую дизайн-систему проекта.
 
 Порядок полировки:
 
@@ -15,7 +15,7 @@
 3. Курьер.
 4. Директор.
 
-Текущие цвета, CSS tokens и общий визуальный язык приложения остаются источником истины. Локальный мок используется только как источник структуры экранов, порядка блоков и mobile interaction patterns.
+Текущие цвета, CSS tokens и общий визуальный язык приложения остаются источником истины. Структура экранов определяется текущими CRM-сценариями, доступными backend-данными и правилами `docs/FRONTEND.md`.
 
 ## Анализ текущего состояния
 
@@ -23,9 +23,9 @@ Frontend уже имеет рабочий mobile-first PWA shell:
 
 - `AppRoot` владеет session flow, React Query client, role routing и bottom navigation;
 - роль заведующего производством уже ближе всего к целевой структуре: home summary, агрегаты, quick actions, drill-down screens, отдельные формы и inline success states;
-- коммерческий руководитель сейчас на home фактически видит `DistributorInventoryHome`, а не отдельную композицию продаж из `05-commercial.html`;
-- работник распределителя использует тот же generic inventory/sale flow, без отдельного role home из `14-distributor.html`;
-- курьерский контур функционально реализован, но `CourierBalanceHome`, `CourierLoadHome` и `CourierSaleHome` используют ранний паттерн `summary-card + form/select`, а не структуру `16-courier.html` и `13-sale-flow.html`;
+- коммерческий руководитель сейчас на home фактически видит `DistributorInventoryHome`, а не отдельную композицию продаж;
+- работник распределителя использует тот же generic inventory/sale flow, без отдельного role home;
+- курьерский контур функционально реализован, но `CourierBalanceHome`, `CourierLoadHome` и `CourierSaleHome` используют ранний паттерн `summary-card + form/select`;
 - директор сейчас может быть только read-only экраном на доступных данных, потому что списания, дисконты, отчеты и audit read model еще не реализованы backend-ом.
 
 Текущий риск — новые фичи продолжают добавлять UI локально в feature-файлы и постепенно расходятся с единой mobile composition.
@@ -58,7 +58,7 @@ Frontend уже имеет рабочий mobile-first PWA shell:
 - corrections;
 - reports;
 - audit UI на реальном read model;
-- перенос demo v3 graphite/ice-gray tokens;
+- перенос чужих graphite/ice-gray tokens;
 - добавление UI framework или универсального конструктора экранов.
 
 Если для блока нет backend-данных, UI не должен имитировать метрику. Допустим честный placeholder или скрытие блока до отдельного доменного этапа.
@@ -67,11 +67,11 @@ Frontend уже имеет рабочий mobile-first PWA shell:
 
 1. **Дизайн-система остается текущей.**
    - Использовать текущие project tokens и visual conventions.
-   - Не переносить `tokens.css` из demo как источник палитры.
+   - Не переносить внешние token files как источник палитры.
 
-2. **Demo — структурный reference.**
+2. **CRM-сценарии — источник структуры.**
    - Брать порядок блоков, role home composition, sale/load layout, stock rows, action footer и mobile flow patterns.
-   - Не копировать demo стили один-в-один.
+   - Не копировать чужие стили один-в-один.
 
 3. **Production screen — локальный эталон качества.**
    - `ProductionHome` показывает нужный уровень role-specific composition.
@@ -89,44 +89,33 @@ Frontend уже имеет рабочий mobile-first PWA shell:
    - Ролевые home screens живут в `apps/web/src/roles/<role>/`, где роль собирает экран из feature-компонентов и neutral UI primitives.
    - `features/*` остаются владельцами доменных flows и server-state.
 
-## UI Reference Files
+## Role Screen Notes
 
-Перед реализацией открыть и сверить:
-
-- `/Users/Alex/Documents/VSCodeProjects/interface_demo/demos/bukta/screens/05-commercial.html`;
-- `/Users/Alex/Documents/VSCodeProjects/interface_demo/demos/bukta/screens/14-distributor.html`;
-- `/Users/Alex/Documents/VSCodeProjects/interface_demo/demos/bukta/screens/16-courier.html`;
-- `/Users/Alex/Documents/VSCodeProjects/interface_demo/demos/bukta/screens/13-sale-flow.html`;
-- `/Users/Alex/Documents/VSCodeProjects/interface_demo/demos/bukta/screens/06-director.html`;
-- `/Users/Alex/Documents/VSCodeProjects/interface_demo/demos/bukta/screens/17-history-audit.html` только как будущий reference, без реализации audit UI в этом этапе.
-
-## Demo Observations
-
-### `05-commercial.html`
+### Commercial Manager
 
 - Берем: role home `Продажи`, real distributor inventory/cash overview, primary sale entry, inline stock list.
-- Адаптируем: вместо demo-блока “Продажи сегодня” показываем только реальные distributor inventory/cash данные.
+- Адаптируем: вместо блока “Продажи сегодня” показываем только реальные distributor inventory/cash данные.
 - Не берем: fake revenue, fake latest sales, notification flow без backend, action tiles `Остатки`/`Клиенты`/`Курьеры`, которые дублируют нижнюю навигацию.
 
-### `14-distributor.html`
+### Distributor Worker
 
 - Берем: role home `Распределитель`, товарный и cash summary, primary `Продать`, компактный список остатков, offline-disabled pattern.
 - Адаптируем: sale flow остается на текущем single-item API и существующих client endpoints.
 - Не берем: fake “Продажи сегодня”, history rows и плитки, которые дублируют нижнюю навигацию или не запускают действие.
 
-### `16-courier.html`
+### Courier
 
 - Берем: role home `Мой баланс`, cards `Товар` и `Наличные`, quick actions `Продать`, `Загрузить`, own stock list.
 - Адаптируем: load flow выбирает одну позицию, потому что текущий backend принимает одну строку остатка.
 - Не берем: мультивыбор загрузки, fake “Продажи сегодня” и плитку `Сгрузить` до отдельного backend этапа.
 
-### `13-sale-flow.html`
+### Sale Flow
 
 - Берем: client picker/create client structure, product picker rows, payment segmented control, operation summary, sticky action.
 - Адаптируем: первый pass может быть без confirmation sheet, чтобы не раздувать состояние формы.
 - Не берем: discounts, old/new price badges и operation success detail без backend/read model.
 
-### `06-director.html`
+### Director
 
 - Берем: read-only overview composition и action entry points.
 - Адаптируем: показываем только реальные distributor/courier balances.
@@ -192,7 +181,7 @@ Frontend уже имеет рабочий mobile-first PWA shell:
 - Добавить план в `docs/DOCS-INDEX.md`.
 - После реализации обновить `docs/FRONTEND.md`:
   - текущий стиль проекта остается SoR;
-  - demo используется как structural reference;
+  - структура строится от CRM-сценариев и доступных backend-данных;
   - зафиксировать фактически добавленные frontend primitives.
 
 ### 2. Shared UI Primitives
@@ -721,7 +710,7 @@ Rollback: оставить прямой submit flow и убрать дополн
 - затем курьер;
 - затем директор;
 - текущую визуальную дизайн-систему сохраняем;
-- demo используется только для структуры.
+- структура строится от CRM-сценариев и доступных backend-данных.
 
 ## Критерии завершения
 

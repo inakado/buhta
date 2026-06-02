@@ -99,7 +99,7 @@ admin -> reset password -> new temporary password shown once
 
 Визуальное направление этапа описано в `docs/FRONTEND.md`: mobile-first app, светлая база, черные navigation/action элементы, зеленый акцент и точечные lime/green gradient summary cards. Это рабочий ориентир, не финальная дизайн-система.
 
-Для временной структуры страниц использовать локальный мок `/Users/Alex/Documents/VSCodeProjects/interface_demo/demos/bukta`: он задает набор ролей, стартовых экранов и будущих сценариев, но его текущую палитру не считать обязательной.
+Для временной структуры страниц использовать текущие CRM-требования, mobile-first shell и решения из `docs/FRONTEND.md`.
 
 Структура компонентов должна следовать `docs/FRONTEND.md`:
 

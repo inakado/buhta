@@ -59,7 +59,12 @@ export function RoleHomeRouter({
 
 	if (actor.role === "production_manager") {
 		if (activeTab === "distributor") {
-			return <DistributorInventoryHome showCashBalance={actor.permissions.includes("distributor.cash.read")} />;
+			return (
+				<DistributorInventoryHome
+					showCashBalance={actor.permissions.includes("distributor.cash.read")}
+					title="На распределителе"
+				/>
+			);
 		}
 		if (isProductionTab(activeTab)) {
 			return (
@@ -206,20 +211,19 @@ function SettingsScreen({
 }) {
 	return (
 		<section className="screen-stack">
-			<div className="summary-card">
-				<div>
-					<p className="summary-label">Настройки</p>
-					<strong>Профиль и сессия</strong>
-				</div>
-				<Settings aria-hidden size={28} />
+			<div className="section-heading">
+				<h2>Настройки</h2>
 			</div>
 
-			<div className="form-panel">
+			<div className="settings-panel">
 				<div className="section-heading compact">
 					<h2>{actor.displayName}</h2>
 					<span>{ROLE_LABELS[actor.role]}</span>
 				</div>
-				<p className="muted">@{actor.login}</p>
+				<div className="settings-row">
+					<span>Логин</span>
+					<strong>@{actor.login}</strong>
+				</div>
 				<button className="primary-button danger-button" disabled={logoutPending} onClick={logout} type="button">
 					<LogOut aria-hidden size={18} />
 					{logoutPending ? "Выходим" : "Выйти"}
