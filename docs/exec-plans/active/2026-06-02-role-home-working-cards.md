@@ -315,14 +315,33 @@
 - Проверить, что write-действий директора нет.
 - Обновить тесты director home.
 
-### Checkpoint 6. Lists And CSS
+### Checkpoint 6. Admin Users
+
+- Убрать декоративную summary-card `Пользователи и доступы`.
+- Вынести users UI из `roles/admin/AdminHome.tsx` в `features/users/AdminUsersHome.tsx`.
+- Форма `Новый сотрудник` открывается только по действию, а не занимает первый экран постоянно.
+- Сотрудники отображаются как плотный access-list с role select и сбросом пароля, без кликабельных entity-card.
+- Временный пароль показывается compact notice с копированием.
+
+Результат 2026-06-02:
+
+- `AdminHome` стал тонким wrapper над `AdminUsersHome`.
+- Первый экран admin показывает заголовок `Пользователи`, количество сотрудников и compact action `Новый`.
+- Форма создания раскрывается по `Новый`, закрывается после успешного создания и сохраняет invalidation `["users"]`.
+- Временный пароль вынесен в отдельный notice с кнопкой `Копировать` и закрытием.
+- Сотрудники переведены из карточек в access-list: имя/login слева, role select и reset password справа.
+- Сброс пароля требует подтверждения в строке и сохраняет invalidation `["users"]`.
+- Targeted: `pnpm --filter @buhta/web typecheck` — ok.
+- Targeted: `pnpm --filter @buhta/web test -- page.test.tsx` — ok.
+
+### Checkpoint 7. Lists And CSS
 
 - Пройти строки товаров распределителя и курьера.
 - Убрать визуальную зависимость от больших цветных карточек там, где нужен список.
 - Проверить длинные названия и маленький viewport.
 - Не создавать общий component, если повторилась только внешняя оболочка.
 
-### Checkpoint 7. Documentation And Full Verification
+### Checkpoint 8. Documentation And Full Verification
 
 - Обновить `docs/FRONTEND.md`.
 - Записать фактические проверки в план.

@@ -287,6 +287,97 @@ describe("HomePage", () => {
 		});
 	});
 
+	it("renders admin users as an access list and manages temporary passwords", async () => {
+		const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+			const url = String(input);
+			const method = init?.method ?? "GET";
+
+			if (url.endsWith("/auth/me")) {
+				return jsonResponse(adminActorResponse);
+			}
+
+			if (url.endsWith("/users/u-courier/reset-password") && method === "POST") {
+				return jsonResponse({
+					user: {
+						id: "u-courier",
+						name: "Courier Browser",
+						login: "courier-browser",
+						role: "courier",
+						createdAt: new Date(0).toISOString(),
+						updatedAt: new Date(0).toISOString(),
+					},
+					temporaryPassword: "Reset123!",
+				});
+			}
+
+			if (url.endsWith("/users") && method === "POST") {
+				return jsonResponse({
+					user: {
+						id: "u-new",
+						name: "Новый сотрудник",
+						login: "new-user",
+						role: "courier",
+						createdAt: new Date(0).toISOString(),
+						updatedAt: new Date(0).toISOString(),
+					},
+					temporaryPassword: "Temp123!",
+				});
+			}
+
+			if (url.endsWith("/users")) {
+				return jsonResponse({
+					users: [
+						{
+							id: "u-courier",
+							name: "Courier Browser",
+							login: "courier-browser",
+							role: "courier",
+							createdAt: new Date(0).toISOString(),
+							updatedAt: new Date(0).toISOString(),
+						},
+					],
+				});
+			}
+
+			return jsonResponse({ error: { message: "Unexpected request" } }, 500);
+		});
+
+		vi.stubGlobal("fetch", fetchMock);
+
+		render(<HomePage />);
+
+		expect(await screen.findByRole("heading", { name: "Пользователи" })).toBeTruthy();
+		expect(screen.queryByRole("heading", { name: "Новый сотрудник" })).toBeNull();
+		expect(await screen.findByText("Courier Browser")).toBeTruthy();
+
+		fireEvent.click(screen.getByRole("button", { name: "Новый" }));
+		fireEvent.change(await screen.findByLabelText("Имя"), { target: { value: "Новый сотрудник" } });
+		fireEvent.change(screen.getByLabelText("Логин"), { target: { value: "new-user" } });
+		fireEvent.click(screen.getByRole("button", { name: "Создать" }));
+
+		expect(await screen.findByText("Temp123!")).toBeTruthy();
+		await waitFor(() => {
+			expect(fetchMock).toHaveBeenCalledWith(
+				expect.stringContaining("/users"),
+				expect.objectContaining({
+					method: "POST",
+					body: JSON.stringify({ name: "Новый сотрудник", role: "courier", login: "new-user" }),
+				}),
+			);
+		});
+
+		fireEvent.click(screen.getByRole("button", { name: "Сбросить пароль Courier Browser" }));
+		fireEvent.click(screen.getByRole("button", { name: "Подтвердить" }));
+
+		expect(await screen.findByText("Reset123!")).toBeTruthy();
+		await waitFor(() => {
+			expect(fetchMock).toHaveBeenCalledWith(
+				expect.stringContaining("/users/u-courier/reset-password"),
+				expect.objectContaining({ method: "POST" }),
+			);
+		});
+	});
+
 	it("renders catalog management for an admin and submits raw material type", async () => {
 		const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
 			const url = String(input);
