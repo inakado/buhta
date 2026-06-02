@@ -176,6 +176,9 @@ function BottomNav({
 	const distributorStockItem = actor.role === "commercial_manager" && actor.permissions.includes("distributor.stock.read")
 		? [{ id: "distributor", label: "Остатки", icon: Box }]
 		: [];
+	const directorDistributorItem = actor.role === "director" && actor.permissions.includes("distributor.stock.read")
+		? [{ id: "distributor", label: "Распределитель", icon: Box }]
+		: [];
 	const courierItems = [
 		{ id: "home", label: "Баланс", icon: PackageCheck },
 		{ id: "settings", label: "Профиль", icon: Settings },
@@ -203,6 +206,7 @@ function BottomNav({
 				: actor.role === "director"
 					? [
 			{ id: "home", label: "Главная", icon: PackageCheck },
+			...directorDistributorItem,
 			...clientsItem,
 			...courierBalancesItem,
 			{ id: "settings", label: "Профиль", icon: Settings },

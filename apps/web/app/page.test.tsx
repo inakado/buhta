@@ -1582,7 +1582,7 @@ describe("HomePage", () => {
 		expect(screen.queryByRole("button", { name: "Записать загрузку" })).toBeNull();
 	});
 
-	it("shows director overview with real balances and unavailable management actions", async () => {
+	it("shows director overview as a compact summary and keeps details in tabs", async () => {
 		const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
 			const url = String(input);
 			const method = init?.method ?? "GET";
@@ -1621,23 +1621,22 @@ describe("HomePage", () => {
 		expect(await screen.findByRole("heading", { name: "Контроль" })).toBeTruthy();
 		expect(screen.getByText("В обороте")).toBeTruthy();
 		expect(await screen.findByText("4 шт")).toBeTruthy();
-		expect(screen.getByText("Наличные в системе")).toBeTruthy();
+		expect(screen.getAllByText("Наличные").length).toBeGreaterThan(0);
 		expect(await screen.findByText("1950.00 ₽")).toBeTruthy();
-		expect(screen.getByRole("heading", { name: "Распределитель" })).toBeTruthy();
-		expect(screen.getByRole("heading", { name: "Курьеры" })).toBeTruthy();
-		expect(screen.getAllByText("Икра горбуши").length).toBeGreaterThan(1);
-		expect(screen.getAllByText("Courier").length).toBeGreaterThan(0);
+		expect(screen.getAllByText("Распределитель").length).toBeGreaterThan(0);
+		expect(screen.getAllByText("Курьеры").length).toBeGreaterThan(0);
+		expect(screen.queryByText("Икра горбуши")).toBeNull();
+		expect(screen.queryByText("Courier")).toBeNull();
 		expect(screen.queryByText("Courier · @courier")).toBeNull();
 		expect(screen.queryByText("Последние операции")).toBeNull();
 		expect(screen.queryByText("Продажи сегодня")).toBeNull();
 		expect(screen.queryByText("Статистика")).toBeNull();
 		expect(screen.queryByRole("button", { name: "Продажа" })).toBeNull();
+		expect(screen.queryByRole("button", { name: "Назначить дисконт пока недоступно" })).toBeNull();
 
-		for (const action of ["Назначить дисконт", "Списать наличные", "Отчеты", "История"]) {
-			const button = screen.getByRole("button", { name: `${action} пока недоступно` }) as HTMLButtonElement;
-			expect(button.disabled).toBe(true);
-			fireEvent.click(button);
-		}
+		fireEvent.click(screen.getByRole("button", { name: "Распределитель" }));
+		expect(await screen.findByRole("heading", { name: "Распределитель" })).toBeTruthy();
+		expect(await screen.findByText("Икра горбуши")).toBeTruthy();
 
 		expect(fetchMock.mock.calls.every(([, init]) => (init?.method ?? "GET") === "GET")).toBe(true);
 	});
