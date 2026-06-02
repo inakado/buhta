@@ -254,12 +254,12 @@ export function DistributorSaleHome({
 					<span>Комментарий</span>
 					<textarea onChange={(event) => setComment(event.target.value)} rows={2} value={comment} />
 				</label>
-				<div className="operation-total" style={operationTotalStyle}>
-					<div style={operationTotalHeaderStyle}>
-						<span style={operationTotalLabelStyle}>Итого</span>
-						<strong style={operationTotalValueStyle}>{formatRubles(saleTotalCents)} ₽</strong>
+				<div className="operation-total">
+					<div>
+						<span>Итого</span>
+						<strong>{formatRubles(saleTotalCents)} ₽</strong>
 					</div>
-					<p style={operationTotalMetaStyle}>{paymentMethod === "cash" ? "Наличные" : "Безнал"}</p>
+					<p>{paymentMethod === "cash" ? "Наличные" : "Безнал"}</p>
 				</div>
 				{localError ? <p className="form-error">{localError}</p> : null}
 				{saleMutation.isError ? <p className="form-error">{saleMutation.error.message}</p> : null}
@@ -300,41 +300,3 @@ function isValidQuantity(quantity: number, stock: DistributorSaleStockItem | und
 function formatRubles(priceCents: number): string {
 	return formatMoneyCents(moneyCents(priceCents));
 }
-
-const operationTotalStyle = {
-	display: "flex",
-	flexDirection: "column",
-	gap: 7,
-	marginTop: 2,
-	borderTop: "1px solid var(--line)",
-	paddingTop: 12,
-} as const;
-
-const operationTotalHeaderStyle = {
-	display: "flex",
-	alignItems: "baseline",
-	justifyContent: "space-between",
-	gap: 12,
-} as const;
-
-const operationTotalLabelStyle = {
-	color: "var(--text-muted)",
-	fontSize: 13,
-	fontWeight: "var(--font-weight-label)",
-} as const;
-
-const operationTotalValueStyle = {
-	color: "var(--base-black)",
-	fontSize: 22,
-	fontVariantNumeric: "tabular-nums",
-	fontWeight: "var(--font-weight-emphasis)",
-	lineHeight: 1,
-	whiteSpace: "nowrap",
-} as const;
-
-const operationTotalMetaStyle = {
-	margin: 0,
-	color: "var(--text-muted)",
-	fontSize: 12,
-	lineHeight: 1.25,
-} as const;

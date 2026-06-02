@@ -31,7 +31,7 @@ export function CourierHomeOverview({ onLoad, onSale, online }: CourierHomeOverv
 				{balances.isFetching || cashBalances.isFetching ? <span>Обновление</span> : null}
 			</div>
 
-			<div className="distributor-worker-overview worker-balance-overview courier-home-overview">
+			<div className="compact-balance-overview courier-home-overview">
 				<div>
 					<span>Стоимость</span>
 					<strong>{formatRubles(data?.summary.totalStockValueCents ?? 0)}</strong>

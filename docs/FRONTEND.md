@@ -46,6 +46,7 @@ Frontend notes проекта «Бухта».
 - Критичные write-операции выполняются только online.
 - Offline в v1 допускается только для безопасного кеширования shell/static/read-only данных, если это не создает конфликтов остатков и денег.
 - Сложные интерактивные UI primitives строим на Radix UI, если для pattern есть подходящий primitive: dialog, popover, select, combobox-like picker, tabs/segmented controls и похожие составные controls. В проект добавляется только нужный `@radix-ui/react-*` пакет, а визуальная оболочка всегда остается нашей дизайн-системой; готовые темы и чужие visual kits не подключать.
+- Временные CSS fallback-классы и inline styles не считать финальным решением. Если dev-server/HMR не подхватил новые классы, сначала диагностировать stale CSS, hard reload или перезапуск dev-server; устойчивые visual patterns фиксировать в `globals.css` и предметных class names.
 
 ## 4. Mobile UX Rules
 

@@ -87,20 +87,12 @@ export function DistributorInventoryHome({
 
 function MoneyValue({ valueCents }: { valueCents: number }) {
 	return (
-		<strong style={moneyValueStyle}>
+		<strong className="money-value-nowrap">
 			<span>{formatMoneyCents(moneyCents(valueCents))}</span>
 			<span>₽</span>
 		</strong>
 	);
 }
-
-const moneyValueStyle = {
-	display: "inline-flex",
-	gap: 4,
-	lineHeight: 1,
-	whiteSpace: "nowrap",
-	wordBreak: "keep-all",
-} as const;
 
 function formatRubles(priceCents: number): string {
 	return `${formatMoneyCents(moneyCents(priceCents))}\u00A0₽`;

@@ -350,6 +350,32 @@
 - Убрать визуальную зависимость от больших цветных карточек там, где нужен список.
 - Проверить длинные названия и маленький viewport.
 - Не создавать общий component, если повторилась только внешняя оболочка.
+- Убрать CSS fallback, появившиеся из-за stale/HMR-проблем со стилями: новые блоки должны работать от своих классов, а не от подмешивания старых классов.
+- Оформить inline styles, добавленные как временный обход неподхватившегося CSS, через `apps/web/app/globals.css`.
+
+Fallback cleanup scope:
+
+- `features/distributor/DistributorHomeOverview.tsx`: заменить связку `distributor-worker-overview worker-balance-overview` на предметный класс worker/distributor summary.
+- `features/courier/CourierHomeOverview.tsx`: убрать зависимость courier summary от `distributor-worker-overview worker-balance-overview`.
+- `features/sales/DistributorSaleHome.tsx`, `features/courier/CourierSaleHome.tsx`, `features/courier/CourierLoadHome.tsx`: убрать inline `operationTotal*Style`, оставить class-based `.operation-total`.
+- `features/distributor/DistributorStockList.tsx`, `features/courier/CourierStockList.tsx`, production history table в `features/production/ProductionHome.tsx`: оценить inline table styles; если это fallback, оформить через CSS-классы `inventory-table-*`.
+- `features/distributor/DistributorInventoryHome.tsx`: проверить `moneyValueStyle`; оставить только если это точечная защита от разрыва суммы и `₽`, иначе оформить через CSS.
+
+Критерии готовности:
+
+- `rg "style=\\{|worker-balance-overview|distributor-worker-overview|operationTotalStyle" apps/web/src apps/web/app` не находит fallback в отполированных role/operation экранах, кроме осознанно оставленных точечных style-объектов с комментарием в плане.
+- Повторяющиеся visual patterns управляются через `globals.css`, а не через inline style constants в feature-компонентах.
+- После перезапуска dev-server новые CSS-классы видны в браузере без hardcoded fallback-классов.
+
+Результат 2026-06-02:
+
+- `operationTotal*Style` удалены из distributor sale, courier sale и courier load; operation summary управляется классами `.operation-total`.
+- `distributor-worker-overview` и `worker-balance-overview` заменены на предметный `compact-balance-overview` в distributor/courier home summaries.
+- Inline table/list styles удалены из `DistributorStockList`, `CourierStockList` и production history table; общий pattern управляется `inventory-table-*` в `globals.css`.
+- `moneyValueStyle` заменен CSS-классом `money-value-nowrap`, чтобы сохранить защиту от разрыва суммы и `₽` без inline style.
+- Targeted: `rg "style=\\{|const .*Style|worker-balance-overview|distributor-worker-overview|operationTotalStyle|moneyValueStyle" apps/web/src apps/web/app -g '*.tsx' -g '*.css'` — ok, совпадений нет.
+- Targeted: `pnpm --filter @buhta/web typecheck` — ok.
+- Targeted: `pnpm --filter @buhta/web test -- page.test.tsx` — ok.
 
 ### Checkpoint 8. Documentation And Full Verification
 
@@ -385,6 +411,8 @@ Targeted после каждого checkpoint:
 - Директор не получает продажу.
 - Query invalidation после sale/load/client create остается в feature-компонентах и не переносится в role home.
 - Error states не скрываются внутри декоративного блока.
+- CSS cleanup не возвращает проблему `Итого0.00 ₽`, перенос `₽` на узких экранах и голую table/list-разметку.
+- Browser smoke после CSS cleanup выполняется после перезапуска dev-server или hard reload, чтобы не принять stale CSS за баг компонента.
 
 ## Риски И Rollback
 
@@ -392,7 +420,7 @@ Targeted после каждого checkpoint:
   Rollback: убрать `listClients` с home, оставить клиентов в нижней навигации.
 
 - Риск: карточки станут перегруженными на маленьком экране.  
-  Rollback: оставить в карточке 2-3 значения, остальное перенести в список ниже.
+  Rollback: оставить в карточке 2-3 значения, остальное вынести в список ниже.
 
 - Риск: появится общий компонент, который начнет тянуть доменную логику.  
   Rollback: вернуть JSX в ролевой/feature-компонент, оставить только CSS-классы.
@@ -400,7 +428,10 @@ Targeted после каждого checkpoint:
 - Риск: после перестановки потеряется invalidation/refetch.  
   Rollback: не трогать sale/load feature-компоненты в этом плане, role home только открывает вкладку.
 
+- Риск: cleanup inline/fallback CSS снова проявит stale dev-server проблему как “стили не применились”.  
+  Rollback: не возвращать inline styles; сначала перезапустить dev-server/очистить `.next`, затем проверять наличие конкретного CSS rule в DevTools.
+
 ## Открытые Вопросы
 
 - Нужен ли commercial home блок `Клиенты`, если текущий backend отдает только список без отдельного счетчика и активности?
-- Показывать ли disabled future actions директора на home или перенести их в отдельный будущий раздел?
+- Показывать ли disabled future actions директора на home или вынести их в отдельный будущий раздел?

@@ -79,7 +79,7 @@ export function DistributorHomeOverview({
 					{cashBalances.isError ? <span className="inline-error">Не удалось загрузить наличные</span> : null}
 				</div>
 			) : (
-				<div className="distributor-worker-overview worker-balance-overview">
+				<div className="compact-balance-overview">
 					<div>
 						<span>Стоимость</span>
 						<strong>{formatRubles(stockValueCents)}</strong>

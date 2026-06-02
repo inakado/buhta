@@ -442,8 +442,7 @@ button:disabled {
 	}
 }
 
-.distributor-worker-overview,
-.worker-balance-overview {
+.compact-balance-overview {
 	display: grid;
 	grid-template-columns: repeat(2, minmax(0, 1fr));
 	gap: 0;
@@ -453,24 +452,20 @@ button:disabled {
 	color: var(--base-black);
 }
 
-.distributor-worker-overview > div,
-.worker-balance-overview > div {
+.compact-balance-overview > div {
 	min-width: 0;
 	padding: 9px 10px;
 }
 
-.distributor-worker-overview > div:nth-child(2n),
-.worker-balance-overview > div:nth-child(2n) {
+.compact-balance-overview > div:nth-child(2n) {
 	border-left: 1px solid rgb(37 119 45 / 8%);
 }
 
-.distributor-worker-overview > div:nth-child(n + 3),
-.worker-balance-overview > div:nth-child(n + 3) {
+.compact-balance-overview > div:nth-child(n + 3) {
 	border-top: 1px solid rgb(37 119 45 / 8%);
 }
 
-.distributor-worker-overview span,
-.worker-balance-overview span {
+.compact-balance-overview span {
 	display: block;
 	margin-bottom: 7px;
 	color: rgb(0 0 0 / 60%);
@@ -479,8 +474,7 @@ button:disabled {
 	line-height: 1.15;
 }
 
-.distributor-worker-overview strong,
-.worker-balance-overview strong {
+.compact-balance-overview strong {
 	display: block;
 	overflow-wrap: anywhere;
 	color: var(--base-black);
@@ -1439,6 +1433,7 @@ button:disabled {
 .inventory-table-list {
 	display: flex;
 	flex-direction: column;
+	margin-inline: 10px;
 }
 
 .inventory-table-head,
@@ -1500,6 +1495,14 @@ button:disabled {
 .inventory-table-quantity,
 .inventory-table-total {
 	text-align: right;
+}
+
+.money-value-nowrap {
+	display: inline-flex;
+	gap: 4px;
+	line-height: 1;
+	white-space: nowrap;
+	word-break: keep-all;
 }
 
 .production-stock-stack,
