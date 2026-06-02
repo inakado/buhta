@@ -1,7 +1,6 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Banknote } from "lucide-react";
 import {
 	type CourierCashBalanceItem,
 	type CourierProductBalanceItem,
@@ -88,20 +87,12 @@ function CourierCashPanel({
 	const ownItem = items[0];
 
 	return (
-		<div className="entity-card production-history-card">
-			<div className="inventory-item-main">
-				<div className="production-row-icon">
-					<Banknote aria-hidden size={18} />
-				</div>
-				<div>
-					<strong>Наличные</strong>
-					<p>Баланс курьера</p>
-				</div>
+		<div className="flat-balance-row">
+			<div>
+				<strong>Наличные</strong>
+				<p>{ownItem?.updatedAt ? "Обновлен" : "Операций нет"}</p>
 			</div>
-			<div className="production-history-meta">
-				<strong>{formatRubles(ownItem?.amountCents ?? 0)} ₽</strong>
-				<span>{ownItem?.updatedAt ? "Обновлен" : "Операций нет"}</span>
-			</div>
+			<strong>{formatRubles(ownItem?.amountCents ?? 0)} ₽</strong>
 		</div>
 	);
 }

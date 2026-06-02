@@ -1,7 +1,6 @@
 "use client";
 
-import { Box, LogOut, PackageCheck, ReceiptText, Settings, Shield, Truck, type LucideIcon } from "lucide-react";
-import type { Role } from "@buhta/shared";
+import { LogOut, Settings, Shield, type LucideIcon } from "lucide-react";
 import { CatalogHome } from "../features/catalog/CatalogHome";
 import { ClientsHome } from "../features/clients/ClientsHome";
 import { CourierBalanceHome } from "../features/courier/CourierBalanceHome";
@@ -158,29 +157,7 @@ export function RoleHomeRouter({
 		return <DistributorInventoryHome showCashBalance={actor.permissions.includes("distributor.cash.read")} />;
 	}
 
-	const roleConfig = roleHomeConfig[actor.role];
-
-	return (
-		<section className="screen-stack">
-			<div className="summary-card">
-				<div>
-					<p className="summary-label">{roleConfig.summaryLabel}</p>
-					<strong>{roleConfig.summaryValue}</strong>
-				</div>
-				<roleConfig.icon aria-hidden size={28} />
-			</div>
-			<div className="section-heading">
-				<h2>Быстрые действия</h2>
-			</div>
-			<div className="action-grid">
-				{roleConfig.actions.map((action) => (
-					<button className="action-tile" type="button" key={action} disabled>
-						<span>{action}</span>
-					</button>
-				))}
-			</div>
-		</section>
-	);
+	return <PlaceholderScreen title="Главная" text="Раздел недоступен для текущей роли." icon={Settings} />;
 }
 
 function PlaceholderScreen({
@@ -194,12 +171,12 @@ function PlaceholderScreen({
 }) {
 	return (
 		<section className="screen-stack">
-			<div className="summary-card">
+			<div className="placeholder-panel">
 				<div>
-					<p className="summary-label">{title}</p>
-					<strong>{text}</strong>
+					<h2>{title}</h2>
+					<p>{text}</p>
 				</div>
-				<Icon aria-hidden size={28} />
+				<Icon aria-hidden size={22} />
 			</div>
 		</section>
 	);
@@ -241,41 +218,3 @@ function SettingsScreen({
 function isProductionTab(tab: string): tab is "home" | "notifications" | "history" {
 	return tab === "home" || tab === "notifications" || tab === "history";
 }
-
-const roleHomeConfig = {
-	director: {
-		summaryLabel: "Контроль дня",
-		summaryValue: "Остатки, деньги, отчеты",
-		icon: Shield,
-		actions: ["Остатки", "Списать наличные", "Отчеты"],
-	},
-	production_manager: {
-		summaryLabel: "Производство",
-		summaryValue: "Сырье, тара, выпуск",
-		icon: PackageCheck,
-		actions: ["Сырье", "Тара", "Выпуск"],
-	},
-	commercial_manager: {
-		summaryLabel: "Распределитель",
-		summaryValue: "Клиенты, остатки, уведомления",
-		icon: ReceiptText,
-		actions: ["Клиенты", "Продажа", "Уведомить производство"],
-	},
-	distributor_worker: {
-		summaryLabel: "Распределитель",
-		summaryValue: "Остатки и продажи",
-		icon: Box,
-		actions: ["Остатки", "Продажа", "История"],
-	},
-	courier: {
-		summaryLabel: "Баланс курьера",
-		summaryValue: "Загрузка, продажи, сгрузка",
-		icon: Truck,
-		actions: ["Загрузка", "Продажа", "Сгрузка"],
-	},
-} satisfies Record<Exclude<Role, "admin">, {
-	summaryLabel: string;
-	summaryValue: string;
-	icon: LucideIcon;
-	actions: string[];
-}>;

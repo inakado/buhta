@@ -856,7 +856,10 @@ describe("HomePage", () => {
 		fireEvent.click(screen.getByRole("button", { name: "Продукция 4 шт" }));
 		expect(await screen.findByRole("heading", { name: "Продукция в цеху" })).toBeTruthy();
 		expect(screen.getByText("Икра горбуши")).toBeTruthy();
-		expect(screen.getByText("Доступно 4 из 4 шт")).toBeTruthy();
+		expect(screen.getByText("Количество")).toBeTruthy();
+		expect(screen.getByText("Цена")).toBeTruthy();
+		expect(screen.getByText("4 шт")).toBeTruthy();
+		expect(screen.getByText("из 4 шт")).toBeTruthy();
 		fireEvent.click(screen.getByRole("button", { name: "Назад" }));
 
 		fireEvent.click(screen.getByRole("button", { name: "Выпустить" }));

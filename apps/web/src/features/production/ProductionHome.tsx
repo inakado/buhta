@@ -766,20 +766,26 @@ function WorkshopProductBalanceList({
 	workshopProductBalances: WorkshopProductBalanceItem[];
 }) {
 	return (
-		<div className="list-stack">
+		<div className="inventory-table-list" role="table" aria-label="Продукция в цеху">
+			<div className="inventory-table-head" role="row">
+				<span>Продукция</span>
+				<span>Количество</span>
+				<span>Цена</span>
+			</div>
 			{workshopProductBalances.map((balance) => (
-				<article className="entity-card production-history-card" key={balance.id}>
-					<div>
+				<div className="inventory-table-row" key={balance.id} role="row">
+					<div className="inventory-table-product" role="cell">
 						<strong>{balance.productName}</strong>
-						<p>
-							Доступно {balance.quantity} из {balance.producedQuantity} шт
-						</p>
-					</div>
-					<div className="production-history-meta">
-						<strong>{formatPriceRubles(balance.priceCents)} ₽</strong>
 						<span>{formatDateTime(balance.createdAt)}</span>
 					</div>
-				</article>
+					<div className="inventory-table-quantity" role="cell">
+						<strong>{balance.quantity} шт</strong>
+						<span>из {balance.producedQuantity} шт</span>
+					</div>
+					<div className="inventory-table-total" role="cell">
+						<strong>{formatPriceRubles(balance.priceCents)} ₽</strong>
+					</div>
+				</div>
 			))}
 		</div>
 	);

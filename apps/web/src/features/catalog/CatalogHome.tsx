@@ -70,12 +70,9 @@ export function CatalogHome({ online }: { online: boolean }) {
 
 	return (
 		<section className="screen-stack">
-			<div className="summary-card compact-summary">
-				<div>
-					<p className="summary-label">Справочники</p>
-					<strong>Сырье, тара, распределители и шаблоны</strong>
-				</div>
-				<ClipboardList aria-hidden size={28} />
+			<div className="section-heading compact">
+				<h2>Справочники</h2>
+				<span>Номенклатура</span>
 			</div>
 
 			<div className="catalog-tabs" aria-label="Разделы справочников">
@@ -292,7 +289,7 @@ function SimpleCatalogListItem({
 
 	if (editing) {
 		return (
-			<article className="entity-card edit-card">
+			<article className="form-panel edit-card">
 				<label className="field">
 					<span>Название</span>
 					<input onChange={(event) => setName(event.target.value)} type="text" value={name} />
@@ -317,8 +314,8 @@ function SimpleCatalogListItem({
 	}
 
 	return (
-		<article className="entity-card">
-			<div>
+		<article className="catalog-list-row">
+			<div className="catalog-item-main">
 				<strong>{item.name}</strong>
 				{unitLabel ? <p>{unitValue}</p> : null}
 			</div>
@@ -561,7 +558,7 @@ function ProductTemplateListItem({
 
 	if (editing) {
 		return (
-			<article className="entity-card edit-card">
+			<article className="form-panel edit-card">
 				<label className="field">
 					<span>Название</span>
 					<input onChange={(event) => setName(event.target.value)} type="text" value={name} />
@@ -610,8 +607,8 @@ function ProductTemplateListItem({
 	}
 
 	return (
-		<article className="entity-card">
-			<div>
+		<article className="catalog-list-row">
+			<div className="catalog-item-main">
 				<strong>{item.name}</strong>
 				<p>
 					{item.rawMaterialType.name} / {item.packagingType.name}

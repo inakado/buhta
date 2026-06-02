@@ -89,9 +89,23 @@ export function ClientsHome({
 
 	return (
 		<section className="screen-stack">
-			<div className="section-heading compact">
-				<h2>Клиенты</h2>
-				<span>{clients.isLoading ? "Загрузка" : `${clients.data?.clients.length ?? 0} клиентов`}</span>
+			<div className="section-heading compact clients-heading">
+				<div>
+					<h2>Клиенты</h2>
+					<span>{clients.isLoading ? "Загрузка" : `${clients.data?.clients.length ?? 0} клиентов`}</span>
+				</div>
+				{canManage ? (
+					<button
+						aria-label="Добавить клиента"
+						className="secondary-button compact-button client-create-button"
+						onClick={() => setMode("create")}
+						type="button"
+						disabled={!online}
+					>
+						<UserPlus aria-hidden size={16} />
+						Новый
+					</button>
+				) : null}
 			</div>
 
 			<form className="client-search" onSubmit={handleSearch}>
@@ -111,13 +125,6 @@ export function ClientsHome({
 					Найти
 				</button>
 			</form>
-
-			{canManage ? (
-				<button className="primary-button" onClick={() => setMode("create")} type="button" disabled={!online}>
-					<UserPlus aria-hidden size={18} />
-					Добавить клиента
-				</button>
-			) : null}
 
 			{clients.isLoading ? <p className="muted">Загрузка клиентов</p> : null}
 			{clients.isError ? <p className="form-error">{clients.error.message}</p> : null}
@@ -241,27 +248,25 @@ function ClientList({
 	onEdit: (client: Client) => void;
 }) {
 	return (
-		<div className="list-stack">
+		<div className="client-list-table" role="list">
 			{clients.map((client) => (
-				<article className="entity-card" key={client.id}>
-					<div>
+				<div className="client-list-row" key={client.id} role="listitem">
+					<div className="client-list-main">
 						<strong>{client.name}</strong>
 						<p>{client.phone}</p>
 						{client.description ? <p>{client.description}</p> : null}
 					</div>
 					{canManage ? (
-						<div className="entity-actions">
-							<button
-								aria-label={`Редактировать ${client.name}`}
-								className="secondary-icon-button"
-								onClick={() => onEdit(client)}
-								type="button"
-							>
-								<Edit3 aria-hidden size={17} />
-							</button>
-						</div>
+						<button
+							aria-label={`Редактировать ${client.name}`}
+							className="secondary-icon-button"
+							onClick={() => onEdit(client)}
+							type="button"
+						>
+							<Edit3 aria-hidden size={17} />
+						</button>
 					) : null}
-				</article>
+				</div>
 			))}
 		</div>
 	);

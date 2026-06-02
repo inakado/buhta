@@ -1,6 +1,6 @@
 # Role Home Working Cards
 
-Статус: `Draft`.
+Статус: `Active`.
 
 ## Цель
 
@@ -81,6 +81,9 @@
 - `apps/web/src/features/courier/CourierHomeOverview.tsx`;
 - `apps/web/src/features/distributor/DistributorStockList.tsx`;
 - `apps/web/src/features/courier/CourierStockList.tsx`;
+- `apps/web/src/features/courier/CourierBalanceHome.tsx`;
+- `apps/web/src/features/catalog/CatalogHome.tsx`;
+- `apps/web/src/features/clients/ClientsHome.tsx`;
 - `apps/web/src/features/production/ProductionHome.tsx`;
 - `apps/web/src/features/production/ProductionHomeOverview.tsx`;
 - `apps/web/src/app-shell/RoleHomeRouter.tsx`;
@@ -377,11 +380,58 @@ Fallback cleanup scope:
 - Targeted: `pnpm --filter @buhta/web typecheck` — ok.
 - Targeted: `pnpm --filter @buhta/web test -- page.test.tsx` — ok.
 
-### Checkpoint 8. Documentation And Full Verification
+### Checkpoint 8. Final UI Pattern Cleanup
+
+- Убрать из `RoleHomeRouter` общий fallback-home с `summary-card` и disabled action tiles.
+- Placeholder-разделы показывать как плоское состояние раздела, без зеленой декоративной карточки.
+- Убрать `summary-card compact-summary` со справочников: tabs и формы уже объясняют экран.
+- Клиентов показывать плотным read-only list/table pattern, а не `entity-card`, если строка не является карточкой drill-down.
+- Блок наличных курьера на собственном балансе сделать плоской строкой/панелью, без `production-history-card`.
+- `Продукция в цеху` у заведующего производством перевести из `entity-card production-history-card` в read-only table/list.
+- Не трогать CRUD edit-card справочников в этом checkpoint, если карточка является формой редактирования с действиями.
+- После правок проверить `rg "summary-card|entity-card|production-history-card"` и зафиксировать, какие оставшиеся вхождения осознанны.
+- Не добавлять новые одноразовые hidden CSS-классы без второго использования или явной роли в существующем pattern.
+
+Критерии готовности:
+
+- Некликабельные read-only списки не выглядят карточками с drill-down.
+- Disabled action tiles не используются как placeholder будущих фич.
+- CSS для новых строк живет в `globals.css` и переиспользует существующие table/list primitives.
+- В справочниках карточка остается только для edit/create формы, где она действительно рамка формы.
+
+Результат 2026-06-02:
+
+- `RoleHomeRouter` больше не содержит `roleHomeConfig` с disabled action tiles; fallback-разделы показывают плоский `placeholder-panel`.
+- Справочники лишились `summary-card compact-summary`; сверху остался обычный заголовок и tabs.
+- Обычные строки справочников переведены на `catalog-list-row`; режим редактирования остался `form-panel edit-card`, потому что это форма с действиями.
+- Клиенты переведены из `entity-card` в плотный `client-list-table` / `client-list-row`.
+- Действие `Добавить клиента` размещено в правом верхнем углу шапки клиентов как компактная кнопка `Новый`, чтобы не разрывать поток `поиск -> список`.
+- Собственный блок наличных курьера переведен из `production-history-card` в `flat-balance-row`.
+- `Продукция в цеху` переведена из карточек в `inventory-table-*`.
+- Неиспользуемые CSS-классы `summary-card`, `compact-summary`, `entity-card`, `production-history-card`, `production-history-meta`, `inventory-item-main` удалены.
+- Targeted: `rg "summary-card|entity-card|production-history-card|compact-summary|inventory-item-main|production-history-meta" apps/web/src apps/web/app -g '*.tsx' -g '*.css'` — ok, совпадений нет.
+- Targeted: `rg "style=\\{|const .*Style|worker-balance-overview|distributor-worker-overview|operationTotalStyle|moneyValueStyle" apps/web/src apps/web/app -g '*.tsx' -g '*.css'` — ok, совпадений нет.
+- Targeted: `pnpm --filter @buhta/web typecheck` — ok.
+- Targeted: `pnpm --filter @buhta/web test -- page.test.tsx` — ok.
+
+### Checkpoint 9. Documentation And Full Verification
 
 - Обновить `docs/FRONTEND.md`.
 - Записать фактические проверки в план.
 - Перенести план в `completed/` после завершения.
+
+Результат 2026-06-02:
+
+- `docs/FRONTEND.md` обновлен: зафиксированы правила против декоративных `summary-card` / `entity-card`, disabled placeholder tiles и read-only карточек без drill-down.
+- Root verification: `pnpm lint` — ok.
+- Root verification: `pnpm lint:boundaries` — ok.
+- Root verification: `pnpm typecheck` — ok.
+- Root verification: `pnpm test` — ok.
+- Docs verification: `pnpm docs:check` — ok.
+- Browser smoke: `http://localhost:3001` открылся; `admin` / `Pass123!` успешно вошел; экраны `Пользователи`, `Каталог`, `Клиенты` открываются после CSS cleanup.
+- Browser console: единственная ошибка — ожидаемый `401 /auth/me` до авторизации на login screen; новых ошибок после входа не выявлено.
+- Полный browser-smoke по `commercial_manager`, `distributor_worker`, `courier`, `director`, `production_manager` не закрыт в этом проходе: текущий seed гарантирует пароль только для `admin`, а остальные роли проверены автоматизированными web tests.
+- План пока не переносить в `completed/`: нужен отдельный визуальный smoke всех ролей с рабочими учетными данными или тестовым auth-switcher/dev seed для ролей.
 
 ## Тестовый План
 
