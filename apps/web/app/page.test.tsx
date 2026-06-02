@@ -1033,7 +1033,7 @@ describe("HomePage", () => {
 		expect(await screen.findByRole("heading", { name: "Продажи" })).toBeTruthy();
 
 		fireEvent.click(screen.getByRole("button", { name: "Открыть продажу" }));
-		expect(await screen.findByText("Новая продажа")).toBeTruthy();
+		expect(await screen.findByRole("heading", { name: "Продажа" })).toBeTruthy();
 
 		fireEvent.click(screen.getByRole("button", { name: "Главная" }));
 		expect(await screen.findByRole("heading", { name: "Продажи" })).toBeTruthy();
@@ -1096,7 +1096,7 @@ describe("HomePage", () => {
 		expect(screen.getByText("Распределитель Центральный")).toBeTruthy();
 
 		fireEvent.click(saleAction);
-		expect(await screen.findByText("Новая продажа")).toBeTruthy();
+		expect(await screen.findByRole("heading", { name: "Продажа" })).toBeTruthy();
 		expect(screen.queryByText("Балансы курьеров")).toBeNull();
 	});
 
@@ -1156,10 +1156,13 @@ describe("HomePage", () => {
 		render(<HomePage />);
 
 		expect(await screen.findByRole("heading", { name: "Мой баланс" })).toBeTruthy();
-		expect(screen.getByText("Товар")).toBeTruthy();
+		expect(screen.getByText("Стоимость")).toBeTruthy();
 		expect(await screen.findByText("Наличные")).toBeTruthy();
 		expect(screen.getByText("700.00 ₽")).toBeTruthy();
+		expect(screen.getByRole("heading", { name: "Продукция" })).toBeTruthy();
+		expect(screen.getByText("Количество")).toBeTruthy();
 		expect(await screen.findByText("Икра горбуши")).toBeTruthy();
+		expect(screen.queryByText("У курьера")).toBeNull();
 		const loadAction = screen.getByRole("button", { name: "Открыть загрузку" });
 		expect(loadAction.className).toContain("action-tile");
 		expect(screen.getByRole("button", { name: "Открыть продажу" }).className).toContain("action-tile");
@@ -1304,13 +1307,22 @@ describe("HomePage", () => {
 
 		expect(await screen.findByRole("heading", { name: "Мой баланс" })).toBeTruthy();
 		fireEvent.click(await screen.findByRole("button", { name: "Открыть продажу" }));
-		expect(await screen.findByText("Продажа курьера")).toBeTruthy();
-		fireEvent.change(await screen.findByLabelText("Клиент"), { target: { value: "client1" } });
+		expect(await screen.findByRole("heading", { name: "Продажа" })).toBeTruthy();
+		fireEvent.change(await screen.findByLabelText("Клиент"), { target: { value: "Иван" } });
+		fireEvent.click(await screen.findByRole("button", { name: "Выбрать клиента Иван Петров" }));
+		expect(screen.queryByText("Поиск клиента")).toBeNull();
+		expect(screen.queryByRole("button", { name: "Новый клиент" })).toBeNull();
+		fireEvent.click(screen.getByRole("button", { name: "Очистить клиента" }));
+		expect(await screen.findByLabelText("Клиент")).toBeTruthy();
+		expect(screen.getByRole("button", { name: "Новый клиент" })).toBeTruthy();
+		fireEvent.change(screen.getByLabelText("Клиент"), { target: { value: "Иван" } });
+		fireEvent.click(await screen.findByRole("button", { name: "Выбрать клиента Иван Петров" }));
 		fireEvent.change(await screen.findByLabelText("Продукция"), { target: { value: "courier-balance1" } });
 		fireEvent.change(screen.getByLabelText("Количество, шт"), { target: { value: "1" } });
 		fireEvent.click(screen.getByRole("button", { name: "Безнал" }));
 		expect(screen.getByRole("button", { name: "Безнал" }).getAttribute("aria-pressed")).toBe("true");
-		expect(screen.getByText("Наличные не изменятся")).toBeTruthy();
+		expect(screen.queryByText("Наличные не изменятся")).toBeNull();
+		expect(screen.queryByText("Наличные увеличатся у курьера")).toBeNull();
 		fireEvent.change(screen.getByLabelText("Комментарий"), { target: { value: "Доставка" } });
 		fireEvent.click(screen.getByRole("button", { name: "Записать продажу" }));
 
@@ -1380,7 +1392,8 @@ describe("HomePage", () => {
 		expect(await screen.findByText((_, element) =>
 			element?.textContent === "Икра горбуши · 2 шт · 1250.00 ₽",
 		)).toBeTruthy();
-		fireEvent.change(await screen.findByLabelText("Клиент"), { target: { value: "client1" } });
+		fireEvent.change(await screen.findByLabelText("Клиент"), { target: { value: "Иван" } });
+		fireEvent.click(await screen.findByRole("button", { name: "Выбрать клиента Иван Петров" }));
 		fireEvent.change(await screen.findByLabelText("Продукция"), { target: { value: "courier-balance1" } });
 		fireEvent.change(screen.getByLabelText("Количество, шт"), { target: { value: "1" } });
 		fireEvent.click(screen.getByRole("button", { name: "Безнал" }));
@@ -1388,7 +1401,7 @@ describe("HomePage", () => {
 		fireEvent.click(screen.getByRole("button", { name: "Записать продажу" }));
 
 		expect(await screen.findByText("Недостаточно товара у курьера")).toBeTruthy();
-		expect((screen.getByLabelText("Клиент") as HTMLSelectElement).value).toBe("client1");
+		expect((screen.getByLabelText("Клиент") as HTMLInputElement).value).toBe("Иван Петров");
 		expect((screen.getByLabelText("Продукция") as HTMLSelectElement).value).toBe("courier-balance1");
 		expect((screen.getByLabelText("Количество, шт") as HTMLInputElement).value).toBe("1");
 		expect(screen.getByRole("button", { name: "Безнал" }).getAttribute("aria-pressed")).toBe("true");
@@ -1523,7 +1536,8 @@ describe("HomePage", () => {
 		expect(screen.getByRole("heading", { name: "Распределитель" })).toBeTruthy();
 		expect(screen.getByRole("heading", { name: "Курьеры" })).toBeTruthy();
 		expect(screen.getAllByText("Икра горбуши").length).toBeGreaterThan(1);
-		expect(screen.getByText("Courier · @courier")).toBeTruthy();
+		expect(screen.getAllByText("Courier").length).toBeGreaterThan(0);
+		expect(screen.queryByText("Courier · @courier")).toBeNull();
 		expect(screen.queryByText("Последние операции")).toBeNull();
 		expect(screen.queryByText("Продажи сегодня")).toBeNull();
 		expect(screen.queryByText("Статистика")).toBeNull();
@@ -1619,7 +1633,7 @@ describe("HomePage", () => {
 		render(<HomePage />);
 
 		fireEvent.click(await screen.findByRole("button", { name: "Открыть продажу" }));
-		expect(await screen.findByText("Новая продажа")).toBeTruthy();
+		expect(await screen.findByRole("heading", { name: "Продажа" })).toBeTruthy();
 		fireEvent.click(screen.getByRole("button", { name: "Новый клиент" }));
 		fireEvent.change(await screen.findByLabelText("Имя нового клиента"), { target: { value: "Анна" } });
 		fireEvent.change(screen.getByLabelText("Телефон нового клиента"), { target: { value: "+7 (999) 888-77-66" } });
@@ -1639,6 +1653,11 @@ describe("HomePage", () => {
 			);
 		});
 
+		await waitFor(() => {
+			expect(screen.queryByText("Поиск клиента")).toBeNull();
+			expect(screen.queryByRole("button", { name: "Новый клиент" })).toBeNull();
+			expect(screen.getByRole("button", { name: "Очистить клиента" })).toBeTruthy();
+		});
 		fireEvent.change(await screen.findByLabelText("Продукция"), { target: { value: "distributor-balance1" } });
 		expect(screen.getByText((_, element) =>
 			element?.textContent === "Доступно: 2 шт · 1250.00 ₽/шт",

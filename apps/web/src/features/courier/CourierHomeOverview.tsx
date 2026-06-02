@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Banknote, PackageCheck, PackagePlus, ReceiptText } from "lucide-react";
+import { PackagePlus, ReceiptText } from "lucide-react";
 import { formatMoneyCents, moneyCents } from "@buhta/shared";
 import { getCourierCashBalances, getCourierProductBalances } from "../../lib/api-client";
 import { CourierStockList } from "./CourierStockList";
@@ -31,26 +31,17 @@ export function CourierHomeOverview({ onLoad, onSale, online }: CourierHomeOverv
 				{balances.isFetching || cashBalances.isFetching ? <span>Обновление</span> : null}
 			</div>
 
-			<div className="summary-card compact-summary">
+			<div className="distributor-worker-overview worker-balance-overview courier-home-overview">
 				<div>
-					<p className="summary-label">Товар</p>
-					<strong>{balances.isLoading ? "Загрузка" : `${data?.summary.totalUnits ?? 0} шт`}</strong>
-					<p className="summary-note">
-						Товарный баланс {formatRubles(data?.summary.totalStockValueCents ?? 0)} ₽
-					</p>
+					<span>Стоимость</span>
+					<strong>{formatRubles(data?.summary.totalStockValueCents ?? 0)}</strong>
 				</div>
-				<PackageCheck aria-hidden size={28} />
-			</div>
-
-			<div className="summary-card compact-summary">
 				<div>
-					<p className="summary-label">Наличные</p>
-					<strong>{cashBalances.isLoading ? "Загрузка" : `${formatRubles(ownCashBalance?.amountCents ?? 0)} ₽`}</strong>
-					<p className="summary-note">Баланс курьера</p>
-					{cashBalances.isError ? <span className="inline-error">Не удалось загрузить наличные</span> : null}
+					<span>Наличные</span>
+					<strong>{cashBalances.isLoading ? "Загрузка" : formatRubles(ownCashBalance?.amountCents ?? 0)}</strong>
 				</div>
-				<Banknote aria-hidden size={28} />
 			</div>
+			{cashBalances.isError ? <span className="inline-error">Не удалось загрузить наличные</span> : null}
 
 			<div className="action-grid">
 				<button
@@ -76,7 +67,7 @@ export function CourierHomeOverview({ onLoad, onSale, online }: CourierHomeOverv
 			</div>
 
 			<div className="section-heading">
-				<h2>Мой остаток</h2>
+				<h2>Продукция</h2>
 				<span>{data?.summary.stockItemCount ?? 0} позиций</span>
 			</div>
 			{balances.isLoading ? <p className="muted">Загрузка баланса курьера</p> : null}
@@ -90,5 +81,5 @@ export function CourierHomeOverview({ onLoad, onSale, online }: CourierHomeOverv
 }
 
 function formatRubles(priceCents: number): string {
-	return formatMoneyCents(moneyCents(priceCents));
+	return `${formatMoneyCents(moneyCents(priceCents))}\u00A0₽`;
 }

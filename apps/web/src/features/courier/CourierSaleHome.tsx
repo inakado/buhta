@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FormEvent, useState } from "react";
-import { Banknote, Calculator, CreditCard, ReceiptText, Search, UserPlus } from "lucide-react";
+import { Banknote, CreditCard, ReceiptText, UserPlus } from "lucide-react";
 import { formatMoneyCents, moneyCents, type CourierSaleOption } from "@buhta/shared";
 import {
 	createClient,
@@ -10,6 +10,7 @@ import {
 	getCourierSaleOptions,
 	listClients,
 } from "../../lib/api-client";
+import { ClientCombobox } from "../clients/ClientCombobox";
 
 export function CourierSaleHome({
 	onSaleSuccess,
@@ -19,7 +20,6 @@ export function CourierSaleHome({
 	online: boolean;
 }) {
 	const queryClient = useQueryClient();
-	const [clientSearchDraft, setClientSearchDraft] = useState("");
 	const [activeClientSearch, setActiveClientSearch] = useState("");
 	const [selectedClientId, setSelectedClientId] = useState("");
 	const [selectedBalanceId, setSelectedBalanceId] = useState("");
@@ -50,9 +50,6 @@ export function CourierSaleHome({
 	const summaryQuantity = Number.isInteger(parsedQuantity) && parsedQuantity > 0
 		? `${parsedQuantity} шт`
 		: "Количество не задано";
-	const paymentEffect = paymentMethod === "cash"
-		? "Наличные увеличатся у курьера"
-		: "Наличные не изменятся";
 	const createClientMutation = useMutation({
 		mutationFn: () => createClient({
 			name: newClientName,
@@ -100,11 +97,6 @@ export function CourierSaleHome({
 		|| !selectedBalanceId
 		|| !isValidQuantity(parsedQuantity, selectedStock);
 
-	function handleClientSearch(event: FormEvent<HTMLFormElement>) {
-		event.preventDefault();
-		setActiveClientSearch(clientSearchDraft.trim());
-	}
-
 	function handleCreateClient(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
 		setLocalError("");
@@ -121,6 +113,13 @@ export function CourierSaleHome({
 		createClientMutation.mutate();
 	}
 
+	function handleClientChange(clientId: string) {
+		setSelectedClientId(clientId);
+		if (clientId) {
+			setShowNewClientForm(false);
+		}
+	}
+
 	function handleSaleSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
 		setLocalError("");
@@ -134,7 +133,7 @@ export function CourierSaleHome({
 			return;
 		}
 		if (!isValidQuantity(parsedQuantity, selectedStock)) {
-			setLocalError("Количество должно быть целым числом не больше доступного остатка.");
+			setLocalError("Количество должно быть целым числом не больше доступного количества.");
 			return;
 		}
 
@@ -143,62 +142,39 @@ export function CourierSaleHome({
 
 	return (
 		<section className="screen-stack">
-			<div className="summary-card compact-summary">
-				<div>
-					<p className="summary-label">Продажа курьера</p>
-					<strong>{saleTotalCents > 0 ? `${formatRubles(saleTotalCents)} ₽` : "Новая продажа"}</strong>
-					<p className="summary-note">Со своего баланса клиенту</p>
-				</div>
-				<ReceiptText aria-hidden size={28} />
+			<div className="section-heading compact">
+				<h2>Продажа</h2>
 			</div>
 
 			<div className="form-panel">
-				<form className="client-search" onSubmit={handleClientSearch}>
-					<label className="field">
-						<span>Поиск клиента</span>
-						<div className="input-shell">
-							<Search aria-hidden size={18} />
-							<input
-								onChange={(event) => setClientSearchDraft(event.target.value)}
-								placeholder="Имя или телефон"
-								type="search"
-								value={clientSearchDraft}
-							/>
-						</div>
-					</label>
-					<button className="secondary-button compact-button" type="submit">
-						Найти
-					</button>
-				</form>
-
-				<label className="field">
-					<span>Клиент</span>
-					<select
-						onChange={(event) => setSelectedClientId(event.target.value)}
-						value={selectedClientId}
-					>
-						<option value="">Выберите клиента</option>
-						{clients.data?.clients.map((client) => (
-							<option key={client.id} value={client.id}>
-								{client.name} · {client.phone}
-							</option>
-						))}
-					</select>
-				</label>
+				<div className="section-heading compact">
+					<h2>Клиент</h2>
+				</div>
+				<ClientCombobox
+					clients={clients.data?.clients ?? []}
+					loading={clients.isLoading}
+					onClientChange={handleClientChange}
+					onQueryChange={setActiveClientSearch}
+					query={activeClientSearch}
+					selectedClient={selectedClient}
+					selectedClientId={selectedClientId}
+				/>
 				{clients.isLoading ? <p className="muted">Загрузка клиентов</p> : null}
 				{clients.isError ? <p className="form-error">{clients.error.message}</p> : null}
 
-				<button
-					className="secondary-button compact-button"
-					disabled={!online}
-					onClick={() => setShowNewClientForm((current) => !current)}
-					type="button"
-				>
-					<UserPlus aria-hidden size={16} />
-					Новый клиент
-				</button>
+				{selectedClientId ? null : (
+					<button
+						className="secondary-button compact-button"
+						disabled={!online}
+						onClick={() => setShowNewClientForm((current) => !current)}
+						type="button"
+					>
+						<UserPlus aria-hidden size={16} />
+						Новый клиент
+					</button>
+				)}
 
-				{showNewClientForm ? (
+				{showNewClientForm && !selectedClientId ? (
 					<form className="nested-form" onSubmit={handleCreateClient}>
 						<label className="field">
 							<span>Имя нового клиента</span>
@@ -252,7 +228,7 @@ export function CourierSaleHome({
 						))}
 					</select>
 				</label>
-				{saleOptions.isLoading ? <p className="muted">Загрузка остатков</p> : null}
+				{saleOptions.isLoading ? <p className="muted">Загрузка продукции</p> : null}
 				{saleOptions.isError ? <p className="form-error">{saleOptions.error.message}</p> : null}
 				{!saleOptions.isLoading && !saleOptions.isError && saleOptions.data?.items.length === 0 ? (
 					<p className="muted">Нет продукции для продажи.</p>
@@ -278,26 +254,20 @@ export function CourierSaleHome({
 					<span>Комментарий</span>
 					<textarea onChange={(event) => setComment(event.target.value)} rows={2} value={comment} />
 				</label>
-				<div className="entity-card sale-total-card">
-					<div className="inventory-item-main">
-						<div className="production-row-icon">
-							<Calculator aria-hidden size={18} />
-						</div>
-						<div>
-							<strong>Итого</strong>
-							<p>
-								{selectedClient?.name ?? (selectedClientId ? "Клиент выбран" : "Клиент не выбран")}
-								{" · "}
-								{selectedStock?.productName ?? "Товар не выбран"}
-								{" · "}
-								{summaryQuantity}
-							</p>
-							<p>{paymentEffect}</p>
-						</div>
+				<div className="operation-total" style={operationTotalStyle}>
+					<div style={operationTotalHeaderStyle}>
+						<span style={operationTotalLabelStyle}>Итого</span>
+						<strong style={operationTotalValueStyle}>{formatRubles(saleTotalCents)} ₽</strong>
 					</div>
-					<div className="production-history-meta">
-						<strong>{formatRubles(saleTotalCents)} ₽</strong>
-					</div>
+					<p style={operationTotalMetaStyle}>
+						{selectedClient?.name ?? (selectedClientId ? "Клиент выбран" : "Клиент не выбран")}
+						{" · "}
+						{selectedStock?.productName ?? "Товар не выбран"}
+						{" · "}
+						{summaryQuantity}
+						{" · "}
+						{paymentMethod === "cash" ? "Наличные" : "Безнал"}
+					</p>
 				</div>
 				{localError ? <p className="form-error">{localError}</p> : null}
 				{saleMutation.isError ? <p className="form-error">{saleMutation.error.message}</p> : null}
@@ -373,3 +343,41 @@ function isValidQuantity(quantity: number, stock: CourierSaleOption | undefined)
 function formatRubles(priceCents: number): string {
 	return formatMoneyCents(moneyCents(priceCents));
 }
+
+const operationTotalStyle = {
+	display: "flex",
+	flexDirection: "column",
+	gap: 7,
+	marginTop: 2,
+	borderTop: "1px solid var(--line)",
+	paddingTop: 12,
+} as const;
+
+const operationTotalHeaderStyle = {
+	display: "flex",
+	alignItems: "baseline",
+	justifyContent: "space-between",
+	gap: 12,
+} as const;
+
+const operationTotalLabelStyle = {
+	color: "var(--text-muted)",
+	fontSize: 13,
+	fontWeight: "var(--font-weight-label)",
+} as const;
+
+const operationTotalValueStyle = {
+	color: "var(--base-black)",
+	fontSize: 22,
+	fontVariantNumeric: "tabular-nums",
+	fontWeight: "var(--font-weight-emphasis)",
+	lineHeight: 1,
+	whiteSpace: "nowrap",
+} as const;
+
+const operationTotalMetaStyle = {
+	margin: 0,
+	color: "var(--text-muted)",
+	fontSize: 12,
+	lineHeight: 1.25,
+} as const;

@@ -18,7 +18,7 @@
 - `React`
 - `PWA` как целевое поведение frontend-приложения.
 - `@tanstack/react-query` для server-state.
-- `Radix UI primitives` для базовых доступных UI-примитивов.
+- `Radix UI primitives` для доступных составных UI controls; пакеты `@radix-ui/react-*` добавляются точечно под конкретный primitive, а не как готовая visual library.
 - `lucide-react` для иконок.
 - `Tailwind CSS` для стилей.
 - `@testing-library/react` и `jsdom` для component tests.

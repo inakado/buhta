@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FormEvent, useState } from "react";
-import { Calculator, PackagePlus } from "lucide-react";
+import { PackagePlus } from "lucide-react";
 import {
 	formatMoneyCents,
 	moneyCents,
@@ -68,7 +68,7 @@ export function CourierLoadHome({
 			return;
 		}
 		if (!isValidQuantity(parsedQuantity, selectedStock)) {
-			setLocalError("Количество должно быть целым числом не больше доступного остатка.");
+			setLocalError("Количество должно быть целым числом не больше доступного количества.");
 			return;
 		}
 
@@ -77,13 +77,8 @@ export function CourierLoadHome({
 
 	return (
 		<section className="screen-stack">
-			<div className="summary-card compact-summary">
-				<div>
-					<p className="summary-label">Загрузка</p>
-					<strong>{loadValueCents > 0 ? `${formatRubles(loadValueCents)} ₽` : "Новая загрузка"}</strong>
-					<p className="summary-note">С распределителя на свой баланс</p>
-				</div>
-				<PackagePlus aria-hidden size={28} />
+			<div className="section-heading compact">
+				<h2>Загрузка</h2>
 			</div>
 
 			<form className="form-panel" onSubmit={handleSubmit}>
@@ -104,7 +99,7 @@ export function CourierLoadHome({
 						))}
 					</select>
 				</label>
-				{loadOptions.isLoading ? <p className="muted">Загрузка остатков</p> : null}
+				{loadOptions.isLoading ? <p className="muted">Загрузка продукции</p> : null}
 				{loadOptions.isError ? <p className="form-error">{loadOptions.error.message}</p> : null}
 				{!loadOptions.isLoading && !loadOptions.isError && loadOptions.data?.items.length === 0 ? (
 					<p className="muted">Нет продукции для загрузки.</p>
@@ -126,19 +121,12 @@ export function CourierLoadHome({
 					<span>Комментарий</span>
 					<textarea onChange={(event) => setComment(event.target.value)} rows={2} value={comment} />
 				</label>
-				<div className="entity-card sale-total-card">
-					<div className="inventory-item-main">
-						<div className="production-row-icon">
-							<Calculator aria-hidden size={18} />
-						</div>
-						<div>
-							<strong>Итого</strong>
-							<p>Товар на балансе курьера</p>
-						</div>
+				<div className="operation-total" style={operationTotalStyle}>
+					<div style={operationTotalHeaderStyle}>
+						<span style={operationTotalLabelStyle}>Итого</span>
+						<strong style={operationTotalValueStyle}>{formatRubles(loadValueCents)} ₽</strong>
 					</div>
-					<div className="production-history-meta">
-						<strong>{formatRubles(loadValueCents)} ₽</strong>
-					</div>
+					<p style={operationTotalMetaStyle}>Продукция на балансе курьера</p>
 				</div>
 				{localError ? <p className="form-error">{localError}</p> : null}
 				{loadMutation.isError ? <p className="form-error">{loadMutation.error.message}</p> : null}
@@ -178,3 +166,41 @@ function isValidQuantity(quantity: number, selectedStock: CourierLoadOption | un
 function formatRubles(priceCents: number): string {
 	return formatMoneyCents(moneyCents(priceCents));
 }
+
+const operationTotalStyle = {
+	display: "flex",
+	flexDirection: "column",
+	gap: 7,
+	marginTop: 2,
+	borderTop: "1px solid var(--line)",
+	paddingTop: 12,
+} as const;
+
+const operationTotalHeaderStyle = {
+	display: "flex",
+	alignItems: "baseline",
+	justifyContent: "space-between",
+	gap: 12,
+} as const;
+
+const operationTotalLabelStyle = {
+	color: "var(--text-muted)",
+	fontSize: 13,
+	fontWeight: "var(--font-weight-label)",
+} as const;
+
+const operationTotalValueStyle = {
+	color: "var(--base-black)",
+	fontSize: 22,
+	fontVariantNumeric: "tabular-nums",
+	fontWeight: "var(--font-weight-emphasis)",
+	lineHeight: 1,
+	whiteSpace: "nowrap",
+} as const;
+
+const operationTotalMetaStyle = {
+	margin: 0,
+	color: "var(--text-muted)",
+	fontSize: 12,
+	lineHeight: 1.25,
+} as const;
