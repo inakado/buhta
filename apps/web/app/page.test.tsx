@@ -1009,8 +1009,12 @@ describe("HomePage", () => {
 		expect(screen.getByText("Позиций")).toBeTruthy();
 		expect(screen.queryByText("Можно продавать")).toBeNull();
 		expect(await screen.findByText("Наличные")).toBeTruthy();
-		expect(screen.getAllByText("2500.00 ₽").length).toBeGreaterThan(0);
-		expect(screen.getAllByText("1250.00 ₽").length).toBeGreaterThan(0);
+		expect(screen.getByText((_, element) =>
+			element?.textContent?.replace(/\u00A0/g, " ") === "2500.00 ₽",
+		)).toBeTruthy();
+		expect(screen.getByText((_, element) =>
+			element?.textContent?.replace(/\u00A0/g, " ") === "1250.00 ₽",
+		)).toBeTruthy();
 		const saleAction = screen.getByRole("button", { name: "Открыть продажу" });
 		expect(saleAction.className).toContain("action-tile");
 		expect(screen.queryByRole("heading", { name: "Действия" })).toBeNull();
@@ -1424,8 +1428,10 @@ describe("HomePage", () => {
 		expect(await screen.findByText("Балансы курьеров")).toBeTruthy();
 		expect(screen.getByText("Стоимость")).toBeTruthy();
 		expect(screen.getAllByText("Наличные").length).toBeGreaterThan(0);
-		expect(await screen.findByText("@courier · 1 позиций")).toBeTruthy();
+		expect(await screen.findByText("Courier")).toBeTruthy();
+		expect(screen.getAllByText("1 позиций").length).toBeGreaterThan(0);
 		expect(screen.getByText("Икра горбуши")).toBeTruthy();
+		expect(screen.getByText("Итого товаром")).toBeTruthy();
 		expect(screen.queryByRole("button", { name: "Записать загрузку" })).toBeNull();
 	});
 
@@ -1463,7 +1469,9 @@ describe("HomePage", () => {
 		fireEvent.click(await screen.findByRole("button", { name: "Курьеры" }));
 		expect(await screen.findByText("Балансы курьеров")).toBeTruthy();
 		expect(screen.getByText("Стоимость")).toBeTruthy();
-		expect(await screen.findByText("@courier · 1 позиций")).toBeTruthy();
+		expect(await screen.findByText("Courier")).toBeTruthy();
+		expect(screen.getAllByText("1 позиций").length).toBeGreaterThan(0);
+		expect(screen.getByText("Итого товаром")).toBeTruthy();
 		expect(screen.queryByRole("button", { name: "Записать загрузку" })).toBeNull();
 	});
 

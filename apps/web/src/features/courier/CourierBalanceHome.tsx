@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Banknote, Truck } from "lucide-react";
+import { Banknote } from "lucide-react";
 import {
 	type CourierCashBalanceItem,
 	type CourierProductBalanceItem,
@@ -136,24 +136,22 @@ function CourierPeopleList({
 			</div>
 			{summaries.map((summary) => (
 				<div className="courier-balance-card" key={summary.courierUserId}>
-					<div className="production-row-icon">
-						<Truck aria-hidden size={18} />
-					</div>
-					<div className="stock-aggregate-body">
-						<strong>{summary.courierDisplayName}</strong>
-						<p>@{summary.courierLogin} · {summary.stockItemCount} позиций</p>
-					</div>
-					<div className="courier-balance-values">
+					<div className="courier-balance-head">
 						<div>
-							<strong>{summary.totalUnits} шт</strong>
-							<span>{formatRubles(summary.totalStockValueCents)} ₽ товар</span>
+							<strong>{summary.courierDisplayName}</strong>
+							<p>{summary.stockItemCount} позиций</p>
 						</div>
-						<div>
+						<div className="courier-cash-value">
 							<strong>{formatRubles(cashByCourier.get(summary.courierUserId) ?? 0)} ₽</strong>
 							<span>наличные</span>
 						</div>
 					</div>
-					<div className="courier-product-stack">
+					<div className="courier-product-table">
+						<div className="courier-product-table-head">
+							<span>Товар</span>
+							<span>Количество</span>
+							<span>Сумма</span>
+						</div>
 						{(productsByCourier.get(summary.courierUserId) ?? []).map((item) => (
 							<div className="courier-product-row" key={item.id}>
 								<div>
@@ -162,10 +160,16 @@ function CourierPeopleList({
 								</div>
 								<div>
 									<strong>{item.quantity} шт</strong>
-									<span>{formatRubles(item.stockValueCents)} ₽</span>
+								</div>
+								<div>
+									<strong>{formatRubles(item.stockValueCents)} ₽</strong>
 								</div>
 							</div>
 						))}
+					</div>
+					<div className="courier-product-total">
+						<span>Итого товаром</span>
+						<strong>{formatRubles(summary.totalStockValueCents)} ₽</strong>
 					</div>
 				</div>
 			))}

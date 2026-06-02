@@ -49,21 +49,21 @@ export function DistributorHomeOverview({
 			</div>
 
 			{summaryLayout === "commercial" ? (
-				<div className="summary-card commercial-summary-card">
-					<div className="commercial-summary-head">
+				<div className="commercial-overview-card">
+					<div className="commercial-overview-main">
 						<div>
 							<p className="summary-label">{stockSummaryLabel}</p>
 							<strong>{inventory.isLoading ? "Загрузка" : `${stockUnits} шт`}</strong>
 							<p className="summary-note">На распределителе</p>
 						</div>
-						<span className="commercial-summary-icon">
+						<span className="commercial-overview-icon">
 							<PackageCheck aria-hidden size={22} />
 						</span>
 					</div>
-					<dl className="commercial-summary-grid">
+					<dl className="commercial-overview-metrics">
 						<div>
 							<dt>Стоимость</dt>
-							<dd>{formatRubles(stockValueCents)} ₽</dd>
+							<dd>{formatRubles(stockValueCents)}</dd>
 						</div>
 						<div>
 							<dt>Позиций</dt>
@@ -72,7 +72,7 @@ export function DistributorHomeOverview({
 						{showCashBalance ? (
 							<div>
 								<dt>Наличные</dt>
-								<dd>{cashBalances.isLoading ? "Загрузка" : `${formatRubles(cashAmountCents)} ₽`}</dd>
+								<dd>{cashBalances.isLoading ? "Загрузка" : formatRubles(cashAmountCents)}</dd>
 							</div>
 						) : null}
 					</dl>
@@ -84,7 +84,7 @@ export function DistributorHomeOverview({
 						<p className="summary-label">{stockSummaryLabel}</p>
 						<strong>{inventory.isLoading ? "Загрузка" : `${stockUnits} шт`}</strong>
 						<p className="summary-note">
-							Товарный баланс {formatRubles(stockValueCents)} ₽
+							Товарный баланс {formatRubles(stockValueCents)}
 						</p>
 					</div>
 					<PackageCheck aria-hidden size={28} />
@@ -95,7 +95,7 @@ export function DistributorHomeOverview({
 				<div className="summary-card compact-summary">
 					<div>
 						<p className="summary-label">Наличные</p>
-						<strong>{cashBalances.isLoading ? "Загрузка" : `${formatRubles(cashAmountCents)} ₽`}</strong>
+						<strong>{cashBalances.isLoading ? "Загрузка" : formatRubles(cashAmountCents)}</strong>
 						<p className="summary-note">На распределителе</p>
 						{cashBalances.isError ? <span className="inline-error">Не удалось загрузить наличные</span> : null}
 					</div>
@@ -135,5 +135,5 @@ export function DistributorHomeOverview({
 }
 
 function formatRubles(priceCents: number): string {
-	return formatMoneyCents(moneyCents(priceCents));
+	return `${formatMoneyCents(moneyCents(priceCents))}\u00A0₽`;
 }
