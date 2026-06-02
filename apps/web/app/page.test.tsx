@@ -234,6 +234,11 @@ function jsonResponse(body: unknown, status = 200) {
 	});
 }
 
+async function selectOperationProduct(optionName: RegExp | string) {
+	fireEvent.change(await screen.findByRole("combobox", { name: "Продукция" }), { target: { value: "Икра" } });
+	fireEvent.click(await screen.findByRole("option", { name: optionName }));
+}
+
 describe("HomePage", () => {
 	afterEach(() => {
 		cleanup();
@@ -1171,7 +1176,7 @@ describe("HomePage", () => {
 		expect(screen.queryByRole("button", { name: "Сгрузить" })).toBeNull();
 		fireEvent.click(loadAction);
 		expect(await screen.findByRole("heading", { name: "Детали загрузки" })).toBeTruthy();
-		fireEvent.change(await screen.findByLabelText("Продукция"), { target: { value: "distributor-balance1" } });
+		await selectOperationProduct(/Икра горбуши/);
 		fireEvent.change(screen.getByLabelText("Количество, шт"), { target: { value: "1" } });
 		fireEvent.change(screen.getByLabelText("Комментарий"), { target: { value: "На доставку" } });
 		fireEvent.click(screen.getByRole("button", { name: "Записать загрузку" }));
@@ -1225,16 +1230,13 @@ describe("HomePage", () => {
 		render(<HomePage />);
 
 		fireEvent.click(await screen.findByRole("button", { name: "Открыть загрузку" }));
-		expect(await screen.findByText((_, element) =>
-			element?.textContent === "Икра горбуши · 2 шт · 1250.00 ₽",
-		)).toBeTruthy();
-		fireEvent.change(await screen.findByLabelText("Продукция"), { target: { value: "distributor-balance1" } });
+		await selectOperationProduct(/Икра горбуши/);
 		fireEvent.change(screen.getByLabelText("Количество, шт"), { target: { value: "1" } });
 		fireEvent.change(screen.getByLabelText("Комментарий"), { target: { value: "На доставку" } });
 		fireEvent.click(screen.getByRole("button", { name: "Записать загрузку" }));
 
 		expect(await screen.findByText("Недостаточно товара на распределителе")).toBeTruthy();
-		expect((screen.getByLabelText("Продукция") as HTMLSelectElement).value).toBe("distributor-balance1");
+		expect((screen.getByRole("combobox", { name: "Продукция" }) as HTMLInputElement).value).toContain("Икра горбуши");
 		expect((screen.getByLabelText("Количество, шт") as HTMLInputElement).value).toBe("1");
 		expect((screen.getByLabelText("Комментарий") as HTMLTextAreaElement).value).toBe("На доставку");
 		expect(screen.queryByText("Загрузка записана")).toBeNull();
@@ -1317,7 +1319,7 @@ describe("HomePage", () => {
 		expect(screen.getByRole("button", { name: "Новый клиент" })).toBeTruthy();
 		fireEvent.change(screen.getByLabelText("Клиент"), { target: { value: "Иван" } });
 		fireEvent.click(await screen.findByRole("button", { name: "Выбрать клиента Иван Петров" }));
-		fireEvent.change(await screen.findByLabelText("Продукция"), { target: { value: "courier-balance1" } });
+		await selectOperationProduct(/Икра горбуши/);
 		fireEvent.change(screen.getByLabelText("Количество, шт"), { target: { value: "1" } });
 		fireEvent.click(screen.getByRole("button", { name: "Безнал" }));
 		expect(screen.getByRole("button", { name: "Безнал" }).getAttribute("aria-pressed")).toBe("true");
@@ -1389,12 +1391,9 @@ describe("HomePage", () => {
 		render(<HomePage />);
 
 		fireEvent.click(await screen.findByRole("button", { name: "Открыть продажу" }));
-		expect(await screen.findByText((_, element) =>
-			element?.textContent === "Икра горбуши · 2 шт · 1250.00 ₽",
-		)).toBeTruthy();
 		fireEvent.change(await screen.findByLabelText("Клиент"), { target: { value: "Иван" } });
 		fireEvent.click(await screen.findByRole("button", { name: "Выбрать клиента Иван Петров" }));
-		fireEvent.change(await screen.findByLabelText("Продукция"), { target: { value: "courier-balance1" } });
+		await selectOperationProduct(/Икра горбуши/);
 		fireEvent.change(screen.getByLabelText("Количество, шт"), { target: { value: "1" } });
 		fireEvent.click(screen.getByRole("button", { name: "Безнал" }));
 		fireEvent.change(screen.getByLabelText("Комментарий"), { target: { value: "Доставка" } });
@@ -1402,7 +1401,7 @@ describe("HomePage", () => {
 
 		expect(await screen.findByText("Недостаточно товара у курьера")).toBeTruthy();
 		expect((screen.getByLabelText("Клиент") as HTMLInputElement).value).toBe("Иван Петров");
-		expect((screen.getByLabelText("Продукция") as HTMLSelectElement).value).toBe("courier-balance1");
+		expect((screen.getByRole("combobox", { name: "Продукция" }) as HTMLInputElement).value).toContain("Икра горбуши");
 		expect((screen.getByLabelText("Количество, шт") as HTMLInputElement).value).toBe("1");
 		expect(screen.getByRole("button", { name: "Безнал" }).getAttribute("aria-pressed")).toBe("true");
 		expect((screen.getByLabelText("Комментарий") as HTMLTextAreaElement).value).toBe("Доставка");
@@ -1658,7 +1657,7 @@ describe("HomePage", () => {
 			expect(screen.queryByRole("button", { name: "Новый клиент" })).toBeNull();
 			expect(screen.getByRole("button", { name: "Очистить клиента" })).toBeTruthy();
 		});
-		fireEvent.change(await screen.findByLabelText("Продукция"), { target: { value: "distributor-balance1" } });
+		await selectOperationProduct(/Икра горбуши/);
 		expect(screen.getByText((_, element) =>
 			element?.textContent === "Доступно: 2 шт · 1250.00 ₽/шт",
 		)).toBeTruthy();

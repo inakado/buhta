@@ -11,6 +11,7 @@ import {
 	listClients,
 } from "../../lib/api-client";
 import { ClientCombobox } from "../clients/ClientCombobox";
+import { OperationProductSelect } from "../operations/OperationProductSelect";
 
 export function CourierSaleHome({
 	onSaleSuccess,
@@ -214,20 +215,17 @@ export function CourierSaleHome({
 				<div className="section-heading compact">
 					<h2>Детали продажи</h2>
 				</div>
-				<label className="field">
-					<span>Продукция</span>
-					<select
-						onChange={(event) => setSelectedBalanceId(event.target.value)}
-						value={selectedBalanceId}
-					>
-						<option value="">Выберите продукцию</option>
-						{saleOptions.data?.items.map((item) => (
-							<option key={item.courierProductBalanceId} value={item.courierProductBalanceId}>
-								{item.productName} · {item.availableQuantity} шт · {formatRubles(item.unitPriceCents)} ₽
-							</option>
-						))}
-					</select>
-				</label>
+				<OperationProductSelect
+					label="Продукция"
+					onValueChange={setSelectedBalanceId}
+					options={(saleOptions.data?.items ?? []).map((item) => ({
+						id: item.courierProductBalanceId,
+						label: item.productName,
+						meta: `${item.availableQuantity} шт · ${formatRubles(item.unitPriceCents)} ₽`,
+					}))}
+					placeholder="Выберите продукцию"
+					value={selectedBalanceId}
+				/>
 				{saleOptions.isLoading ? <p className="muted">Загрузка продукции</p> : null}
 				{saleOptions.isError ? <p className="form-error">{saleOptions.error.message}</p> : null}
 				{!saleOptions.isLoading && !saleOptions.isError && saleOptions.data?.items.length === 0 ? (

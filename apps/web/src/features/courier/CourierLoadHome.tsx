@@ -9,6 +9,7 @@ import {
 	type CourierLoadOption,
 } from "@buhta/shared";
 import { createCourierLoad, getCourierLoadOptions } from "../../lib/api-client";
+import { OperationProductSelect } from "../operations/OperationProductSelect";
 
 export function CourierLoadHome({
 	onLoadSuccess,
@@ -85,20 +86,17 @@ export function CourierLoadHome({
 				<div className="section-heading compact">
 					<h2>Детали загрузки</h2>
 				</div>
-				<label className="field">
-					<span>Продукция</span>
-					<select
-						onChange={(event) => setSelectedBalanceId(event.target.value)}
-						value={selectedBalanceId}
-					>
-						<option value="">Выберите продукцию</option>
-						{loadOptions.data?.items.map((item) => (
-							<option key={item.distributorProductBalanceId} value={item.distributorProductBalanceId}>
-								{item.productName} · {item.availableQuantity} шт · {formatRubles(item.unitPriceCents)} ₽
-							</option>
-						))}
-					</select>
-				</label>
+				<OperationProductSelect
+					label="Продукция"
+					onValueChange={setSelectedBalanceId}
+					options={(loadOptions.data?.items ?? []).map((item) => ({
+						id: item.distributorProductBalanceId,
+						label: item.productName,
+						meta: `${item.availableQuantity} шт · ${formatRubles(item.unitPriceCents)} ₽`,
+					}))}
+					placeholder="Выберите продукцию"
+					value={selectedBalanceId}
+				/>
 				{loadOptions.isLoading ? <p className="muted">Загрузка продукции</p> : null}
 				{loadOptions.isError ? <p className="form-error">{loadOptions.error.message}</p> : null}
 				{!loadOptions.isLoading && !loadOptions.isError && loadOptions.data?.items.length === 0 ? (

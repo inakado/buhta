@@ -670,6 +670,8 @@ button:disabled {
 	display: flex;
 	flex-direction: column;
 	gap: 8px;
+	font-size: 13px;
+	font-weight: var(--font-weight-label);
 }
 
 .client-combobox-input-shell {
@@ -767,6 +769,25 @@ button:disabled {
 .client-combobox-empty {
 	margin: 0;
 	padding: 10px 12px;
+}
+
+.operation-product-select-field {
+	gap: 7px;
+}
+
+.operation-product-combobox-input-shell input {
+	appearance: none;
+	min-height: auto;
+	padding: 0;
+}
+
+.operation-product-combobox-content {
+	z-index: 30;
+	max-height: min(320px, var(--radix-popover-content-available-height));
+}
+
+.operation-product-combobox-option[role="option"] {
+	cursor: pointer;
 }
 
 .nested-form {
