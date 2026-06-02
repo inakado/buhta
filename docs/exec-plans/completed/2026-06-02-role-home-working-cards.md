@@ -1,6 +1,6 @@
 # Role Home Working Cards
 
-Статус: `Active`.
+Статус: `Completed`.
 
 ## Цель
 
@@ -68,7 +68,7 @@
 
 - `docs/FRONTEND.md` — после реализации зафиксировать новые правила role home карточек.
 - `docs/DOCS-INDEX.md` — ссылка на этот plan.
-- `docs/exec-plans/active/2026-06-02-role-home-working-cards.md` — рабочий план и checkpoint-журнал.
+- `docs/exec-plans/completed/2026-06-02-role-home-working-cards.md` — рабочий план и checkpoint-журнал.
 
 ## Затронутые Модули
 
@@ -418,7 +418,7 @@ Fallback cleanup scope:
 
 - Обновить `docs/FRONTEND.md`.
 - Записать фактические проверки в план.
-- Перенести план в `completed/` после завершения.
+- После завершения хранить план в `completed/`.
 
 Результат 2026-06-02:
 
@@ -430,8 +430,13 @@ Fallback cleanup scope:
 - Docs verification: `pnpm docs:check` — ok.
 - Browser smoke: `http://localhost:3001` открылся; `admin` / `Pass123!` успешно вошел; экраны `Пользователи`, `Каталог`, `Клиенты` открываются после CSS cleanup.
 - Browser console: единственная ошибка — ожидаемый `401 /auth/me` до авторизации на login screen; новых ошибок после входа не выявлено.
-- Полный browser-smoke по `commercial_manager`, `distributor_worker`, `courier`, `director`, `production_manager` не закрыт в этом проходе: текущий seed гарантирует пароль только для `admin`, а остальные роли проверены автоматизированными web tests.
-- План пока не переносить в `completed/`: нужен отдельный визуальный smoke всех ролей с рабочими учетными данными или тестовым auth-switcher/dev seed для ролей.
+- Подготовлены dev smoke-пользователи `smoke-production`, `smoke-commercial`, `smoke-distributor`, `smoke-courier`, `smoke-director` через admin password reset/create flow.
+- Full browser smoke: `production_manager` — ok: home `Цех`, actions `Выпустить`/`Передать`, tabs `На распределителе`, `История`, `Уведомления`.
+- Full browser smoke: `commercial_manager` — ok: home `Продажи`, `Остаток распределителя`, action sale, tabs `Остатки`, `Клиенты`, `Курьеры`, sale form.
+- Full browser smoke: `distributor_worker` — ok: home `Распределитель`, inline `Продукция`, action sale, `Клиенты`, sale form.
+- Full browser smoke: `courier` — ok: home `Мой баланс`, inline `Продукция`, actions `Продать`/`Загрузить`, sale form, load form, settings.
+- Full browser smoke: `director` — ok: home `Контроль`, `В обороте`, tabs `Распределитель`, `Клиенты`, `Курьеры`; sale action отсутствует.
+- Full browser smoke console: учтены только ожидаемые `401 /auth/me` на login screen до авторизации; неожиданных console/page errors нет.
 
 ## Тестовый План
 
@@ -481,7 +486,7 @@ Targeted после каждого checkpoint:
 - Риск: cleanup inline/fallback CSS снова проявит stale dev-server проблему как “стили не применились”.  
   Rollback: не возвращать inline styles; сначала перезапустить dev-server/очистить `.next`, затем проверять наличие конкретного CSS rule в DevTools.
 
-## Открытые Вопросы
+## Закрытые Вопросы
 
-- Нужен ли commercial home блок `Клиенты`, если текущий backend отдает только список без отдельного счетчика и активности?
-- Показывать ли disabled future actions директора на home или вынести их в отдельный будущий раздел?
+- Commercial home не получает отдельный блок `Клиенты`: вкладка `Клиенты` есть в нижней навигации, а backend не дает отдельный полезный счетчик/активность для первого экрана.
+- Disabled future actions директора на home не показывать: без backend flow они выглядят как нерабочие действия.
