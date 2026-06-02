@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { Banknote, PackageCheck, ReceiptText } from "lucide-react";
+import { PackageCheck, ReceiptText } from "lucide-react";
 import { formatMoneyCents, moneyCents } from "@buhta/shared";
 import { getDistributorCashBalances, getDistributorInventory } from "../../lib/api-client";
 import { DistributorStockList } from "./DistributorStockList";
@@ -79,28 +79,22 @@ export function DistributorHomeOverview({
 					{cashBalances.isError ? <span className="inline-error">Не удалось загрузить наличные</span> : null}
 				</div>
 			) : (
-				<div className="summary-card compact-summary">
+				<div className="distributor-worker-overview worker-balance-overview">
 					<div>
-						<p className="summary-label">{stockSummaryLabel}</p>
-						<strong>{inventory.isLoading ? "Загрузка" : `${stockUnits} шт`}</strong>
-						<p className="summary-note">
-							Товарный баланс {formatRubles(stockValueCents)}
-						</p>
+						<span>Стоимость</span>
+						<strong>{formatRubles(stockValueCents)}</strong>
 					</div>
-					<PackageCheck aria-hidden size={28} />
+					{showCashBalance ? (
+						<div>
+							<span>Наличные</span>
+							<strong>{cashBalances.isLoading ? "Загрузка" : formatRubles(cashAmountCents)}</strong>
+						</div>
+					) : null}
 				</div>
 			)}
 
-			{showCashBalance && summaryLayout !== "commercial" ? (
-				<div className="summary-card compact-summary">
-					<div>
-						<p className="summary-label">Наличные</p>
-						<strong>{cashBalances.isLoading ? "Загрузка" : formatRubles(cashAmountCents)}</strong>
-						<p className="summary-note">На распределителе</p>
-						{cashBalances.isError ? <span className="inline-error">Не удалось загрузить наличные</span> : null}
-					</div>
-					<Banknote aria-hidden size={28} />
-				</div>
+			{showCashBalance && summaryLayout !== "commercial" && cashBalances.isError ? (
+				<span className="inline-error">Не удалось загрузить наличные</span>
 			) : null}
 
 			<div className="action-grid">
@@ -119,7 +113,7 @@ export function DistributorHomeOverview({
 			{showStockList ? (
 				<>
 					<div className="section-heading">
-						<h2>Остатки</h2>
+						<h2>Продукция</h2>
 						<span>{data?.summary.stockItemCount ?? 0} позиций</span>
 					</div>
 					{inventory.isLoading ? <p className="muted">Загрузка остатков распределителя</p> : null}

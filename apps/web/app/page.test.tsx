@@ -1078,8 +1078,10 @@ describe("HomePage", () => {
 		render(<HomePage />);
 
 		expect(await screen.findByRole("heading", { name: "Распределитель" })).toBeTruthy();
-		expect(screen.getByText("Товар")).toBeTruthy();
+		expect(screen.getByText("Стоимость")).toBeTruthy();
 		expect(await screen.findByText("Наличные")).toBeTruthy();
+		expect(screen.queryByText("Товар")).toBeNull();
+		expect(screen.queryByText("Позиций")).toBeNull();
 		const saleAction = screen.getByRole("button", { name: "Открыть продажу" });
 		expect(saleAction.className).toContain("action-tile");
 		expect(screen.queryByRole("heading", { name: "Действия" })).toBeNull();
@@ -1088,6 +1090,8 @@ describe("HomePage", () => {
 		expect(screen.queryByRole("button", { name: "Курьеры" })).toBeNull();
 		expect(screen.queryByRole("button", { name: "Продажа" })).toBeNull();
 		expect(screen.queryByText("Балансы курьеров")).toBeNull();
+		expect(screen.getByRole("heading", { name: "Продукция" })).toBeTruthy();
+		expect(screen.getByText("Количество")).toBeTruthy();
 		expect(screen.getByText("Икра горбуши")).toBeTruthy();
 		expect(screen.getByText("Распределитель Центральный")).toBeTruthy();
 

@@ -7,7 +7,7 @@ export function DistributorStockList({ items }: { items: DistributorInventoryIte
 		<div className="inventory-table-list" role="table" aria-label="Позиции на распределителе" style={tableListStyle}>
 			<div className="inventory-table-head" role="row" style={tableHeadStyle}>
 				<span>Позиция</span>
-				<span style={rightAlignStyle}>Остаток</span>
+				<span style={rightAlignStyle}>Количество</span>
 				<span style={rightAlignStyle}>Сумма</span>
 			</div>
 			{items.map((item) => (
