@@ -187,3 +187,131 @@ export const CourierSaleResponseSchema = z.object({
 });
 
 export type CourierSaleResponse = z.infer<typeof CourierSaleResponseSchema>;
+
+export const CourierUnloadDistributorOptionSchema = z.object({
+	distributorId: z.string(),
+	distributorName: z.string(),
+});
+
+export type CourierUnloadDistributorOption = z.infer<typeof CourierUnloadDistributorOptionSchema>;
+
+export const CourierUnloadProductOptionSchema = z.object({
+	courierProductBalanceId: z.string(),
+	productBatchId: z.string(),
+	productName: z.string(),
+	unitPriceCents: NonNegativeIntegerSchema,
+	availableQuantity: NonNegativeIntegerSchema,
+	stockValueCents: NonNegativeIntegerSchema,
+	updatedAt: z.string(),
+});
+
+export type CourierUnloadProductOption = z.infer<typeof CourierUnloadProductOptionSchema>;
+
+export const CourierUnloadOptionsResponseSchema = z.object({
+	distributors: z.array(CourierUnloadDistributorOptionSchema),
+	productItems: z.array(CourierUnloadProductOptionSchema),
+	cashBalance: CourierCashBalanceItemSchema,
+});
+
+export type CourierUnloadOptionsResponse = z.infer<typeof CourierUnloadOptionsResponseSchema>;
+
+export const CourierUnloadRequestItemSchema = z.object({
+	courierProductBalanceId: z.string().min(1),
+	quantity: PositiveIntegerSchema,
+});
+
+export type CourierUnloadRequestItem = z.infer<typeof CourierUnloadRequestItemSchema>;
+
+export const CreateCourierUnloadRequestSchema = z.object({
+	distributorId: z.string().min(1),
+	items: z.array(CourierUnloadRequestItemSchema),
+	cashAmountCents: NonNegativeIntegerSchema,
+	courierUserId: z.string().min(1).optional(),
+	comment: OptionalCommentSchema,
+}).superRefine((value, context) => {
+	if (value.items.length === 0 && value.cashAmountCents === 0) {
+		context.addIssue({
+			code: z.ZodIssueCode.custom,
+			message: "Unload must include product items or cash amount",
+			path: ["items"],
+		});
+	}
+
+	const seenBalanceIds = new Set<string>();
+	for (const [index, item] of value.items.entries()) {
+		if (seenBalanceIds.has(item.courierProductBalanceId)) {
+			context.addIssue({
+				code: z.ZodIssueCode.custom,
+				message: "Duplicate courier product balance",
+				path: ["items", index, "courierProductBalanceId"],
+			});
+		}
+		seenBalanceIds.add(item.courierProductBalanceId);
+	}
+});
+
+export type CreateCourierUnloadRequest = z.infer<typeof CreateCourierUnloadRequestSchema>;
+
+export const CourierUnloadSchema = z.object({
+	id: z.string(),
+	courierUserId: z.string(),
+	distributorId: z.string(),
+	cashAmountCents: NonNegativeIntegerSchema,
+	comment: z.string().nullable(),
+	operationId: z.string(),
+	actorUserId: z.string(),
+	createdAt: z.string(),
+});
+
+export type CourierUnload = z.infer<typeof CourierUnloadSchema>;
+
+export const CourierUnloadItemSchema = z.object({
+	id: z.string(),
+	courierUnloadId: z.string(),
+	courierProductBalanceId: z.string(),
+	distributorProductBalanceId: z.string(),
+	productBatchId: z.string(),
+	quantity: PositiveIntegerSchema,
+	unitPriceCents: NonNegativeIntegerSchema,
+	stockValueCents: NonNegativeIntegerSchema,
+});
+
+export type CourierUnloadItem = z.infer<typeof CourierUnloadItemSchema>;
+
+export const CourierUnloadDistributorProductBalanceSchema = z.object({
+	id: z.string(),
+	distributorId: z.string(),
+	distributorName: z.string(),
+	productBatchId: z.string(),
+	productName: z.string(),
+	priceCents: NonNegativeIntegerSchema,
+	quantity: NonNegativeIntegerSchema,
+	stockValueCents: NonNegativeIntegerSchema,
+	updatedAt: z.string(),
+});
+
+export type CourierUnloadDistributorProductBalance = z.infer<
+	typeof CourierUnloadDistributorProductBalanceSchema
+>;
+
+export const CourierUnloadDistributorCashBalanceSchema = z.object({
+	distributorId: z.string(),
+	distributorName: z.string(),
+	amountCents: NonNegativeIntegerSchema,
+	updatedAt: z.string().nullable(),
+});
+
+export type CourierUnloadDistributorCashBalance = z.infer<
+	typeof CourierUnloadDistributorCashBalanceSchema
+>;
+
+export const CourierUnloadResponseSchema = z.object({
+	unload: CourierUnloadSchema,
+	items: z.array(CourierUnloadItemSchema),
+	courierProductBalances: z.array(CourierProductBalanceItemSchema),
+	courierCashBalance: CourierCashBalanceItemSchema,
+	distributorProductBalances: z.array(CourierUnloadDistributorProductBalanceSchema),
+	distributorCashBalance: CourierUnloadDistributorCashBalanceSchema,
+});
+
+export type CourierUnloadResponse = z.infer<typeof CourierUnloadResponseSchema>;

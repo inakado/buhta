@@ -31,6 +31,7 @@ model User {
   courierCashBalance CourierCashBalance?     @relation("CourierCashBalanceCourier")
   courierLoads       CourierLoad[]           @relation("CourierLoadCourier")
   courierSales       CourierSale[]           @relation("CourierSaleCourier")
+  courierUnloads     CourierUnload[]         @relation("CourierUnloadCourier")
 
   @@map("user")
 }
@@ -100,6 +101,7 @@ model Operation {
   distributorSales   DistributorSale[]
   courierLoads       CourierLoad[]
   courierSales       CourierSale[]
+  courierUnloads     CourierUnload[]
 
   @@unique([actorUserId, idempotencyKey])
   @@index([actorUserId])
@@ -183,6 +185,7 @@ model Distributor {
   cashBalance      DistributorCashBalance?
   sales            DistributorSale[]
   courierLoads     CourierLoad[]
+  courierUnloads   CourierUnload[]
 
   @@map("distributor")
 }
@@ -302,6 +305,7 @@ model ProductBatch {
   courierBalances             CourierProductBalance[]
   courierLoads                CourierLoad[]
   courierSales                CourierSale[]
+  courierUnloadItems          CourierUnloadItem[]
 
   @@index([productTemplateId])
   @@index([actorUserId])
@@ -329,6 +333,7 @@ model DistributorProductBalance {
   productBatch   ProductBatch      @relation(fields: [productBatchId], references: [id], onDelete: Restrict)
   sales          DistributorSale[]
   courierLoads   CourierLoad[]
+  unloadItems    CourierUnloadItem[]
 
   @@unique([distributorId, productBatchId])
   @@index([distributorId])
@@ -402,6 +407,7 @@ model CourierProductBalance {
   courier        User          @relation("CourierProductBalanceCourier", fields: [courierUserId], references: [id], onDelete: Restrict)
   productBatch   ProductBatch  @relation(fields: [productBatchId], references: [id], onDelete: Restrict)
   sales          CourierSale[]
+  unloadItems    CourierUnloadItem[]
 
   @@unique([courierUserId, productBatchId])
   @@index([courierUserId])
@@ -471,4 +477,46 @@ model CourierSale {
   @@index([actorUserId])
   @@index([createdAt])
   @@map("courier_sale")
+}
+
+model CourierUnload {
+  id              String              @id @default(cuid())
+  courierUserId   String
+  distributorId   String
+  cashAmountCents Int                 @default(0)
+  comment         String?
+  operationId     String              @unique
+  actorUserId     String
+  createdAt       DateTime            @default(now())
+  courier         User                @relation("CourierUnloadCourier", fields: [courierUserId], references: [id], onDelete: Restrict)
+  distributor     Distributor         @relation(fields: [distributorId], references: [id], onDelete: Restrict)
+  operation       Operation           @relation(fields: [operationId], references: [id], onDelete: Restrict)
+  items           CourierUnloadItem[]
+
+  @@index([courierUserId])
+  @@index([distributorId])
+  @@index([actorUserId])
+  @@index([createdAt])
+  @@map("courier_unload")
+}
+
+model CourierUnloadItem {
+  id                          String                   @id @default(cuid())
+  courierUnloadId             String
+  courierProductBalanceId     String
+  distributorProductBalanceId String
+  productBatchId              String
+  quantity                    Int
+  unitPriceCents              Int
+  stockValueCents             Int
+  courierUnload               CourierUnload            @relation(fields: [courierUnloadId], references: [id], onDelete: Restrict)
+  courierProductBalance       CourierProductBalance     @relation(fields: [courierProductBalanceId], references: [id], onDelete: Restrict)
+  distributorProductBalance   DistributorProductBalance @relation(fields: [distributorProductBalanceId], references: [id], onDelete: Restrict)
+  productBatch                ProductBatch              @relation(fields: [productBatchId], references: [id], onDelete: Restrict)
+
+  @@unique([courierUnloadId, courierProductBalanceId])
+  @@index([courierProductBalanceId])
+  @@index([distributorProductBalanceId])
+  @@index([productBatchId])
+  @@map("courier_unload_item")
 }

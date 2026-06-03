@@ -1569,6 +1569,70 @@ button:disabled {
 	text-align: right;
 }
 
+.unload-list {
+	display: flex;
+	flex-direction: column;
+	gap: 0;
+	border-top: 1px solid var(--line);
+}
+
+.unload-row {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(88px, 96px);
+	gap: 12px;
+	align-items: center;
+	min-height: 68px;
+	border-bottom: 1px solid var(--line);
+	padding: 10px 0;
+}
+
+.unload-row > div {
+	min-width: 0;
+}
+
+.unload-row strong,
+.unload-row span {
+	display: block;
+	overflow-wrap: anywhere;
+}
+
+.unload-row strong {
+	color: var(--base-black);
+	font-size: 14px;
+	font-weight: var(--font-weight-emphasis);
+	line-height: 1.15;
+}
+
+.unload-row span {
+	margin-top: 5px;
+	color: var(--text-muted);
+	font-size: 11px;
+	line-height: 1.15;
+}
+
+.unload-row label {
+	display: flex;
+	flex-direction: column;
+	gap: 5px;
+	min-width: 0;
+	color: var(--text-muted);
+	font-size: 11px;
+	font-weight: var(--font-weight-label);
+}
+
+.unload-row input {
+	width: 100%;
+	min-height: 40px;
+	border: 1px solid var(--line);
+	border-radius: 8px;
+	background: var(--surface-input);
+	color: var(--base-black);
+	font: inherit;
+	font-variant-numeric: tabular-nums;
+	padding: 0 10px;
+	text-align: right;
+}
+
 .money-value-nowrap {
 	display: inline-flex;
 	gap: 4px;

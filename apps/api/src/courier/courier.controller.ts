@@ -1,5 +1,9 @@
 import { Body, Controller, Get, Inject, Post, UseGuards } from "@nestjs/common";
-import { CreateCourierLoadRequestSchema, CreateCourierSaleRequestSchema } from "@buhta/shared";
+import {
+	CreateCourierLoadRequestSchema,
+	CreateCourierSaleRequestSchema,
+	CreateCourierUnloadRequestSchema,
+} from "@buhta/shared";
 import type { z } from "zod";
 import { CurrentActor } from "../auth/actor.decorator";
 import { AppError } from "../common/errors/app-error";
@@ -37,6 +41,12 @@ export class CourierController {
 		return this.courierService.getCashBalances(requireActor(actor));
 	}
 
+	@Get("unload-options")
+	@RequirePermission("courier.unload.create")
+	async unloadOptions(@CurrentActor() actor: Actor | undefined) {
+		return this.courierService.getUnloadOptions(requireActor(actor));
+	}
+
 	@Post("loads")
 	@RequirePermission("courier.stock.load")
 	async createLoad(@CurrentActor() actor: Actor | undefined, @Body() body: unknown) {
@@ -52,6 +62,15 @@ export class CourierController {
 		return this.courierService.createCourierSale(
 			requireActor(actor),
 			parseBody(CreateCourierSaleRequestSchema, body, "Invalid courier sale payload"),
+		);
+	}
+
+	@Post("unloads")
+	@RequirePermission("courier.unload.create")
+	async createUnload(@CurrentActor() actor: Actor | undefined, @Body() body: unknown) {
+		return this.courierService.createCourierUnload(
+			requireActor(actor),
+			parseBody(CreateCourierUnloadRequestSchema, body, "Invalid courier unload payload"),
 		);
 	}
 }

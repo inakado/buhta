@@ -8,7 +8,13 @@ const actor: Actor = {
 	login: "courier",
 	displayName: "Courier",
 	role: "courier",
-	permissions: ["courier.stock.read", "courier.stock.load", "courier.cash.read", "courier.sale.create"],
+	permissions: [
+		"courier.stock.read",
+		"courier.stock.load",
+		"courier.cash.read",
+		"courier.sale.create",
+		"courier.unload.create",
+	],
 };
 
 describe("CourierController", () => {
@@ -223,6 +229,133 @@ describe("CourierController", () => {
 				clientId: "client1",
 				quantity: 0,
 				paymentMethod: "cash",
+			}),
+		).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+	});
+
+	it("returns courier unload options through service", async () => {
+		const unloadOptions = {
+			distributors: [{
+				distributorId: "dist1",
+				distributorName: "Распределитель Центральный",
+			}],
+			productItems: [{
+				courierProductBalanceId: "courier-balance1",
+				productBatchId: "batch1",
+				productName: "Икра горбуши",
+				unitPriceCents: 125000,
+				availableQuantity: 2,
+				stockValueCents: 250000,
+				updatedAt: new Date(0).toISOString(),
+			}],
+			cashBalance: {
+				courierUserId: "courier1",
+				courierLogin: "courier",
+				courierDisplayName: "Courier",
+				amountCents: 100000,
+				updatedAt: new Date(0).toISOString(),
+			},
+		};
+		const courierService = {
+			getUnloadOptions: vi.fn().mockResolvedValue(unloadOptions),
+		} as unknown as CourierService;
+		const controller = new CourierController(courierService);
+
+		await expect(controller.unloadOptions(actor)).resolves.toEqual(unloadOptions);
+		expect(courierService.getUnloadOptions).toHaveBeenCalledWith(actor);
+	});
+
+	it("validates and creates courier unload through service", async () => {
+		const response = {
+			unload: {
+				id: "unload1",
+				courierUserId: "courier1",
+				distributorId: "dist1",
+				cashAmountCents: 100000,
+				comment: null,
+				operationId: "op1",
+				actorUserId: "courier1",
+				createdAt: new Date(0).toISOString(),
+			},
+			items: [{
+				id: "unload-item1",
+				courierUnloadId: "unload1",
+				courierProductBalanceId: "courier-balance1",
+				distributorProductBalanceId: "distributor-balance1",
+				productBatchId: "batch1",
+				quantity: 2,
+				unitPriceCents: 125000,
+				stockValueCents: 250000,
+			}],
+			courierProductBalances: [{
+				id: "courier-balance1",
+				courierUserId: "courier1",
+				courierLogin: "courier",
+				courierDisplayName: "Courier",
+				productBatchId: "batch1",
+				productName: "Икра горбуши",
+				unitPriceCents: 125000,
+				quantity: 0,
+				stockValueCents: 0,
+				updatedAt: new Date(0).toISOString(),
+			}],
+			courierCashBalance: {
+				courierUserId: "courier1",
+				courierLogin: "courier",
+				courierDisplayName: "Courier",
+				amountCents: 0,
+				updatedAt: new Date(0).toISOString(),
+			},
+			distributorProductBalances: [{
+				id: "distributor-balance1",
+				distributorId: "dist1",
+				distributorName: "Распределитель Центральный",
+				productBatchId: "batch1",
+				productName: "Икра горбуши",
+				priceCents: 125000,
+				quantity: 2,
+				stockValueCents: 250000,
+				updatedAt: new Date(0).toISOString(),
+			}],
+			distributorCashBalance: {
+				distributorId: "dist1",
+				distributorName: "Распределитель Центральный",
+				amountCents: 100000,
+				updatedAt: new Date(0).toISOString(),
+			},
+		};
+		const courierService = {
+			createCourierUnload: vi.fn().mockResolvedValue(response),
+		} as unknown as CourierService;
+		const controller = new CourierController(courierService);
+
+		await expect(
+			controller.createUnload(actor, {
+				distributorId: "dist1",
+				items: [{ courierProductBalanceId: "courier-balance1", quantity: 2 }],
+				cashAmountCents: 100000,
+			}),
+		).resolves.toEqual(response);
+		expect(courierService.createCourierUnload).toHaveBeenCalledWith(actor, {
+			distributorId: "dist1",
+			items: [{ courierProductBalanceId: "courier-balance1", quantity: 2 }],
+			cashAmountCents: 100000,
+		});
+		await expect(
+			controller.createUnload(actor, {
+				distributorId: "dist1",
+				items: [],
+				cashAmountCents: 0,
+			}),
+		).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+		await expect(
+			controller.createUnload(actor, {
+				distributorId: "dist1",
+				items: [
+					{ courierProductBalanceId: "courier-balance1", quantity: 1 },
+					{ courierProductBalanceId: "courier-balance1", quantity: 1 },
+				],
+				cashAmountCents: 0,
 			}),
 		).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
 	});

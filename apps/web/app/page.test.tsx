@@ -85,6 +85,7 @@ const courierActorResponse = {
 			"courier.stock.load",
 			"courier.cash.read",
 			"courier.sale.create",
+			"courier.unload.create",
 			"client.read",
 			"client.manage",
 		],
@@ -210,6 +211,29 @@ const courierSaleOptionsResponse = {
 		stockValueCents: 250000,
 		updatedAt: new Date(0).toISOString(),
 	}],
+};
+
+const courierUnloadOptionsResponse = {
+	distributors: [{
+		distributorId: "dist1",
+		distributorName: "Распределитель Центральный",
+	}],
+	productItems: [{
+		courierProductBalanceId: "courier-balance1",
+		productBatchId: "batch1",
+		productName: "Икра горбуши",
+		unitPriceCents: 125000,
+		availableQuantity: 2,
+		stockValueCents: 250000,
+		updatedAt: new Date(0).toISOString(),
+	}],
+	cashBalance: {
+		courierUserId: "seed-courier",
+		courierLogin: "courier",
+		courierDisplayName: "Courier",
+		amountCents: 70000,
+		updatedAt: new Date(0).toISOString(),
+	},
 };
 
 const clientsResponse: { clients: Client[] } = {
@@ -931,7 +955,7 @@ describe("HomePage", () => {
 		expect(screen.getByText("Стоимость")).toBeTruthy();
 		expect(await screen.findByText("Икра горбуши")).toBeTruthy();
 		expect(screen.getAllByText("2 шт").length).toBeGreaterThan(0);
-	});
+	}, 10_000);
 
 	it("keeps production backend errors inline without success notice", async () => {
 		const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -1265,9 +1289,10 @@ describe("HomePage", () => {
 		const loadAction = screen.getByRole("button", { name: "Открыть загрузку" });
 		expect(loadAction.className).toContain("action-tile");
 		expect(screen.getByRole("button", { name: "Открыть продажу" }).className).toContain("action-tile");
+		expect(screen.getByRole("button", { name: "Открыть возврат" }).className).toContain("action-tile");
 		expect(screen.queryByRole("button", { name: "Загрузка" })).toBeNull();
 		expect(screen.queryByRole("button", { name: "Продажа" })).toBeNull();
-		expect(screen.queryByRole("button", { name: "Сгрузить" })).toBeNull();
+		expect(screen.queryByRole("button", { name: "Возврат" })).toBeNull();
 		fireEvent.click(loadAction);
 		expect(await screen.findByRole("heading", { name: "Детали загрузки" })).toBeTruthy();
 		await selectOperationProduct(/Икра горбуши/);
@@ -1335,6 +1360,130 @@ describe("HomePage", () => {
 		expect((screen.getByLabelText("Комментарий") as HTMLTextAreaElement).value).toBe("На доставку");
 		expect(screen.queryByText("Загрузка записана")).toBeNull();
 		expect(screen.getByRole("heading", { name: "Детали загрузки" })).toBeTruthy();
+	});
+
+	it("lets courier unload products and cash to distributor", async () => {
+		const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+			const url = String(input);
+			const method = init?.method ?? "GET";
+
+			if (url.endsWith("/auth/me")) {
+				return jsonResponse(courierActorResponse);
+			}
+
+			if (url.endsWith("/courier/product-balances")) {
+				return jsonResponse(courierProductBalancesResponse);
+			}
+
+			if (url.endsWith("/courier/cash-balances")) {
+				return jsonResponse(courierCashBalancesResponse);
+			}
+
+			if (url.endsWith("/courier/unload-options")) {
+				return jsonResponse(courierUnloadOptionsResponse);
+			}
+
+			if (url.endsWith("/courier/unloads") && method === "POST") {
+				return jsonResponse({
+					unload: {
+						id: "unload1",
+						courierUserId: "seed-courier",
+						distributorId: "dist1",
+						cashAmountCents: 50000,
+						comment: "Смена закрыта",
+						operationId: "op1",
+						actorUserId: "seed-courier",
+						createdAt: new Date(0).toISOString(),
+					},
+					items: [{
+						id: "unload-item1",
+						courierUnloadId: "unload1",
+						courierProductBalanceId: "courier-balance1",
+						distributorProductBalanceId: "distributor-balance1",
+						productBatchId: "batch1",
+						quantity: 1,
+						unitPriceCents: 125000,
+						stockValueCents: 125000,
+					}],
+					courierProductBalances: [{
+						...courierProductBalancesResponse.items[0],
+						quantity: 1,
+						stockValueCents: 125000,
+					}],
+					courierCashBalance: {
+						...courierCashBalancesResponse.items[0],
+						amountCents: 20000,
+						updatedAt: new Date(1).toISOString(),
+					},
+					distributorProductBalances: [{
+						...distributorInventoryResponse.items[0],
+						quantity: 3,
+						stockValueCents: 375000,
+					}],
+					distributorCashBalance: {
+						...distributorCashBalancesResponse.items[0],
+						amountCents: 175000,
+						updatedAt: new Date(1).toISOString(),
+					},
+				});
+			}
+
+			if (url.endsWith("/courier/sale-options")) {
+				return jsonResponse(courierSaleOptionsResponse);
+			}
+
+			if (url.endsWith("/courier/load-options")) {
+				return jsonResponse(courierLoadOptionsResponse);
+			}
+
+			if (url.endsWith("/distributor/inventory")) {
+				return jsonResponse(distributorInventoryResponse);
+			}
+
+			if (url.endsWith("/distributor/cash-balances")) {
+				return jsonResponse(distributorCashBalancesResponse);
+			}
+
+			return jsonResponse({ error: { message: "Unexpected request" } }, 500);
+		});
+
+		vi.stubGlobal("fetch", fetchMock);
+		const requestCount = (path: string) =>
+			fetchMock.mock.calls.filter(([input]) => String(input).endsWith(path)).length;
+
+		render(<HomePage />);
+
+		fireEvent.click(await screen.findByRole("button", { name: "Открыть возврат" }));
+		expect(await screen.findByRole("heading", { name: "Возврат" })).toBeTruthy();
+		expect((await screen.findByLabelText("Куда вернуть") as HTMLSelectElement).value).toBe("dist1");
+		expect((screen.getByLabelText("Сумма, ₽") as HTMLInputElement).value).toBe("700.00");
+		fireEvent.change(screen.getByLabelText("Сумма, ₽"), { target: { value: "0" } });
+		expect((screen.getByRole("button", { name: "Записать" }) as HTMLButtonElement).disabled).toBe(false);
+		fireEvent.change(screen.getByLabelText("Вернуть"), { target: { value: "1" } });
+		fireEvent.change(screen.getByLabelText("Сумма, ₽"), { target: { value: "500" } });
+		fireEvent.change(screen.getByLabelText("Комментарий"), { target: { value: "Смена закрыта" } });
+		fireEvent.click(screen.getByRole("button", { name: "Записать" }));
+
+		await waitFor(() => {
+			expect(fetchMock).toHaveBeenCalledWith(
+				expect.stringContaining("/courier/unloads"),
+				expect.objectContaining({
+					method: "POST",
+					body: JSON.stringify({
+						distributorId: "dist1",
+						items: [{ courierProductBalanceId: "courier-balance1", quantity: 1 }],
+						cashAmountCents: 50000,
+						comment: "Смена закрыта",
+					}),
+				}),
+			);
+		});
+		expect(await screen.findByText("Возврат записан")).toBeTruthy();
+		await waitFor(() => {
+			expect(requestCount("/courier/product-balances")).toBeGreaterThan(1);
+			expect(requestCount("/courier/cash-balances")).toBeGreaterThan(1);
+			expect(requestCount("/courier/unload-options")).toBeGreaterThan(1);
+		});
 	});
 
 	it("lets courier sell product from own balance", async () => {

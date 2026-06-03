@@ -219,6 +219,7 @@ describe("PolicyRegistry", () => {
 			});
 
 			expect(actor?.permissions).toContain("courier.sale.create");
+			expect(actor?.permissions).toContain("courier.unload.create");
 		}
 
 		for (const role of ["director", "commercial_manager", "production_manager", "distributor_worker"] as const) {
@@ -230,6 +231,7 @@ describe("PolicyRegistry", () => {
 			});
 
 			expect(actor?.permissions).not.toContain("courier.sale.create");
+			expect(actor?.permissions).not.toContain("courier.unload.create");
 		}
 
 		for (const role of ["production_manager", "distributor_worker"] as const) {

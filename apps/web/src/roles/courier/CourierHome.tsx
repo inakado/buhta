@@ -12,6 +12,7 @@ export function CourierHome({ onTabChange, online }: CourierHomeProps) {
 		<CourierHomeOverview
 			onLoad={() => onTabChange("load")}
 			onSale={() => onTabChange("sale")}
+			onUnload={() => onTabChange("unload")}
 			online={online}
 		/>
 	);

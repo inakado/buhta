@@ -6,6 +6,7 @@ import { ClientsHome } from "../features/clients/ClientsHome";
 import { CourierBalanceHome } from "../features/courier/CourierBalanceHome";
 import { CourierLoadHome } from "../features/courier/CourierLoadHome";
 import { CourierSaleHome } from "../features/courier/CourierSaleHome";
+import { CourierUnloadHome } from "../features/courier/CourierUnloadHome";
 import { DistributorInventoryHome } from "../features/distributor/DistributorInventoryHome";
 import { ProductionHome } from "../features/production/ProductionHome";
 import { DistributorSaleHome } from "../features/sales/DistributorSaleHome";
@@ -117,6 +118,14 @@ export function RoleHomeRouter({
 			return (
 				<CourierSaleHome
 					onSaleSuccess={() => onActionSuccess("Продажа записана")}
+					online={online}
+				/>
+			);
+		}
+		if (activeTab === "unload" && actor.permissions.includes("courier.unload.create")) {
+			return (
+				<CourierUnloadHome
+					onUnloadSuccess={() => onActionSuccess("Возврат записан")}
 					online={online}
 				/>
 			);

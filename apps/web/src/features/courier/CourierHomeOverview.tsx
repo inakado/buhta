@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { PackagePlus, ReceiptText } from "lucide-react";
+import { PackageMinus, PackagePlus, ReceiptText } from "lucide-react";
 import { formatMoneyCents, moneyCents } from "@buhta/shared";
 import { getCourierCashBalances, getCourierProductBalances } from "../../lib/api-client";
 import { CourierStockList } from "./CourierStockList";
@@ -9,10 +9,11 @@ import { CourierStockList } from "./CourierStockList";
 type CourierHomeOverviewProps = {
 	onLoad: () => void;
 	onSale: () => void;
+	onUnload: () => void;
 	online: boolean;
 };
 
-export function CourierHomeOverview({ onLoad, onSale, online }: CourierHomeOverviewProps) {
+export function CourierHomeOverview({ onLoad, onSale, onUnload, online }: CourierHomeOverviewProps) {
 	const balances = useQuery({
 		queryKey: ["courier", "product-balances"],
 		queryFn: getCourierProductBalances,
@@ -63,6 +64,16 @@ export function CourierHomeOverview({ onLoad, onSale, online }: CourierHomeOverv
 				>
 					<PackagePlus aria-hidden size={22} />
 					<span>Загрузить</span>
+				</button>
+				<button
+					aria-label="Открыть возврат"
+					className="action-tile"
+					disabled={!online}
+					onClick={onUnload}
+					type="button"
+				>
+					<PackageMinus aria-hidden size={22} />
+					<span>Вернуть</span>
 				</button>
 			</div>
 

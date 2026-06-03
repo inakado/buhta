@@ -16,12 +16,15 @@ import {
 	CreateDistributorSaleRequestSchema,
 	CreateCourierLoadRequestSchema,
 	CreateCourierSaleRequestSchema,
+	CreateCourierUnloadRequestSchema,
 	CreateUserRequestSchema,
 	CourierCashBalancesResponseSchema,
 	CourierLoadOptionsResponseSchema,
 	CourierProductBalancesResponseSchema,
 	CourierSaleOptionsResponseSchema,
 	CourierSaleResponseSchema,
+	CourierUnloadOptionsResponseSchema,
+	CourierUnloadResponseSchema,
 	CreateProductTemplateRequestSchema,
 	CreateRawMaterialTypeRequestSchema,
 	CreateRawMaterialIntakeRequestSchema,
@@ -57,6 +60,7 @@ describe("shared contracts", () => {
 		expect(permissionsForRole("director")).toContain("courier.cash.read");
 		expect(permissionsForRole("director")).not.toContain("courier.stock.load");
 		expect(permissionsForRole("director")).not.toContain("courier.sale.create");
+		expect(permissionsForRole("director")).not.toContain("courier.unload.create");
 		expect(permissionsForRole("director")).toContain("cash.withdraw");
 		expect(permissionsForRole("commercial_manager")).toContain("client.read");
 		expect(permissionsForRole("commercial_manager")).toContain("client.manage");
@@ -64,6 +68,7 @@ describe("shared contracts", () => {
 		expect(permissionsForRole("commercial_manager")).toContain("courier.cash.read");
 		expect(permissionsForRole("commercial_manager")).not.toContain("courier.stock.load");
 		expect(permissionsForRole("commercial_manager")).not.toContain("courier.sale.create");
+		expect(permissionsForRole("commercial_manager")).not.toContain("courier.unload.create");
 		expect(permissionsForRole("distributor_worker")).toContain("client.read");
 		expect(permissionsForRole("distributor_worker")).toContain("client.manage");
 		expect(permissionsForRole("distributor_worker")).not.toContain("courier.stock.read");
@@ -74,6 +79,7 @@ describe("shared contracts", () => {
 		expect(permissionsForRole("courier")).toContain("courier.stock.load");
 		expect(permissionsForRole("courier")).toContain("courier.cash.read");
 		expect(permissionsForRole("courier")).toContain("courier.sale.create");
+		expect(permissionsForRole("courier")).toContain("courier.unload.create");
 		expect(permissionsForRole("courier")).not.toContain("cash.withdraw");
 		expect(permissionsForRole("production_manager")).not.toContain("client.read");
 		expect(permissionsForRole("production_manager")).not.toContain("client.manage");
@@ -571,6 +577,140 @@ describe("shared contracts", () => {
 					courierDisplayName: "Курьер",
 					amountCents: 0,
 					updatedAt: null,
+				},
+			}).success,
+		).toBe(true);
+	});
+
+	it("validates courier unload contracts", () => {
+		expect(
+			CreateCourierUnloadRequestSchema.parse({
+				distributorId: "dist-1",
+				items: [
+					{ courierProductBalanceId: "courier-balance-1", quantity: 2 },
+					{ courierProductBalanceId: "courier-balance-2", quantity: 1 },
+				],
+				cashAmountCents: 125000,
+				comment: " Сгрузка смены ",
+			}),
+		).toEqual({
+			distributorId: "dist-1",
+			items: [
+				{ courierProductBalanceId: "courier-balance-1", quantity: 2 },
+				{ courierProductBalanceId: "courier-balance-2", quantity: 1 },
+			],
+			cashAmountCents: 125000,
+			comment: "Сгрузка смены",
+		});
+		expect(
+			CreateCourierUnloadRequestSchema.safeParse({
+				distributorId: "dist-1",
+				items: [],
+				cashAmountCents: 125000,
+			}).success,
+		).toBe(true);
+		expect(
+			CreateCourierUnloadRequestSchema.safeParse({
+				distributorId: "dist-1",
+				items: [],
+				cashAmountCents: 0,
+			}).success,
+		).toBe(false);
+		expect(
+			CreateCourierUnloadRequestSchema.safeParse({
+				distributorId: "dist-1",
+				items: [
+					{ courierProductBalanceId: "courier-balance-1", quantity: 1 },
+					{ courierProductBalanceId: "courier-balance-1", quantity: 1 },
+				],
+				cashAmountCents: 0,
+			}).success,
+		).toBe(false);
+		expect(
+			CreateCourierUnloadRequestSchema.safeParse({
+				distributorId: "dist-1",
+				items: [{ courierProductBalanceId: "courier-balance-1", quantity: 0 }],
+				cashAmountCents: 0,
+			}).success,
+		).toBe(false);
+		expect(
+			CourierUnloadOptionsResponseSchema.safeParse({
+				distributors: [{ distributorId: "dist-1", distributorName: "Распределитель Центральный" }],
+				productItems: [{
+					courierProductBalanceId: "courier-balance-1",
+					productBatchId: "batch-1",
+					productName: "Икра горбуши",
+					unitPriceCents: 125000,
+					availableQuantity: 4,
+					stockValueCents: 500000,
+					updatedAt: new Date(0).toISOString(),
+				}],
+				cashBalance: {
+					courierUserId: "courier-1",
+					courierLogin: "courier",
+					courierDisplayName: "Курьер",
+					amountCents: 100000,
+					updatedAt: new Date(0).toISOString(),
+				},
+			}).success,
+		).toBe(true);
+		expect(
+			CourierUnloadResponseSchema.safeParse({
+				unload: {
+					id: "unload-1",
+					courierUserId: "courier-1",
+					distributorId: "dist-1",
+					cashAmountCents: 125000,
+					comment: null,
+					operationId: "operation-1",
+					actorUserId: "courier-1",
+					createdAt: new Date(0).toISOString(),
+				},
+				items: [{
+					id: "unload-item-1",
+					courierUnloadId: "unload-1",
+					courierProductBalanceId: "courier-balance-1",
+					distributorProductBalanceId: "distributor-balance-1",
+					productBatchId: "batch-1",
+					quantity: 2,
+					unitPriceCents: 125000,
+					stockValueCents: 250000,
+				}],
+				courierProductBalances: [{
+					id: "courier-balance-1",
+					courierUserId: "courier-1",
+					courierLogin: "courier",
+					courierDisplayName: "Курьер",
+					productBatchId: "batch-1",
+					productName: "Икра горбуши",
+					unitPriceCents: 125000,
+					quantity: 2,
+					stockValueCents: 250000,
+					updatedAt: new Date(0).toISOString(),
+				}],
+				courierCashBalance: {
+					courierUserId: "courier-1",
+					courierLogin: "courier",
+					courierDisplayName: "Курьер",
+					amountCents: 0,
+					updatedAt: new Date(0).toISOString(),
+				},
+				distributorProductBalances: [{
+					id: "distributor-balance-1",
+					distributorId: "dist-1",
+					distributorName: "Распределитель Центральный",
+					productBatchId: "batch-1",
+					productName: "Икра горбуши",
+					priceCents: 125000,
+					quantity: 2,
+					stockValueCents: 250000,
+					updatedAt: new Date(0).toISOString(),
+				}],
+				distributorCashBalance: {
+					distributorId: "dist-1",
+					distributorName: "Распределитель Центральный",
+					amountCents: 125000,
+					updatedAt: new Date(0).toISOString(),
 				},
 			}).success,
 		).toBe(true);

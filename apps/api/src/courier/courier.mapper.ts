@@ -7,6 +7,12 @@ import type {
 	CourierProductBalancesSummary,
 	CourierSale,
 	CourierSaleOption,
+	CourierUnload,
+	CourierUnloadDistributorCashBalance,
+	CourierUnloadDistributorOption,
+	CourierUnloadDistributorProductBalance,
+	CourierUnloadItem,
+	CourierUnloadProductOption,
 } from "@buhta/shared";
 
 type UserRecord = {
@@ -82,6 +88,28 @@ type CourierSaleRecord = {
 	createdAt: Date;
 };
 
+type CourierUnloadRecord = {
+	id: string;
+	courierUserId: string;
+	distributorId: string;
+	cashAmountCents: number;
+	comment: string | null;
+	operationId: string;
+	actorUserId: string;
+	createdAt: Date;
+};
+
+type CourierUnloadItemRecord = {
+	id: string;
+	courierUnloadId: string;
+	courierProductBalanceId: string;
+	distributorProductBalanceId: string;
+	productBatchId: string;
+	quantity: number;
+	unitPriceCents: number;
+	stockValueCents: number;
+};
+
 export function mapCourierLoadOption(record: DistributorBalanceRecord): CourierLoadOption {
 	return {
 		distributorProductBalanceId: record.id,
@@ -144,6 +172,25 @@ export function mapCourierSaleOption(record: CourierBalanceRecord): CourierSaleO
 	};
 }
 
+export function mapCourierUnloadProductOption(record: CourierBalanceRecord): CourierUnloadProductOption {
+	return {
+		courierProductBalanceId: record.id,
+		productBatchId: record.productBatchId,
+		productName: record.productBatch.productName,
+		unitPriceCents: record.productBatch.priceCents,
+		availableQuantity: record.quantity,
+		stockValueCents: record.quantity * record.productBatch.priceCents,
+		updatedAt: record.updatedAt.toISOString(),
+	};
+}
+
+export function mapCourierUnloadDistributorOption(record: DistributorRecord): CourierUnloadDistributorOption {
+	return {
+		distributorId: record.id,
+		distributorName: record.name,
+	};
+}
+
 export function mapCourierCashBalanceItem(
 	courier: UserRecord,
 	cashBalance: CourierCashBalanceRecord | null,
@@ -189,6 +236,60 @@ export function mapCourierSale(record: CourierSaleRecord): CourierSale {
 		operationId: record.operationId,
 		actorUserId: record.actorUserId,
 		createdAt: record.createdAt.toISOString(),
+	};
+}
+
+export function mapCourierUnload(record: CourierUnloadRecord): CourierUnload {
+	return {
+		id: record.id,
+		courierUserId: record.courierUserId,
+		distributorId: record.distributorId,
+		cashAmountCents: record.cashAmountCents,
+		comment: record.comment,
+		operationId: record.operationId,
+		actorUserId: record.actorUserId,
+		createdAt: record.createdAt.toISOString(),
+	};
+}
+
+export function mapCourierUnloadItem(record: CourierUnloadItemRecord): CourierUnloadItem {
+	return {
+		id: record.id,
+		courierUnloadId: record.courierUnloadId,
+		courierProductBalanceId: record.courierProductBalanceId,
+		distributorProductBalanceId: record.distributorProductBalanceId,
+		productBatchId: record.productBatchId,
+		quantity: record.quantity,
+		unitPriceCents: record.unitPriceCents,
+		stockValueCents: record.stockValueCents,
+	};
+}
+
+export function mapCourierUnloadDistributorProductBalance(
+	record: DistributorBalanceRecord,
+): CourierUnloadDistributorProductBalance {
+	return {
+		id: record.id,
+		distributorId: record.distributorId,
+		distributorName: record.distributor.name,
+		productBatchId: record.productBatchId,
+		productName: record.productBatch.productName,
+		priceCents: record.productBatch.priceCents,
+		quantity: record.quantity,
+		stockValueCents: record.quantity * record.productBatch.priceCents,
+		updatedAt: record.updatedAt.toISOString(),
+	};
+}
+
+export function mapCourierUnloadDistributorCashBalance(
+	distributor: DistributorRecord,
+	cashBalance: { amountCents: number; updatedAt: Date } | null,
+): CourierUnloadDistributorCashBalance {
+	return {
+		distributorId: distributor.id,
+		distributorName: distributor.name,
+		amountCents: cashBalance?.amountCents ?? 0,
+		updatedAt: cashBalance?.updatedAt.toISOString() ?? null,
 	};
 }
 

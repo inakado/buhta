@@ -4,6 +4,7 @@ import type {
 	CreateClientRequest,
 	CreateCourierLoadRequest,
 	CreateCourierSaleRequest,
+	CreateCourierUnloadRequest,
 	CreateDistributorRequest,
 	CreateDistributorSaleRequest,
 	CreatePackagingTypeRequest,
@@ -21,6 +22,8 @@ import type {
 	CourierProductBalancesResponse,
 	CourierSaleOptionsResponse,
 	CourierSaleResponse,
+	CourierUnloadOptionsResponse,
+	CourierUnloadResponse,
 	DistributorCashBalancesResponse,
 	DistributorInventoryResponse,
 	DistributorSaleOptionsResponse,
@@ -355,6 +358,17 @@ export async function getCourierSaleOptions(): Promise<CourierSaleOptionsRespons
 
 export async function createCourierSale(input: CreateCourierSaleRequest): Promise<CourierSaleResponse> {
 	return fetchJson<CourierSaleResponse>("/courier/sales", {
+		method: "POST",
+		body: JSON.stringify(input),
+	});
+}
+
+export async function getCourierUnloadOptions(): Promise<CourierUnloadOptionsResponse> {
+	return fetchJson<CourierUnloadOptionsResponse>("/courier/unload-options");
+}
+
+export async function createCourierUnload(input: CreateCourierUnloadRequest): Promise<CourierUnloadResponse> {
+	return fetchJson<CourierUnloadResponse>("/courier/unloads", {
 		method: "POST",
 		body: JSON.stringify(input),
 	});

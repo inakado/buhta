@@ -10,21 +10,39 @@ const courierActor: Actor = {
 	login: "courier-load-courier",
 	displayName: "Courier Load Courier",
 	role: "courier",
-	permissions: ["courier.stock.read", "courier.stock.load", "courier.cash.read", "courier.sale.create"],
+	permissions: [
+		"courier.stock.read",
+		"courier.stock.load",
+		"courier.cash.read",
+		"courier.sale.create",
+		"courier.unload.create",
+	],
 };
 const secondCourierActor: Actor = {
 	userId: "courier-load-second-courier",
 	login: "courier-load-second-courier",
 	displayName: "Courier Load Second Courier",
 	role: "courier",
-	permissions: ["courier.stock.read", "courier.stock.load", "courier.cash.read", "courier.sale.create"],
+	permissions: [
+		"courier.stock.read",
+		"courier.stock.load",
+		"courier.cash.read",
+		"courier.sale.create",
+		"courier.unload.create",
+	],
 };
 const adminActor: Actor = {
 	userId: "courier-load-admin",
 	login: "courier-load-admin",
 	displayName: "Courier Load Admin",
 	role: "admin",
-	permissions: ["courier.stock.read", "courier.stock.load", "courier.cash.read", "courier.sale.create"],
+	permissions: [
+		"courier.stock.read",
+		"courier.stock.load",
+		"courier.cash.read",
+		"courier.sale.create",
+		"courier.unload.create",
+	],
 };
 const commercialActor: Actor = {
 	userId: "courier-load-commercial",
@@ -206,6 +224,26 @@ async function cleanup() {
 			],
 		},
 	});
+	await prisma.courierUnloadItem.deleteMany({
+		where: {
+			courierUnload: {
+				OR: [
+					{ actorUserId: { in: actorIds } },
+					{ courierUserId: { in: actorIds } },
+					{ distributorId: { in: distributorIds } },
+				],
+			},
+		},
+	});
+	await prisma.courierUnload.deleteMany({
+		where: {
+			OR: [
+				{ actorUserId: { in: actorIds } },
+				{ courierUserId: { in: actorIds } },
+				{ distributorId: { in: distributorIds } },
+			],
+		},
+	});
 	await prisma.courierSale.deleteMany({
 		where: {
 			OR: [
@@ -217,6 +255,9 @@ async function cleanup() {
 	});
 	await prisma.courierCashBalance.deleteMany({
 		where: { courierUserId: { in: actorIds } },
+	});
+	await prisma.distributorCashBalance.deleteMany({
+		where: { distributorId: { in: distributorIds } },
 	});
 	await prisma.courierProductBalance.deleteMany({
 		where: { courierUserId: { in: actorIds } },
@@ -795,5 +836,349 @@ describe("Courier load real Postgres integration", () => {
 			expect.objectContaining({ courierCashBalanceBefore: 120000, courierCashBalanceAfter: 170000 }),
 			expect.objectContaining({ courierCashBalanceBefore: 170000, courierCashBalanceAfter: 220000 }),
 		]);
+	});
+
+	it("returns unload options for courier self-flow", async () => {
+		const fixture = await createSaleFixture("courier-load-unload-options", 3, 125000);
+		await prisma.courierCashBalance.create({
+			data: {
+				courierUserId: courierActor.userId,
+				amountCents: 90000,
+			},
+		});
+
+		const options = await courierService.getUnloadOptions(courierActor);
+
+		expect(options.distributors).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					distributorId: fixture.distributor.id,
+					distributorName: fixture.distributor.name,
+				}),
+			]),
+		);
+		expect(options.productItems).toEqual([
+			expect.objectContaining({
+				courierProductBalanceId: fixture.courierProductBalance.id,
+				productBatchId: fixture.productBatch.id,
+				availableQuantity: 3,
+				stockValueCents: 375000,
+			}),
+		]);
+		expect(options.cashBalance).toMatchObject({
+			courierUserId: courierActor.userId,
+			amountCents: 90000,
+		});
+		await expect(courierService.getUnloadOptions(adminActor)).rejects.toMatchObject({ code: "FORBIDDEN" });
+	});
+
+	it("unloads several product rows and cash to distributor with audit snapshot", async () => {
+		const first = await createSaleFixture("courier-load-unload-happy-a", 4, 90000);
+		const second = await createSaleFixture("courier-load-unload-happy-b", 3, 125000);
+		await prisma.courierCashBalance.create({
+			data: {
+				courierUserId: courierActor.userId,
+				amountCents: 250000,
+			},
+		});
+
+		const response = await courierService.createCourierUnload(courierActor, {
+			distributorId: first.distributor.id,
+			items: [
+				{ courierProductBalanceId: first.courierProductBalance.id, quantity: 2 },
+				{ courierProductBalanceId: second.courierProductBalance.id, quantity: 1 },
+			],
+			cashAmountCents: 150000,
+			comment: " сгрузка смены ",
+		});
+
+		expect(response.unload).toMatchObject({
+			courierUserId: courierActor.userId,
+			distributorId: first.distributor.id,
+			cashAmountCents: 150000,
+			comment: "сгрузка смены",
+			actorUserId: courierActor.userId,
+		});
+		expect(response.items).toHaveLength(2);
+		expect(response.items).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					courierProductBalanceId: first.courierProductBalance.id,
+					productBatchId: first.productBatch.id,
+					quantity: 2,
+					unitPriceCents: 90000,
+					stockValueCents: 180000,
+				}),
+				expect.objectContaining({
+					courierProductBalanceId: second.courierProductBalance.id,
+					productBatchId: second.productBatch.id,
+					quantity: 1,
+					unitPriceCents: 125000,
+					stockValueCents: 125000,
+				}),
+			]),
+		);
+		expect(response.items.every((item) => item.distributorProductBalanceId)).toBe(true);
+		await expect(
+			prisma.courierProductBalance.findUniqueOrThrow({
+				where: { id: first.courierProductBalance.id },
+			}),
+		).resolves.toMatchObject({ quantity: 2 });
+		await expect(
+			prisma.courierProductBalance.findUniqueOrThrow({
+				where: { id: second.courierProductBalance.id },
+			}),
+		).resolves.toMatchObject({ quantity: 2 });
+		await expect(
+			prisma.distributorProductBalance.findUniqueOrThrow({
+				where: { id: first.distributorProductBalance.id },
+			}),
+		).resolves.toMatchObject({ quantity: 6 });
+		await expect(
+			prisma.distributorProductBalance.findUniqueOrThrow({
+				where: {
+					distributorId_productBatchId: {
+						distributorId: first.distributor.id,
+						productBatchId: second.productBatch.id,
+					},
+				},
+			}),
+		).resolves.toMatchObject({ quantity: 1 });
+		await expect(
+			prisma.courierCashBalance.findUniqueOrThrow({
+				where: { courierUserId: courierActor.userId },
+			}),
+		).resolves.toMatchObject({ amountCents: 100000 });
+		await expect(
+			prisma.distributorCashBalance.findUniqueOrThrow({
+				where: { distributorId: first.distributor.id },
+			}),
+		).resolves.toMatchObject({ amountCents: 150000 });
+		await expect(
+			prisma.auditLog.findFirstOrThrow({
+				where: {
+					action: "courier.unload.create",
+					entityId: response.unload.id,
+				},
+			}),
+		).resolves.toMatchObject({
+			details: expect.objectContaining({
+				courierUnloadId: response.unload.id,
+				courierUserId: courierActor.userId,
+				distributorId: first.distributor.id,
+				distributorName: first.distributor.name,
+				cashAmountCents: 150000,
+				courierCashBalanceBefore: 250000,
+				courierCashBalanceAfter: 100000,
+				distributorCashBalanceBefore: 0,
+				distributorCashBalanceAfter: 150000,
+				comment: "сгрузка смены",
+				items: expect.arrayContaining([
+					expect.objectContaining({
+						courierProductBalanceId: first.courierProductBalance.id,
+						distributorProductBalanceId: first.distributorProductBalance.id,
+						productBatchId: first.productBatch.id,
+						quantity: 2,
+						courierBalanceBefore: 4,
+						courierBalanceAfter: 2,
+						distributorBalanceBefore: 4,
+						distributorBalanceAfter: 6,
+					}),
+				]),
+			}),
+		});
+	});
+
+	it("supports product-only unload when courier cash row is missing", async () => {
+		const fixture = await createSaleFixture("courier-load-unload-product-only", 2, 100000);
+
+		const response = await courierService.createCourierUnload(courierActor, {
+			distributorId: fixture.distributor.id,
+			items: [{ courierProductBalanceId: fixture.courierProductBalance.id, quantity: 1 }],
+			cashAmountCents: 0,
+		});
+
+		expect(response.courierCashBalance).toMatchObject({
+			courierUserId: courierActor.userId,
+			amountCents: 0,
+			updatedAt: null,
+		});
+		expect(response.distributorCashBalance).toMatchObject({
+			distributorId: fixture.distributor.id,
+			amountCents: 0,
+			updatedAt: null,
+		});
+		await expect(
+			prisma.courierCashBalance.findUnique({
+				where: { courierUserId: courierActor.userId },
+			}),
+		).resolves.toBeNull();
+	});
+
+	it("supports cash-only unload and rejects missing or zero cash rows", async () => {
+		const fixture = await createSaleFixture("courier-load-unload-cash-only", 1, 100000);
+		await expect(
+			courierService.createCourierUnload(courierActor, {
+				distributorId: fixture.distributor.id,
+				items: [],
+				cashAmountCents: 1,
+			}),
+		).rejects.toMatchObject({ code: "DOMAIN_RULE_VIOLATION" });
+		await prisma.courierCashBalance.create({
+			data: {
+				courierUserId: courierActor.userId,
+				amountCents: 0,
+			},
+		});
+		await expect(
+			courierService.createCourierUnload(courierActor, {
+				distributorId: fixture.distributor.id,
+				items: [],
+				cashAmountCents: 1,
+			}),
+		).rejects.toMatchObject({ code: "DOMAIN_RULE_VIOLATION" });
+		await prisma.courierCashBalance.update({
+			where: { courierUserId: courierActor.userId },
+			data: { amountCents: 70000 },
+		});
+
+		const response = await courierService.createCourierUnload(courierActor, {
+			distributorId: fixture.distributor.id,
+			items: [],
+			cashAmountCents: 50000,
+		});
+
+		expect(response.items).toHaveLength(0);
+		expect(response.courierCashBalance.amountCents).toBe(20000);
+		expect(response.distributorCashBalance.amountCents).toBe(50000);
+		await expect(
+			prisma.courierProductBalance.findUniqueOrThrow({
+				where: { id: fixture.courierProductBalance.id },
+			}),
+		).resolves.toMatchObject({ quantity: 1 });
+	});
+
+	it("rejects over-unload, inactive distributor and wrong actors atomically", async () => {
+		const fixture = await createSaleFixture("courier-load-unload-reject", 1, 100000);
+		await prisma.courierCashBalance.create({
+			data: {
+				courierUserId: courierActor.userId,
+				amountCents: 1000,
+			},
+		});
+
+		await expect(
+			courierService.createCourierUnload(courierActor, {
+				distributorId: fixture.distributor.id,
+				items: [{ courierProductBalanceId: fixture.courierProductBalance.id, quantity: 2 }],
+				cashAmountCents: 0,
+			}),
+		).rejects.toMatchObject({ code: "DOMAIN_RULE_VIOLATION" });
+		await expect(
+			courierService.createCourierUnload(courierActor, {
+				distributorId: fixture.distributor.id,
+				items: [],
+				cashAmountCents: 2000,
+			}),
+		).rejects.toMatchObject({ code: "DOMAIN_RULE_VIOLATION" });
+		await expect(
+			courierService.createCourierUnload(courierActor, {
+				distributorId: fixture.distributor.id,
+				items: [{ courierProductBalanceId: fixture.courierProductBalance.id, quantity: 1 }],
+				cashAmountCents: 0,
+				courierUserId: secondCourierActor.userId,
+			}),
+		).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+		await expect(
+			courierService.createCourierUnload(commercialActor, {
+				distributorId: fixture.distributor.id,
+				items: [{ courierProductBalanceId: fixture.courierProductBalance.id, quantity: 1 }],
+				cashAmountCents: 0,
+			}),
+		).rejects.toMatchObject({ code: "FORBIDDEN" });
+		await prisma.distributor.update({
+			where: { id: fixture.distributor.id },
+			data: { active: false },
+		});
+		await expect(
+			courierService.createCourierUnload(courierActor, {
+				distributorId: fixture.distributor.id,
+				items: [{ courierProductBalanceId: fixture.courierProductBalance.id, quantity: 1 }],
+				cashAmountCents: 0,
+			}),
+		).rejects.toMatchObject({ code: "DOMAIN_RULE_VIOLATION" });
+		await expect(
+			prisma.courierProductBalance.findUniqueOrThrow({
+				where: { id: fixture.courierProductBalance.id },
+			}),
+		).resolves.toMatchObject({ quantity: 1 });
+		await expect(
+			prisma.courierCashBalance.findUniqueOrThrow({
+				where: { courierUserId: courierActor.userId },
+			}),
+		).resolves.toMatchObject({ amountCents: 1000 });
+	});
+
+	it("allows admin backend unload only for the selected courier balance owner", async () => {
+		const fixture = await createSaleFixture("courier-load-unload-admin", 2, 100000);
+		await prisma.courierCashBalance.create({
+			data: {
+				courierUserId: courierActor.userId,
+				amountCents: 30000,
+			},
+		});
+
+		const response = await courierService.createCourierUnload(adminActor, {
+			courierUserId: courierActor.userId,
+			distributorId: fixture.distributor.id,
+			items: [{ courierProductBalanceId: fixture.courierProductBalance.id, quantity: 1 }],
+			cashAmountCents: 10000,
+		});
+
+		expect(response.unload).toMatchObject({
+			courierUserId: courierActor.userId,
+			actorUserId: adminActor.userId,
+		});
+		await expect(
+			courierService.createCourierUnload(adminActor, {
+				courierUserId: secondCourierActor.userId,
+				distributorId: fixture.distributor.id,
+				items: [{ courierProductBalanceId: fixture.courierProductBalance.id, quantity: 1 }],
+				cashAmountCents: 0,
+			}),
+		).rejects.toMatchObject({ code: "DOMAIN_RULE_VIOLATION" });
+		await expect(
+			courierService.createCourierUnload(adminActor, {
+				distributorId: fixture.distributor.id,
+				items: [{ courierProductBalanceId: fixture.courierProductBalance.id, quantity: 1 }],
+				cashAmountCents: 0,
+			}),
+		).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+	});
+
+	it("prevents unload and sale from double-spending the same courier stock", async () => {
+		const fixture = await createSaleFixture("courier-load-unload-concurrent", 1, 120000);
+
+		const results = await Promise.allSettled([
+			courierService.createCourierUnload(courierActor, {
+				distributorId: fixture.distributor.id,
+				items: [{ courierProductBalanceId: fixture.courierProductBalance.id, quantity: 1 }],
+				cashAmountCents: 0,
+			}),
+			courierService.createCourierSale(courierActor, {
+				courierProductBalanceId: fixture.courierProductBalance.id,
+				clientId: fixture.client.id,
+				quantity: 1,
+				paymentMethod: "cashless",
+			}),
+		]);
+
+		expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+		expect(results.filter((result) => result.status === "rejected")).toHaveLength(1);
+		await expect(
+			prisma.courierProductBalance.findUniqueOrThrow({
+				where: { id: fixture.courierProductBalance.id },
+			}),
+		).resolves.toMatchObject({ quantity: 0 });
 	});
 });
