@@ -84,6 +84,7 @@ export type CreateDistributorSaleRequest = z.infer<typeof CreateDistributorSaleR
 export const DistributorCashBalanceItemSchema = z.object({
 	distributorId: z.string(),
 	distributorName: z.string(),
+	active: z.boolean(),
 	amountCents: NonNegativeIntegerSchema,
 	updatedAt: z.string().nullable(),
 });
@@ -96,6 +97,37 @@ export const DistributorCashBalancesResponseSchema = z.object({
 });
 
 export type DistributorCashBalancesResponse = z.infer<typeof DistributorCashBalancesResponseSchema>;
+
+export const CreateDistributorCashWithdrawalRequestSchema = z.object({
+	distributorId: z.string().min(1),
+	amountCents: PositiveIntegerSchema,
+	comment: OptionalCommentSchema,
+});
+
+export type CreateDistributorCashWithdrawalRequest = z.infer<
+	typeof CreateDistributorCashWithdrawalRequestSchema
+>;
+
+export const DistributorCashWithdrawalSchema = z.object({
+	id: z.string(),
+	distributorId: z.string(),
+	amountCents: PositiveIntegerSchema,
+	comment: z.string().nullable(),
+	operationId: z.string(),
+	actorUserId: z.string(),
+	createdAt: z.string(),
+});
+
+export type DistributorCashWithdrawal = z.infer<typeof DistributorCashWithdrawalSchema>;
+
+export const DistributorCashWithdrawalResponseSchema = z.object({
+	withdrawal: DistributorCashWithdrawalSchema,
+	cashBalance: DistributorCashBalanceItemSchema,
+});
+
+export type DistributorCashWithdrawalResponse = z.infer<
+	typeof DistributorCashWithdrawalResponseSchema
+>;
 
 export const DistributorSaleSchema = z.object({
 	id: z.string(),

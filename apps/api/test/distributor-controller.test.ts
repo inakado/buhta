@@ -69,6 +69,7 @@ describe("DistributorController", () => {
 			items: [{
 				distributorId: "dist1",
 				distributorName: "Распределитель Центральный",
+				active: true,
 				amountCents: 0,
 				updatedAt: null,
 			}],
@@ -113,6 +114,7 @@ describe("DistributorController", () => {
 			cashBalance: {
 				distributorId: "dist1",
 				distributorName: "Распределитель Центральный",
+				active: true,
 				amountCents: 250000,
 				updatedAt: new Date(0).toISOString(),
 			},
@@ -151,5 +153,62 @@ describe("DistributorController", () => {
 				paymentMethod: "cash",
 			}),
 		).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+	});
+
+	it("validates and creates distributor cash withdrawal through service", async () => {
+		const response = {
+			withdrawal: {
+				id: "withdrawal1",
+				distributorId: "dist1",
+				amountCents: 50000,
+				comment: "Забрал наличные",
+				operationId: "op1",
+				actorUserId: "director1",
+				createdAt: new Date(0).toISOString(),
+			},
+			cashBalance: {
+				distributorId: "dist1",
+				distributorName: "Распределитель Центральный",
+				active: true,
+				amountCents: 150000,
+				updatedAt: new Date(1).toISOString(),
+			},
+		};
+		const actor: Actor = {
+			userId: "director1",
+			login: "director",
+			displayName: "Director",
+			role: "director" as const,
+			permissions: ["cash.withdraw"],
+		};
+		const distributorService = {
+			createCashWithdrawal: vi.fn().mockResolvedValue(response),
+		} as unknown as DistributorService;
+		const controller = new DistributorController(distributorService);
+
+		await expect(
+			controller.createCashWithdrawal(actor, {
+				distributorId: "dist1",
+				amountCents: 50000,
+				comment: " Забрал наличные ",
+			}),
+		).resolves.toEqual(response);
+		expect(distributorService.createCashWithdrawal).toHaveBeenCalledWith(actor, {
+			distributorId: "dist1",
+			amountCents: 50000,
+			comment: "Забрал наличные",
+		});
+		await expect(
+			controller.createCashWithdrawal(actor, {
+				distributorId: "dist1",
+				amountCents: 0,
+			}),
+		).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+		await expect(
+			controller.createCashWithdrawal(undefined, {
+				distributorId: "dist1",
+				amountCents: 50000,
+			}),
+		).rejects.toMatchObject({ code: "UNAUTHENTICATED" });
 	});
 });

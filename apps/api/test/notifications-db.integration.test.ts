@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { AppError } from "../src/common/errors/app-error";
 import { NotificationsService } from "../src/notifications/notifications.service";
 import type { Actor } from "../src/policy/actor";
@@ -84,16 +84,7 @@ async function cleanup() {
 	});
 	const operationIds = operations.map((operation) => operation.id);
 
-	await prisma.productionNotification.deleteMany({
-		where: {
-			OR: [
-				{ createdByUserId: { in: userIds } },
-				{ completedByUserId: { in: userIds } },
-				{ createOperationId: { in: operationIds } },
-				{ completeOperationId: { in: operationIds } },
-			],
-		},
-	});
+	await prisma.productionNotification.deleteMany();
 	await prisma.auditLog.deleteMany({
 		where: {
 			OR: [
@@ -117,6 +108,10 @@ async function cleanup() {
 }
 
 describe("NotificationsService real Postgres integration", () => {
+	beforeEach(async () => {
+		await cleanup();
+	});
+
 	afterEach(async () => {
 		await cleanup();
 	});

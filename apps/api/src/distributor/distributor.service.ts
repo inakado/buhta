@@ -1,7 +1,9 @@
 import { Injectable } from "@nestjs/common";
 import type {
+	CreateDistributorCashWithdrawalRequest,
 	CreateDistributorSaleRequest,
 	DistributorCashBalancesResponse,
+	DistributorCashWithdrawalResponse,
 	DistributorInventoryResponse,
 	DistributorSaleOptionsResponse,
 	DistributorSaleResponse,
@@ -14,6 +16,7 @@ import { prisma } from "../prisma/client";
 import {
 	mapDistributorCashBalanceItem,
 	mapDistributorCashBalanceRecord,
+	mapDistributorCashWithdrawal,
 	mapDistributorInventoryItem,
 	mapDistributorSale,
 	mapDistributorSaleStockItem,
@@ -85,6 +88,96 @@ export class DistributorService {
 		return {
 			totalAmountCents: items.reduce((sum, item) => sum + item.amountCents, 0),
 			items,
+		};
+	}
+
+	async createCashWithdrawal(
+		actor: Actor,
+		input: CreateDistributorCashWithdrawalRequest,
+	): Promise<DistributorCashWithdrawalResponse> {
+		const comment = input.comment?.trim();
+		const normalizedComment = comment ? comment : null;
+		const result = await prisma.$transaction(async (tx) => {
+			const distributor = await tx.distributor.findUnique({
+				where: { id: input.distributorId },
+			});
+			if (!distributor) {
+				throw new AppError("NOT_FOUND", "Distributor not found", { id: input.distributorId });
+			}
+			if (!distributor.active) {
+				throw new AppError("DOMAIN_RULE_VIOLATION", "Distributor is inactive", {
+					id: input.distributorId,
+				});
+			}
+
+			const decrement = await tx.distributorCashBalance.updateMany({
+				where: {
+					distributorId: input.distributorId,
+					amountCents: { gte: input.amountCents },
+				},
+				data: {
+					amountCents: { decrement: input.amountCents },
+				},
+			});
+			if (decrement.count !== 1) {
+				throw new AppError("DOMAIN_RULE_VIOLATION", "Not enough distributor cash balance", {
+					distributorId: input.distributorId,
+				});
+			}
+
+			const cashBalanceAfter = await tx.distributorCashBalance.findUniqueOrThrow({
+				where: { distributorId: input.distributorId },
+				include: { distributor: true },
+			});
+			const cashBalanceAfterAmount = cashBalanceAfter.amountCents;
+			const cashBalanceBeforeAmount = cashBalanceAfterAmount + input.amountCents;
+
+			const operation = await tx.operation.create({
+				data: {
+					type: "distributor.cash.withdraw",
+					status: OPERATION_STATUS.succeeded,
+					actorUserId: actor.userId,
+				},
+			});
+
+			const withdrawal = await tx.distributorCashWithdrawal.create({
+				data: {
+					distributorId: input.distributorId,
+					amountCents: input.amountCents,
+					comment: normalizedComment,
+					operationId: operation.id,
+					actorUserId: actor.userId,
+				},
+			});
+
+			await tx.auditLog.create({
+				data: {
+					operationId: operation.id,
+					actorUserId: actor.userId,
+					action: "distributor.cash.withdraw",
+					entityType: "distributor_cash_withdrawal",
+					entityId: withdrawal.id,
+					details: {
+						distributorCashWithdrawalId: withdrawal.id,
+						distributorId: input.distributorId,
+						distributorName: cashBalanceAfter.distributor.name,
+						amountCents: input.amountCents,
+						cashBalanceBefore: cashBalanceBeforeAmount,
+						cashBalanceAfter: cashBalanceAfterAmount,
+						comment: normalizedComment,
+					} satisfies Prisma.InputJsonValue,
+				},
+			});
+
+			return {
+				withdrawal,
+				cashBalanceAfter,
+			};
+		});
+
+		return {
+			withdrawal: mapDistributorCashWithdrawal(result.withdrawal),
+			cashBalance: mapDistributorCashBalanceRecord(result.cashBalanceAfter),
 		};
 	}
 

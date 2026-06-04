@@ -1743,6 +1743,60 @@ button:disabled {
 	font-variant-numeric: tabular-nums;
 }
 
+.cash-withdrawal-actions {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 8px;
+}
+
+.cash-withdrawal-actions .action-tile {
+	grid-column: 1 / 2;
+	width: 100%;
+}
+
+.cash-withdrawal-panel {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.cash-withdrawal-summary {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 8px;
+	border-top: 1px solid var(--line);
+	border-bottom: 1px solid var(--line);
+	padding: 10px 0;
+}
+
+.cash-withdrawal-summary span,
+.cash-withdrawal-summary strong {
+	display: block;
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+
+.cash-withdrawal-summary span {
+	color: var(--text-muted);
+	font-size: 11px;
+	line-height: 1.15;
+}
+
+.cash-withdrawal-summary strong {
+	margin-top: 4px;
+	color: var(--base-black);
+	font-size: 13px;
+	font-weight: var(--font-weight-emphasis);
+	line-height: 1.15;
+}
+
+.success-inline {
+	margin: 0;
+	color: var(--base-black);
+	font-size: 13px;
+	font-weight: var(--font-weight-emphasis);
+}
+
 .courier-balance-card {
 	display: flex;
 	flex-direction: column;

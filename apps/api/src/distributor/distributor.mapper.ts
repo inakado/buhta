@@ -1,5 +1,6 @@
 import type {
 	DistributorCashBalanceItem,
+	DistributorCashWithdrawal,
 	DistributorSale,
 	DistributorSaleStockItem,
 	DistributorInventoryDistributorSummary,
@@ -30,6 +31,7 @@ type DistributorCashBalanceRecord = {
 	distributor: {
 		id: string;
 		name: string;
+		active: boolean;
 	};
 };
 
@@ -45,6 +47,16 @@ type DistributorSaleRecord = {
 	unitPriceCents: number;
 	totalCents: number;
 	paymentMethod: string;
+	comment: string | null;
+	operationId: string;
+	actorUserId: string;
+	createdAt: Date;
+};
+
+type DistributorCashWithdrawalRecord = {
+	id: string;
+	distributorId: string;
+	amountCents: number;
 	comment: string | null;
 	operationId: string;
 	actorUserId: string;
@@ -84,12 +96,13 @@ export function mapDistributorSaleStockItem(record: DistributorSaleOptionRecord)
 }
 
 export function mapDistributorCashBalanceItem(
-	distributor: { id: string; name: string },
+	distributor: { id: string; name: string; active: boolean },
 	balance: { amountCents: number; updatedAt: Date } | null,
 ): DistributorCashBalanceItem {
 	return {
 		distributorId: distributor.id,
 		distributorName: distributor.name,
+		active: distributor.active,
 		amountCents: balance?.amountCents ?? 0,
 		updatedAt: balance?.updatedAt.toISOString() ?? null,
 	};
@@ -99,8 +112,21 @@ export function mapDistributorCashBalanceRecord(record: DistributorCashBalanceRe
 	return {
 		distributorId: record.distributor.id,
 		distributorName: record.distributor.name,
+		active: record.distributor.active,
 		amountCents: record.amountCents,
 		updatedAt: record.updatedAt.toISOString(),
+	};
+}
+
+export function mapDistributorCashWithdrawal(record: DistributorCashWithdrawalRecord): DistributorCashWithdrawal {
+	return {
+		id: record.id,
+		distributorId: record.distributorId,
+		amountCents: record.amountCents,
+		comment: record.comment,
+		operationId: record.operationId,
+		actorUserId: record.actorUserId,
+		createdAt: record.createdAt.toISOString(),
 	};
 }
 

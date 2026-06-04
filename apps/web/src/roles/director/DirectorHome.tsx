@@ -46,10 +46,7 @@ export function DirectorHome() {
 
 	return (
 		<section className="screen-stack director-home">
-			<div className="section-heading compact">
-				<h2>Контроль</h2>
-				{isFetching ? <span>Обновление</span> : null}
-			</div>
+			{isFetching ? <p className="muted">Обновление</p> : null}
 
 			<div className="director-overview-card">
 				<div className="director-overview-main">

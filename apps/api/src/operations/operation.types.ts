@@ -17,6 +17,7 @@ export const BASELINE_OPERATION_TYPES = [
 	"courier.sale.create",
 	"courier.stock.load.create",
 	"courier.unload.create",
+	"distributor.cash.withdraw",
 	"distributor.sale.create",
 	"production.notification.complete",
 	"production.notification.create",

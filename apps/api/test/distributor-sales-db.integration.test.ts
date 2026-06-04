@@ -12,26 +12,48 @@ const salesActor: Actor = {
 	permissions: ["distributor.sale.create", "distributor.cash.read", "client.read", "client.manage"],
 };
 const actorEmail = "distributor-sales-manager@internal.buhta.local";
+const directorActor: Actor = {
+	userId: "distributor-sales-director",
+	login: "distributor-sales-director",
+	displayName: "Distributor Sales Director",
+	role: "director",
+	permissions: ["cash.withdraw", "distributor.cash.read"],
+};
+const directorEmail = "distributor-sales-director@internal.buhta.local";
+const adminActor: Actor = {
+	userId: "distributor-sales-admin",
+	login: "distributor-sales-admin",
+	displayName: "Distributor Sales Admin",
+	role: "admin",
+	permissions: ["cash.withdraw"],
+};
+const adminEmail = "distributor-sales-admin@internal.buhta.local";
 
 async function ensureActor() {
-	await prisma.user.upsert({
-		where: { email: actorEmail },
-		update: {
-			name: salesActor.displayName,
-			role: salesActor.role,
-			username: salesActor.login,
-			displayUsername: salesActor.login,
-		},
-		create: {
-			id: salesActor.userId,
-			email: actorEmail,
-			username: salesActor.login,
-			displayUsername: salesActor.login,
-			name: salesActor.displayName,
-			emailVerified: true,
-			role: salesActor.role,
-		},
-	});
+	for (const [actor, email] of [
+		[salesActor, actorEmail],
+		[directorActor, directorEmail],
+		[adminActor, adminEmail],
+	] as const) {
+		await prisma.user.upsert({
+			where: { email },
+			update: {
+				name: actor.displayName,
+				role: actor.role,
+				username: actor.login,
+				displayUsername: actor.login,
+			},
+			create: {
+				id: actor.userId,
+				email,
+				username: actor.login,
+				displayUsername: actor.login,
+				name: actor.displayName,
+				emailVerified: true,
+				role: actor.role,
+			},
+		});
+	}
 }
 
 async function createSalesFixture(prefix: string, quantity = 3, priceCents = 125000) {
@@ -96,7 +118,7 @@ async function createSalesFixture(prefix: string, quantity = 3, priceCents = 125
 		data: {
 			name: `${prefix}-client`,
 			phone: `+7 999 ${quantity}${quantity}${quantity}-00-00`,
-			phoneNormalized: `7999${quantity}${quantity}${quantity}0000`,
+			phoneNormalized: `distributor-sales-${prefix}`,
 			createdByUserId: salesActor.userId,
 		},
 	});
@@ -140,7 +162,16 @@ async function cleanup() {
 		select: { id: true },
 	});
 	const operationIds = operations.map((operation) => operation.id);
+	const actorUserIds = [salesActor.userId, directorActor.userId, adminActor.userId];
 
+	await prisma.distributorCashWithdrawal.deleteMany({
+		where: {
+			OR: [
+				{ actorUserId: { in: actorUserIds } },
+				{ distributorId: { in: distributorIds } },
+			],
+		},
+	});
 	await prisma.distributorSale.deleteMany({
 		where: {
 			OR: [
@@ -166,13 +197,18 @@ async function cleanup() {
 		where: { id: { in: clientIds } },
 	});
 	await prisma.auditLog.deleteMany({
-		where: { actorUserId: salesActor.userId },
+		where: { actorUserId: { in: actorUserIds } },
 	});
 	await prisma.idempotencyRecord.deleteMany({
-		where: { actorUserId: salesActor.userId },
+		where: { actorUserId: { in: actorUserIds } },
 	});
 	await prisma.operation.deleteMany({
-		where: { id: { in: operationIds } },
+		where: {
+			OR: [
+				{ id: { in: operationIds } },
+				{ actorUserId: { in: actorUserIds } },
+			],
+		},
 	});
 	await prisma.productTemplate.deleteMany({
 		where: { name: { startsWith: "distributor-sales" } },
@@ -187,7 +223,7 @@ async function cleanup() {
 		where: { id: { in: rawMaterialTypeIds } },
 	});
 	await prisma.user.deleteMany({
-		where: { id: salesActor.userId },
+		where: { id: { in: actorUserIds } },
 	});
 }
 
@@ -224,6 +260,7 @@ describe("Distributor sales real Postgres integration", () => {
 			expect.arrayContaining([
 				expect.objectContaining({
 					distributorId: fixture.distributor.id,
+					active: true,
 					amountCents: 0,
 					updatedAt: null,
 				}),
@@ -391,6 +428,173 @@ describe("Distributor sales real Postgres integration", () => {
 				cashBalanceAfter: 88050,
 			}),
 		});
+	});
+
+	it("lets director and admin withdraw distributor cash with audit", async () => {
+		const fixture = await createSalesFixture("distributor-sales-withdraw", 1, 100000);
+		await prisma.distributorCashBalance.create({
+			data: {
+				distributorId: fixture.distributor.id,
+				amountCents: 250000,
+			},
+		});
+
+		const directorResponse = await distributorService.createCashWithdrawal(directorActor, {
+			distributorId: fixture.distributor.id,
+			amountCents: 75000,
+			comment: " забрал на расходы ",
+		});
+		const adminResponse = await distributorService.createCashWithdrawal(adminActor, {
+			distributorId: fixture.distributor.id,
+			amountCents: 25000,
+		});
+
+		expect(directorResponse.withdrawal).toMatchObject({
+			distributorId: fixture.distributor.id,
+			amountCents: 75000,
+			comment: "забрал на расходы",
+			actorUserId: directorActor.userId,
+		});
+		expect(directorResponse.cashBalance).toMatchObject({
+			distributorId: fixture.distributor.id,
+			active: true,
+			amountCents: 175000,
+		});
+		expect(adminResponse.withdrawal).toMatchObject({
+			distributorId: fixture.distributor.id,
+			amountCents: 25000,
+			comment: null,
+			actorUserId: adminActor.userId,
+		});
+		expect(adminResponse.cashBalance.amountCents).toBe(150000);
+		await expect(
+			prisma.distributorCashBalance.findUniqueOrThrow({
+				where: { distributorId: fixture.distributor.id },
+			}),
+		).resolves.toMatchObject({ amountCents: 150000 });
+		await expect(
+			prisma.auditLog.findFirstOrThrow({
+				where: {
+					action: "distributor.cash.withdraw",
+					entityId: directorResponse.withdrawal.id,
+				},
+			}),
+		).resolves.toMatchObject({
+			details: expect.objectContaining({
+				distributorCashWithdrawalId: directorResponse.withdrawal.id,
+				distributorId: fixture.distributor.id,
+				distributorName: fixture.distributor.name,
+				amountCents: 75000,
+				cashBalanceBefore: 250000,
+				cashBalanceAfter: 175000,
+				comment: "забрал на расходы",
+			}),
+		});
+	});
+
+	it("keeps inactive cash rows visible read-only but rejects withdrawals from them", async () => {
+		const fixture = await createSalesFixture("distributor-sales-withdraw-inactive", 1, 100000);
+		await prisma.distributorCashBalance.create({
+			data: {
+				distributorId: fixture.distributor.id,
+				amountCents: 50000,
+			},
+		});
+		await prisma.distributor.update({
+			where: { id: fixture.distributor.id },
+			data: { active: false },
+		});
+
+		const cashBalances = await distributorService.getCashBalances();
+
+		expect(cashBalances.items).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					distributorId: fixture.distributor.id,
+					active: false,
+					amountCents: 50000,
+				}),
+			]),
+		);
+		await expect(
+			distributorService.createCashWithdrawal(directorActor, {
+				distributorId: fixture.distributor.id,
+				amountCents: 10000,
+			}),
+		).rejects.toMatchObject({ code: "DOMAIN_RULE_VIOLATION" });
+		await expect(
+			prisma.distributorCashBalance.findUniqueOrThrow({
+				where: { distributorId: fixture.distributor.id },
+			}),
+		).resolves.toMatchObject({ amountCents: 50000 });
+	});
+
+	it("rejects missing cash row and insufficient distributor cash atomically", async () => {
+		const missingCash = await createSalesFixture("distributor-sales-withdraw-missing-cash", 1, 100000);
+		await expect(
+			distributorService.createCashWithdrawal(directorActor, {
+				distributorId: missingCash.distributor.id,
+				amountCents: 1,
+			}),
+		).rejects.toMatchObject({ code: "DOMAIN_RULE_VIOLATION" });
+		await expect(
+			prisma.distributorCashBalance.findUnique({
+				where: { distributorId: missingCash.distributor.id },
+			}),
+		).resolves.toBeNull();
+
+		const insufficient = await createSalesFixture("distributor-sales-withdraw-insufficient", 1, 100000);
+		await prisma.distributorCashBalance.create({
+			data: {
+				distributorId: insufficient.distributor.id,
+				amountCents: 30000,
+			},
+		});
+
+		await expect(
+			distributorService.createCashWithdrawal(directorActor, {
+				distributorId: insufficient.distributor.id,
+				amountCents: 30001,
+			}),
+		).rejects.toMatchObject({ code: "DOMAIN_RULE_VIOLATION" });
+		await expect(
+			prisma.distributorCashBalance.findUniqueOrThrow({
+				where: { distributorId: insufficient.distributor.id },
+			}),
+		).resolves.toMatchObject({ amountCents: 30000 });
+		expect(await prisma.distributorCashWithdrawal.count({
+			where: { distributorId: insufficient.distributor.id },
+		})).toBe(0);
+	});
+
+	it("prevents negative distributor cash under concurrent withdrawals", async () => {
+		const fixture = await createSalesFixture("distributor-sales-withdraw-concurrent", 1, 100000);
+		await prisma.distributorCashBalance.create({
+			data: {
+				distributorId: fixture.distributor.id,
+				amountCents: 100000,
+			},
+		});
+
+		const results = await Promise.allSettled([
+			distributorService.createCashWithdrawal(directorActor, {
+				distributorId: fixture.distributor.id,
+				amountCents: 70000,
+			}),
+			distributorService.createCashWithdrawal(directorActor, {
+				distributorId: fixture.distributor.id,
+				amountCents: 70000,
+			}),
+		]);
+
+		expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+		expect(results.filter((result) => result.status === "rejected")).toHaveLength(1);
+		await expect(
+			prisma.distributorCashBalance.findUniqueOrThrow({
+				where: { distributorId: fixture.distributor.id },
+			}),
+		).resolves.toMatchObject({ amountCents: 30000 });
+		expect(await prisma.distributorCashWithdrawal.count({ where: { distributorId: fixture.distributor.id } })).toBe(1);
 	});
 
 	it("prevents double-spend under concurrent sales", async () => {

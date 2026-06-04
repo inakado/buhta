@@ -7,6 +7,7 @@ import type {
 	CreateCourierSaleRequest,
 	CreateCourierUnloadRequest,
 	CreateDistributorRequest,
+	CreateDistributorCashWithdrawalRequest,
 	CreateDistributorSaleRequest,
 	CreatePackagingTypeRequest,
 	CreatePackagingIntakeRequest,
@@ -26,6 +27,7 @@ import type {
 	CourierUnloadOptionsResponse,
 	CourierUnloadResponse,
 	DistributorCashBalancesResponse,
+	DistributorCashWithdrawalResponse,
 	DistributorInventoryResponse,
 	DistributorSaleOptionsResponse,
 	DistributorSaleResponse,
@@ -407,6 +409,15 @@ export async function getDistributorSaleOptions(): Promise<DistributorSaleOption
 
 export async function getDistributorCashBalances(): Promise<DistributorCashBalancesResponse> {
 	return fetchJson<DistributorCashBalancesResponse>("/distributor/cash-balances");
+}
+
+export async function createDistributorCashWithdrawal(
+	input: CreateDistributorCashWithdrawalRequest,
+): Promise<DistributorCashWithdrawalResponse> {
+	return fetchJson<DistributorCashWithdrawalResponse>("/distributor/cash-withdrawals", {
+		method: "POST",
+		body: JSON.stringify(input),
+	});
 }
 
 export async function createDistributorSale(

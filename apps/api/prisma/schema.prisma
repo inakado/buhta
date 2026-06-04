@@ -32,6 +32,7 @@ model User {
   courierLoads       CourierLoad[]           @relation("CourierLoadCourier")
   courierSales       CourierSale[]           @relation("CourierSaleCourier")
   courierUnloads     CourierUnload[]         @relation("CourierUnloadCourier")
+  distributorCashWithdrawals DistributorCashWithdrawal[] @relation("DistributorCashWithdrawalActor")
   createdProductionNotifications   ProductionNotification[] @relation("ProductionNotificationCreatedBy")
   completedProductionNotifications ProductionNotification[] @relation("ProductionNotificationCompletedBy")
 
@@ -101,6 +102,7 @@ model Operation {
   productBatches     ProductBatch[]
   productTransfers   ProductTransfer[]
   distributorSales   DistributorSale[]
+  distributorCashWithdrawals DistributorCashWithdrawal[]
   courierLoads       CourierLoad[]
   courierSales       CourierSale[]
   courierUnloads     CourierUnload[]
@@ -188,6 +190,7 @@ model Distributor {
   productTransfers ProductTransfer[]
   cashBalance      DistributorCashBalance?
   sales            DistributorSale[]
+  cashWithdrawals  DistributorCashWithdrawal[]
   courierLoads     CourierLoad[]
   courierUnloads   CourierUnload[]
 
@@ -372,6 +375,24 @@ model DistributorCashBalance {
   distributor   Distributor @relation(fields: [distributorId], references: [id], onDelete: Restrict)
 
   @@map("distributor_cash_balance")
+}
+
+model DistributorCashWithdrawal {
+  id            String      @id @default(cuid())
+  distributorId String
+  amountCents   Int
+  comment       String?
+  operationId   String      @unique
+  actorUserId   String
+  createdAt     DateTime    @default(now())
+  distributor   Distributor @relation(fields: [distributorId], references: [id], onDelete: Restrict)
+  operation     Operation   @relation(fields: [operationId], references: [id], onDelete: Restrict)
+  actor         User        @relation("DistributorCashWithdrawalActor", fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  @@index([distributorId])
+  @@index([actorUserId])
+  @@index([createdAt])
+  @@map("distributor_cash_withdrawal")
 }
 
 model DistributorSale {

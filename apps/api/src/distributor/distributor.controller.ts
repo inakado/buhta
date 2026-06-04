@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Inject, Post, UseGuards } from "@nestjs/common";
-import { CreateDistributorSaleRequestSchema } from "@buhta/shared";
+import { CreateDistributorCashWithdrawalRequestSchema, CreateDistributorSaleRequestSchema } from "@buhta/shared";
 import type { z } from "zod";
 import { CurrentActor } from "../auth/actor.decorator";
 import { AppError } from "../common/errors/app-error";
@@ -37,6 +37,15 @@ export class DistributorController {
 		return this.distributorService.createDistributorSale(
 			requireActor(actor),
 			parseBody(CreateDistributorSaleRequestSchema, body, "Invalid distributor sale payload"),
+		);
+	}
+
+	@Post("cash-withdrawals")
+	@RequirePermission("cash.withdraw")
+	async createCashWithdrawal(@CurrentActor() actor: Actor | undefined, @Body() body: unknown) {
+		return this.distributorService.createCashWithdrawal(
+			requireActor(actor),
+			parseBody(CreateDistributorCashWithdrawalRequestSchema, body, "Invalid distributor cash withdrawal payload"),
 		);
 	}
 }

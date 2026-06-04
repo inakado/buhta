@@ -14,6 +14,7 @@ import {
 	CreateProductBatchRequestSchema,
 	CreateProductTransferRequestSchema,
 	CreateDistributorSaleRequestSchema,
+	CreateDistributorCashWithdrawalRequestSchema,
 	CreateCourierLoadRequestSchema,
 	CreateCourierSaleRequestSchema,
 	CreateCourierUnloadRequestSchema,
@@ -31,6 +32,7 @@ import {
 	CreateRawMaterialTypeRequestSchema,
 	CreateRawMaterialIntakeRequestSchema,
 	DistributorCashBalancesResponseSchema,
+	DistributorCashWithdrawalResponseSchema,
 	DistributorInventoryResponseSchema,
 	DistributorSaleOptionsResponseSchema,
 	LoginSchema,
@@ -403,6 +405,38 @@ describe("shared contracts", () => {
 			}).success,
 		).toBe(false);
 		expect(
+			CreateDistributorCashWithdrawalRequestSchema.parse({
+				distributorId: "dist-1",
+				amountCents: 50000,
+				comment: " Забрал наличные ",
+			}),
+		).toEqual({
+			distributorId: "dist-1",
+			amountCents: 50000,
+			comment: "Забрал наличные",
+		});
+		expect(
+			CreateDistributorCashWithdrawalRequestSchema.parse({
+				distributorId: "dist-1",
+				amountCents: 50000,
+			}),
+		).toEqual({
+			distributorId: "dist-1",
+			amountCents: 50000,
+		});
+		expect(
+			CreateDistributorCashWithdrawalRequestSchema.safeParse({
+				distributorId: "dist-1",
+				amountCents: 0,
+			}).success,
+		).toBe(false);
+		expect(
+			CreateDistributorCashWithdrawalRequestSchema.safeParse({
+				distributorId: "dist-1",
+				amountCents: 1.5,
+			}).success,
+		).toBe(false);
+		expect(
 			DistributorSaleOptionsResponseSchema.safeParse({
 				items: [{
 					distributorProductBalanceId: "balance-1",
@@ -423,9 +457,30 @@ describe("shared contracts", () => {
 				items: [{
 					distributorId: "dist-1",
 					distributorName: "Распределитель Центральный",
+					active: true,
 					amountCents: 0,
 					updatedAt: null,
 				}],
+			}).success,
+		).toBe(true);
+		expect(
+			DistributorCashWithdrawalResponseSchema.safeParse({
+				withdrawal: {
+					id: "withdrawal-1",
+					distributorId: "dist-1",
+					amountCents: 50000,
+					comment: null,
+					operationId: "operation-1",
+					actorUserId: "director-1",
+					createdAt: new Date(0).toISOString(),
+				},
+				cashBalance: {
+					distributorId: "dist-1",
+					distributorName: "Распределитель Центральный",
+					active: true,
+					amountCents: 100000,
+					updatedAt: new Date(0).toISOString(),
+				},
 			}).success,
 		).toBe(true);
 		expect(
@@ -762,6 +817,7 @@ describe("shared contracts", () => {
 				distributorCashBalance: {
 					distributorId: "dist-1",
 					distributorName: "Распределитель Центральный",
+					active: true,
 					amountCents: 125000,
 					updatedAt: new Date(0).toISOString(),
 				},

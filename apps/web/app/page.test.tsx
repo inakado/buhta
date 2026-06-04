@@ -77,6 +77,7 @@ const directorActorResponse = {
 			"courier.cash.read",
 			"client.read",
 			"notification.read",
+			"cash.withdraw",
 		],
 	},
 };
@@ -133,6 +134,7 @@ const distributorCashBalancesResponse = {
 	items: [{
 		distributorId: "dist1",
 		distributorName: "Распределитель Центральный",
+		active: true,
 		amountCents: 125000,
 		updatedAt: new Date(0).toISOString(),
 	}],
@@ -1899,10 +1901,6 @@ describe("HomePage", () => {
 			const url = String(input);
 			const method = init?.method ?? "GET";
 
-			if (method !== "GET") {
-				return jsonResponse({ error: { message: "Unexpected mutation" } }, 500);
-			}
-
 			if (url.endsWith("/auth/me")) {
 				return jsonResponse(directorActorResponse);
 			}
@@ -1923,6 +1921,29 @@ describe("HomePage", () => {
 				return jsonResponse(courierCashBalancesResponse);
 			}
 
+			if (url.endsWith("/distributor/cash-withdrawals") && method === "POST") {
+				return jsonResponse({
+					withdrawal: {
+						id: "withdrawal1",
+						distributorId: "dist1",
+						amountCents: 50000,
+						comment: "Расход директора",
+						operationId: "op1",
+						actorUserId: "seed-director",
+						createdAt: new Date(1).toISOString(),
+					},
+					cashBalance: {
+						...distributorCashBalancesResponse.items[0],
+						amountCents: 75000,
+						updatedAt: new Date(1).toISOString(),
+					},
+				});
+			}
+
+			if (method !== "GET") {
+				return jsonResponse({ error: { message: "Unexpected mutation" } }, 500);
+			}
+
 			return jsonResponse({ error: { message: "Unexpected request" } }, 500);
 		});
 
@@ -1930,9 +1951,9 @@ describe("HomePage", () => {
 
 		render(<HomePage />);
 
-		expect(await screen.findByRole("heading", { name: "Контроль" })).toBeTruthy();
-		expect(screen.getByText("В обороте")).toBeTruthy();
+		expect(await screen.findByText("В обороте")).toBeTruthy();
 		expect(await screen.findByText("4 шт")).toBeTruthy();
+		expect(screen.queryByText("Контроль")).toBeNull();
 		expect(screen.getAllByText("Наличные").length).toBeGreaterThan(0);
 		expect(await screen.findByText("1950.00 ₽")).toBeTruthy();
 		expect(screen.getAllByText("Распределитель").length).toBeGreaterThan(0);
@@ -1949,8 +1970,30 @@ describe("HomePage", () => {
 		fireEvent.click(screen.getByRole("button", { name: "Распределитель" }));
 		expect(await screen.findByRole("heading", { name: "Распределитель" })).toBeTruthy();
 		expect(await screen.findByText("Икра горбуши")).toBeTruthy();
+		const cashWithdrawalAction = screen.getByRole("button", { name: "Списать наличные" });
+		expect(cashWithdrawalAction.className).toContain("action-tile");
+		fireEvent.click(cashWithdrawalAction);
+		expect(await screen.findByRole("heading", { name: "Списать наличные" })).toBeTruthy();
+		expect(screen.getByRole("combobox", { name: "Распределитель" })).toHaveProperty("disabled", true);
+		fireEvent.change(screen.getByLabelText("Сумма, ₽"), { target: { value: "500" } });
+		fireEvent.change(screen.getByLabelText("Комментарий"), { target: { value: "Расход директора" } });
+		fireEvent.click(screen.getByRole("button", { name: "Списать" }));
+		await waitFor(() => {
+			expect(fetchMock).toHaveBeenCalledWith(
+				expect.stringContaining("/distributor/cash-withdrawals"),
+				expect.objectContaining({
+					method: "POST",
+					body: JSON.stringify({
+						distributorId: "dist1",
+						amountCents: 50000,
+						comment: "Расход директора",
+					}),
+				}),
+			);
+		});
+		expect(await screen.findByText("Наличные списаны")).toBeTruthy();
 
-		expect(fetchMock.mock.calls.every(([, init]) => (init?.method ?? "GET") === "GET")).toBe(true);
+		expect(fetchMock.mock.calls.filter(([, init]) => (init?.method ?? "GET") !== "GET")).toHaveLength(1);
 	});
 
 	it("lets a commercial manager create a client inside distributor sale and records sale", async () => {
@@ -2000,6 +2043,7 @@ describe("HomePage", () => {
 					cashBalance: {
 						distributorId: "dist1",
 						distributorName: "Распределитель Центральный",
+						active: true,
 						amountCents: 250000,
 						updatedAt: new Date(1).toISOString(),
 					},
