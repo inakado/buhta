@@ -62,6 +62,7 @@ type DistributorProductBalanceRecord = {
 	id: string;
 	distributorId: string;
 	productBatchId: string;
+	unitPriceCents: number;
 	quantity: number;
 	updatedAt: Date;
 	distributor: {
@@ -80,6 +81,10 @@ type ProductTransferRecord = {
 	productBatchId: string;
 	distributorId: string;
 	quantity: number;
+	baseUnitPriceCents: number;
+	unitPriceCents: number;
+	discountCentsPerUnit: number;
+	stockValueCents: number;
 	comment: string | null;
 	operationId: string;
 	actorUserId: string;
@@ -152,14 +157,17 @@ export function mapWorkshopProductBalance(record: WorkshopProductBalanceRecord):
 export function mapDistributorProductBalance(
 	record: DistributorProductBalanceRecord,
 ): DistributorProductBalanceItem {
+	const price = priceSnapshot(record.productBatch.priceCents, record.unitPriceCents);
+
 	return {
 		id: record.id,
 		distributorId: record.distributorId,
 		distributorName: record.distributor.name,
 		productBatchId: record.productBatchId,
 		productName: record.productBatch.productName,
-		priceCents: record.productBatch.priceCents,
+		...price,
 		quantity: record.quantity,
+		stockValueCents: record.quantity * price.unitPriceCents,
 		updatedAt: record.updatedAt.toISOString(),
 	};
 }
@@ -170,10 +178,30 @@ export function mapProductTransfer(record: ProductTransferRecord): ProductTransf
 		productBatchId: record.productBatchId,
 		distributorId: record.distributorId,
 		quantity: record.quantity,
+		baseUnitPriceCents: record.baseUnitPriceCents,
+		unitPriceCents: record.unitPriceCents,
+		discountCentsPerUnit: record.discountCentsPerUnit,
+		stockValueCents: record.stockValueCents,
 		comment: record.comment,
 		operationId: record.operationId,
 		actorUserId: record.actorUserId,
 		createdAt: record.createdAt.toISOString(),
+	};
+}
+
+function priceSnapshot(baseUnitPriceCents: number, unitPriceCents: number): {
+	baseUnitPriceCents: number;
+	unitPriceCents: number;
+	discounted: boolean;
+	discountCentsPerUnit: number;
+} {
+	const discountCentsPerUnit = Math.max(baseUnitPriceCents - unitPriceCents, 0);
+
+	return {
+		baseUnitPriceCents,
+		unitPriceCents,
+		discounted: discountCentsPerUnit > 0,
+		discountCentsPerUnit,
 	};
 }
 

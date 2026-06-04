@@ -70,6 +70,8 @@ Policy layer отвечает за доменные разрешения. Тек
 
 Текущая policy для дисконта, отмены и корректировок: `director` и `admin`. Если позже право нужно добавить коммерческому руководителю или другой роли, это должно быть одно изменение в policy matrix/helper и соответствующих тестах.
 
+Назначение дисконта защищено `discount.assign`: `POST /distributor/discounts` доступен `director` и `admin`. Backend принимает только id строки остатка, количество, новую итоговую цену и optional комментарий; исходную цену, базовую цену партии, сумму дисконта и affected balances он рассчитывает сам в transaction. Продажи, загрузки и возвраты не принимают цену от frontend: цена берется только из выбранной priced stock row.
+
 Read-only товарные остатки распределителя защищены `distributor.stock.read`. Это право есть у всех v1 ролей, включая `admin`, но endpoint не создает операции, не меняет остатки и не раскрывает наличный денежный баланс.
 
 Продажа с распределителя разделяет права чтения и записи: `GET /distributor/sale-options` и `POST /distributor/sales` требуют `distributor.sale.create`, а `GET /distributor/cash-balances` требует `distributor.cash.read`. Роли без `distributor.cash.read` не должны получать наличный баланс распределителя ни через API, ни через UI.

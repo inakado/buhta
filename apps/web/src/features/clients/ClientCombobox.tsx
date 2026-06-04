@@ -2,7 +2,7 @@
 
 import * as Popover from "@radix-ui/react-popover";
 import { Search, X } from "lucide-react";
-import { useId, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import type { Client } from "@buhta/shared";
 
 type ClientComboboxProps = {
@@ -29,11 +29,12 @@ export function ClientCombobox({
 	const selectedLabel = selectedClient?.name ?? (selectedClientId ? "Клиент выбран" : "");
 	const hasSelection = !!selectedClientId;
 	const hasQuery = query.trim().length > 0;
-	const showResults = !hasSelection && hasQuery;
+	const showResults = !hasSelection && open;
+	const visibleClients = useMemo(() => (hasQuery ? clients : clients.slice(0, 3)), [clients, hasQuery]);
 
 	function handleQueryChange(value: string) {
 		onQueryChange(value);
-		setOpen(value.trim().length > 0);
+		setOpen(true);
 	}
 
 	function handleClientSelect(clientId: string) {
@@ -48,7 +49,7 @@ export function ClientCombobox({
 	}
 
 	return (
-		<Popover.Root open={showResults && open} onOpenChange={setOpen}>
+		<Popover.Root open={showResults} onOpenChange={setOpen}>
 			<div className="client-combobox">
 				<Popover.Anchor asChild>
 					<div className="input-shell client-combobox-input-shell">
@@ -56,11 +57,11 @@ export function ClientCombobox({
 						<input
 							aria-autocomplete="list"
 							aria-controls={listId}
-							aria-expanded={showResults && open}
+							aria-expanded={showResults}
 							aria-label="Клиент"
 							onChange={(event) => handleQueryChange(event.target.value)}
 							onFocus={() => {
-								if (hasQuery) {
+								if (!hasSelection) {
 									setOpen(true);
 								}
 							}}
@@ -92,7 +93,7 @@ export function ClientCombobox({
 						role="listbox"
 						sideOffset={6}
 					>
-						{clients.map((client) => (
+						{visibleClients.map((client) => (
 							<button
 								aria-label={`Выбрать клиента ${client.name}`}
 								className="client-combobox-option"
@@ -105,7 +106,7 @@ export function ClientCombobox({
 							</button>
 						))}
 						{loading ? <p className="client-combobox-empty">Загрузка клиентов</p> : null}
-						{!loading && clients.length === 0 ? <p className="client-combobox-empty">Клиенты не найдены</p> : null}
+						{!loading && visibleClients.length === 0 ? <p className="client-combobox-empty">Клиенты не найдены</p> : null}
 					</Popover.Content>
 				</Popover.Portal>
 			</div>

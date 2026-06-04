@@ -38,6 +38,7 @@ type DistributorBalanceRecord = {
 	id: string;
 	distributorId: string;
 	productBatchId: string;
+	unitPriceCents: number;
 	quantity: number;
 	updatedAt: Date;
 	distributor: DistributorRecord;
@@ -48,6 +49,7 @@ type CourierBalanceRecord = {
 	id: string;
 	courierUserId: string;
 	productBatchId: string;
+	unitPriceCents: number;
 	quantity: number;
 	updatedAt: Date;
 	courier: UserRecord;
@@ -66,6 +68,10 @@ type CourierLoadRecord = {
 	distributorId: string;
 	productBatchId: string;
 	quantity: number;
+	baseUnitPriceCents: number;
+	unitPriceCents: number;
+	discountCentsPerUnit: number;
+	stockValueCents: number;
 	comment: string | null;
 	operationId: string;
 	actorUserId: string;
@@ -79,7 +85,10 @@ type CourierSaleRecord = {
 	productBatchId: string;
 	clientId: string;
 	quantity: number;
+	baseUnitPriceCents: number;
 	unitPriceCents: number;
+	discountCentsPerUnit: number;
+	discountTotalCents: number;
 	totalCents: number;
 	paymentMethod: string;
 	comment: string | null;
@@ -106,40 +115,47 @@ type CourierUnloadItemRecord = {
 	distributorProductBalanceId: string;
 	productBatchId: string;
 	quantity: number;
+	baseUnitPriceCents: number;
 	unitPriceCents: number;
+	discountCentsPerUnit: number;
 	stockValueCents: number;
 };
 
 export function mapCourierLoadOption(record: DistributorBalanceRecord): CourierLoadOption {
+	const price = priceSnapshot(record.productBatch.priceCents, record.unitPriceCents);
+
 	return {
 		distributorProductBalanceId: record.id,
 		distributorId: record.distributorId,
 		distributorName: record.distributor.name,
 		productBatchId: record.productBatchId,
 		productName: record.productBatch.productName,
-		unitPriceCents: record.productBatch.priceCents,
+		...price,
 		availableQuantity: record.quantity,
-		stockValueCents: record.quantity * record.productBatch.priceCents,
+		stockValueCents: record.quantity * price.unitPriceCents,
 		updatedAt: record.updatedAt.toISOString(),
 	};
 }
 
 export function mapDistributorBalanceAfter(record: DistributorBalanceRecord) {
+	const price = priceSnapshot(record.productBatch.priceCents, record.unitPriceCents);
+
 	return {
 		id: record.id,
 		distributorId: record.distributorId,
 		distributorName: record.distributor.name,
 		productBatchId: record.productBatchId,
 		productName: record.productBatch.productName,
-		priceCents: record.productBatch.priceCents,
+		...price,
 		quantity: record.quantity,
-		stockValueCents: record.quantity * record.productBatch.priceCents,
+		stockValueCents: record.quantity * price.unitPriceCents,
 		updatedAt: record.updatedAt.toISOString(),
 	};
 }
 
 export function mapCourierProductBalanceItem(record: CourierBalanceRecord): CourierProductBalanceItem {
 	const courierLogin = loginForUser(record.courier);
+	const price = priceSnapshot(record.productBatch.priceCents, record.unitPriceCents);
 
 	return {
 		id: record.id,
@@ -148,15 +164,16 @@ export function mapCourierProductBalanceItem(record: CourierBalanceRecord): Cour
 		courierDisplayName: record.courier.name ?? record.courier.displayUsername ?? courierLogin,
 		productBatchId: record.productBatchId,
 		productName: record.productBatch.productName,
-		unitPriceCents: record.productBatch.priceCents,
+		...price,
 		quantity: record.quantity,
-		stockValueCents: record.quantity * record.productBatch.priceCents,
+		stockValueCents: record.quantity * price.unitPriceCents,
 		updatedAt: record.updatedAt.toISOString(),
 	};
 }
 
 export function mapCourierSaleOption(record: CourierBalanceRecord): CourierSaleOption {
 	const courierLogin = loginForUser(record.courier);
+	const price = priceSnapshot(record.productBatch.priceCents, record.unitPriceCents);
 
 	return {
 		courierProductBalanceId: record.id,
@@ -165,21 +182,23 @@ export function mapCourierSaleOption(record: CourierBalanceRecord): CourierSaleO
 		courierDisplayName: displayNameForUser(record.courier, courierLogin),
 		productBatchId: record.productBatchId,
 		productName: record.productBatch.productName,
-		unitPriceCents: record.productBatch.priceCents,
+		...price,
 		availableQuantity: record.quantity,
-		stockValueCents: record.quantity * record.productBatch.priceCents,
+		stockValueCents: record.quantity * price.unitPriceCents,
 		updatedAt: record.updatedAt.toISOString(),
 	};
 }
 
 export function mapCourierUnloadProductOption(record: CourierBalanceRecord): CourierUnloadProductOption {
+	const price = priceSnapshot(record.productBatch.priceCents, record.unitPriceCents);
+
 	return {
 		courierProductBalanceId: record.id,
 		productBatchId: record.productBatchId,
 		productName: record.productBatch.productName,
-		unitPriceCents: record.productBatch.priceCents,
+		...price,
 		availableQuantity: record.quantity,
-		stockValueCents: record.quantity * record.productBatch.priceCents,
+		stockValueCents: record.quantity * price.unitPriceCents,
 		updatedAt: record.updatedAt.toISOString(),
 	};
 }
@@ -214,6 +233,10 @@ export function mapCourierLoad(record: CourierLoadRecord): CourierLoad {
 		distributorId: record.distributorId,
 		productBatchId: record.productBatchId,
 		quantity: record.quantity,
+		baseUnitPriceCents: record.baseUnitPriceCents,
+		unitPriceCents: record.unitPriceCents,
+		discountCentsPerUnit: record.discountCentsPerUnit,
+		stockValueCents: record.stockValueCents,
 		comment: record.comment,
 		operationId: record.operationId,
 		actorUserId: record.actorUserId,
@@ -229,7 +252,10 @@ export function mapCourierSale(record: CourierSaleRecord): CourierSale {
 		productBatchId: record.productBatchId,
 		clientId: record.clientId,
 		quantity: record.quantity,
+		baseUnitPriceCents: record.baseUnitPriceCents,
 		unitPriceCents: record.unitPriceCents,
+		discountCentsPerUnit: record.discountCentsPerUnit,
+		discountTotalCents: record.discountTotalCents,
 		totalCents: record.totalCents,
 		paymentMethod: record.paymentMethod === "cashless" ? "cashless" : "cash",
 		comment: record.comment,
@@ -260,7 +286,9 @@ export function mapCourierUnloadItem(record: CourierUnloadItemRecord): CourierUn
 		distributorProductBalanceId: record.distributorProductBalanceId,
 		productBatchId: record.productBatchId,
 		quantity: record.quantity,
+		baseUnitPriceCents: record.baseUnitPriceCents,
 		unitPriceCents: record.unitPriceCents,
+		discountCentsPerUnit: record.discountCentsPerUnit,
 		stockValueCents: record.stockValueCents,
 	};
 }
@@ -268,15 +296,17 @@ export function mapCourierUnloadItem(record: CourierUnloadItemRecord): CourierUn
 export function mapCourierUnloadDistributorProductBalance(
 	record: DistributorBalanceRecord,
 ): CourierUnloadDistributorProductBalance {
+	const price = priceSnapshot(record.productBatch.priceCents, record.unitPriceCents);
+
 	return {
 		id: record.id,
 		distributorId: record.distributorId,
 		distributorName: record.distributor.name,
 		productBatchId: record.productBatchId,
 		productName: record.productBatch.productName,
-		priceCents: record.productBatch.priceCents,
+		...price,
 		quantity: record.quantity,
-		stockValueCents: record.quantity * record.productBatch.priceCents,
+		stockValueCents: record.quantity * price.unitPriceCents,
 		updatedAt: record.updatedAt.toISOString(),
 	};
 }
@@ -336,4 +366,20 @@ function loginForUser(user: UserRecord): string {
 
 function displayNameForUser(user: UserRecord, fallback: string): string {
 	return user.name ?? user.displayUsername ?? fallback;
+}
+
+function priceSnapshot(baseUnitPriceCents: number, unitPriceCents: number): {
+	baseUnitPriceCents: number;
+	unitPriceCents: number;
+	discounted: boolean;
+	discountCentsPerUnit: number;
+} {
+	const discountCentsPerUnit = Math.max(baseUnitPriceCents - unitPriceCents, 0);
+
+	return {
+		baseUnitPriceCents,
+		unitPriceCents,
+		discounted: discountCentsPerUnit > 0,
+		discountCentsPerUnit,
+	};
 }

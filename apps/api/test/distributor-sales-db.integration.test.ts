@@ -17,7 +17,7 @@ const directorActor: Actor = {
 	login: "distributor-sales-director",
 	displayName: "Distributor Sales Director",
 	role: "director",
-	permissions: ["cash.withdraw", "distributor.cash.read"],
+	permissions: ["cash.withdraw", "discount.assign", "distributor.cash.read"],
 };
 const directorEmail = "distributor-sales-director@internal.buhta.local";
 const adminActor: Actor = {
@@ -25,7 +25,7 @@ const adminActor: Actor = {
 	login: "distributor-sales-admin",
 	displayName: "Distributor Sales Admin",
 	role: "admin",
-	permissions: ["cash.withdraw"],
+	permissions: ["cash.withdraw", "discount.assign"],
 };
 const adminEmail = "distributor-sales-admin@internal.buhta.local";
 
@@ -111,6 +111,7 @@ async function createSalesFixture(prefix: string, quantity = 3, priceCents = 125
 		data: {
 			distributorId: distributor.id,
 			productBatchId: productBatch.id,
+			unitPriceCents: productBatch.priceCents,
 			quantity,
 		},
 	});
@@ -172,7 +173,7 @@ async function cleanup() {
 			],
 		},
 	});
-	await prisma.distributorSale.deleteMany({
+		await prisma.distributorSale.deleteMany({
 		where: {
 			OR: [
 				{ actorUserId: salesActor.userId },
@@ -180,8 +181,16 @@ async function cleanup() {
 				{ clientId: { in: clientIds } },
 			],
 		},
-	});
-	await prisma.distributorCashBalance.deleteMany({
+		});
+		await prisma.productDiscountAssignment.deleteMany({
+			where: {
+				OR: [
+					{ actorUserId: { in: actorUserIds } },
+					{ distributorId: { in: distributorIds } },
+				],
+			},
+		});
+		await prisma.distributorCashBalance.deleteMany({
 		where: { distributorId: { in: distributorIds } },
 	});
 	await prisma.distributorProductBalance.deleteMany({
@@ -427,6 +436,181 @@ describe("Distributor sales real Postgres integration", () => {
 				cashBalanceBefore: 0,
 				cashBalanceAfter: 88050,
 			}),
+		});
+	});
+
+	it("assigns a discount by splitting priced stock and sells from the discounted row", async () => {
+		const fixture = await createSalesFixture("distributor-sales-discount-split", 5, 300000);
+
+		const discountResponse = await distributorService.assignDiscount(directorActor, {
+			distributorProductBalanceId: fixture.distributorProductBalance.id,
+			quantity: 2,
+			discountedUnitPriceCents: 250000,
+			comment: " сезонная цена ",
+		});
+
+		expect(discountResponse.discount).toMatchObject({
+			sourceDistributorProductBalanceId: fixture.distributorProductBalance.id,
+			distributorId: fixture.distributor.id,
+			productBatchId: fixture.productBatch.id,
+			quantity: 2,
+			baseUnitPriceCents: 300000,
+			sourceUnitPriceCents: 300000,
+			discountedUnitPriceCents: 250000,
+			discountCentsPerUnit: 50000,
+			stepDiscountCentsPerUnit: 50000,
+			discountTotalCents: 100000,
+			comment: "сезонная цена",
+			actorUserId: directorActor.userId,
+		});
+		expect(discountResponse.sourceBalance).toMatchObject({
+			id: fixture.distributorProductBalance.id,
+			unitPriceCents: 300000,
+			quantity: 3,
+			stockValueCents: 900000,
+		});
+		expect(discountResponse.discountedBalance).toMatchObject({
+			unitPriceCents: 250000,
+			discounted: true,
+			discountCentsPerUnit: 50000,
+			quantity: 2,
+			stockValueCents: 500000,
+		});
+		await expect(
+			prisma.auditLog.findFirstOrThrow({
+				where: {
+					action: "distributor.discount.assign",
+					entityId: discountResponse.discount.id,
+				},
+			}),
+		).resolves.toMatchObject({
+			details: expect.objectContaining({
+				sourceQuantityBefore: 5,
+				sourceQuantityAfter: 3,
+				discountedQuantityBefore: 0,
+				discountedQuantityAfter: 2,
+				baseUnitPriceCents: 300000,
+				sourceUnitPriceCents: 300000,
+				discountedUnitPriceCents: 250000,
+			}),
+		});
+
+		const saleResponse = await distributorService.createDistributorSale(salesActor, {
+			distributorProductBalanceId: discountResponse.discountedBalance.id,
+			clientId: fixture.client.id,
+			quantity: 1,
+			paymentMethod: "cash",
+		});
+
+		expect(saleResponse.sale).toMatchObject({
+			distributorProductBalanceId: discountResponse.discountedBalance.id,
+			baseUnitPriceCents: 300000,
+			unitPriceCents: 250000,
+			discountCentsPerUnit: 50000,
+			discountTotalCents: 50000,
+			totalCents: 250000,
+		});
+		expect(saleResponse.distributorProductBalance).toMatchObject({
+			id: discountResponse.discountedBalance.id,
+			quantity: 1,
+			stockValueCents: 250000,
+		});
+	});
+
+	it("upserts full-row discounts and computes repeated discount sale facts from the base price", async () => {
+		const fixture = await createSalesFixture("distributor-sales-discount-upsert", 5, 300000);
+		const existingDiscountedBalance = await prisma.distributorProductBalance.create({
+			data: {
+				distributorId: fixture.distributor.id,
+				productBatchId: fixture.productBatch.id,
+				unitPriceCents: 250000,
+				quantity: 1,
+			},
+		});
+
+		const fullDiscount = await distributorService.assignDiscount(directorActor, {
+			distributorProductBalanceId: fixture.distributorProductBalance.id,
+			quantity: 5,
+			discountedUnitPriceCents: 250000,
+		});
+
+		expect(fullDiscount.sourceBalance).toMatchObject({
+			id: fixture.distributorProductBalance.id,
+			quantity: 0,
+			stockValueCents: 0,
+		});
+		expect(fullDiscount.discountedBalance).toMatchObject({
+			id: existingDiscountedBalance.id,
+			unitPriceCents: 250000,
+			quantity: 6,
+			stockValueCents: 1500000,
+		});
+		expect(await prisma.distributorProductBalance.count({
+			where: {
+				distributorId: fixture.distributor.id,
+				productBatchId: fixture.productBatch.id,
+				unitPriceCents: 250000,
+			},
+		})).toBe(1);
+
+		const inventory = await distributorService.getInventory();
+		expect(inventory.items).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					id: existingDiscountedBalance.id,
+					unitPriceCents: 250000,
+					quantity: 6,
+				}),
+			]),
+		);
+		expect(inventory.items).not.toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					id: fixture.distributorProductBalance.id,
+					quantity: 0,
+				}),
+			]),
+		);
+
+		const repeatedDiscount = await distributorService.assignDiscount(directorActor, {
+			distributorProductBalanceId: existingDiscountedBalance.id,
+			quantity: 2,
+			discountedUnitPriceCents: 220000,
+		});
+
+		expect(repeatedDiscount.discount).toMatchObject({
+			baseUnitPriceCents: 300000,
+			sourceUnitPriceCents: 250000,
+			discountedUnitPriceCents: 220000,
+			discountCentsPerUnit: 80000,
+			stepDiscountCentsPerUnit: 30000,
+			discountTotalCents: 160000,
+		});
+		expect(repeatedDiscount.sourceBalance).toMatchObject({
+			id: existingDiscountedBalance.id,
+			unitPriceCents: 250000,
+			quantity: 4,
+		});
+		expect(repeatedDiscount.discountedBalance).toMatchObject({
+			unitPriceCents: 220000,
+			discounted: true,
+			discountCentsPerUnit: 80000,
+			quantity: 2,
+		});
+
+		const saleResponse = await distributorService.createDistributorSale(salesActor, {
+			distributorProductBalanceId: repeatedDiscount.discountedBalance.id,
+			clientId: fixture.client.id,
+			quantity: 1,
+			paymentMethod: "cashless",
+		});
+
+		expect(saleResponse.sale).toMatchObject({
+			baseUnitPriceCents: 300000,
+			unitPriceCents: 220000,
+			discountCentsPerUnit: 80000,
+			discountTotalCents: 80000,
+			totalCents: 220000,
 		});
 	});
 

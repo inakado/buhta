@@ -380,7 +380,10 @@ describe("ProductionService real Postgres integration", () => {
 			distributorName: "production-integration-transfer-distributor",
 			productBatchId: batch.id,
 			productName: "production-integration-transfer-template",
-			priceCents: 88050,
+			baseUnitPriceCents: 88050,
+			unitPriceCents: 88050,
+			discounted: false,
+			discountCentsPerUnit: 0,
 			quantity: 2,
 		});
 

@@ -125,10 +125,14 @@ Production baseline пишет audit operations:
 Distributor sales пишет audit operations:
 
 - `distributor.sale.create`.
+- `distributor.cash.withdraw`.
+- `distributor.discount.assign`.
 
 Courier sales пишет audit operations:
 
 - `courier.sale.create`.
+- `courier.stock.load.create`.
+- `courier.unload.create`.
 
 Справочники отключаются через `active=false`, без физического удаления. Шаблон продукции хранит название, связи на активные вид сырья и вид тары, а также цену за единицу в `priceCents`. Фасовки, нормативы и остатки не входят в catalog foundation.
 
@@ -139,22 +143,26 @@ Production balance baseline:
 - `raw_material_intake` и `packaging_intake` — факты поступления;
 - `product_batch` — выпущенная партия в статусе `in_workshop` со snapshot названий, единиц учета и цены.
 - `workshop_product_balance` — доступный остаток готовой продукции в цеху по выпущенной партии;
-- `distributor_product_balance` — товарный остаток распределителя по паре распределитель + партия продукции;
-- `product_transfer` — typed record факта перемещения партии из цеха на распределитель.
+- `distributor_product_balance` — товарный остаток распределителя по тройке распределитель + партия продукции + фактическая цена строки;
+- `product_transfer` — typed record факта перемещения партии из цеха на распределитель с price snapshot.
 
 Поступления и выпуск выполняются в Prisma transaction. Выпуск партии использует conditional decrement: сырье и тара списываются только если текущего остатка достаточно, иначе операция отклоняется и партия не создается.
 
 Выпуск партии в той же transaction создает `workshop_product_balance` с количеством выпущенной продукции. Перемещение на распределитель использует conditional decrement `workshop_product_balance.quantity >= requestedQuantity` и upsert/increment `distributor_product_balance`. `ProductBatch.status` не является источником доступного остатка, потому что партия может быть перемещена частично.
 
-Distributor inventory read model строится из ненулевых строк `distributor_product_balance` с join на `product_batch` и `distributor`. API считает `stockValueCents = quantity * product_batch.priceCents`, возвращает общий summary и summary по распределителям. Read endpoint не создает `operation`/`audit_log` и не моделирует cash balance.
+Distributor inventory read model строится из ненулевых строк `distributor_product_balance` с join на `product_batch` и `distributor`. API считает `stockValueCents = quantity * distributor_product_balance.unitPriceCents`, возвращает базовую цену партии (`baseUnitPriceCents`), фактическую цену строки (`unitPriceCents`), признак дисконта, общий summary и summary по распределителям. Read endpoint не создает `operation`/`audit_log` и не моделирует cash balance.
+
+Priced stock model: `ProductBatch.priceCents` остается базовой ценой партии, а `DistributorProductBalance.unitPriceCents` и `CourierProductBalance.unitPriceCents` являются фактической ценой конкретной строки остатка. Уникальность balance projections включает `unitPriceCents`, поэтому одна партия может одновременно существовать в нескольких ценовых строках. Продажи, загрузки, возвраты и перемещения хранят price snapshot: `baseUnitPriceCents`, `unitPriceCents`, `discountCentsPerUnit` и стоимость строки.
 
 Client master data хранится в таблице `client`. Телефон нормализуется в `phoneNormalized` удалением всех нецифровых символов и защищается unique constraint. Клиентская карточка является mutable master data: создание и редактирование пишут `operation`/`audit_log`, но будущие продажи должны ссылаться на `clientId` и показывать актуальные имя/телефон/описание через join на `Client`, а не хранить старые ошибочные данные как operational source of truth.
 
-Distributor sales добавляет `distributor_sale` как typed fact продажи и `distributor_cash_balance` как projection наличного баланса распределителя. Продажа создается по `distributorProductBalanceId`: backend сам загружает распределитель, партию и цену, затем в одной transaction делает conditional decrement товарного остатка, при наличной оплате upsert/increment cash projection, создает `Operation`, `DistributorSale` и `AuditLog`. `DistributorSale` хранит `unitPriceCents` и `totalCents`, поэтому будущие отчеты и корректировки не зависят от текущей цены шаблона или join-пересчета старого факта.
+Distributor sales добавляет `distributor_sale` как typed fact продажи и `distributor_cash_balance` как projection наличного баланса распределителя. Продажа создается по `distributorProductBalanceId`: backend сам загружает распределитель, партию и цену строки, затем в одной transaction делает conditional decrement товарного остатка, при наличной оплате upsert/increment cash projection, создает `Operation`, `DistributorSale` и `AuditLog`. `DistributorSale` хранит базовую цену партии, фактическую цену, дисконт за единицу, суммарный дисконт и `totalCents`, поэтому будущие отчеты и корректировки не зависят от текущей цены шаблона или join-пересчета старого факта.
 
-Courier load добавляет `courier_product_balance` как projection товарного остатка курьера по паре курьер + партия продукции и `courier_load` как typed fact загрузки. Загрузка создается по `distributorProductBalanceId`: backend сам загружает распределитель, партию и цену, затем в одной transaction делает conditional decrement `distributor_product_balance`, upsert/increment `courier_product_balance`, создает `Operation`, `CourierLoad` и `AuditLog`. Курьерский товарный баланс не делится по распределителям: после загрузки товар считается находящимся у курьера, а источник загрузки остается в `courier_load` и audit details.
+Courier load добавляет `courier_product_balance` как projection товарного остатка курьера по тройке курьер + партия продукции + фактическая цена строки и `courier_load` как typed fact загрузки. Загрузка создается по `distributorProductBalanceId`: backend сам загружает распределитель, партию и цену строки, затем в одной transaction делает conditional decrement `distributor_product_balance`, upsert/increment `courier_product_balance` с той же `unitPriceCents`, создает `Operation`, `CourierLoad` и `AuditLog`. Курьерский товарный баланс не делится по распределителям: после загрузки товар считается находящимся у курьера, а источник загрузки остается в `courier_load` и audit details.
 
-Courier sales добавляет `courier_sale` как typed fact продажи курьером и `courier_cash_balance` как projection наличного баланса курьера. Продажа создается по `courierProductBalanceId`: backend сам проверяет владельца строки, партию, клиента и цену, затем в одной transaction делает conditional decrement `courier_product_balance`, при наличной оплате upsert/increment `courier_cash_balance`, создает `Operation`, `CourierSale` и `AuditLog`. Для cash audit источником истины является результат increment: `cashAfter` берется из обновленной projection, а `cashBefore = cashAfter - totalCents`, чтобы параллельные наличные продажи не записывали устаревший before/after.
+Courier sales добавляет `courier_sale` как typed fact продажи курьером и `courier_cash_balance` как projection наличного баланса курьера. Продажа создается по `courierProductBalanceId`: backend сам проверяет владельца строки, партию, клиента и фактическую цену строки, затем в одной transaction делает conditional decrement `courier_product_balance`, при наличной оплате upsert/increment `courier_cash_balance`, создает `Operation`, `CourierSale` и `AuditLog`. Для cash audit источником истины является результат increment: `cashAfter` берется из обновленной projection, а `cashBefore = cashAfter - totalCents`, чтобы параллельные наличные продажи не записывали устаревший before/after.
+
+Distributor discount assignment добавляет typed fact `product_discount_assignment`. Операция `distributor.discount.assign` доступна Директору и администратору, делает conditional decrement исходной строки `distributor_product_balance`, upsert/increment целевой строки с новой `unitPriceCents`, сохраняет базовую цену партии, текущую цену исходной строки, новую цену, общий дисконт и шаг текущего снижения. Audit before/after рассчитывается от результатов успешного update/upsert, а не от предварительного чтения.
 
 Базовый принцип для следующих доменных операций:
 

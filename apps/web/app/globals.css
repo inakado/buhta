@@ -852,6 +852,22 @@ button:disabled {
 	line-height: 1.2;
 }
 
+.operation-product-option-title {
+	display: inline-flex;
+	align-items: center;
+	min-width: 0;
+	gap: 5px;
+}
+
+.operation-product-option-title strong {
+	min-width: 0;
+}
+
+.operation-product-discount-icon {
+	flex: 0 0 auto;
+	color: #667c3b;
+}
+
 .client-combobox-option span,
 .client-combobox-empty {
 	color: var(--text-muted);
@@ -1573,9 +1589,68 @@ button:disabled {
 	line-height: 1.15;
 }
 
+.inventory-product-title {
+	display: inline-flex;
+	align-items: center;
+	max-width: 100%;
+	gap: 5px;
+}
+
+.inventory-product-title strong {
+	display: inline;
+	min-width: 0;
+}
+
+.inventory-table-quantity .inventory-price-line {
+	display: inline-flex;
+	align-items: center;
+	flex-wrap: nowrap;
+	justify-content: flex-end;
+	gap: 4px;
+	color: var(--base-black);
+	font-weight: var(--font-weight-label);
+}
+
+.inventory-discount-icon {
+	flex: 0 0 auto;
+	color: #667c3b;
+}
+
+.inventory-table-quantity .inventory-price-before {
+	display: inline-flex;
+	align-items: center;
+	justify-content: flex-end;
+	color: var(--text-muted);
+	text-decoration: line-through;
+	text-decoration-thickness: 1px;
+	text-underline-offset: 2px;
+}
+
 .inventory-table-quantity,
 .inventory-table-total {
 	text-align: right;
+}
+
+.inventory-inline-action {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-height: 28px;
+	margin-top: 6px;
+	border: 1px solid var(--line);
+	border-radius: 999px;
+	background: var(--base-white);
+	color: var(--base-black);
+	font: inherit;
+	font-size: 11px;
+	font-weight: var(--font-weight-label);
+	line-height: 1;
+	padding: 0 9px;
+	white-space: nowrap;
+}
+
+.inventory-inline-action:disabled {
+	color: var(--text-muted);
 }
 
 .unload-list {
@@ -1754,10 +1829,51 @@ button:disabled {
 	width: 100%;
 }
 
-.cash-withdrawal-panel {
+.cash-withdrawal-panel,
+.discount-panel {
 	display: flex;
 	flex-direction: column;
 	gap: 12px;
+}
+
+.discount-source-card {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	border: 1px solid var(--line);
+	border-radius: 16px;
+	background: var(--surface-input);
+	padding: 10px 12px;
+}
+
+.discount-source-card > div {
+	min-width: 0;
+}
+
+.discount-source-card strong,
+.discount-source-card span {
+	display: block;
+	overflow-wrap: anywhere;
+}
+
+.discount-source-card strong {
+	color: var(--base-black);
+	font-size: 14px;
+	font-weight: var(--font-weight-emphasis);
+	line-height: 1.15;
+}
+
+.discount-source-card span {
+	margin-top: 4px;
+	color: var(--text-muted);
+	font-size: 11px;
+	line-height: 1.15;
+}
+
+.form-actions {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 8px;
 }
 
 .cash-withdrawal-summary {

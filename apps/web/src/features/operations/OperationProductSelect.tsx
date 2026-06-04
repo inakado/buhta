@@ -1,10 +1,11 @@
 "use client";
 
 import * as Popover from "@radix-ui/react-popover";
-import { Search, X } from "lucide-react";
+import { BadgePercent, Search, X } from "lucide-react";
 import { useId, useMemo, useState } from "react";
 
 export type OperationProductSelectOption = {
+	discounted?: boolean;
 	id: string;
 	label: string;
 	meta: string;
@@ -32,12 +33,11 @@ export function OperationProductSelect({
 	const selectedOption = options.find((option) => option.id === value);
 	const selectedLabel = selectedOption ? `${selectedOption.label} · ${selectedOption.meta}` : "";
 	const hasSelection = !!value;
-	const hasQuery = query.trim().length > 0;
-	const showResults = !hasSelection && hasQuery;
+	const showResults = !hasSelection && open;
 	const normalizedQuery = query.trim().toLowerCase();
 	const visibleOptions = useMemo(() => {
 		if (!normalizedQuery) {
-			return options;
+			return options.slice(0, 3);
 		}
 
 		return options.filter((option) =>
@@ -53,24 +53,24 @@ export function OperationProductSelect({
 
 	function handleQueryChange(nextQuery: string) {
 		setQuery(nextQuery);
-		setOpen(nextQuery.trim().length > 0);
+		setOpen(true);
 	}
 
 	return (
 		<div className="field operation-product-select-field">
 			<span id={labelId}>{label}</span>
-			<Popover.Root open={showResults && open} onOpenChange={setOpen}>
+			<Popover.Root open={showResults} onOpenChange={setOpen}>
 				<Popover.Anchor asChild>
 					<div className="input-shell client-combobox-input-shell operation-product-combobox-input-shell">
 						<Search aria-hidden className="client-combobox-icon" size={18} />
 						<input
 							aria-autocomplete="list"
 							aria-controls={listId}
-							aria-expanded={showResults && open}
+							aria-expanded={showResults}
 							aria-labelledby={labelId}
 							onChange={(event) => handleQueryChange(event.target.value)}
 							onFocus={() => {
-								if (hasQuery) {
+								if (!hasSelection) {
 									setOpen(true);
 								}
 							}}
@@ -80,6 +80,14 @@ export function OperationProductSelect({
 							type="search"
 							value={hasSelection ? selectedLabel : query}
 						/>
+						{selectedOption?.discounted ? (
+							<BadgePercent
+								aria-hidden
+								className="operation-product-discount-icon"
+								size={16}
+								strokeWidth={2.2}
+							/>
+						) : null}
 						{hasSelection ? (
 							<button
 								aria-label="Очистить продукцию"
@@ -114,7 +122,18 @@ export function OperationProductSelect({
 								role="option"
 								type="button"
 							>
-								<strong>{option.label}</strong>
+								<span className="operation-product-option-title">
+									<strong>{option.label}</strong>
+									{option.discounted ? (
+										<BadgePercent
+											aria-hidden
+											className="operation-product-discount-icon"
+											size={14}
+											strokeWidth={2.2}
+										/>
+									) : null}
+									{option.discounted ? <span className="sr-only">Цена снижена</span> : null}
+								</span>
 								<span>{option.meta}</span>
 							</button>
 						))}

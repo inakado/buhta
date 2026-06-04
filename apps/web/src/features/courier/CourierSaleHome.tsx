@@ -219,6 +219,7 @@ export function CourierSaleHome({
 					label="Продукция"
 					onValueChange={setSelectedBalanceId}
 					options={(saleOptions.data?.items ?? []).map((item) => ({
+						discounted: item.discounted,
 						id: item.courierProductBalanceId,
 						label: item.productName,
 						meta: `${item.availableQuantity} шт · ${formatRubles(item.unitPriceCents)} ₽`,

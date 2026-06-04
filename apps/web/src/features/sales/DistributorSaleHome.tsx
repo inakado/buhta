@@ -215,6 +215,7 @@ export function DistributorSaleHome({
 					label="Продукция"
 					onValueChange={setSelectedBalanceId}
 					options={(saleOptions.data?.items ?? []).map((item) => ({
+						discounted: item.discounted,
 						id: item.distributorProductBalanceId,
 						label: item.productName,
 						meta: `${item.availableQuantity} шт · ${formatRubles(item.unitPriceCents)} ₽`,

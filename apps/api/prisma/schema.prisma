@@ -33,6 +33,7 @@ model User {
   courierSales       CourierSale[]           @relation("CourierSaleCourier")
   courierUnloads     CourierUnload[]         @relation("CourierUnloadCourier")
   distributorCashWithdrawals DistributorCashWithdrawal[] @relation("DistributorCashWithdrawalActor")
+  productDiscountAssignments ProductDiscountAssignment[] @relation("ProductDiscountAssignmentActor")
   createdProductionNotifications   ProductionNotification[] @relation("ProductionNotificationCreatedBy")
   completedProductionNotifications ProductionNotification[] @relation("ProductionNotificationCompletedBy")
 
@@ -103,6 +104,7 @@ model Operation {
   productTransfers   ProductTransfer[]
   distributorSales   DistributorSale[]
   distributorCashWithdrawals DistributorCashWithdrawal[]
+  productDiscountAssignments ProductDiscountAssignment[]
   courierLoads       CourierLoad[]
   courierSales       CourierSale[]
   courierUnloads     CourierUnload[]
@@ -191,6 +193,7 @@ model Distributor {
   cashBalance      DistributorCashBalance?
   sales            DistributorSale[]
   cashWithdrawals  DistributorCashWithdrawal[]
+  productDiscountAssignments ProductDiscountAssignment[]
   courierLoads     CourierLoad[]
   courierUnloads   CourierUnload[]
 
@@ -313,6 +316,7 @@ model ProductBatch {
   courierLoads                CourierLoad[]
   courierSales                CourierSale[]
   courierUnloadItems          CourierUnloadItem[]
+  productDiscountAssignments  ProductDiscountAssignment[]
 
   @@index([productTemplateId])
   @@index([actorUserId])
@@ -334,6 +338,7 @@ model DistributorProductBalance {
   id             String            @id @default(cuid())
   distributorId  String
   productBatchId String
+  unitPriceCents Int
   quantity       Int
   updatedAt      DateTime          @updatedAt
   distributor    Distributor       @relation(fields: [distributorId], references: [id], onDelete: Restrict)
@@ -341,8 +346,10 @@ model DistributorProductBalance {
   sales          DistributorSale[]
   courierLoads   CourierLoad[]
   unloadItems    CourierUnloadItem[]
+  sourceDiscountAssignments ProductDiscountAssignment[] @relation("ProductDiscountSourceBalance")
+  discountedDiscountAssignments ProductDiscountAssignment[] @relation("ProductDiscountDiscountedBalance")
 
-  @@unique([distributorId, productBatchId])
+  @@unique([distributorId, productBatchId, unitPriceCents])
   @@index([distributorId])
   @@index([productBatchId])
   @@map("distributor_product_balance")
@@ -353,6 +360,10 @@ model ProductTransfer {
   productBatchId String
   distributorId  String
   quantity       Int
+  baseUnitPriceCents Int
+  unitPriceCents Int
+  discountCentsPerUnit Int
+  stockValueCents Int
   comment        String?
   operationId    String       @unique
   actorUserId    String
@@ -402,7 +413,10 @@ model DistributorSale {
   productBatchId              String
   clientId                    String
   quantity                    Int
+  baseUnitPriceCents          Int
   unitPriceCents              Int
+  discountCentsPerUnit        Int             @default(0)
+  discountTotalCents          Int             @default(0)
   totalCents                  Int
   paymentMethod               String
   comment                     String?
@@ -427,6 +441,7 @@ model CourierProductBalance {
   id             String        @id @default(cuid())
   courierUserId  String
   productBatchId String
+  unitPriceCents Int
   quantity       Int
   updatedAt      DateTime      @updatedAt
   courier        User          @relation("CourierProductBalanceCourier", fields: [courierUserId], references: [id], onDelete: Restrict)
@@ -434,7 +449,7 @@ model CourierProductBalance {
   sales          CourierSale[]
   unloadItems    CourierUnloadItem[]
 
-  @@unique([courierUserId, productBatchId])
+  @@unique([courierUserId, productBatchId, unitPriceCents])
   @@index([courierUserId])
   @@index([productBatchId])
   @@map("courier_product_balance")
@@ -457,6 +472,10 @@ model CourierLoad {
   distributorId               String
   productBatchId              String
   quantity                    Int
+  baseUnitPriceCents          Int
+  unitPriceCents              Int
+  discountCentsPerUnit        Int
+  stockValueCents             Int
   comment                     String?
   operationId                 String                    @unique
   actorUserId                 String
@@ -482,7 +501,10 @@ model CourierSale {
   productBatchId          String
   clientId                String
   quantity                Int
+  baseUnitPriceCents      Int
   unitPriceCents          Int
+  discountCentsPerUnit    Int      @default(0)
+  discountTotalCents      Int      @default(0)
   totalCents              Int
   paymentMethod           String
   comment                 String?
@@ -532,7 +554,9 @@ model CourierUnloadItem {
   distributorProductBalanceId String
   productBatchId              String
   quantity                    Int
+  baseUnitPriceCents          Int
   unitPriceCents              Int
+  discountCentsPerUnit        Int
   stockValueCents             Int
   courierUnload               CourierUnload            @relation(fields: [courierUnloadId], references: [id], onDelete: Restrict)
   courierProductBalance       CourierProductBalance     @relation(fields: [courierProductBalanceId], references: [id], onDelete: Restrict)
@@ -544,6 +568,39 @@ model CourierUnloadItem {
   @@index([distributorProductBalanceId])
   @@index([productBatchId])
   @@map("courier_unload_item")
+}
+
+model ProductDiscountAssignment {
+  id                                    String                    @id @default(cuid())
+  sourceDistributorProductBalanceId     String
+  discountedDistributorProductBalanceId String
+  distributorId                         String
+  productBatchId                        String
+  quantity                              Int
+  baseUnitPriceCents                    Int
+  sourceUnitPriceCents                  Int
+  discountedUnitPriceCents              Int
+  discountCentsPerUnit                  Int
+  stepDiscountCentsPerUnit              Int
+  discountTotalCents                    Int
+  comment                               String?
+  operationId                           String                    @unique
+  actorUserId                           String
+  createdAt                             DateTime                  @default(now())
+  sourceDistributorProductBalance       DistributorProductBalance @relation("ProductDiscountSourceBalance", fields: [sourceDistributorProductBalanceId], references: [id], onDelete: Restrict)
+  discountedDistributorProductBalance   DistributorProductBalance @relation("ProductDiscountDiscountedBalance", fields: [discountedDistributorProductBalanceId], references: [id], onDelete: Restrict)
+  distributor                           Distributor               @relation(fields: [distributorId], references: [id], onDelete: Restrict)
+  productBatch                          ProductBatch              @relation(fields: [productBatchId], references: [id], onDelete: Restrict)
+  operation                             Operation                 @relation(fields: [operationId], references: [id], onDelete: Restrict)
+  actor                                 User                      @relation("ProductDiscountAssignmentActor", fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  @@index([sourceDistributorProductBalanceId])
+  @@index([discountedDistributorProductBalanceId])
+  @@index([distributorId])
+  @@index([productBatchId])
+  @@index([actorUserId])
+  @@index([createdAt])
+  @@map("product_discount_assignment")
 }
 
 model ProductionNotification {

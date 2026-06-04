@@ -9,6 +9,8 @@ import type {
 	CreateDistributorRequest,
 	CreateDistributorCashWithdrawalRequest,
 	CreateDistributorSaleRequest,
+	AssignDistributorDiscountRequest,
+	AssignDistributorDiscountResponse,
 	CreatePackagingTypeRequest,
 	CreatePackagingIntakeRequest,
 	CreateProductBatchRequest,
@@ -415,6 +417,15 @@ export async function createDistributorCashWithdrawal(
 	input: CreateDistributorCashWithdrawalRequest,
 ): Promise<DistributorCashWithdrawalResponse> {
 	return fetchJson<DistributorCashWithdrawalResponse>("/distributor/cash-withdrawals", {
+		method: "POST",
+		body: JSON.stringify(input),
+	});
+}
+
+export async function assignDistributorDiscount(
+	input: AssignDistributorDiscountRequest,
+): Promise<AssignDistributorDiscountResponse> {
+	return fetchJson<AssignDistributorDiscountResponse>("/distributor/discounts", {
 		method: "POST",
 		body: JSON.stringify(input),
 	});

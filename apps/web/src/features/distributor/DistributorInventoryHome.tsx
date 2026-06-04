@@ -1,18 +1,30 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Banknote, Box } from "lucide-react";
+import { BadgePercent, Banknote, Box } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { formatMoneyCents, moneyCents, rublePriceToCents } from "@buhta/shared";
-import { createDistributorCashWithdrawal, getDistributorCashBalances, getDistributorInventory } from "../../lib/api-client";
+import {
+	formatMoneyCents,
+	moneyCents,
+	rublePriceToCents,
+	type DistributorInventoryItem,
+} from "@buhta/shared";
+import {
+	assignDistributorDiscount,
+	createDistributorCashWithdrawal,
+	getDistributorCashBalances,
+	getDistributorInventory,
+} from "../../lib/api-client";
 import { DistributorStockList } from "./DistributorStockList";
 
 export function DistributorInventoryHome({
+	canAssignDiscount = false,
 	canWithdrawCash = false,
 	online = true,
 	showCashBalance = false,
 	title = "Остатки",
 }: {
+	canAssignDiscount?: boolean;
 	canWithdrawCash?: boolean;
 	online?: boolean;
 	showCashBalance?: boolean;
@@ -23,7 +35,12 @@ export function DistributorInventoryHome({
 	const [selectedDistributorId, setSelectedDistributorId] = useState("");
 	const [amountRubles, setAmountRubles] = useState("");
 	const [comment, setComment] = useState("");
+	const [discountItem, setDiscountItem] = useState<DistributorInventoryItem | null>(null);
+	const [discountQuantity, setDiscountQuantity] = useState("");
+	const [discountPriceRubles, setDiscountPriceRubles] = useState("");
+	const [discountComment, setDiscountComment] = useState("");
 	const [localError, setLocalError] = useState("");
+	const [discountError, setDiscountError] = useState("");
 	const [successMessage, setSuccessMessage] = useState("");
 	const inventory = useQuery({
 		queryKey: ["distributor", "inventory"],
@@ -50,6 +67,10 @@ export function DistributorInventoryHome({
 	const availableCashCents = selectedCashItem?.amountCents ?? 0;
 	const remainingCashCents = Math.max(availableCashCents - amountCents, 0);
 	const showWithdrawalAction = canWithdrawCash && showCashBalance;
+	const parsedDiscountQuantity = parsePositiveInteger(discountQuantity);
+	const parsedDiscountPriceCents = parseAmountCents(discountPriceRubles);
+	const discountPriceCents = parsedDiscountPriceCents.ok ? parsedDiscountPriceCents.value : 0;
+	const selectedDiscountQuantity = parsedDiscountQuantity.ok ? parsedDiscountQuantity.value : 0;
 	const withdrawal = useMutation({
 		mutationFn: () => createDistributorCashWithdrawal({
 			distributorId: selectedDistributorId,
@@ -65,12 +86,50 @@ export function DistributorInventoryHome({
 			await queryClient.invalidateQueries({ queryKey: ["distributor", "cash-balances"] });
 		},
 	});
+	const discountAssignment = useMutation({
+		mutationFn: () => {
+			if (!discountItem || !parsedDiscountQuantity.ok || !parsedDiscountPriceCents.ok) {
+				throw new Error("Заполните параметры дисконта.");
+			}
+
+			return assignDistributorDiscount({
+				distributorProductBalanceId: discountItem.id,
+				quantity: parsedDiscountQuantity.value,
+				discountedUnitPriceCents: parsedDiscountPriceCents.value,
+				...(discountComment.trim() ? { comment: discountComment } : {}),
+			});
+		},
+		onSuccess: async () => {
+			setDiscountItem(null);
+			setDiscountQuantity("");
+			setDiscountPriceRubles("");
+			setDiscountComment("");
+			setDiscountError("");
+			setSuccessMessage("Цена снижена");
+			await Promise.all([
+				queryClient.invalidateQueries({ queryKey: ["distributor", "inventory"] }),
+				queryClient.invalidateQueries({ queryKey: ["distributor", "sale-options"] }),
+				queryClient.invalidateQueries({ queryKey: ["courier", "load-options"] }),
+			]);
+		},
+	});
 	const withdrawDisabled = !online
 		|| withdrawal.isPending
 		|| !selectedCashItem
 		|| !parsedAmountCents.ok
 		|| amountCents <= 0
 		|| amountCents > availableCashCents;
+	const discountDisabled = !online
+		|| discountAssignment.isPending
+		|| !discountItem
+		|| !parsedDiscountQuantity.ok
+		|| selectedDiscountQuantity <= 0
+		|| selectedDiscountQuantity > (discountItem?.quantity ?? 0)
+		|| !parsedDiscountPriceCents.ok
+		|| discountPriceCents <= 0
+		|| discountPriceCents >= (discountItem?.unitPriceCents ?? 0);
+	const discountBeforeValueCents = (discountItem?.unitPriceCents ?? 0) * selectedDiscountQuantity;
+	const discountStockValueCents = parsedDiscountPriceCents.ok ? selectedDiscountQuantity * discountPriceCents : 0;
 
 	useEffect(() => {
 		if (activeCashItems.length === 1) {
@@ -105,6 +164,51 @@ export function DistributorInventoryHome({
 		}
 
 		withdrawal.mutate();
+	}
+
+	function openDiscountForm(item: DistributorInventoryItem) {
+		const suggestedPriceCents = Math.max(item.unitPriceCents - 100, 1);
+
+		setDiscountItem(item);
+		setDiscountQuantity(String(item.quantity));
+		setDiscountPriceRubles(formatMoneyCents(moneyCents(suggestedPriceCents)));
+		setDiscountComment("");
+		setDiscountError("");
+		setLocalError("");
+		setSuccessMessage("");
+	}
+
+	function handleDiscountSubmit(event: FormEvent<HTMLFormElement>) {
+		event.preventDefault();
+		setDiscountError("");
+		setSuccessMessage("");
+
+		if (!online) {
+			setDiscountError("Нет соединения.");
+			return;
+		}
+		if (!discountItem) {
+			setDiscountError("Выберите строку остатка.");
+			return;
+		}
+		if (!parsedDiscountQuantity.ok || selectedDiscountQuantity <= 0) {
+			setDiscountError("Укажите количество.");
+			return;
+		}
+		if (selectedDiscountQuantity > discountItem.quantity) {
+			setDiscountError("Количество больше остатка.");
+			return;
+		}
+		if (!parsedDiscountPriceCents.ok || discountPriceCents <= 0) {
+			setDiscountError("Укажите новую цену.");
+			return;
+		}
+		if (discountPriceCents >= discountItem.unitPriceCents) {
+			setDiscountError("Новая цена должна быть ниже текущей.");
+			return;
+		}
+
+		discountAssignment.mutate();
 	}
 
 	return (
@@ -149,8 +253,8 @@ export function DistributorInventoryHome({
 				</div>
 			) : null}
 
-			{showWithdrawalAction && withdrawalOpen ? (
-				<form className="form-panel cash-withdrawal-panel" onSubmit={handleWithdrawSubmit}>
+				{showWithdrawalAction && withdrawalOpen ? (
+					<form className="form-panel cash-withdrawal-panel" onSubmit={handleWithdrawSubmit}>
 					<div className="section-heading compact">
 						<h2>Списать наличные</h2>
 					</div>
@@ -205,10 +309,86 @@ export function DistributorInventoryHome({
 					<button className="primary-button" disabled={withdrawDisabled} type="submit">
 						Списать
 					</button>
-				</form>
-			) : null}
+					</form>
+				) : null}
 
-			{successMessage ? <p className="success-inline">{successMessage}</p> : null}
+				{canAssignDiscount && discountItem ? (
+					<form className="form-panel discount-panel" onSubmit={handleDiscountSubmit}>
+						<div className="section-heading compact">
+							<h2>Снизить цену</h2>
+							<span>{discountItem.productName}</span>
+						</div>
+						<div className="discount-source-card">
+							<BadgePercent aria-hidden size={18} />
+							<div>
+								<strong>{formatRubles(discountItem.unitPriceCents)}/шт</strong>
+								<span>{discountItem.distributorName} · доступно {discountItem.quantity} шт</span>
+							</div>
+						</div>
+						<label className="field">
+							<span>Количество</span>
+							<input
+								inputMode="numeric"
+								onChange={(event) => setDiscountQuantity(event.target.value)}
+								value={discountQuantity}
+							/>
+						</label>
+						<label className="field">
+							<span>Новая цена, ₽</span>
+							<input
+								inputMode="decimal"
+								onChange={(event) => setDiscountPriceRubles(event.target.value)}
+								value={discountPriceRubles}
+							/>
+						</label>
+						<label className="field">
+							<span>Комментарий</span>
+							<textarea
+								onChange={(event) => setDiscountComment(event.target.value)}
+								rows={2}
+								value={discountComment}
+							/>
+						</label>
+						<div className="cash-withdrawal-summary">
+							<div>
+								<span>Было</span>
+								<MoneyValue valueCents={discountBeforeValueCents} />
+							</div>
+							<div>
+								<span>Станет</span>
+								<MoneyValue valueCents={discountStockValueCents} />
+							</div>
+							<div>
+								<span>Скидка</span>
+								<MoneyValue valueCents={Math.max(discountBeforeValueCents - discountStockValueCents, 0)} />
+							</div>
+						</div>
+						{discountError ? <p className="form-error">{discountError}</p> : null}
+						{discountAssignment.isError ? <p className="form-error">{discountAssignment.error.message}</p> : null}
+						{discountDisabled ? (
+							<p className="muted">
+								{getDiscountBlockReason(
+									online,
+									discountItem,
+									parsedDiscountQuantity,
+									parsedDiscountPriceCents.ok,
+									discountPriceCents,
+									discountAssignment.isPending,
+								)}
+							</p>
+						) : null}
+						<div className="form-actions">
+							<button className="secondary-button" onClick={() => setDiscountItem(null)} type="button">
+								Отмена
+							</button>
+							<button className="primary-button" disabled={discountDisabled} type="submit">
+								Назначить
+							</button>
+						</div>
+					</form>
+				) : null}
+
+				{successMessage ? <p className="success-inline">{successMessage}</p> : null}
 
 			{inventory.isLoading ? <p className="muted">Загрузка остатков распределителя</p> : null}
 			{inventory.isError ? <p className="form-error">{inventory.error.message}</p> : null}
@@ -237,7 +417,10 @@ export function DistributorInventoryHome({
 				</div>
 			) : null}
 
-			<DistributorStockList items={data?.items ?? []} />
+				<DistributorStockList
+					items={data?.items ?? []}
+					{...(canAssignDiscount ? { onAssignDiscount: openDiscountForm } : {})}
+				/>
 		</section>
 	);
 }
@@ -252,6 +435,15 @@ function parseAmountCents(value: string): { ok: true; value: number } | { ok: fa
 	} catch {
 		return { ok: false };
 	}
+}
+
+function parsePositiveInteger(value: string): { ok: true; value: number } | { ok: false } {
+	const normalized = value.trim();
+	if (!/^\d+$/.test(normalized)) {
+		return { ok: false };
+	}
+	const parsed = Number(normalized);
+	return Number.isSafeInteger(parsed) && parsed > 0 ? { ok: true, value: parsed } : { ok: false };
 }
 
 function getWithdrawalBlockReason(
@@ -279,6 +471,39 @@ function getWithdrawalBlockReason(
 	}
 	if (amountCents > availableCashCents) {
 		return "Сумма больше доступных наличных.";
+	}
+
+	return "";
+}
+
+function getDiscountBlockReason(
+	online: boolean,
+	item: DistributorInventoryItem | null,
+	quantityValue: { ok: true; value: number } | { ok: false },
+	validPrice: boolean,
+	priceCents: number,
+	pending: boolean,
+): string {
+	if (!online) {
+		return "Нет соединения.";
+	}
+	if (pending) {
+		return "Назначаем дисконт.";
+	}
+	if (!item) {
+		return "Выберите строку остатка.";
+	}
+	if (!quantityValue.ok || quantityValue.value <= 0) {
+		return "Укажите количество.";
+	}
+	if (quantityValue.value > item.quantity) {
+		return "Количество больше остатка.";
+	}
+	if (!validPrice || priceCents <= 0) {
+		return "Укажите новую цену.";
+	}
+	if (priceCents >= item.unitPriceCents) {
+		return "Новая цена должна быть ниже текущей.";
 	}
 
 	return "";

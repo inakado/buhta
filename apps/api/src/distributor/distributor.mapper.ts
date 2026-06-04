@@ -6,12 +6,14 @@ import type {
 	DistributorInventoryDistributorSummary,
 	DistributorInventoryItem,
 	DistributorInventorySummary,
+	ProductDiscountAssignment,
 } from "@buhta/shared";
 
 type DistributorInventoryRecord = {
 	id: string;
 	distributorId: string;
 	productBatchId: string;
+	unitPriceCents: number;
 	quantity: number;
 	updatedAt: Date;
 	distributor: {
@@ -45,6 +47,9 @@ type DistributorSaleRecord = {
 	clientId: string;
 	quantity: number;
 	unitPriceCents: number;
+	baseUnitPriceCents: number;
+	discountCentsPerUnit: number;
+	discountTotalCents: number;
 	totalCents: number;
 	paymentMethod: string;
 	comment: string | null;
@@ -63,8 +68,28 @@ type DistributorCashWithdrawalRecord = {
 	createdAt: Date;
 };
 
+type ProductDiscountAssignmentRecord = {
+	id: string;
+	sourceDistributorProductBalanceId: string;
+	discountedDistributorProductBalanceId: string;
+	distributorId: string;
+	productBatchId: string;
+	quantity: number;
+	baseUnitPriceCents: number;
+	sourceUnitPriceCents: number;
+	discountedUnitPriceCents: number;
+	discountCentsPerUnit: number;
+	stepDiscountCentsPerUnit: number;
+	discountTotalCents: number;
+	comment: string | null;
+	operationId: string;
+	actorUserId: string;
+	createdAt: Date;
+};
+
 export function mapDistributorInventoryItem(record: DistributorInventoryRecord): DistributorInventoryItem {
-	const stockValueCents = record.quantity * record.productBatch.priceCents;
+	const price = priceSnapshot(record.productBatch.priceCents, record.unitPriceCents);
+	const stockValueCents = record.quantity * price.unitPriceCents;
 
 	return {
 		id: record.id,
@@ -72,7 +97,7 @@ export function mapDistributorInventoryItem(record: DistributorInventoryRecord):
 		distributorName: record.distributor.name,
 		productBatchId: record.productBatchId,
 		productName: record.productBatch.productName,
-		priceCents: record.productBatch.priceCents,
+		...price,
 		quantity: record.quantity,
 		stockValueCents,
 		updatedAt: record.updatedAt.toISOString(),
@@ -80,7 +105,8 @@ export function mapDistributorInventoryItem(record: DistributorInventoryRecord):
 }
 
 export function mapDistributorSaleStockItem(record: DistributorSaleOptionRecord): DistributorSaleStockItem {
-	const stockValueCents = record.quantity * record.productBatch.priceCents;
+	const price = priceSnapshot(record.productBatch.priceCents, record.unitPriceCents);
+	const stockValueCents = record.quantity * price.unitPriceCents;
 
 	return {
 		distributorProductBalanceId: record.id,
@@ -88,7 +114,7 @@ export function mapDistributorSaleStockItem(record: DistributorSaleOptionRecord)
 		distributorName: record.distributor.name,
 		productBatchId: record.productBatchId,
 		productName: record.productBatch.productName,
-		unitPriceCents: record.productBatch.priceCents,
+		...price,
 		availableQuantity: record.quantity,
 		stockValueCents,
 		updatedAt: record.updatedAt.toISOString(),
@@ -138,9 +164,33 @@ export function mapDistributorSale(record: DistributorSaleRecord): DistributorSa
 		productBatchId: record.productBatchId,
 		clientId: record.clientId,
 		quantity: record.quantity,
+		baseUnitPriceCents: record.baseUnitPriceCents,
 		unitPriceCents: record.unitPriceCents,
+		discountCentsPerUnit: record.discountCentsPerUnit,
+		discountTotalCents: record.discountTotalCents,
 		totalCents: record.totalCents,
 		paymentMethod: record.paymentMethod === "cash" ? "cash" : "cashless",
+		comment: record.comment,
+		operationId: record.operationId,
+		actorUserId: record.actorUserId,
+		createdAt: record.createdAt.toISOString(),
+	};
+}
+
+export function mapProductDiscountAssignment(record: ProductDiscountAssignmentRecord): ProductDiscountAssignment {
+	return {
+		id: record.id,
+		sourceDistributorProductBalanceId: record.sourceDistributorProductBalanceId,
+		discountedDistributorProductBalanceId: record.discountedDistributorProductBalanceId,
+		distributorId: record.distributorId,
+		productBatchId: record.productBatchId,
+		quantity: record.quantity,
+		baseUnitPriceCents: record.baseUnitPriceCents,
+		sourceUnitPriceCents: record.sourceUnitPriceCents,
+		discountedUnitPriceCents: record.discountedUnitPriceCents,
+		discountCentsPerUnit: record.discountCentsPerUnit,
+		stepDiscountCentsPerUnit: record.stepDiscountCentsPerUnit,
+		discountTotalCents: record.discountTotalCents,
 		comment: record.comment,
 		operationId: record.operationId,
 		actorUserId: record.actorUserId,
@@ -181,5 +231,21 @@ export function summarizeDistributorInventory(items: DistributorInventoryItem[])
 			totalStockValueCents: items.reduce((sum, item) => sum + item.stockValueCents, 0),
 		},
 		distributorSummaries,
+	};
+}
+
+function priceSnapshot(baseUnitPriceCents: number, unitPriceCents: number): {
+	baseUnitPriceCents: number;
+	unitPriceCents: number;
+	discounted: boolean;
+	discountCentsPerUnit: number;
+} {
+	const discountCentsPerUnit = Math.max(baseUnitPriceCents - unitPriceCents, 0);
+
+	return {
+		baseUnitPriceCents,
+		unitPriceCents,
+		discounted: discountCentsPerUnit > 0,
+		discountCentsPerUnit,
 	};
 }

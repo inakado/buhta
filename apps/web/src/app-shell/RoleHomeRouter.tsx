@@ -95,10 +95,11 @@ export function RoleHomeRouter({
 		&& actor.permissions.includes("distributor.stock.read")
 	) {
 		return (
-			<DistributorInventoryHome
-				canWithdrawCash={actor.role === "director" && actor.permissions.includes("cash.withdraw")}
-				online={online}
-				showCashBalance={actor.permissions.includes("distributor.cash.read")}
+				<DistributorInventoryHome
+					canAssignDiscount={actor.permissions.includes("discount.assign")}
+					canWithdrawCash={actor.role === "director" && actor.permissions.includes("cash.withdraw")}
+					online={online}
+					showCashBalance={actor.permissions.includes("distributor.cash.read")}
 				title={actor.role === "director" ? "Распределитель" : "Остатки"}
 			/>
 		);

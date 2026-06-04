@@ -140,6 +140,7 @@ async function createLoadFixture(prefix: string, quantity = 3, priceCents = 1250
 		data: {
 			distributorId: distributor.id,
 			productBatchId: productBatch.id,
+			unitPriceCents: productBatch.priceCents,
 			quantity,
 		},
 	});
@@ -178,6 +179,7 @@ async function createSaleFixture(prefix: string, quantity = 3, priceCents = 1250
 		data: {
 			courierUserId: courierActor.userId,
 			productBatchId: fixture.productBatch.id,
+			unitPriceCents: fixture.productBatch.priceCents,
 			quantity,
 		},
 	});
@@ -319,6 +321,7 @@ describe("Courier load real Postgres integration", () => {
 			data: {
 				courierUserId: secondCourierActor.userId,
 				productBatchId: fixture.productBatch.id,
+				unitPriceCents: fixture.productBatch.priceCents,
 				quantity: 1,
 			},
 		});
@@ -388,9 +391,10 @@ describe("Courier load real Postgres integration", () => {
 		await expect(
 			prisma.courierProductBalance.findUniqueOrThrow({
 				where: {
-					courierUserId_productBatchId: {
+					courierUserId_productBatchId_unitPriceCents: {
 						courierUserId: courierActor.userId,
 						productBatchId: fixture.productBatch.id,
+						unitPriceCents: fixture.productBatch.priceCents,
 					},
 				},
 			}),
@@ -419,7 +423,88 @@ describe("Courier load real Postgres integration", () => {
 				courierBalanceAfter: 2,
 				comment: "загрузка на день",
 			}),
+			});
 		});
+
+	it("preserves discounted price through courier load, sale and unload facts", async () => {
+		const fixture = await createLoadFixture("courier-load-discounted-movement", 4, 125000);
+		await prisma.distributorProductBalance.update({
+			where: { id: fixture.distributorProductBalance.id },
+			data: { unitPriceCents: 100000 },
+		});
+
+		const loadResponse = await courierService.createCourierLoad(courierActor, {
+			distributorProductBalanceId: fixture.distributorProductBalance.id,
+			quantity: 3,
+		});
+
+		expect(loadResponse.load).toMatchObject({
+			baseUnitPriceCents: 125000,
+			unitPriceCents: 100000,
+			discountCentsPerUnit: 25000,
+			stockValueCents: 300000,
+		});
+		expect(loadResponse.courierProductBalance).toMatchObject({
+			productBatchId: fixture.productBatch.id,
+			unitPriceCents: 100000,
+			discounted: true,
+			discountCentsPerUnit: 25000,
+			quantity: 3,
+			stockValueCents: 300000,
+		});
+		await expect(
+			prisma.courierProductBalance.findUniqueOrThrow({
+				where: {
+					courierUserId_productBatchId_unitPriceCents: {
+						courierUserId: courierActor.userId,
+						productBatchId: fixture.productBatch.id,
+						unitPriceCents: 100000,
+					},
+				},
+			}),
+		).resolves.toMatchObject({ quantity: 3 });
+
+		const client = await createClient("courier-load-discounted-movement");
+		const saleResponse = await courierService.createCourierSale(courierActor, {
+			courierProductBalanceId: loadResponse.courierProductBalance.id,
+			clientId: client.id,
+			quantity: 1,
+			paymentMethod: "cashless",
+		});
+
+		expect(saleResponse.sale).toMatchObject({
+			baseUnitPriceCents: 125000,
+			unitPriceCents: 100000,
+			discountCentsPerUnit: 25000,
+			discountTotalCents: 25000,
+			totalCents: 100000,
+		});
+
+		const unloadResponse = await courierService.createCourierUnload(courierActor, {
+			distributorId: fixture.distributor.id,
+			items: [{ courierProductBalanceId: loadResponse.courierProductBalance.id, quantity: 1 }],
+			cashAmountCents: 0,
+		});
+
+		expect(unloadResponse.items).toEqual([
+			expect.objectContaining({
+				productBatchId: fixture.productBatch.id,
+				quantity: 1,
+				baseUnitPriceCents: 125000,
+				unitPriceCents: 100000,
+				discountCentsPerUnit: 25000,
+				stockValueCents: 100000,
+				distributorProductBalanceId: fixture.distributorProductBalance.id,
+			}),
+		]);
+		expect(unloadResponse.distributorProductBalances).toEqual([
+			expect.objectContaining({
+				id: fixture.distributorProductBalance.id,
+				unitPriceCents: 100000,
+				quantity: 2,
+				stockValueCents: 200000,
+			}),
+		]);
 	});
 
 	it("increments existing courier balance on repeated load", async () => {
@@ -479,9 +564,10 @@ describe("Courier load real Postgres integration", () => {
 		await expect(
 			prisma.courierProductBalance.findUnique({
 				where: {
-					courierUserId_productBatchId: {
+					courierUserId_productBatchId_unitPriceCents: {
 						courierUserId: courierActor.userId,
 						productBatchId: insufficient.productBatch.id,
+						unitPriceCents: insufficient.productBatch.priceCents,
 					},
 				},
 			}),
@@ -539,9 +625,10 @@ describe("Courier load real Postgres integration", () => {
 		await expect(
 			prisma.courierProductBalance.findUniqueOrThrow({
 				where: {
-					courierUserId_productBatchId: {
+					courierUserId_productBatchId_unitPriceCents: {
 						courierUserId: courierActor.userId,
 						productBatchId: fixture.productBatch.id,
+						unitPriceCents: fixture.productBatch.priceCents,
 					},
 				},
 			}),
@@ -555,6 +642,7 @@ describe("Courier load real Postgres integration", () => {
 			data: {
 				courierUserId: secondCourierActor.userId,
 				productBatchId: fixture.productBatch.id,
+				unitPriceCents: fixture.productBatch.priceCents,
 				quantity: 1,
 			},
 		});
@@ -937,9 +1025,10 @@ describe("Courier load real Postgres integration", () => {
 		await expect(
 			prisma.distributorProductBalance.findUniqueOrThrow({
 				where: {
-					distributorId_productBatchId: {
+					distributorId_productBatchId_unitPriceCents: {
 						distributorId: first.distributor.id,
 						productBatchId: second.productBatch.id,
+						unitPriceCents: second.productBatch.priceCents,
 					},
 				},
 			}),

@@ -14,7 +14,10 @@ export const DistributorInventoryItemSchema = z.object({
 	distributorName: z.string(),
 	productBatchId: z.string(),
 	productName: z.string(),
-	priceCents: NonNegativeIntegerSchema,
+	baseUnitPriceCents: NonNegativeIntegerSchema,
+	unitPriceCents: NonNegativeIntegerSchema,
+	discounted: z.boolean(),
+	discountCentsPerUnit: NonNegativeIntegerSchema,
 	quantity: NonNegativeIntegerSchema,
 	stockValueCents: NonNegativeIntegerSchema,
 	updatedAt: z.string(),
@@ -57,7 +60,10 @@ export const DistributorSaleStockItemSchema = z.object({
 	distributorName: z.string(),
 	productBatchId: z.string(),
 	productName: z.string(),
+	baseUnitPriceCents: NonNegativeIntegerSchema,
 	unitPriceCents: NonNegativeIntegerSchema,
+	discounted: z.boolean(),
+	discountCentsPerUnit: NonNegativeIntegerSchema,
 	availableQuantity: NonNegativeIntegerSchema,
 	stockValueCents: NonNegativeIntegerSchema,
 	updatedAt: z.string(),
@@ -129,6 +135,44 @@ export type DistributorCashWithdrawalResponse = z.infer<
 	typeof DistributorCashWithdrawalResponseSchema
 >;
 
+export const AssignDistributorDiscountRequestSchema = z.object({
+	distributorProductBalanceId: z.string().min(1),
+	quantity: PositiveIntegerSchema,
+	discountedUnitPriceCents: PositiveIntegerSchema,
+	comment: OptionalCommentSchema,
+});
+
+export type AssignDistributorDiscountRequest = z.infer<typeof AssignDistributorDiscountRequestSchema>;
+
+export const ProductDiscountAssignmentSchema = z.object({
+	id: z.string(),
+	sourceDistributorProductBalanceId: z.string(),
+	discountedDistributorProductBalanceId: z.string(),
+	distributorId: z.string(),
+	productBatchId: z.string(),
+	quantity: PositiveIntegerSchema,
+	baseUnitPriceCents: PositiveIntegerSchema,
+	sourceUnitPriceCents: PositiveIntegerSchema,
+	discountedUnitPriceCents: PositiveIntegerSchema,
+	discountCentsPerUnit: NonNegativeIntegerSchema,
+	stepDiscountCentsPerUnit: NonNegativeIntegerSchema,
+	discountTotalCents: NonNegativeIntegerSchema,
+	comment: z.string().nullable(),
+	operationId: z.string(),
+	actorUserId: z.string(),
+	createdAt: z.string(),
+});
+
+export type ProductDiscountAssignment = z.infer<typeof ProductDiscountAssignmentSchema>;
+
+export const AssignDistributorDiscountResponseSchema = z.object({
+	discount: ProductDiscountAssignmentSchema,
+	sourceBalance: DistributorInventoryItemSchema,
+	discountedBalance: DistributorInventoryItemSchema,
+});
+
+export type AssignDistributorDiscountResponse = z.infer<typeof AssignDistributorDiscountResponseSchema>;
+
 export const DistributorSaleSchema = z.object({
 	id: z.string(),
 	distributorProductBalanceId: z.string(),
@@ -136,7 +180,10 @@ export const DistributorSaleSchema = z.object({
 	productBatchId: z.string(),
 	clientId: z.string(),
 	quantity: PositiveIntegerSchema,
+	baseUnitPriceCents: NonNegativeIntegerSchema,
 	unitPriceCents: NonNegativeIntegerSchema,
+	discountCentsPerUnit: NonNegativeIntegerSchema,
+	discountTotalCents: NonNegativeIntegerSchema,
 	totalCents: NonNegativeIntegerSchema,
 	paymentMethod: PaymentMethodSchema,
 	comment: z.string().nullable(),

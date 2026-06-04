@@ -1,5 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import type {
+	AssignDistributorDiscountRequest,
+	AssignDistributorDiscountResponse,
 	CreateDistributorCashWithdrawalRequest,
 	CreateDistributorSaleRequest,
 	DistributorCashBalancesResponse,
@@ -20,6 +22,7 @@ import {
 	mapDistributorInventoryItem,
 	mapDistributorSale,
 	mapDistributorSaleStockItem,
+	mapProductDiscountAssignment,
 	summarizeDistributorInventory,
 } from "./distributor.mapper";
 
@@ -38,7 +41,7 @@ export class DistributorService {
 				{ updatedAt: "desc" },
 			],
 		});
-		const items = balances.map(mapDistributorInventoryItem);
+		const items = balances.filter(hasLoadedProductBatch).map(mapDistributorInventoryItem);
 		const { summary, distributorSummaries } = summarizeDistributorInventory(items);
 
 		return {
@@ -66,7 +69,7 @@ export class DistributorService {
 		});
 
 		return {
-			items: balances.map(mapDistributorSaleStockItem),
+			items: balances.filter(hasLoadedProductBatch).map(mapDistributorSaleStockItem),
 		};
 	}
 
@@ -237,7 +240,10 @@ export class DistributorService {
 					productBatch: true,
 				},
 			});
-			const unitPriceCents = balanceBefore.productBatch.priceCents;
+			const baseUnitPriceCents = balanceBefore.productBatch.priceCents;
+			const unitPriceCents = balanceBefore.unitPriceCents;
+			const discountCentsPerUnit = Math.max(baseUnitPriceCents - unitPriceCents, 0);
+			const discountTotalCents = input.quantity * discountCentsPerUnit;
 			const totalCents = input.quantity * unitPriceCents;
 
 			const cashBalanceAfter = input.paymentMethod === "cash"
@@ -274,7 +280,10 @@ export class DistributorService {
 				productBatchId: balanceBefore.productBatchId,
 				clientId: input.clientId,
 				quantity: input.quantity,
+				baseUnitPriceCents,
 				unitPriceCents,
+				discountCentsPerUnit,
+				discountTotalCents,
 				totalCents,
 				paymentMethod: input.paymentMethod,
 				operationId: operation.id,
@@ -304,7 +313,10 @@ export class DistributorService {
 						productName: balanceBefore.productBatch.productName,
 						clientId: input.clientId,
 						quantity: input.quantity,
+						baseUnitPriceCents,
 						unitPriceCents,
+						discountCentsPerUnit,
+						discountTotalCents,
 						totalCents,
 						paymentMethod: input.paymentMethod,
 						stockBalanceBefore: balanceBefore.quantity,
@@ -334,4 +346,169 @@ export class DistributorService {
 			cashBalance,
 		};
 	}
+
+	async assignDiscount(
+		actor: Actor,
+		input: AssignDistributorDiscountRequest,
+	): Promise<AssignDistributorDiscountResponse> {
+		const comment = input.comment?.trim();
+		const normalizedComment = comment ? comment : null;
+		const result = await prisma.$transaction(async (tx) => {
+			const sourceBefore = await tx.distributorProductBalance.findUnique({
+				where: { id: input.distributorProductBalanceId },
+				include: {
+					distributor: true,
+					productBatch: true,
+				},
+			});
+			if (!sourceBefore) {
+				throw new AppError("NOT_FOUND", "Distributor product balance not found", {
+					id: input.distributorProductBalanceId,
+				});
+			}
+			if (!sourceBefore.distributor.active) {
+				throw new AppError("DOMAIN_RULE_VIOLATION", "Distributor is inactive", {
+					id: sourceBefore.distributorId,
+				});
+			}
+			if (input.discountedUnitPriceCents >= sourceBefore.unitPriceCents) {
+				throw new AppError("DOMAIN_RULE_VIOLATION", "Discounted price must be lower than current stock price", {
+					sourceUnitPriceCents: sourceBefore.unitPriceCents,
+					discountedUnitPriceCents: input.discountedUnitPriceCents,
+				});
+			}
+
+			const decrement = await tx.distributorProductBalance.updateMany({
+				where: {
+					id: input.distributorProductBalanceId,
+					quantity: { gte: input.quantity },
+				},
+				data: {
+					quantity: { decrement: input.quantity },
+				},
+			});
+			if (decrement.count !== 1) {
+				throw new AppError("DOMAIN_RULE_VIOLATION", "Not enough distributor product balance", {
+					distributorProductBalanceId: input.distributorProductBalanceId,
+				});
+			}
+
+			const sourceAfter = await tx.distributorProductBalance.findUniqueOrThrow({
+				where: { id: input.distributorProductBalanceId },
+				include: {
+					distributor: true,
+					productBatch: true,
+				},
+			});
+			const discountedAfter = await tx.distributorProductBalance.upsert({
+				where: {
+					distributorId_productBatchId_unitPriceCents: {
+						distributorId: sourceBefore.distributorId,
+						productBatchId: sourceBefore.productBatchId,
+						unitPriceCents: input.discountedUnitPriceCents,
+					},
+				},
+				create: {
+					distributorId: sourceBefore.distributorId,
+					productBatchId: sourceBefore.productBatchId,
+					unitPriceCents: input.discountedUnitPriceCents,
+					quantity: input.quantity,
+				},
+				update: {
+					quantity: { increment: input.quantity },
+				},
+				include: {
+					distributor: true,
+					productBatch: true,
+				},
+			});
+
+			const sourceQuantityAfter = sourceAfter.quantity;
+			const sourceQuantityBefore = sourceQuantityAfter + input.quantity;
+			const discountedQuantityAfter = discountedAfter.quantity;
+			const discountedQuantityBefore = discountedQuantityAfter - input.quantity;
+			const baseUnitPriceCents = sourceBefore.productBatch.priceCents;
+			const sourceUnitPriceCents = sourceBefore.unitPriceCents;
+			const discountedUnitPriceCents = input.discountedUnitPriceCents;
+			const discountCentsPerUnit = baseUnitPriceCents - discountedUnitPriceCents;
+			const stepDiscountCentsPerUnit = sourceUnitPriceCents - discountedUnitPriceCents;
+			const discountTotalCents = input.quantity * discountCentsPerUnit;
+
+			const operation = await tx.operation.create({
+				data: {
+					type: "distributor.discount.assign",
+					status: OPERATION_STATUS.succeeded,
+					actorUserId: actor.userId,
+				},
+			});
+
+			const discount = await tx.productDiscountAssignment.create({
+				data: {
+					sourceDistributorProductBalanceId: sourceBefore.id,
+					discountedDistributorProductBalanceId: discountedAfter.id,
+					distributorId: sourceBefore.distributorId,
+					productBatchId: sourceBefore.productBatchId,
+					quantity: input.quantity,
+					baseUnitPriceCents,
+					sourceUnitPriceCents,
+					discountedUnitPriceCents,
+					discountCentsPerUnit,
+					stepDiscountCentsPerUnit,
+					discountTotalCents,
+					comment: normalizedComment,
+					operationId: operation.id,
+					actorUserId: actor.userId,
+				},
+			});
+
+			await tx.auditLog.create({
+				data: {
+					operationId: operation.id,
+					actorUserId: actor.userId,
+					action: "distributor.discount.assign",
+					entityType: "product_discount_assignment",
+					entityId: discount.id,
+					details: {
+						productDiscountAssignmentId: discount.id,
+						sourceDistributorProductBalanceId: sourceBefore.id,
+						discountedDistributorProductBalanceId: discountedAfter.id,
+						distributorId: sourceBefore.distributorId,
+						distributorName: sourceBefore.distributor.name,
+						productBatchId: sourceBefore.productBatchId,
+						productName: sourceBefore.productBatch.productName,
+						quantity: input.quantity,
+						baseUnitPriceCents,
+						sourceUnitPriceCents,
+						discountedUnitPriceCents,
+						discountCentsPerUnit,
+						stepDiscountCentsPerUnit,
+						discountTotalCents,
+						sourceQuantityBefore,
+						sourceQuantityAfter,
+						discountedQuantityBefore,
+						discountedQuantityAfter,
+						comment: normalizedComment,
+					} satisfies Prisma.InputJsonValue,
+				},
+			});
+
+			return {
+				discount,
+				sourceAfter,
+				discountedAfter,
+			};
+		});
+
+		return {
+			discount: mapProductDiscountAssignment(result.discount),
+			sourceBalance: mapDistributorInventoryItem(result.sourceAfter),
+			discountedBalance: mapDistributorInventoryItem(result.discountedAfter),
+		};
+	}
+}
+
+function hasLoadedProductBatch<T extends { productBatch: unknown }>(
+	record: T,
+): record is T & { productBatch: NonNullable<T["productBatch"]> } {
+	return record.productBatch !== null;
 }

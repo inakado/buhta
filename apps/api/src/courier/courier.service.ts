@@ -54,7 +54,7 @@ export class CourierService {
 		});
 
 		return {
-			items: balances.map(mapCourierLoadOption),
+			items: balances.filter(hasLoadedProductBatch).map(mapCourierLoadOption),
 		};
 	}
 
@@ -78,7 +78,7 @@ export class CourierService {
 				{ updatedAt: "desc" },
 			],
 		});
-		const items = balances.map(mapCourierProductBalanceItem);
+		const items = balances.filter(hasLoadedProductBatch).map(mapCourierProductBalanceItem);
 		const { summary, courierSummaries } = summarizeCourierProductBalances(items);
 
 		return {
@@ -110,7 +110,7 @@ export class CourierService {
 		});
 
 		return {
-			items: balances.map(mapCourierSaleOption),
+			items: balances.filter(hasLoadedProductBatch).map(mapCourierSaleOption),
 		};
 	}
 
@@ -171,7 +171,7 @@ export class CourierService {
 
 		return {
 			distributors: distributors.map(mapCourierUnloadDistributorOption),
-			productItems: balances.map(mapCourierUnloadProductOption),
+			productItems: balances.filter(hasLoadedProductBatch).map(mapCourierUnloadProductOption),
 			cashBalance: mapCourierCashBalanceItem(courier, courier.courierCashBalance),
 		};
 	}
@@ -236,14 +236,16 @@ export class CourierService {
 			});
 			const courierBalanceAfter = await tx.courierProductBalance.upsert({
 				where: {
-					courierUserId_productBatchId: {
+					courierUserId_productBatchId_unitPriceCents: {
 						courierUserId: targetCourierUserId,
 						productBatchId: balanceBefore.productBatchId,
+						unitPriceCents: balanceBefore.unitPriceCents,
 					},
 				},
 				create: {
 					courierUserId: targetCourierUserId,
 					productBatchId: balanceBefore.productBatchId,
+					unitPriceCents: balanceBefore.unitPriceCents,
 					quantity: input.quantity,
 				},
 				update: {
@@ -256,6 +258,10 @@ export class CourierService {
 			});
 			const distributorBalanceBefore = distributorBalanceAfter.quantity + input.quantity;
 			const courierBalanceBefore = courierBalanceAfter.quantity - input.quantity;
+			const baseUnitPriceCents = balanceBefore.productBatch.priceCents;
+			const unitPriceCents = balanceBefore.unitPriceCents;
+			const discountCentsPerUnit = Math.max(baseUnitPriceCents - unitPriceCents, 0);
+			const stockValueCents = input.quantity * unitPriceCents;
 
 			const operation = await tx.operation.create({
 				data: {
@@ -271,6 +277,10 @@ export class CourierService {
 				distributorId: balanceBefore.distributorId,
 				productBatchId: balanceBefore.productBatchId,
 				quantity: input.quantity,
+				baseUnitPriceCents,
+				unitPriceCents,
+				discountCentsPerUnit,
+				stockValueCents,
 				operationId: operation.id,
 				actorUserId: actor.userId,
 			};
@@ -298,7 +308,10 @@ export class CourierService {
 						distributorName: balanceBefore.distributor.name,
 						productBatchId: balanceBefore.productBatchId,
 						productName: balanceBefore.productBatch.productName,
-						unitPriceCents: balanceBefore.productBatch.priceCents,
+						baseUnitPriceCents,
+						unitPriceCents,
+						discountCentsPerUnit,
+						stockValueCents,
 						quantity: input.quantity,
 						distributorBalanceBefore,
 						distributorBalanceAfter: distributorBalanceAfter.quantity,
@@ -390,7 +403,10 @@ export class CourierService {
 			});
 			const courierStockBalanceAfter = courierBalanceAfter.quantity;
 			const courierStockBalanceBefore = courierStockBalanceAfter + input.quantity;
-			const unitPriceCents = balanceBefore.productBatch.priceCents;
+			const baseUnitPriceCents = balanceBefore.productBatch.priceCents;
+			const unitPriceCents = balanceBefore.unitPriceCents;
+			const discountCentsPerUnit = Math.max(baseUnitPriceCents - unitPriceCents, 0);
+			const discountTotalCents = input.quantity * discountCentsPerUnit;
 			const totalCents = input.quantity * unitPriceCents;
 
 			const cashResult = input.paymentMethod === "cash"
@@ -411,7 +427,10 @@ export class CourierService {
 				productBatchId: balanceBefore.productBatchId,
 				clientId: input.clientId,
 				quantity: input.quantity,
+				baseUnitPriceCents,
 				unitPriceCents,
+				discountCentsPerUnit,
+				discountTotalCents,
 				totalCents,
 				paymentMethod: input.paymentMethod,
 				operationId: operation.id,
@@ -441,7 +460,10 @@ export class CourierService {
 						productName: balanceBefore.productBatch.productName,
 						clientId: input.clientId,
 						quantity: input.quantity,
+						baseUnitPriceCents,
 						unitPriceCents,
+						discountCentsPerUnit,
+						discountTotalCents,
 						totalCents,
 						paymentMethod: input.paymentMethod,
 						courierStockBalanceBefore,
@@ -545,14 +567,16 @@ export class CourierService {
 				});
 				const distributorBalanceAfter = await tx.distributorProductBalance.upsert({
 					where: {
-						distributorId_productBatchId: {
+						distributorId_productBatchId_unitPriceCents: {
 							distributorId: input.distributorId,
 							productBatchId: balanceBefore.productBatchId,
+							unitPriceCents: balanceBefore.unitPriceCents,
 						},
 					},
 					create: {
 						distributorId: input.distributorId,
 						productBatchId: balanceBefore.productBatchId,
+						unitPriceCents: balanceBefore.unitPriceCents,
 						quantity: item.quantity,
 					},
 					update: {
@@ -563,14 +587,18 @@ export class CourierService {
 						productBatch: true,
 					},
 				});
-				const unitPriceCents = balanceBefore.productBatch.priceCents;
+				const baseUnitPriceCents = balanceBefore.productBatch.priceCents;
+				const unitPriceCents = balanceBefore.unitPriceCents;
+				const discountCentsPerUnit = Math.max(baseUnitPriceCents - unitPriceCents, 0);
 				const stockValueCents = item.quantity * unitPriceCents;
 
 				productResults.push({
 					inputItem: item,
 					productBatchId: balanceBefore.productBatchId,
 					productName: balanceBefore.productBatch.productName,
+					baseUnitPriceCents,
 					unitPriceCents,
+					discountCentsPerUnit,
 					stockValueCents,
 					courierBalanceBefore: courierBalanceAfter.quantity + item.quantity,
 					courierBalanceAfter,
@@ -617,7 +645,9 @@ export class CourierService {
 						distributorProductBalanceId: productResult.distributorBalanceAfter.id,
 						productBatchId: productResult.productBatchId,
 						quantity: productResult.inputItem.quantity,
+						baseUnitPriceCents: productResult.baseUnitPriceCents,
 						unitPriceCents: productResult.unitPriceCents,
+						discountCentsPerUnit: productResult.discountCentsPerUnit,
 						stockValueCents: productResult.stockValueCents,
 					},
 				});
@@ -643,7 +673,9 @@ export class CourierService {
 							productBatchId: productResult.productBatchId,
 							productName: productResult.productName,
 							quantity: productResult.inputItem.quantity,
+							baseUnitPriceCents: productResult.baseUnitPriceCents,
 							unitPriceCents: productResult.unitPriceCents,
+							discountCentsPerUnit: productResult.discountCentsPerUnit,
 							stockValueCents: productResult.stockValueCents,
 							courierBalanceBefore: productResult.courierBalanceBefore,
 							courierBalanceAfter: productResult.courierBalanceAfter.quantity,
@@ -686,6 +718,12 @@ export class CourierService {
 			),
 		};
 	}
+}
+
+function hasLoadedProductBatch<T extends { productBatch: unknown }>(
+	record: T,
+): record is T & { productBatch: NonNullable<T["productBatch"]> } {
+	return record.productBatch !== null;
 }
 
 function canReadBalances(role: Actor["role"]): boolean {

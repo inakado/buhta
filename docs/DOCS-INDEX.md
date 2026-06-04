@@ -22,6 +22,7 @@
 - `docs/exec-plans/deferred-roadmap.md` — отложенные идеи, которые не являются активной задачей.
 - `docs/exec-plans/tech-debt-tracker.md` — признанный техдолг после появления кода или harness.
 - `docs/exec-plans/active/2026-05-27-v1-roadmap.md` — долгоживущая roadmap/meta-plan полной v1.
+- `docs/exec-plans/completed/2026-06-04-discounts-priced-stock.md` — завершенный этап Discounts Priced Stock: заранее назначаемые дисконты как priced stock rows без ручной скидки в продаже.
 - `docs/exec-plans/completed/2026-06-04-director-cash-withdrawal.md` — завершенный этап Director Cash Withdrawal: списание наличных с распределителя Директором без обязательного комментария.
 - `docs/exec-plans/completed/2026-06-04-production-notifications.md` — завершенный этап Production Notifications: свободные задачи от коммерческого руководителя производству без WebSocket в первом проходе.
 - `docs/exec-plans/completed/2026-06-03-courier-unload.md` — завершенный план этапа Courier Unload: сгрузка нескольких товарных строк и наличных курьером на распределитель.

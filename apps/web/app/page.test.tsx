@@ -76,11 +76,12 @@ const directorActorResponse = {
 			"courier.stock.read",
 			"courier.cash.read",
 			"client.read",
-			"notification.read",
-			"cash.withdraw",
-		],
-	},
-};
+				"notification.read",
+				"cash.withdraw",
+				"discount.assign",
+			],
+		},
+	};
 
 const courierActorResponse = {
 	authenticated: true,
@@ -122,7 +123,10 @@ const distributorInventoryResponse = {
 		distributorName: "Распределитель Центральный",
 		productBatchId: "batch1",
 		productName: "Икра горбуши",
-		priceCents: 125000,
+		baseUnitPriceCents: 125000,
+		unitPriceCents: 125000,
+		discounted: false,
+		discountCentsPerUnit: 0,
 		quantity: 2,
 		stockValueCents: 250000,
 		updatedAt: new Date(0).toISOString(),
@@ -147,7 +151,10 @@ const distributorSaleOptionsResponse = {
 		distributorName: "Распределитель Центральный",
 		productBatchId: "batch1",
 		productName: "Икра горбуши",
+		baseUnitPriceCents: 125000,
 		unitPriceCents: 125000,
+		discounted: false,
+		discountCentsPerUnit: 0,
 		availableQuantity: 2,
 		stockValueCents: 250000,
 		updatedAt: new Date(0).toISOString(),
@@ -176,7 +183,10 @@ const courierProductBalancesResponse = {
 		courierDisplayName: "Courier",
 		productBatchId: "batch1",
 		productName: "Икра горбуши",
+		baseUnitPriceCents: 125000,
 		unitPriceCents: 125000,
+		discounted: false,
+		discountCentsPerUnit: 0,
 		quantity: 2,
 		stockValueCents: 250000,
 		updatedAt: new Date(0).toISOString(),
@@ -190,7 +200,10 @@ const courierLoadOptionsResponse = {
 		distributorName: "Распределитель Центральный",
 		productBatchId: "batch1",
 		productName: "Икра горбуши",
+		baseUnitPriceCents: 125000,
 		unitPriceCents: 125000,
+		discounted: false,
+		discountCentsPerUnit: 0,
 		availableQuantity: 2,
 		stockValueCents: 250000,
 		updatedAt: new Date(0).toISOString(),
@@ -217,7 +230,10 @@ const courierSaleOptionsResponse = {
 		courierDisplayName: "Courier",
 		productBatchId: "batch1",
 		productName: "Икра горбуши",
+		baseUnitPriceCents: 125000,
 		unitPriceCents: 125000,
+		discounted: false,
+		discountCentsPerUnit: 0,
 		availableQuantity: 2,
 		stockValueCents: 250000,
 		updatedAt: new Date(0).toISOString(),
@@ -233,7 +249,10 @@ const courierUnloadOptionsResponse = {
 		courierProductBalanceId: "courier-balance1",
 		productBatchId: "batch1",
 		productName: "Икра горбуши",
+		baseUnitPriceCents: 125000,
 		unitPriceCents: 125000,
+		discounted: false,
+		discountCentsPerUnit: 0,
 		availableQuantity: 2,
 		stockValueCents: 250000,
 		updatedAt: new Date(0).toISOString(),
@@ -721,12 +740,16 @@ describe("HomePage", () => {
 
 			if (url.endsWith("/production/product-transfers") && method === "POST") {
 				return jsonResponse({
-					transfer: {
-						id: "transfer1",
-						productBatchId: "batch1",
-						distributorId: "dist1",
-						quantity: 2,
-						comment: "На Центральный",
+						transfer: {
+							id: "transfer1",
+							productBatchId: "batch1",
+							distributorId: "dist1",
+							quantity: 2,
+							baseUnitPriceCents: 125000,
+							unitPriceCents: 125000,
+							discountCentsPerUnit: 0,
+							stockValueCents: 250000,
+							comment: "На Центральный",
 						operationId: "op1",
 						actorUserId: "seed-production-manager",
 						createdAt: new Date(0).toISOString(),
@@ -744,13 +767,17 @@ describe("HomePage", () => {
 					distributorProductBalance: {
 						id: "distributor-balance1",
 						distributorId: "dist1",
-						distributorName: "Распределитель Центральный",
-						productBatchId: "batch1",
-						productName: "Икра горбуши",
-						priceCents: 125000,
-						quantity: 2,
-						updatedAt: new Date(0).toISOString(),
-					},
+							distributorName: "Распределитель Центральный",
+							productBatchId: "batch1",
+							productName: "Икра горбуши",
+							baseUnitPriceCents: 125000,
+							unitPriceCents: 125000,
+							discounted: false,
+							discountCentsPerUnit: 0,
+							quantity: 2,
+							stockValueCents: 250000,
+							updatedAt: new Date(0).toISOString(),
+						},
 				});
 			}
 
@@ -1412,10 +1439,14 @@ describe("HomePage", () => {
 						id: "load1",
 						courierUserId: "seed-courier",
 						distributorProductBalanceId: "distributor-balance1",
-						distributorId: "dist1",
-						productBatchId: "batch1",
-						quantity: 1,
-						comment: "На доставку",
+							distributorId: "dist1",
+							productBatchId: "batch1",
+							quantity: 1,
+							baseUnitPriceCents: 125000,
+							unitPriceCents: 125000,
+							discountCentsPerUnit: 0,
+							stockValueCents: 125000,
+							comment: "На доставку",
 						operationId: "op1",
 						actorUserId: "seed-courier",
 						createdAt: new Date(0).toISOString(),
@@ -1562,10 +1593,12 @@ describe("HomePage", () => {
 						courierUnloadId: "unload1",
 						courierProductBalanceId: "courier-balance1",
 						distributorProductBalanceId: "distributor-balance1",
-						productBatchId: "batch1",
-						quantity: 1,
-						unitPriceCents: 125000,
-						stockValueCents: 125000,
+							productBatchId: "batch1",
+							quantity: 1,
+							baseUnitPriceCents: 125000,
+							unitPriceCents: 125000,
+							discountCentsPerUnit: 0,
+							stockValueCents: 125000,
 					}],
 					courierProductBalances: [{
 						...courierProductBalancesResponse.items[0],
@@ -1675,11 +1708,14 @@ describe("HomePage", () => {
 						id: "courier-sale1",
 						courierProductBalanceId: "courier-balance1",
 						courierUserId: "seed-courier",
-						productBatchId: "batch1",
-						clientId: "client1",
-						quantity: 1,
-						unitPriceCents: 125000,
-						totalCents: 125000,
+							productBatchId: "batch1",
+							clientId: "client1",
+							quantity: 1,
+							baseUnitPriceCents: 125000,
+							unitPriceCents: 125000,
+							discountCentsPerUnit: 0,
+							discountTotalCents: 0,
+							totalCents: 125000,
 						paymentMethod: "cashless",
 						comment: "Доставка",
 						operationId: "op1",
@@ -1715,7 +1751,10 @@ describe("HomePage", () => {
 		expect(await screen.findByRole("heading", { name: "Мой баланс" })).toBeTruthy();
 		fireEvent.click(await screen.findByRole("button", { name: "Открыть продажу" }));
 		expect(await screen.findByRole("heading", { name: "Продажа" })).toBeTruthy();
-		fireEvent.change(await screen.findByLabelText("Клиент"), { target: { value: "Иван" } });
+		const clientInput = await screen.findByLabelText("Клиент");
+		fireEvent.focus(clientInput);
+		expect(await screen.findByRole("button", { name: "Выбрать клиента Иван Петров" })).toBeTruthy();
+		fireEvent.change(clientInput, { target: { value: "Иван" } });
 		fireEvent.click(await screen.findByRole("button", { name: "Выбрать клиента Иван Петров" }));
 		expect(screen.queryByText("Поиск клиента")).toBeNull();
 		expect(screen.queryByRole("button", { name: "Новый клиент" })).toBeNull();
@@ -1724,6 +1763,8 @@ describe("HomePage", () => {
 		expect(screen.getByRole("button", { name: "Новый клиент" })).toBeTruthy();
 		fireEvent.change(screen.getByLabelText("Клиент"), { target: { value: "Иван" } });
 		fireEvent.click(await screen.findByRole("button", { name: "Выбрать клиента Иван Петров" }));
+		fireEvent.focus(await screen.findByRole("combobox", { name: "Продукция" }));
+		expect(await screen.findByRole("option", { name: /Икра горбуши/ })).toBeTruthy();
 		await selectOperationProduct(/Икра горбуши/);
 		fireEvent.change(screen.getByLabelText("Количество, шт"), { target: { value: "1" } });
 		fireEvent.click(screen.getByRole("button", { name: "Безнал" }));
@@ -1921,8 +1962,8 @@ describe("HomePage", () => {
 				return jsonResponse(courierCashBalancesResponse);
 			}
 
-			if (url.endsWith("/distributor/cash-withdrawals") && method === "POST") {
-				return jsonResponse({
+				if (url.endsWith("/distributor/cash-withdrawals") && method === "POST") {
+					return jsonResponse({
 					withdrawal: {
 						id: "withdrawal1",
 						distributorId: "dist1",
@@ -1937,11 +1978,48 @@ describe("HomePage", () => {
 						amountCents: 75000,
 						updatedAt: new Date(1).toISOString(),
 					},
-				});
-			}
+					});
+				}
 
-			if (method !== "GET") {
-				return jsonResponse({ error: { message: "Unexpected mutation" } }, 500);
+				if (url.endsWith("/distributor/discounts") && method === "POST") {
+					return jsonResponse({
+						discount: {
+							id: "discount1",
+							sourceDistributorProductBalanceId: "distributor-balance1",
+							discountedDistributorProductBalanceId: "distributor-balance2",
+							distributorId: "dist1",
+							productBatchId: "batch1",
+							quantity: 1,
+							baseUnitPriceCents: 125000,
+							sourceUnitPriceCents: 125000,
+							discountedUnitPriceCents: 100000,
+							discountCentsPerUnit: 25000,
+							stepDiscountCentsPerUnit: 25000,
+							discountTotalCents: 25000,
+							comment: "Сезонная цена",
+							operationId: "op2",
+							actorUserId: "seed-director",
+							createdAt: new Date(2).toISOString(),
+						},
+						sourceBalance: {
+							...distributorInventoryResponse.items[0],
+							quantity: 1,
+							stockValueCents: 125000,
+						},
+						discountedBalance: {
+							...distributorInventoryResponse.items[0],
+							id: "distributor-balance2",
+							unitPriceCents: 100000,
+							discounted: true,
+							discountCentsPerUnit: 25000,
+							quantity: 1,
+							stockValueCents: 100000,
+						},
+					});
+				}
+
+				if (method !== "GET") {
+					return jsonResponse({ error: { message: "Unexpected mutation" } }, 500);
 			}
 
 			return jsonResponse({ error: { message: "Unexpected request" } }, 500);
@@ -1990,11 +2068,34 @@ describe("HomePage", () => {
 					}),
 				}),
 			);
-		});
-		expect(await screen.findByText("Наличные списаны")).toBeTruthy();
+			});
+			expect(await screen.findByText("Наличные списаны")).toBeTruthy();
 
-		expect(fetchMock.mock.calls.filter(([, init]) => (init?.method ?? "GET") !== "GET")).toHaveLength(1);
-	});
+			fireEvent.click(screen.getByRole("button", { name: "Снизить цену" }));
+			expect(await screen.findByRole("heading", { name: "Снизить цену" })).toBeTruthy();
+			expect(screen.getAllByText("1250.00 ₽/шт").length).toBeGreaterThan(0);
+			fireEvent.change(screen.getByLabelText("Количество"), { target: { value: "1" } });
+			fireEvent.change(screen.getByLabelText("Новая цена, ₽"), { target: { value: "1000" } });
+			fireEvent.change(screen.getByLabelText("Комментарий"), { target: { value: "Сезонная цена" } });
+			fireEvent.click(screen.getByRole("button", { name: "Назначить" }));
+			await waitFor(() => {
+				expect(fetchMock).toHaveBeenCalledWith(
+					expect.stringContaining("/distributor/discounts"),
+					expect.objectContaining({
+						method: "POST",
+						body: JSON.stringify({
+							distributorProductBalanceId: "distributor-balance1",
+							quantity: 1,
+							discountedUnitPriceCents: 100000,
+							comment: "Сезонная цена",
+						}),
+					}),
+				);
+			});
+			expect(await screen.findByText("Цена снижена")).toBeTruthy();
+
+			expect(fetchMock.mock.calls.filter(([, init]) => (init?.method ?? "GET") !== "GET")).toHaveLength(2);
+		});
 
 	it("lets a commercial manager create a client inside distributor sale and records sale", async () => {
 		let clients = [...clientsResponse.clients];
@@ -2024,11 +2125,14 @@ describe("HomePage", () => {
 						id: "sale1",
 						distributorProductBalanceId: "distributor-balance1",
 						distributorId: "dist1",
-						productBatchId: "batch1",
-						clientId: "client2",
-						quantity: 1,
-						unitPriceCents: 125000,
-						totalCents: 125000,
+							productBatchId: "batch1",
+							clientId: "client2",
+							quantity: 1,
+							baseUnitPriceCents: 125000,
+							unitPriceCents: 125000,
+							discountCentsPerUnit: 0,
+							discountTotalCents: 0,
+							totalCents: 125000,
 						paymentMethod: "cash",
 						comment: "Первый заказ",
 						operationId: "op1",

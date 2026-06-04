@@ -390,9 +390,10 @@ export class ProductionService {
 
 			const distributorBalanceBefore = await tx.distributorProductBalance.findUnique({
 				where: {
-					distributorId_productBatchId: {
+					distributorId_productBatchId_unitPriceCents: {
 						distributorId: input.distributorId,
 						productBatchId: input.productBatchId,
+						unitPriceCents: productBatch.priceCents,
 					},
 				},
 				include: { distributor: true, productBatch: true },
@@ -420,14 +421,16 @@ export class ProductionService {
 
 			const distributorProductBalance = await tx.distributorProductBalance.upsert({
 				where: {
-					distributorId_productBatchId: {
+					distributorId_productBatchId_unitPriceCents: {
 						distributorId: input.distributorId,
 						productBatchId: input.productBatchId,
+						unitPriceCents: productBatch.priceCents,
 					},
 				},
 				create: {
 					distributorId: input.distributorId,
 					productBatchId: input.productBatchId,
+					unitPriceCents: productBatch.priceCents,
 					quantity: input.quantity,
 				},
 				update: {
@@ -443,7 +446,10 @@ export class ProductionService {
 				details: {
 					productBatchId: input.productBatchId,
 					productName: productBatch.productName,
-					priceCents: productBatch.priceCents,
+					baseUnitPriceCents: productBatch.priceCents,
+					unitPriceCents: productBatch.priceCents,
+					discountCentsPerUnit: 0,
+					stockValueCents: input.quantity * productBatch.priceCents,
 					distributorId: input.distributorId,
 					distributorName: distributor.name,
 					quantity: input.quantity,
@@ -459,6 +465,10 @@ export class ProductionService {
 				productBatchId: input.productBatchId,
 				distributorId: input.distributorId,
 				quantity: input.quantity,
+				baseUnitPriceCents: productBatch.priceCents,
+				unitPriceCents: productBatch.priceCents,
+				discountCentsPerUnit: 0,
+				stockValueCents: input.quantity * productBatch.priceCents,
 				operationId: operation.id,
 				actorUserId: actor.userId,
 			};

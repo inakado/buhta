@@ -211,7 +211,10 @@ describe("Distributor inventory real Postgres integration", () => {
 			distributorName: "distributor-inventory-read-distributor",
 			productBatchId: batch.id,
 			productName: "distributor-inventory-read-template",
-			priceCents: 125000,
+			baseUnitPriceCents: 125000,
+			unitPriceCents: 125000,
+			discounted: false,
+			discountCentsPerUnit: 0,
 			quantity: 2,
 			stockValueCents: 250000,
 		});
@@ -259,11 +262,12 @@ describe("Distributor inventory real Postgres integration", () => {
 
 	it("hides zero balances from inventory", async () => {
 		const { batch, distributor } = await releaseAndTransfer("distributor-inventory-zero", 3, 2);
-		await prisma.distributorProductBalance.update({
-			where: {
-				distributorId_productBatchId: {
-					distributorId: distributor.id,
-					productBatchId: batch.id,
+			await prisma.distributorProductBalance.update({
+				where: {
+					distributorId_productBatchId_unitPriceCents: {
+						distributorId: distributor.id,
+						productBatchId: batch.id,
+					unitPriceCents: batch.priceCents,
 				},
 			},
 			data: { quantity: 0 },
@@ -284,12 +288,15 @@ describe("Distributor inventory real Postgres integration", () => {
 		});
 
 		const inventory = await distributorService.getInventory();
-		const item = inventory.items.find((current) => current.productBatchId === batch.id);
+			const item = inventory.items.find((current) => current.productBatchId === batch.id);
 
-		expect(item).toMatchObject({
-			priceCents: 88050,
-			quantity: 3,
-			stockValueCents: 264150,
+			expect(item).toMatchObject({
+				baseUnitPriceCents: 88050,
+				unitPriceCents: 88050,
+				discounted: false,
+				discountCentsPerUnit: 0,
+				quantity: 3,
+				stockValueCents: 264150,
 		});
 	});
 
