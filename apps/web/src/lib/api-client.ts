@@ -2,6 +2,7 @@ import type {
 	ClientResponse,
 	ClientsListResponse,
 	CreateClientRequest,
+	CreateNotificationRequest,
 	CreateCourierLoadRequest,
 	CreateCourierSaleRequest,
 	CreateCourierUnloadRequest,
@@ -34,6 +35,8 @@ import type {
 	PackagingIntakeResponse,
 	PackagingTypeResponse,
 	PackagingTypesListResponse,
+	NotificationResponse,
+	NotificationsListResponse,
 	ProductBatchResponse,
 	ProductBatchesResponse,
 	ProductTransferResponse,
@@ -153,6 +156,30 @@ export async function updateClient(id: string, input: UpdateClientRequest): Prom
 	return fetchJson<ClientResponse>(`/clients/${id}`, {
 		method: "PATCH",
 		body: JSON.stringify(input),
+	});
+}
+
+export async function listNotifications(status: "new" | "completed" | "all" = "all"): Promise<NotificationsListResponse> {
+	const params = new URLSearchParams();
+	if (status !== "all") {
+		params.set("status", status);
+	}
+	const query = params.toString();
+
+	return fetchJson<NotificationsListResponse>(`/notifications${query ? `?${query}` : ""}`);
+}
+
+export async function createNotification(input: CreateNotificationRequest): Promise<NotificationResponse> {
+	return fetchJson<NotificationResponse>("/notifications", {
+		method: "POST",
+		body: JSON.stringify(input),
+	});
+}
+
+export async function completeNotification(notificationId: string): Promise<NotificationResponse> {
+	return fetchJson<NotificationResponse>(`/notifications/${notificationId}/complete`, {
+		method: "PATCH",
+		body: JSON.stringify({}),
 	});
 }
 

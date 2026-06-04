@@ -32,6 +32,8 @@ model User {
   courierLoads       CourierLoad[]           @relation("CourierLoadCourier")
   courierSales       CourierSale[]           @relation("CourierSaleCourier")
   courierUnloads     CourierUnload[]         @relation("CourierUnloadCourier")
+  createdProductionNotifications   ProductionNotification[] @relation("ProductionNotificationCreatedBy")
+  completedProductionNotifications ProductionNotification[] @relation("ProductionNotificationCompletedBy")
 
   @@map("user")
 }
@@ -102,6 +104,8 @@ model Operation {
   courierLoads       CourierLoad[]
   courierSales       CourierSale[]
   courierUnloads     CourierUnload[]
+  productionNotificationCreates   ProductionNotification[] @relation("ProductionNotificationCreateOperation")
+  productionNotificationCompletes ProductionNotification[] @relation("ProductionNotificationCompleteOperation")
 
   @@unique([actorUserId, idempotencyKey])
   @@index([actorUserId])
@@ -519,4 +523,28 @@ model CourierUnloadItem {
   @@index([distributorProductBalanceId])
   @@index([productBatchId])
   @@map("courier_unload_item")
+}
+
+model ProductionNotification {
+  id                  String     @id @default(cuid())
+  message             String
+  status              String     @default("new")
+  createdByUserId     String
+  completedByUserId   String?
+  createOperationId   String     @unique
+  completeOperationId String?    @unique
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+  completedAt         DateTime?
+  createdBy           User       @relation("ProductionNotificationCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
+  completedBy         User?      @relation("ProductionNotificationCompletedBy", fields: [completedByUserId], references: [id], onDelete: Restrict)
+  createOperation     Operation  @relation("ProductionNotificationCreateOperation", fields: [createOperationId], references: [id], onDelete: Restrict)
+  completeOperation   Operation? @relation("ProductionNotificationCompleteOperation", fields: [completeOperationId], references: [id], onDelete: Restrict)
+
+  @@index([status])
+  @@index([createdByUserId])
+  @@index([completedByUserId])
+  @@index([createdAt])
+  @@index([completedAt])
+  @@map("production_notification")
 }

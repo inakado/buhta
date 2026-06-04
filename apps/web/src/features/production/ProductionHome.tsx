@@ -37,7 +37,7 @@ import {
 } from "../../lib/api-client";
 import { ProductionHomeOverview } from "./ProductionHomeOverview";
 
-type ProductionTab = "home" | "notifications" | "history";
+type ProductionTab = "home" | "history";
 type ProductionScreen = "raw-intake" | "packaging-intake" | "batch-release" | "transfer" | "raw-stock" | "packaging-stock" | "products";
 type SuccessNotice = {
 	id: number;
@@ -130,17 +130,6 @@ export function ProductionHome({
 				workshopProductBalances={workshopProductBalances.data?.workshopProductBalances ?? []}
 				workshopProductBalancesLoading={workshopProductBalances.isLoading}
 			/>
-		);
-	}
-
-	if (activeTab === "notifications") {
-		return (
-			<section className="screen-stack">
-				<div className="section-heading">
-					<h2>Уведомления</h2>
-				</div>
-				<p className="muted">Раздел появится после подключения уведомлений.</p>
-			</section>
 		);
 	}
 

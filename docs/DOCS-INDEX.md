@@ -22,6 +22,7 @@
 - `docs/exec-plans/deferred-roadmap.md` — отложенные идеи, которые не являются активной задачей.
 - `docs/exec-plans/tech-debt-tracker.md` — признанный техдолг после появления кода или harness.
 - `docs/exec-plans/active/2026-05-27-v1-roadmap.md` — долгоживущая roadmap/meta-plan полной v1.
+- `docs/exec-plans/completed/2026-06-04-production-notifications.md` — завершенный этап Production Notifications: свободные задачи от коммерческого руководителя производству без WebSocket в первом проходе.
 - `docs/exec-plans/completed/2026-06-03-courier-unload.md` — завершенный план этапа Courier Unload: сгрузка нескольких товарных строк и наличных курьером на распределитель.
 - `docs/exec-plans/completed/2026-06-02-role-home-working-cards.md` — завершенный frontend этап: первые экраны ролей и read-only списки очищены от декоративных карточек, disabled action placeholders и CSS fallback.
 - `docs/exec-plans/completed/2026-05-31-frontend-role-screen-recomposition.md` — завершенный frontend этап: role screens приведены к единой mobile composition без смены текущей дизайн-системы.

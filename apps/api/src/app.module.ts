@@ -10,6 +10,7 @@ import { AppErrorFilter } from "./common/errors/app-error.filter";
 import { CourierModule } from "./courier/courier.module";
 import { DistributorModule } from "./distributor/distributor.module";
 import { HealthController } from "./health/health.controller";
+import { NotificationsModule } from "./notifications/notifications.module";
 import { OperationsModule } from "./operations/operations.module";
 import { PolicyModule } from "./policy/policy.module";
 import { ProductionModule } from "./production/production.module";
@@ -32,6 +33,7 @@ import { UsersModule } from "./users/users.module";
 		ProductionModule,
 		DistributorModule,
 		CourierModule,
+		NotificationsModule,
 	],
 	controllers: [HealthController, AuthMeController, AuthSpikeController],
 	providers: [

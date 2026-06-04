@@ -8,6 +8,7 @@ import { CourierLoadHome } from "../features/courier/CourierLoadHome";
 import { CourierSaleHome } from "../features/courier/CourierSaleHome";
 import { CourierUnloadHome } from "../features/courier/CourierUnloadHome";
 import { DistributorInventoryHome } from "../features/distributor/DistributorInventoryHome";
+import { NotificationsHome } from "../features/notifications/NotificationsHome";
 import { ProductionHome } from "../features/production/ProductionHome";
 import { DistributorSaleHome } from "../features/sales/DistributorSaleHome";
 import { ROLE_LABELS } from "../lib/role-labels";
@@ -55,6 +56,10 @@ export function RoleHomeRouter({
 		&& (actor.role === "director" || actor.role === "commercial_manager")
 	) {
 		return <CourierBalanceHome mode="all" />;
+	}
+
+	if (activeTab === "notifications" && actor.permissions.includes("notification.read")) {
+		return <NotificationsHome actor={actor} online={online} />;
 	}
 
 	if (actor.role === "production_manager") {
@@ -224,6 +229,6 @@ function SettingsScreen({
 	);
 }
 
-function isProductionTab(tab: string): tab is "home" | "notifications" | "history" {
-	return tab === "home" || tab === "notifications" || tab === "history";
+function isProductionTab(tab: string): tab is "home" | "history" {
+	return tab === "home" || tab === "history";
 }

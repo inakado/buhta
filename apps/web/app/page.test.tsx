@@ -21,7 +21,7 @@ const productionActorResponse = {
 		login: "production-manager",
 		displayName: "Production Manager",
 		role: "production_manager",
-		permissions: ["production.manage", "distributor.stock.read"],
+		permissions: ["production.manage", "distributor.stock.read", "notification.read", "notification.complete"],
 	},
 };
 
@@ -38,6 +38,8 @@ const commercialActorResponse = {
 			"courier.stock.read",
 			"courier.cash.read",
 			"distributor.sale.create",
+			"notification.read",
+			"notification.create",
 			"client.read",
 			"client.manage",
 		],
@@ -68,7 +70,14 @@ const directorActorResponse = {
 		login: "director",
 		displayName: "Director",
 		role: "director",
-		permissions: ["distributor.stock.read", "distributor.cash.read", "courier.stock.read", "courier.cash.read", "client.read"],
+		permissions: [
+			"distributor.stock.read",
+			"distributor.cash.read",
+			"courier.stock.read",
+			"courier.cash.read",
+			"client.read",
+			"notification.read",
+		],
 	},
 };
 
@@ -247,6 +256,27 @@ const clientsResponse: { clients: Client[] } = {
 		createdAt: new Date(0).toISOString(),
 		updatedAt: new Date(0).toISOString(),
 	}],
+};
+
+const notificationsResponse = {
+	items: [{
+		id: "notification1",
+		message: "Сделать партию икры",
+		status: "new",
+		createdBy: {
+			userId: "seed-commercial-manager",
+			login: "commercial-manager",
+			displayName: "Commercial Manager",
+		},
+		completedBy: null,
+		createdAt: new Date(0).toISOString(),
+		updatedAt: new Date(0).toISOString(),
+		completedAt: null,
+	}],
+	summary: {
+		newCount: 1,
+		completedCount: 0,
+	},
 };
 
 function jsonResponse(body: unknown, status = 200) {
@@ -1087,9 +1117,105 @@ describe("HomePage", () => {
 		expect(screen.queryByText("Выпуск записан")).toBeNull();
 	});
 
-	it("renders commercial manager home and navigates through sale action and bottom nav", async () => {
-		const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+	it("lets production manager complete production notification", async () => {
+		const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
 			const url = String(input);
+			const method = init?.method ?? "GET";
+
+			if (url.endsWith("/auth/me")) {
+				return jsonResponse(productionActorResponse);
+			}
+
+			if (url.endsWith("/production/summary")) {
+				return jsonResponse({
+					summary: {
+						readyProductUnits: 0,
+						rawMaterialKinds: 0,
+						rawMaterialTotal: 0,
+						rawMaterialUnit: "кг",
+						packagingKinds: 0,
+						packagingTotal: 0,
+						packagingUnit: "шт",
+					},
+				});
+			}
+
+			if (url.endsWith("/production/raw-material-balances")) {
+				return jsonResponse({ rawMaterialBalances: [] });
+			}
+
+			if (url.endsWith("/production/packaging-balances")) {
+				return jsonResponse({ packagingBalances: [] });
+			}
+
+			if (url.endsWith("/production/workshop-product-balances")) {
+				return jsonResponse({ workshopProductBalances: [] });
+			}
+
+			if (url.endsWith("/production/transfer-options")) {
+				return jsonResponse({ distributors: [], workshopProductBalances: [] });
+			}
+
+			if (url.endsWith("/production/product-batches")) {
+				return jsonResponse({ productBatches: [] });
+			}
+
+			if (url.endsWith("/production/options")) {
+				return jsonResponse({ rawMaterialTypes: [], packagingTypes: [], productTemplates: [] });
+			}
+
+			if (url.endsWith("/notifications/notification1/complete") && method === "PATCH") {
+				return jsonResponse({
+					notification: {
+						...notificationsResponse.items[0],
+						status: "completed",
+						completedBy: {
+							userId: "seed-production-manager",
+							login: "production-manager",
+							displayName: "Production Manager",
+						},
+						completedAt: new Date(1).toISOString(),
+					},
+				});
+			}
+
+			if (url.includes("/notifications")) {
+				return jsonResponse(notificationsResponse);
+			}
+
+			return jsonResponse({ error: { message: "Unexpected request" } }, 500);
+		});
+
+		vi.stubGlobal("fetch", fetchMock);
+
+		render(<HomePage />);
+
+		const notificationsNav = await screen.findByRole("button", { name: "Уведомления, новых задач: 1" });
+		expect(notificationsNav.querySelector(".bottom-nav-badge")?.textContent).toBe("1");
+		fireEvent.click(notificationsNav);
+		expect(await screen.findByRole("heading", { name: "Задачи производству" })).toBeTruthy();
+		expect(screen.queryByLabelText("Что передать производству")).toBeNull();
+		expect(await screen.findByText("Сделать партию икры")).toBeTruthy();
+		expect(document.querySelector(".compact-balance-overview")).toBeNull();
+		expect(document.querySelector(".notification-summary-line")?.textContent).toContain("Новые: 1");
+		fireEvent.click(screen.getByRole("button", { name: "Выполнено" }));
+
+		await waitFor(() => {
+			expect(fetchMock).toHaveBeenCalledWith(
+				expect.stringContaining("/notifications/notification1/complete"),
+				expect.objectContaining({
+					method: "PATCH",
+					body: JSON.stringify({}),
+				}),
+			);
+		});
+		expect(await screen.findByText("Задача выполнена")).toBeTruthy();
+	});
+
+	it("renders commercial manager home and navigates through sale action and bottom nav", async () => {
+		const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+			const url = String(input);
+			const method = init?.method ?? "GET";
 
 			if (url.endsWith("/auth/me")) {
 				return jsonResponse(commercialActorResponse);
@@ -1117,6 +1243,20 @@ describe("HomePage", () => {
 
 			if (url.endsWith("/courier/cash-balances")) {
 				return jsonResponse(courierCashBalancesResponse);
+			}
+
+			if (url.endsWith("/notifications") && method === "POST") {
+				return jsonResponse({
+					notification: {
+						...notificationsResponse.items[0],
+						id: "notification2",
+						message: "Проверить остатки банки",
+					},
+				});
+			}
+
+			if (url.includes("/notifications")) {
+				return jsonResponse(notificationsResponse);
 			}
 
 			return jsonResponse({ error: { message: "Unexpected request" } }, 500);
@@ -1167,6 +1307,26 @@ describe("HomePage", () => {
 		expect(await screen.findByRole("heading", { name: "Продажи" })).toBeTruthy();
 		fireEvent.click(screen.getByRole("button", { name: "Курьеры" }));
 		expect(await screen.findByText("Балансы курьеров")).toBeTruthy();
+
+		fireEvent.click(screen.getByRole("button", { name: "Задачи" }));
+		expect(await screen.findByRole("heading", { name: "Задачи производству" })).toBeTruthy();
+		expect(await screen.findByText("Сделать партию икры")).toBeTruthy();
+		expect(document.querySelector(".compact-balance-overview")).toBeNull();
+		expect(document.querySelector(".notification-summary-line")?.textContent).toContain("Выполнено: 0");
+		fireEvent.change(screen.getByLabelText("Что передать производству"), {
+			target: { value: "Проверить остатки банки" },
+		});
+		fireEvent.click(screen.getByRole("button", { name: "Записать" }));
+		await waitFor(() => {
+			expect(fetchMock).toHaveBeenCalledWith(
+				expect.stringContaining("/notifications"),
+				expect.objectContaining({
+					method: "POST",
+					body: JSON.stringify({ message: "Проверить остатки банки" }),
+				}),
+			);
+		});
+		expect(await screen.findByText("Задача записана")).toBeTruthy();
 	});
 
 	it("renders distributor worker home without non-action tiles or courier management", async () => {

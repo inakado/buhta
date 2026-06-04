@@ -245,6 +245,74 @@ describe("PolicyRegistry", () => {
 			expect(actor?.permissions).not.toContain("courier.cash.read");
 		}
 	});
+
+	it("keeps production notification permissions explicit", () => {
+		for (const role of ["admin", "director", "production_manager", "commercial_manager"] as const) {
+			const actor = registry.buildActor({
+				id: `notification-read-${role}`,
+				username: role,
+				name: role,
+				role,
+			});
+
+			expect(actor?.permissions).toContain("notification.read");
+		}
+
+		for (const role of ["distributor_worker", "courier"] as const) {
+			const actor = registry.buildActor({
+				id: `no-notification-read-${role}`,
+				username: role,
+				name: role,
+				role,
+			});
+
+			expect(actor?.permissions).not.toContain("notification.read");
+		}
+
+		for (const role of ["admin", "commercial_manager"] as const) {
+			const actor = registry.buildActor({
+				id: `notification-create-${role}`,
+				username: role,
+				name: role,
+				role,
+			});
+
+			expect(actor?.permissions).toContain("notification.create");
+		}
+
+		for (const role of ["director", "production_manager", "distributor_worker", "courier"] as const) {
+			const actor = registry.buildActor({
+				id: `no-notification-create-${role}`,
+				username: role,
+				name: role,
+				role,
+			});
+
+			expect(actor?.permissions).not.toContain("notification.create");
+		}
+
+		for (const role of ["admin", "production_manager"] as const) {
+			const actor = registry.buildActor({
+				id: `notification-complete-${role}`,
+				username: role,
+				name: role,
+				role,
+			});
+
+			expect(actor?.permissions).toContain("notification.complete");
+		}
+
+		for (const role of ["director", "commercial_manager", "distributor_worker", "courier"] as const) {
+			const actor = registry.buildActor({
+				id: `no-notification-complete-${role}`,
+				username: role,
+				name: role,
+				role,
+			});
+
+			expect(actor?.permissions).not.toContain("notification.complete");
+		}
+	});
 });
 
 describe("PolicyGuard", () => {

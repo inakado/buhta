@@ -17,7 +17,9 @@ import {
 	CreateCourierLoadRequestSchema,
 	CreateCourierSaleRequestSchema,
 	CreateCourierUnloadRequestSchema,
+	CreateNotificationRequestSchema,
 	CreateUserRequestSchema,
+	CompleteNotificationRequestSchema,
 	CourierCashBalancesResponseSchema,
 	CourierLoadOptionsResponseSchema,
 	CourierProductBalancesResponseSchema,
@@ -32,6 +34,9 @@ import {
 	DistributorInventoryResponseSchema,
 	DistributorSaleOptionsResponseSchema,
 	LoginSchema,
+	NotificationsListQuerySchema,
+	NotificationsListResponseSchema,
+	NotificationResponseSchema,
 	ProductionOptionsResponseSchema,
 	ProductionTransferOptionsResponseSchema,
 	ProductTemplateSchema,
@@ -58,6 +63,9 @@ describe("shared contracts", () => {
 		expect(permissionsForRole("director")).not.toContain("client.manage");
 		expect(permissionsForRole("director")).toContain("courier.stock.read");
 		expect(permissionsForRole("director")).toContain("courier.cash.read");
+		expect(permissionsForRole("director")).toContain("notification.read");
+		expect(permissionsForRole("director")).not.toContain("notification.create");
+		expect(permissionsForRole("director")).not.toContain("notification.complete");
 		expect(permissionsForRole("director")).not.toContain("courier.stock.load");
 		expect(permissionsForRole("director")).not.toContain("courier.sale.create");
 		expect(permissionsForRole("director")).not.toContain("courier.unload.create");
@@ -66,6 +74,9 @@ describe("shared contracts", () => {
 		expect(permissionsForRole("commercial_manager")).toContain("client.manage");
 		expect(permissionsForRole("commercial_manager")).toContain("courier.stock.read");
 		expect(permissionsForRole("commercial_manager")).toContain("courier.cash.read");
+		expect(permissionsForRole("commercial_manager")).toContain("notification.read");
+		expect(permissionsForRole("commercial_manager")).toContain("notification.create");
+		expect(permissionsForRole("commercial_manager")).not.toContain("notification.complete");
 		expect(permissionsForRole("commercial_manager")).not.toContain("courier.stock.load");
 		expect(permissionsForRole("commercial_manager")).not.toContain("courier.sale.create");
 		expect(permissionsForRole("commercial_manager")).not.toContain("courier.unload.create");
@@ -73,6 +84,7 @@ describe("shared contracts", () => {
 		expect(permissionsForRole("distributor_worker")).toContain("client.manage");
 		expect(permissionsForRole("distributor_worker")).not.toContain("courier.stock.read");
 		expect(permissionsForRole("distributor_worker")).not.toContain("courier.cash.read");
+		expect(permissionsForRole("distributor_worker")).not.toContain("notification.read");
 		expect(permissionsForRole("courier")).toContain("client.read");
 		expect(permissionsForRole("courier")).toContain("client.manage");
 		expect(permissionsForRole("courier")).toContain("courier.stock.read");
@@ -80,10 +92,14 @@ describe("shared contracts", () => {
 		expect(permissionsForRole("courier")).toContain("courier.cash.read");
 		expect(permissionsForRole("courier")).toContain("courier.sale.create");
 		expect(permissionsForRole("courier")).toContain("courier.unload.create");
+		expect(permissionsForRole("courier")).not.toContain("notification.read");
 		expect(permissionsForRole("courier")).not.toContain("cash.withdraw");
 		expect(permissionsForRole("production_manager")).not.toContain("client.read");
 		expect(permissionsForRole("production_manager")).not.toContain("client.manage");
 		expect(permissionsForRole("production_manager")).not.toContain("courier.cash.read");
+		expect(permissionsForRole("production_manager")).toContain("notification.read");
+		expect(permissionsForRole("production_manager")).toContain("notification.complete");
+		expect(permissionsForRole("production_manager")).not.toContain("notification.create");
 	});
 
 	it("handles money only as integer cents", () => {
@@ -240,6 +256,43 @@ describe("shared contracts", () => {
 				workshopProductBalances: [],
 			}).success,
 		).toBe(true);
+	});
+
+	it("validates production notification contracts", () => {
+		expect(CreateNotificationRequestSchema.parse({ message: " Сделать партию икры " })).toEqual({
+			message: "Сделать партию икры",
+		});
+		expect(CreateNotificationRequestSchema.safeParse({ message: "" }).success).toBe(false);
+		expect(CreateNotificationRequestSchema.safeParse({ message: "x".repeat(1001) }).success).toBe(false);
+		expect(CompleteNotificationRequestSchema.parse({})).toEqual({});
+		expect(CompleteNotificationRequestSchema.safeParse({ comment: "done" }).success).toBe(false);
+		expect(NotificationsListQuerySchema.parse({})).toEqual({});
+		expect(NotificationsListQuerySchema.parse({ status: "all" })).toEqual({ status: "all" });
+		expect(NotificationsListQuerySchema.safeParse({ status: "archived" }).success).toBe(false);
+
+		const notification = {
+			id: "notification-1",
+			message: "Сделать партию икры",
+			status: "new",
+			createdBy: {
+				userId: "commercial-1",
+				login: "commercial",
+				displayName: "Commercial",
+			},
+			completedBy: null,
+			createdAt: new Date(0).toISOString(),
+			updatedAt: new Date(0).toISOString(),
+			completedAt: null,
+		};
+
+		expect(NotificationResponseSchema.safeParse({ notification }).success).toBe(true);
+		expect(NotificationsListResponseSchema.safeParse({
+			items: [notification],
+			summary: {
+				newCount: 1,
+				completedCount: 0,
+			},
+		}).success).toBe(true);
 	});
 
 	it("validates distributor inventory contracts", () => {

@@ -9,15 +9,22 @@ import {
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
-import { Bell, Box, Check, ClipboardList, Factory, Gauge, PackageCheck, ReceiptText, Settings, Shield, Truck, Users } from "lucide-react";
+import { Bell, Box, Check, ClipboardList, Factory, Gauge, PackageCheck, ReceiptText, Settings, Shield, Truck, Users, type LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { LoginForm } from "../auth/LoginForm";
 import { ROLE_LABELS } from "../lib/role-labels";
-import { getCurrentActor, isUnauthorizedError, signOut, type CurrentActor } from "../lib/api-client";
+import { getCurrentActor, isUnauthorizedError, listNotifications, signOut, type CurrentActor } from "../lib/api-client";
 import { RoleHomeRouter } from "./RoleHomeRouter";
 import { useOnlineStatus } from "./useOnlineStatus";
 
 const signedOutState = { authenticated: false, actor: null };
+
+type BottomNavItem = {
+	id: string;
+	label: string;
+	icon: LucideIcon;
+	badgeCount?: number;
+};
 
 function completeLocalSignOut(client: QueryClient) {
 	void client.cancelQueries();
@@ -163,30 +170,44 @@ function BottomNav({
 	actor: CurrentActor;
 	onTabChange: (tab: string) => void;
 }) {
-	const catalogItem = actor.permissions.includes("catalog.manage")
+	const shouldShowProductionNotifications = actor.role === "production_manager"
+		&& actor.permissions.includes("notification.read");
+	const productionNotifications = useQuery({
+		queryKey: ["notifications", "all"],
+		queryFn: () => listNotifications("all"),
+		enabled: shouldShowProductionNotifications,
+		refetchInterval: 30_000,
+	});
+	const newProductionNotifications = shouldShowProductionNotifications
+		? productionNotifications.data?.summary.newCount ?? 0
+		: 0;
+	const catalogItem: BottomNavItem[] = actor.permissions.includes("catalog.manage")
 		? [{ id: "catalog", label: "Каталог", icon: ClipboardList }]
 		: [];
-	const clientsItem = actor.permissions.includes("client.read")
+	const clientsItem: BottomNavItem[] = actor.permissions.includes("client.read")
 		? [{ id: "clients", label: "Клиенты", icon: Users }]
 		: [];
-	const courierBalancesItem = actor.permissions.includes("courier.stock.read")
+	const courierBalancesItem: BottomNavItem[] = actor.permissions.includes("courier.stock.read")
 		&& (actor.role === "director" || actor.role === "commercial_manager")
 		? [{ id: "couriers", label: "Курьеры", icon: Truck }]
 		: [];
-	const distributorStockItem = actor.role === "commercial_manager" && actor.permissions.includes("distributor.stock.read")
+	const distributorStockItem: BottomNavItem[] = actor.role === "commercial_manager" && actor.permissions.includes("distributor.stock.read")
 		? [{ id: "distributor", label: "Остатки", icon: Box }]
 		: [];
-	const directorDistributorItem = actor.role === "director" && actor.permissions.includes("distributor.stock.read")
+	const commercialNotificationItem: BottomNavItem[] = actor.role === "commercial_manager" && actor.permissions.includes("notification.read")
+		? [{ id: "notifications", label: "Задачи", icon: Bell }]
+		: [];
+	const directorDistributorItem: BottomNavItem[] = actor.role === "director" && actor.permissions.includes("distributor.stock.read")
 		? [{ id: "distributor", label: "Распределитель", icon: Box }]
 		: [];
-	const courierItems = [
+	const courierItems: BottomNavItem[] = [
 		{ id: "home", label: "Баланс", icon: PackageCheck },
 		{ id: "settings", label: "Профиль", icon: Settings },
 	];
-	const productionItems = [
+	const productionItems: BottomNavItem[] = [
 		{ id: "home", label: "Главная", icon: Factory },
 		{ id: "distributor", label: "Распределитель", icon: Box },
-		{ id: "notifications", label: "Уведомления", icon: Bell },
+		{ id: "notifications", label: "Уведомления", icon: Bell, badgeCount: newProductionNotifications },
 		{ id: "history", label: "История", icon: ReceiptText },
 		{ id: "settings", label: "Профиль", icon: Settings },
 	];
@@ -216,6 +237,7 @@ function BottomNav({
 			...distributorStockItem,
 			...catalogItem,
 			...clientsItem,
+			...commercialNotificationItem,
 			...courierBalancesItem,
 			{ id: "settings", label: "Профиль", icon: Settings },
 		];
@@ -225,13 +247,18 @@ function BottomNav({
 			{items.map((item) => (
 				<button
 					aria-current={activeTab === item.id ? "page" : undefined}
-					aria-label={item.label}
+					aria-label={item.badgeCount ? `${item.label}, новых задач: ${item.badgeCount}` : item.label}
 					className={activeTab === item.id ? "active" : ""}
 					onClick={() => onTabChange(item.id)}
 					type="button"
 					key={item.id}
 				>
 					<item.icon aria-hidden className="bottom-nav-icon" size={20} />
+					{item.badgeCount ? (
+						<span className="bottom-nav-badge" aria-hidden>
+							{item.badgeCount > 9 ? "9+" : item.badgeCount}
+						</span>
+					) : null}
 				</button>
 			))}
 		</nav>

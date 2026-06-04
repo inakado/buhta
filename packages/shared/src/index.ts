@@ -3,6 +3,7 @@ export * from "./clients";
 export * from "./courier";
 export * from "./distributor";
 export * from "./errors";
+export * from "./notifications";
 export * from "./permissions";
 export * from "./primitives";
 export * from "./production";
