@@ -1,11 +1,14 @@
 import type {
+	CancelCourierSaleResponse,
 	CourierCashBalanceItem,
 	CourierLoad,
 	CourierLoadOption,
 	CourierProductBalanceItem,
 	CourierProductBalancesCourierSummary,
 	CourierProductBalancesSummary,
+	CourierRecentSaleItem,
 	CourierSale,
+	CourierSaleCancellation,
 	CourierSaleOption,
 	CourierUnload,
 	CourierUnloadDistributorCashBalance,
@@ -95,6 +98,43 @@ type CourierSaleRecord = {
 	operationId: string;
 	actorUserId: string;
 	createdAt: Date;
+};
+
+type CourierSaleCancellationRecord = {
+	id: string;
+	courierSaleId: string;
+	courierProductBalanceId: string;
+	courierUserId: string;
+	productBatchId: string;
+	clientId: string;
+	quantity: number;
+	baseUnitPriceCents: number;
+	unitPriceCents: number;
+	discountCentsPerUnit: number;
+	discountTotalCents: number;
+	totalCents: number;
+	paymentMethod: string;
+	reason: string;
+	operationId: string;
+	actorUserId: string;
+	createdAt: Date;
+};
+
+type CourierRecentSaleRecord = CourierSaleRecord & {
+	productBatch: {
+		productName: string;
+	};
+	client: {
+		id: string;
+		name: string;
+		phone: string;
+	};
+	operation: {
+		actor: UserRecord;
+	};
+	cancellation: (CourierSaleCancellationRecord & {
+		actor: UserRecord;
+	}) | null;
 };
 
 type CourierUnloadRecord = {
@@ -262,6 +302,74 @@ export function mapCourierSale(record: CourierSaleRecord): CourierSale {
 		operationId: record.operationId,
 		actorUserId: record.actorUserId,
 		createdAt: record.createdAt.toISOString(),
+	};
+}
+
+export function mapCourierSaleCancellation(record: CourierSaleCancellationRecord): CourierSaleCancellation {
+	return {
+		id: record.id,
+		courierSaleId: record.courierSaleId,
+		courierProductBalanceId: record.courierProductBalanceId,
+		courierUserId: record.courierUserId,
+		productBatchId: record.productBatchId,
+		clientId: record.clientId,
+		quantity: record.quantity,
+		baseUnitPriceCents: record.baseUnitPriceCents,
+		unitPriceCents: record.unitPriceCents,
+		discountCentsPerUnit: record.discountCentsPerUnit,
+		discountTotalCents: record.discountTotalCents,
+		totalCents: record.totalCents,
+		paymentMethod: record.paymentMethod === "cashless" ? "cashless" : "cash",
+		reason: record.reason,
+		operationId: record.operationId,
+		actorUserId: record.actorUserId,
+		createdAt: record.createdAt.toISOString(),
+	};
+}
+
+export function mapCourierRecentSale(record: CourierRecentSaleRecord): CourierRecentSaleItem {
+	const saleActorLogin = loginForUser(record.operation.actor);
+	const cancellationActorLogin = record.cancellation ? loginForUser(record.cancellation.actor) : null;
+
+	return {
+		id: record.id,
+		sourceType: "courier",
+		productName: record.productBatch.productName,
+		clientId: record.client.id,
+		clientName: record.client.name,
+		clientPhone: record.client.phone,
+		quantity: record.quantity,
+		baseUnitPriceCents: record.baseUnitPriceCents,
+		unitPriceCents: record.unitPriceCents,
+		discountCentsPerUnit: record.discountCentsPerUnit,
+		discountTotalCents: record.discountTotalCents,
+		totalCents: record.totalCents,
+		paymentMethod: record.paymentMethod === "cashless" ? "cashless" : "cash",
+		comment: record.comment,
+		saleActorUserId: record.actorUserId,
+		saleActorDisplayName: displayNameForUser(record.operation.actor, saleActorLogin),
+		createdAt: record.createdAt.toISOString(),
+		cancelled: record.cancellation !== null,
+		cancellationId: record.cancellation?.id ?? null,
+		cancellationReason: record.cancellation?.reason ?? null,
+		cancelledByActorUserId: record.cancellation?.actorUserId ?? null,
+		cancelledByActorDisplayName: record.cancellation && cancellationActorLogin
+			? displayNameForUser(record.cancellation.actor, cancellationActorLogin)
+			: null,
+		cancelledAt: record.cancellation?.createdAt.toISOString() ?? null,
+	};
+}
+
+export function mapCancelCourierSaleResponse(input: {
+	cancellation: CourierSaleCancellationRecord;
+	courierProductBalance: CourierBalanceRecord;
+	cashBalance: CourierCashBalanceRecord | null;
+	courier: UserRecord;
+}): CancelCourierSaleResponse {
+	return {
+		cancellation: mapCourierSaleCancellation(input.cancellation),
+		courierProductBalance: mapCourierProductBalanceItem(input.courierProductBalance),
+		cashBalance: mapCourierCashBalanceItem(input.courier, input.cashBalance),
 	};
 }
 

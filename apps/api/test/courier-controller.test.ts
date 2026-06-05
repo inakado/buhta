@@ -13,6 +13,7 @@ const actor: Actor = {
 		"courier.stock.load",
 		"courier.cash.read",
 		"courier.sale.create",
+		"courier.sale.cancel",
 		"courier.unload.create",
 	],
 };
@@ -231,6 +232,71 @@ describe("CourierController", () => {
 				paymentMethod: "cash",
 			}),
 		).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+	});
+
+	it("returns recent courier sales and validates cancellation through service", async () => {
+		const recentSales = { items: [] };
+		const cancelResponse = {
+			cancellation: {
+				id: "cancel1",
+				courierSaleId: "sale1",
+				courierProductBalanceId: "courier-balance1",
+				courierUserId: "courier1",
+				productBatchId: "batch1",
+				clientId: "client1",
+				quantity: 2,
+				baseUnitPriceCents: 125000,
+				unitPriceCents: 125000,
+				discountCentsPerUnit: 0,
+				discountTotalCents: 0,
+				totalCents: 250000,
+				paymentMethod: "cash" as const,
+				reason: "Ошибка клиента",
+				operationId: "op2",
+				actorUserId: "courier1",
+				createdAt: new Date(1).toISOString(),
+			},
+			courierProductBalance: {
+				id: "courier-balance1",
+				courierUserId: "courier1",
+				courierLogin: "courier",
+				courierDisplayName: "Courier",
+				productBatchId: "batch1",
+				productName: "Икра горбуши",
+				baseUnitPriceCents: 125000,
+				unitPriceCents: 125000,
+				discounted: false,
+				discountCentsPerUnit: 0,
+				quantity: 2,
+				stockValueCents: 250000,
+				updatedAt: new Date(1).toISOString(),
+			},
+			cashBalance: {
+				courierUserId: "courier1",
+				courierLogin: "courier",
+				courierDisplayName: "Courier",
+				amountCents: 0,
+				updatedAt: new Date(1).toISOString(),
+			},
+		};
+		const courierService = {
+			getRecentSales: vi.fn().mockResolvedValue(recentSales),
+			cancelCourierSale: vi.fn().mockResolvedValue(cancelResponse),
+		} as unknown as CourierService;
+		const controller = new CourierController(courierService);
+
+		await expect(controller.recentSales(actor, "3")).resolves.toEqual(recentSales);
+		expect(courierService.getRecentSales).toHaveBeenCalledWith(actor, 3);
+		await expect(
+			controller.cancelSale(actor, "sale1", { reason: " Ошибка клиента " }),
+		).resolves.toEqual(cancelResponse);
+		expect(courierService.cancelCourierSale).toHaveBeenCalledWith(actor, "sale1", {
+			reason: "Ошибка клиента",
+		});
+		await expect(controller.cancelSale(actor, "sale1", { reason: "  " }))
+			.rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+		await expect(controller.cancelSale(undefined, "sale1", { reason: "Ошибка клиента" }))
+			.rejects.toMatchObject({ code: "UNAUTHENTICATED" });
 	});
 
 	it("returns courier unload options through service", async () => {

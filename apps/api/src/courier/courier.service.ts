@@ -1,9 +1,12 @@
 import { Injectable } from "@nestjs/common";
 import type {
+	CancelCourierSaleRequest,
+	CancelCourierSaleResponse,
 	CourierCashBalancesResponse,
 	CourierLoadOptionsResponse,
 	CourierLoadResponse,
 	CourierProductBalancesResponse,
+	CourierRecentSalesResponse,
 	CourierSaleOptionsResponse,
 	CourierSaleResponse,
 	CourierUnloadOptionsResponse,
@@ -25,11 +28,13 @@ import {
 	mapCourierSale,
 	mapCourierSaleOption,
 	mapCourierUnload,
+	mapCancelCourierSaleResponse,
 	mapCourierUnloadDistributorCashBalance,
 	mapCourierUnloadDistributorOption,
 	mapCourierUnloadDistributorProductBalance,
 	mapCourierUnloadItem,
 	mapCourierUnloadProductOption,
+	mapCourierRecentSale,
 	mapDistributorBalanceAfter,
 	summarizeCourierProductBalances,
 } from "./courier.mapper";
@@ -111,6 +116,32 @@ export class CourierService {
 
 		return {
 			items: balances.filter(hasLoadedProductBatch).map(mapCourierSaleOption),
+		};
+	}
+
+	async getRecentSales(actor: Actor, limit = 10): Promise<CourierRecentSalesResponse> {
+		if (!canCreateCourierSale(actor.role)) {
+			throw new AppError("FORBIDDEN", "Courier recent sales are not available for this role");
+		}
+
+		const sales = await prisma.courierSale.findMany({
+			where: actor.role === "courier" ? { courierUserId: actor.userId } : {},
+			take: clampRecentSalesLimit(limit),
+			include: {
+				productBatch: true,
+				client: true,
+				operation: {
+					include: { actor: true },
+				},
+				cancellation: {
+					include: { actor: true },
+				},
+			},
+			orderBy: { createdAt: "desc" },
+		});
+
+		return {
+			items: sales.map(mapCourierRecentSale),
 		};
 	}
 
@@ -490,6 +521,168 @@ export class CourierService {
 		};
 	}
 
+	async cancelCourierSale(
+		actor: Actor,
+		saleId: string,
+		input: CancelCourierSaleRequest,
+	): Promise<CancelCourierSaleResponse> {
+		const reason = input.reason.trim();
+
+		try {
+			const result = await prisma.$transaction(async (tx) => {
+				const sale = await tx.courierSale.findUnique({
+					where: { id: saleId },
+					include: {
+						courier: true,
+						productBatch: true,
+						client: true,
+						cancellation: true,
+					},
+				});
+				if (!sale) {
+					throw new AppError("NOT_FOUND", "Courier sale not found", { id: saleId });
+				}
+				if (sale.cancellation) {
+					throw new AppError("DOMAIN_RULE_VIOLATION", "Courier sale is already cancelled", {
+						courierSaleId: saleId,
+					});
+				}
+				if (actor.role === "courier" && sale.courierUserId !== actor.userId) {
+					throw new AppError("DOMAIN_RULE_VIOLATION", "Courier sale belongs to another courier", {
+						courierSaleId: saleId,
+						courierUserId: actor.userId,
+					});
+				}
+				if (actor.role !== "courier" && actor.role !== "admin") {
+					throw new AppError("FORBIDDEN", "Only courier can cancel own sale");
+				}
+
+				const operation = await tx.operation.create({
+					data: {
+						type: "courier.sale.cancel",
+						status: OPERATION_STATUS.succeeded,
+						actorUserId: actor.userId,
+					},
+				});
+
+				const cancellation = await tx.courierSaleCancellation.create({
+					data: {
+						courierSaleId: sale.id,
+						courierProductBalanceId: sale.courierProductBalanceId,
+						courierUserId: sale.courierUserId,
+						productBatchId: sale.productBatchId,
+						clientId: sale.clientId,
+						quantity: sale.quantity,
+						baseUnitPriceCents: sale.baseUnitPriceCents,
+						unitPriceCents: sale.unitPriceCents,
+						discountCentsPerUnit: sale.discountCentsPerUnit,
+						discountTotalCents: sale.discountTotalCents,
+						totalCents: sale.totalCents,
+						paymentMethod: sale.paymentMethod,
+						reason,
+						operationId: operation.id,
+						actorUserId: actor.userId,
+					},
+				});
+
+				let cashBalanceAfter = null;
+				let cashBalanceBeforeAmount: number | null = null;
+				let cashBalanceAfterAmount: number | null = null;
+				if (sale.paymentMethod === "cash") {
+					const cashDecrement = await tx.courierCashBalance.updateMany({
+						where: {
+							courierUserId: sale.courierUserId,
+							amountCents: { gte: sale.totalCents },
+						},
+						data: {
+							amountCents: { decrement: sale.totalCents },
+						},
+					});
+					if (cashDecrement.count !== 1) {
+						throw new AppError("DOMAIN_RULE_VIOLATION", "Not enough courier cash balance to cancel sale", {
+							courierUserId: sale.courierUserId,
+							courierSaleId: sale.id,
+						});
+					}
+					cashBalanceAfter = await tx.courierCashBalance.findUniqueOrThrow({
+						where: { courierUserId: sale.courierUserId },
+					});
+					cashBalanceAfterAmount = cashBalanceAfter.amountCents;
+					cashBalanceBeforeAmount = cashBalanceAfterAmount + sale.totalCents;
+				} else {
+					cashBalanceAfter = await tx.courierCashBalance.findUnique({
+						where: { courierUserId: sale.courierUserId },
+					});
+					cashBalanceAfterAmount = cashBalanceAfter?.amountCents ?? null;
+					cashBalanceBeforeAmount = cashBalanceAfterAmount;
+				}
+
+				await tx.courierProductBalance.update({
+					where: { id: sale.courierProductBalanceId },
+					data: { quantity: { increment: sale.quantity } },
+				});
+				const courierProductBalanceAfter = await tx.courierProductBalance.findUniqueOrThrow({
+					where: { id: sale.courierProductBalanceId },
+					include: {
+						courier: true,
+						productBatch: true,
+					},
+				});
+				const courierStockBalanceAfter = courierProductBalanceAfter.quantity;
+				const courierStockBalanceBefore = courierStockBalanceAfter - sale.quantity;
+
+				await tx.auditLog.create({
+					data: {
+						operationId: operation.id,
+						actorUserId: actor.userId,
+						action: "courier.sale.cancel",
+						entityType: "courier_sale_cancellation",
+						entityId: cancellation.id,
+						details: {
+							courierSaleCancellationId: cancellation.id,
+							courierSaleId: sale.id,
+							originalSaleOperationId: sale.operationId,
+							courierProductBalanceId: sale.courierProductBalanceId,
+							courierUserId: sale.courierUserId,
+							courierLogin: sale.courier.username ?? sale.courier.displayUsername ?? sale.courier.email ?? sale.courier.id,
+							productBatchId: sale.productBatchId,
+							productName: sale.productBatch.productName,
+							clientId: sale.clientId,
+							quantity: sale.quantity,
+							baseUnitPriceCents: sale.baseUnitPriceCents,
+							unitPriceCents: sale.unitPriceCents,
+							discountCentsPerUnit: sale.discountCentsPerUnit,
+							discountTotalCents: sale.discountTotalCents,
+							totalCents: sale.totalCents,
+							paymentMethod: sale.paymentMethod,
+							courierStockBalanceBefore,
+							courierStockBalanceAfter,
+							courierCashBalanceBefore: cashBalanceBeforeAmount,
+							courierCashBalanceAfter: cashBalanceAfterAmount,
+							reason,
+						} satisfies Prisma.InputJsonValue,
+					},
+				});
+
+				return {
+					cancellation,
+					courierProductBalance: courierProductBalanceAfter,
+					cashBalance: cashBalanceAfter,
+					courier: sale.courier,
+				};
+			});
+
+			return mapCancelCourierSaleResponse(result);
+		} catch (error) {
+			if (isPrismaErrorCode(error, "P2002")) {
+				throw new AppError("DOMAIN_RULE_VIOLATION", "Courier sale is already cancelled", {
+					courierSaleId: saleId,
+				});
+			}
+			throw error;
+		}
+	}
+
 	async createCourierUnload(actor: Actor, input: CreateCourierUnloadRequest): Promise<CourierUnloadResponse> {
 		const targetCourierUserId = resolveUnloadTargetCourierUserId(actor, input);
 		const comment = input.comment?.trim() || undefined;
@@ -736,6 +929,21 @@ function canReadCashBalances(role: Actor["role"]): boolean {
 
 function canCreateCourierSale(role: Actor["role"]): boolean {
 	return role === "admin" || role === "courier";
+}
+
+function clampRecentSalesLimit(limit: number): number {
+	if (!Number.isFinite(limit) || limit <= 0) {
+		return 10;
+	}
+
+	return Math.min(Math.floor(limit), 50);
+}
+
+function isPrismaErrorCode(error: unknown, code: string): boolean {
+	return typeof error === "object"
+		&& error !== null
+		&& "code" in error
+		&& (error as { code?: unknown }).code === code;
 }
 
 function resolveTargetCourierUserId(actor: Actor, input: CreateCourierLoadRequest): string {

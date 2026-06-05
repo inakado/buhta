@@ -155,6 +155,71 @@ describe("DistributorController", () => {
 		).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
 	});
 
+	it("returns recent distributor sales and validates cancellation through service", async () => {
+		const recentSales = { items: [] };
+		const cancelResponse = {
+			cancellation: {
+				id: "cancel1",
+				distributorSaleId: "sale1",
+				distributorProductBalanceId: "balance1",
+				distributorId: "dist1",
+				productBatchId: "batch1",
+				clientId: "client1",
+				quantity: 2,
+				baseUnitPriceCents: 125000,
+				unitPriceCents: 125000,
+				discountCentsPerUnit: 0,
+				discountTotalCents: 0,
+				totalCents: 250000,
+				paymentMethod: "cash" as const,
+				reason: "Ошибка клиента",
+				operationId: "op2",
+				actorUserId: "actor1",
+				createdAt: new Date(1).toISOString(),
+			},
+			distributorProductBalance: {
+				id: "balance1",
+				distributorId: "dist1",
+				distributorName: "Распределитель Центральный",
+				productBatchId: "batch1",
+				productName: "Икра горбуши",
+				baseUnitPriceCents: 125000,
+				unitPriceCents: 125000,
+				discounted: false,
+				discountCentsPerUnit: 0,
+				quantity: 2,
+				stockValueCents: 250000,
+				updatedAt: new Date(1).toISOString(),
+			},
+			cashBalance: null,
+		};
+		const actor: Actor = {
+			userId: "actor1",
+			login: "actor",
+			displayName: "Actor",
+			role: "distributor_worker",
+			permissions: ["distributor.sale.cancel"],
+		};
+		const distributorService = {
+			getRecentSales: vi.fn().mockResolvedValue(recentSales),
+			cancelDistributorSale: vi.fn().mockResolvedValue(cancelResponse),
+		} as unknown as DistributorService;
+		const controller = new DistributorController(distributorService);
+
+		await expect(controller.recentSales("3")).resolves.toEqual(recentSales);
+		expect(distributorService.getRecentSales).toHaveBeenCalledWith(3);
+		await expect(
+			controller.cancelSale(actor, "sale1", { reason: " Ошибка клиента " }),
+		).resolves.toEqual(cancelResponse);
+		expect(distributorService.cancelDistributorSale).toHaveBeenCalledWith(actor, "sale1", {
+			reason: "Ошибка клиента",
+		});
+		await expect(controller.cancelSale(actor, "sale1", { reason: "  " }))
+			.rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+		await expect(controller.cancelSale(undefined, "sale1", { reason: "Ошибка клиента" }))
+			.rejects.toMatchObject({ code: "UNAUTHENTICATED" });
+	});
+
 	it("validates and creates distributor cash withdrawal through service", async () => {
 		const response = {
 			withdrawal: {

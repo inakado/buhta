@@ -3,19 +3,23 @@
 import { DistributorHomeOverview } from "../../features/distributor/DistributorHomeOverview";
 
 type CommercialManagerHomeProps = {
+	canNotifyProduction?: boolean;
 	onTabChange: (tab: string) => void;
 	online: boolean;
 	showCashBalance?: boolean;
 };
 
 export function CommercialManagerHome({
+	canNotifyProduction = false,
 	onTabChange,
 	online,
 	showCashBalance = false,
 }: CommercialManagerHomeProps) {
 	return (
 		<DistributorHomeOverview
+			{...(canNotifyProduction ? { onNotify: () => onTabChange("notifications") } : {})}
 			onSale={() => onTabChange("sale")}
+			notifyDisabled={!online}
 			saleDisabled={!online}
 			showCashBalance={showCashBalance}
 			showStockList={false}

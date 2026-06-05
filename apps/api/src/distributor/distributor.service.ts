@@ -2,11 +2,14 @@ import { Injectable } from "@nestjs/common";
 import type {
 	AssignDistributorDiscountRequest,
 	AssignDistributorDiscountResponse,
+	CancelDistributorSaleRequest,
+	CancelDistributorSaleResponse,
 	CreateDistributorCashWithdrawalRequest,
 	CreateDistributorSaleRequest,
 	DistributorCashBalancesResponse,
 	DistributorCashWithdrawalResponse,
 	DistributorInventoryResponse,
+	DistributorRecentSalesResponse,
 	DistributorSaleOptionsResponse,
 	DistributorSaleResponse,
 } from "@buhta/shared";
@@ -20,6 +23,8 @@ import {
 	mapDistributorCashBalanceRecord,
 	mapDistributorCashWithdrawal,
 	mapDistributorInventoryItem,
+	mapCancelDistributorSaleResponse,
+	mapDistributorRecentSale,
 	mapDistributorSale,
 	mapDistributorSaleStockItem,
 	mapProductDiscountAssignment,
@@ -70,6 +75,28 @@ export class DistributorService {
 
 		return {
 			items: balances.filter(hasLoadedProductBatch).map(mapDistributorSaleStockItem),
+		};
+	}
+
+	async getRecentSales(limit = 10): Promise<DistributorRecentSalesResponse> {
+		const take = clampRecentSalesLimit(limit);
+		const sales = await prisma.distributorSale.findMany({
+			take,
+			include: {
+				productBatch: true,
+				client: true,
+				operation: {
+					include: { actor: true },
+				},
+				cancellation: {
+					include: { actor: true },
+				},
+			},
+			orderBy: { createdAt: "desc" },
+		});
+
+		return {
+			items: sales.map(mapDistributorRecentSale),
 		};
 	}
 
@@ -347,6 +374,161 @@ export class DistributorService {
 		};
 	}
 
+	async cancelDistributorSale(
+		actor: Actor,
+		saleId: string,
+		input: CancelDistributorSaleRequest,
+	): Promise<CancelDistributorSaleResponse> {
+		const reason = input.reason.trim();
+
+		try {
+			const result = await prisma.$transaction(async (tx) => {
+				const sale = await tx.distributorSale.findUnique({
+					where: { id: saleId },
+					include: {
+						distributor: true,
+						productBatch: true,
+						client: true,
+						cancellation: true,
+					},
+				});
+				if (!sale) {
+					throw new AppError("NOT_FOUND", "Distributor sale not found", { id: saleId });
+				}
+				if (sale.cancellation) {
+					throw new AppError("DOMAIN_RULE_VIOLATION", "Distributor sale is already cancelled", {
+						distributorSaleId: saleId,
+					});
+				}
+
+				const operation = await tx.operation.create({
+					data: {
+						type: "distributor.sale.cancel",
+						status: OPERATION_STATUS.succeeded,
+						actorUserId: actor.userId,
+					},
+				});
+
+				const cancellation = await tx.distributorSaleCancellation.create({
+					data: {
+						distributorSaleId: sale.id,
+						distributorProductBalanceId: sale.distributorProductBalanceId,
+						distributorId: sale.distributorId,
+						productBatchId: sale.productBatchId,
+						clientId: sale.clientId,
+						quantity: sale.quantity,
+						baseUnitPriceCents: sale.baseUnitPriceCents,
+						unitPriceCents: sale.unitPriceCents,
+						discountCentsPerUnit: sale.discountCentsPerUnit,
+						discountTotalCents: sale.discountTotalCents,
+						totalCents: sale.totalCents,
+						paymentMethod: sale.paymentMethod,
+						reason,
+						operationId: operation.id,
+						actorUserId: actor.userId,
+					},
+				});
+
+				let cashBalanceAfter = null;
+				let cashBalanceBeforeAmount: number | null = null;
+				let cashBalanceAfterAmount: number | null = null;
+				if (sale.paymentMethod === "cash") {
+					const cashDecrement = await tx.distributorCashBalance.updateMany({
+						where: {
+							distributorId: sale.distributorId,
+							amountCents: { gte: sale.totalCents },
+						},
+						data: {
+							amountCents: { decrement: sale.totalCents },
+						},
+					});
+					if (cashDecrement.count !== 1) {
+						throw new AppError("DOMAIN_RULE_VIOLATION", "Not enough distributor cash balance to cancel sale", {
+							distributorId: sale.distributorId,
+							distributorSaleId: sale.id,
+						});
+					}
+					cashBalanceAfter = await tx.distributorCashBalance.findUniqueOrThrow({
+						where: { distributorId: sale.distributorId },
+						include: { distributor: true },
+					});
+					cashBalanceAfterAmount = cashBalanceAfter.amountCents;
+					cashBalanceBeforeAmount = cashBalanceAfterAmount + sale.totalCents;
+				} else {
+					cashBalanceAfter = await tx.distributorCashBalance.findUnique({
+						where: { distributorId: sale.distributorId },
+						include: { distributor: true },
+					});
+					cashBalanceAfterAmount = cashBalanceAfter?.amountCents ?? null;
+					cashBalanceBeforeAmount = cashBalanceAfterAmount;
+				}
+
+				await tx.distributorProductBalance.update({
+					where: { id: sale.distributorProductBalanceId },
+					data: { quantity: { increment: sale.quantity } },
+				});
+				const productBalanceAfter = await tx.distributorProductBalance.findUniqueOrThrow({
+					where: { id: sale.distributorProductBalanceId },
+					include: {
+						distributor: true,
+						productBatch: true,
+					},
+				});
+				const productBalanceAfterQuantity = productBalanceAfter.quantity;
+				const productBalanceBeforeQuantity = productBalanceAfterQuantity - sale.quantity;
+
+				await tx.auditLog.create({
+					data: {
+						operationId: operation.id,
+						actorUserId: actor.userId,
+						action: "distributor.sale.cancel",
+						entityType: "distributor_sale_cancellation",
+						entityId: cancellation.id,
+						details: {
+							distributorSaleCancellationId: cancellation.id,
+							distributorSaleId: sale.id,
+							originalSaleOperationId: sale.operationId,
+							distributorProductBalanceId: sale.distributorProductBalanceId,
+							distributorId: sale.distributorId,
+							distributorName: sale.distributor.name,
+							productBatchId: sale.productBatchId,
+							productName: sale.productBatch.productName,
+							clientId: sale.clientId,
+							quantity: sale.quantity,
+							baseUnitPriceCents: sale.baseUnitPriceCents,
+							unitPriceCents: sale.unitPriceCents,
+							discountCentsPerUnit: sale.discountCentsPerUnit,
+							discountTotalCents: sale.discountTotalCents,
+							totalCents: sale.totalCents,
+							paymentMethod: sale.paymentMethod,
+							productBalanceBefore: productBalanceBeforeQuantity,
+							productBalanceAfter: productBalanceAfterQuantity,
+							cashBalanceBefore: cashBalanceBeforeAmount,
+							cashBalanceAfter: cashBalanceAfterAmount,
+							reason,
+						} satisfies Prisma.InputJsonValue,
+					},
+				});
+
+				return {
+					cancellation,
+					distributorProductBalance: productBalanceAfter,
+					cashBalance: cashBalanceAfter,
+					distributor: sale.distributor,
+				};
+			});
+
+			return mapCancelDistributorSaleResponse(result);
+		} catch (error) {
+			if (isPrismaErrorCode(error, "P2002")) {
+				throw new AppError("DOMAIN_RULE_VIOLATION", "Distributor sale is already cancelled", {
+					distributorSaleId: saleId,
+				});
+			}
+			throw error;
+		}
+	}
+
 	async assignDiscount(
 		actor: Actor,
 		input: AssignDistributorDiscountRequest,
@@ -511,4 +693,19 @@ function hasLoadedProductBatch<T extends { productBatch: unknown }>(
 	record: T,
 ): record is T & { productBatch: NonNullable<T["productBatch"]> } {
 	return record.productBatch !== null;
+}
+
+function clampRecentSalesLimit(limit: number): number {
+	if (!Number.isFinite(limit) || limit <= 0) {
+		return 10;
+	}
+
+	return Math.min(Math.floor(limit), 50);
+}
+
+function isPrismaErrorCode(error: unknown, code: string): boolean {
+	return typeof error === "object"
+		&& error !== null
+		&& "code" in error
+		&& (error as { code?: unknown }).code === code;
 }

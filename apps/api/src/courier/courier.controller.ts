@@ -1,5 +1,6 @@
-import { Body, Controller, Get, Inject, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Inject, Param, Post, Query, UseGuards } from "@nestjs/common";
 import {
+	CancelCourierSaleRequestSchema,
 	CreateCourierLoadRequestSchema,
 	CreateCourierSaleRequestSchema,
 	CreateCourierUnloadRequestSchema,
@@ -35,6 +36,12 @@ export class CourierController {
 		return this.courierService.getSaleOptions(requireActor(actor));
 	}
 
+	@Get("sales/recent")
+	@RequirePermission("courier.sale.create")
+	async recentSales(@CurrentActor() actor: Actor | undefined, @Query("limit") limit?: string) {
+		return this.courierService.getRecentSales(requireActor(actor), parseLimit(limit));
+	}
+
 	@Get("cash-balances")
 	@RequirePermission("courier.cash.read")
 	async cashBalances(@CurrentActor() actor: Actor | undefined) {
@@ -65,6 +72,20 @@ export class CourierController {
 		);
 	}
 
+	@Post("sales/:saleId/cancel")
+	@RequirePermission("courier.sale.cancel")
+	async cancelSale(
+		@CurrentActor() actor: Actor | undefined,
+		@Param("saleId") saleId: string,
+		@Body() body: unknown,
+	) {
+		return this.courierService.cancelCourierSale(
+			requireActor(actor),
+			saleId,
+			parseBody(CancelCourierSaleRequestSchema, body, "Invalid courier sale cancellation payload"),
+		);
+	}
+
 	@Post("unloads")
 	@RequirePermission("courier.unload.create")
 	async createUnload(@CurrentActor() actor: Actor | undefined, @Body() body: unknown) {
@@ -91,4 +112,13 @@ function parseBody<T extends z.ZodType>(schema: T, body: unknown, message: strin
 	}
 
 	return parsedBody.data;
+}
+
+function parseLimit(value: string | undefined): number | undefined {
+	if (value === undefined) {
+		return undefined;
+	}
+
+	const parsed = Number(value);
+	return Number.isFinite(parsed) ? parsed : undefined;
 }

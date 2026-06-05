@@ -3,6 +3,7 @@ import { z } from "zod";
 const NonNegativeIntegerSchema = z.number().int().nonnegative();
 const PositiveIntegerSchema = z.number().int().positive();
 const OptionalCommentSchema = z.string().trim().max(500).optional();
+const CancellationReasonSchema = z.string().trim().min(3).max(500);
 
 export const PaymentMethodSchema = z.enum(["cash", "cashless"]);
 
@@ -86,6 +87,12 @@ export const CreateDistributorSaleRequestSchema = z.object({
 });
 
 export type CreateDistributorSaleRequest = z.infer<typeof CreateDistributorSaleRequestSchema>;
+
+export const CancelDistributorSaleRequestSchema = z.object({
+	reason: CancellationReasonSchema,
+});
+
+export type CancelDistributorSaleRequest = z.infer<typeof CancelDistributorSaleRequestSchema>;
 
 export const DistributorCashBalanceItemSchema = z.object({
 	distributorId: z.string(),
@@ -201,3 +208,67 @@ export const DistributorSaleResponseSchema = z.object({
 });
 
 export type DistributorSaleResponse = z.infer<typeof DistributorSaleResponseSchema>;
+
+export const DistributorSaleCancellationSchema = z.object({
+	id: z.string(),
+	distributorSaleId: z.string(),
+	distributorProductBalanceId: z.string(),
+	distributorId: z.string(),
+	productBatchId: z.string(),
+	clientId: z.string(),
+	quantity: PositiveIntegerSchema,
+	baseUnitPriceCents: PositiveIntegerSchema,
+	unitPriceCents: PositiveIntegerSchema,
+	discountCentsPerUnit: NonNegativeIntegerSchema,
+	discountTotalCents: NonNegativeIntegerSchema,
+	totalCents: NonNegativeIntegerSchema,
+	paymentMethod: PaymentMethodSchema,
+	reason: CancellationReasonSchema,
+	operationId: z.string(),
+	actorUserId: z.string(),
+	createdAt: z.string(),
+});
+
+export type DistributorSaleCancellation = z.infer<typeof DistributorSaleCancellationSchema>;
+
+export const CancelDistributorSaleResponseSchema = z.object({
+	cancellation: DistributorSaleCancellationSchema,
+	distributorProductBalance: DistributorInventoryItemSchema,
+	cashBalance: DistributorCashBalanceItemSchema.nullable(),
+});
+
+export type CancelDistributorSaleResponse = z.infer<typeof CancelDistributorSaleResponseSchema>;
+
+export const DistributorRecentSaleItemSchema = z.object({
+	id: z.string(),
+	sourceType: z.literal("distributor"),
+	productName: z.string(),
+	clientId: z.string(),
+	clientName: z.string(),
+	clientPhone: z.string(),
+	quantity: PositiveIntegerSchema,
+	baseUnitPriceCents: NonNegativeIntegerSchema,
+	unitPriceCents: NonNegativeIntegerSchema,
+	discountCentsPerUnit: NonNegativeIntegerSchema,
+	discountTotalCents: NonNegativeIntegerSchema,
+	totalCents: NonNegativeIntegerSchema,
+	paymentMethod: PaymentMethodSchema,
+	comment: z.string().nullable(),
+	saleActorUserId: z.string(),
+	saleActorDisplayName: z.string(),
+	createdAt: z.string(),
+	cancelled: z.boolean(),
+	cancellationId: z.string().nullable(),
+	cancellationReason: z.string().nullable(),
+	cancelledByActorUserId: z.string().nullable(),
+	cancelledByActorDisplayName: z.string().nullable(),
+	cancelledAt: z.string().nullable(),
+});
+
+export type DistributorRecentSaleItem = z.infer<typeof DistributorRecentSaleItemSchema>;
+
+export const DistributorRecentSalesResponseSchema = z.object({
+	items: z.array(DistributorRecentSaleItemSchema),
+});
+
+export type DistributorRecentSalesResponse = z.infer<typeof DistributorRecentSalesResponseSchema>;

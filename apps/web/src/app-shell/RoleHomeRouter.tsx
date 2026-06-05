@@ -11,6 +11,7 @@ import { DistributorInventoryHome } from "../features/distributor/DistributorInv
 import { NotificationsHome } from "../features/notifications/NotificationsHome";
 import { ProductionHome } from "../features/production/ProductionHome";
 import { DistributorSaleHome } from "../features/sales/DistributorSaleHome";
+import { SalesHistoryHome } from "../features/sales/SalesHistoryHome";
 import { ROLE_LABELS } from "../lib/role-labels";
 import type { CurrentActor } from "../lib/api-client";
 import { AdminHome } from "../roles/admin/AdminHome";
@@ -106,6 +107,16 @@ export function RoleHomeRouter({
 	}
 
 	if (activeTab !== "home") {
+		if (
+			activeTab === "sales-history"
+			&& (
+				(actor.role === "courier" && actor.permissions.includes("courier.sale.create"))
+				|| ((actor.role === "commercial_manager" || actor.role === "distributor_worker")
+					&& actor.permissions.includes("distributor.sale.create"))
+			)
+		) {
+			return <SalesHistoryHome actor={actor} online={online} />;
+		}
 		if (activeTab === "load" && actor.permissions.includes("courier.stock.load")) {
 			return (
 				<CourierLoadHome
@@ -154,6 +165,7 @@ export function RoleHomeRouter({
 		if (actor.role === "commercial_manager") {
 			return (
 				<CommercialManagerHome
+					canNotifyProduction={actor.permissions.includes("notification.read")}
 					online={online}
 					onTabChange={onTabChange}
 					showCashBalance={actor.permissions.includes("distributor.cash.read")}

@@ -4,6 +4,7 @@ import { PaymentMethodSchema } from "./distributor";
 const NonNegativeIntegerSchema = z.number().int().nonnegative();
 const PositiveIntegerSchema = z.number().int().positive();
 const OptionalCommentSchema = z.string().trim().max(500).optional();
+const CancellationReasonSchema = z.string().trim().min(3).max(500);
 
 export const CourierLoadOptionSchema = z.object({
 	distributorProductBalanceId: z.string(),
@@ -160,6 +161,12 @@ export const CreateCourierSaleRequestSchema = z.object({
 
 export type CreateCourierSaleRequest = z.infer<typeof CreateCourierSaleRequestSchema>;
 
+export const CancelCourierSaleRequestSchema = z.object({
+	reason: CancellationReasonSchema,
+});
+
+export type CancelCourierSaleRequest = z.infer<typeof CancelCourierSaleRequestSchema>;
+
 export const CourierCashBalanceItemSchema = z.object({
 	courierUserId: z.string(),
 	courierLogin: z.string(),
@@ -206,6 +213,70 @@ export const CourierSaleResponseSchema = z.object({
 });
 
 export type CourierSaleResponse = z.infer<typeof CourierSaleResponseSchema>;
+
+export const CourierSaleCancellationSchema = z.object({
+	id: z.string(),
+	courierSaleId: z.string(),
+	courierProductBalanceId: z.string(),
+	courierUserId: z.string(),
+	productBatchId: z.string(),
+	clientId: z.string(),
+	quantity: PositiveIntegerSchema,
+	baseUnitPriceCents: PositiveIntegerSchema,
+	unitPriceCents: PositiveIntegerSchema,
+	discountCentsPerUnit: NonNegativeIntegerSchema,
+	discountTotalCents: NonNegativeIntegerSchema,
+	totalCents: NonNegativeIntegerSchema,
+	paymentMethod: PaymentMethodSchema,
+	reason: CancellationReasonSchema,
+	operationId: z.string(),
+	actorUserId: z.string(),
+	createdAt: z.string(),
+});
+
+export type CourierSaleCancellation = z.infer<typeof CourierSaleCancellationSchema>;
+
+export const CancelCourierSaleResponseSchema = z.object({
+	cancellation: CourierSaleCancellationSchema,
+	courierProductBalance: CourierProductBalanceItemSchema,
+	cashBalance: CourierCashBalanceItemSchema,
+});
+
+export type CancelCourierSaleResponse = z.infer<typeof CancelCourierSaleResponseSchema>;
+
+export const CourierRecentSaleItemSchema = z.object({
+	id: z.string(),
+	sourceType: z.literal("courier"),
+	productName: z.string(),
+	clientId: z.string(),
+	clientName: z.string(),
+	clientPhone: z.string(),
+	quantity: PositiveIntegerSchema,
+	baseUnitPriceCents: NonNegativeIntegerSchema,
+	unitPriceCents: NonNegativeIntegerSchema,
+	discountCentsPerUnit: NonNegativeIntegerSchema,
+	discountTotalCents: NonNegativeIntegerSchema,
+	totalCents: NonNegativeIntegerSchema,
+	paymentMethod: PaymentMethodSchema,
+	comment: z.string().nullable(),
+	saleActorUserId: z.string(),
+	saleActorDisplayName: z.string(),
+	createdAt: z.string(),
+	cancelled: z.boolean(),
+	cancellationId: z.string().nullable(),
+	cancellationReason: z.string().nullable(),
+	cancelledByActorUserId: z.string().nullable(),
+	cancelledByActorDisplayName: z.string().nullable(),
+	cancelledAt: z.string().nullable(),
+});
+
+export type CourierRecentSaleItem = z.infer<typeof CourierRecentSaleItemSchema>;
+
+export const CourierRecentSalesResponseSchema = z.object({
+	items: z.array(CourierRecentSaleItemSchema),
+});
+
+export type CourierRecentSalesResponse = z.infer<typeof CourierRecentSalesResponseSchema>;
 
 export const CourierUnloadDistributorOptionSchema = z.object({
 	distributorId: z.string(),

@@ -9,6 +9,10 @@ import type {
 	CreateDistributorRequest,
 	CreateDistributorCashWithdrawalRequest,
 	CreateDistributorSaleRequest,
+	CancelCourierSaleRequest,
+	CancelCourierSaleResponse,
+	CancelDistributorSaleRequest,
+	CancelDistributorSaleResponse,
 	AssignDistributorDiscountRequest,
 	AssignDistributorDiscountResponse,
 	CreatePackagingTypeRequest,
@@ -24,6 +28,7 @@ import type {
 	CourierLoadOptionsResponse,
 	CourierLoadResponse,
 	CourierProductBalancesResponse,
+	CourierRecentSalesResponse,
 	CourierSaleOptionsResponse,
 	CourierSaleResponse,
 	CourierUnloadOptionsResponse,
@@ -31,6 +36,7 @@ import type {
 	DistributorCashBalancesResponse,
 	DistributorCashWithdrawalResponse,
 	DistributorInventoryResponse,
+	DistributorRecentSalesResponse,
 	DistributorSaleOptionsResponse,
 	DistributorSaleResponse,
 	DistributorResponse,
@@ -387,8 +393,22 @@ export async function getCourierSaleOptions(): Promise<CourierSaleOptionsRespons
 	return fetchJson<CourierSaleOptionsResponse>("/courier/sale-options");
 }
 
+export async function getCourierRecentSales(limit = 5): Promise<CourierRecentSalesResponse> {
+	return fetchJson<CourierRecentSalesResponse>(`/courier/sales/recent?limit=${limit}`);
+}
+
 export async function createCourierSale(input: CreateCourierSaleRequest): Promise<CourierSaleResponse> {
 	return fetchJson<CourierSaleResponse>("/courier/sales", {
+		method: "POST",
+		body: JSON.stringify(input),
+	});
+}
+
+export async function cancelCourierSale(
+	saleId: string,
+	input: CancelCourierSaleRequest,
+): Promise<CancelCourierSaleResponse> {
+	return fetchJson<CancelCourierSaleResponse>(`/courier/sales/${saleId}/cancel`, {
 		method: "POST",
 		body: JSON.stringify(input),
 	});
@@ -407,6 +427,10 @@ export async function createCourierUnload(input: CreateCourierUnloadRequest): Pr
 
 export async function getDistributorSaleOptions(): Promise<DistributorSaleOptionsResponse> {
 	return fetchJson<DistributorSaleOptionsResponse>("/distributor/sale-options");
+}
+
+export async function getDistributorRecentSales(limit = 5): Promise<DistributorRecentSalesResponse> {
+	return fetchJson<DistributorRecentSalesResponse>(`/distributor/sales/recent?limit=${limit}`);
 }
 
 export async function getDistributorCashBalances(): Promise<DistributorCashBalancesResponse> {
@@ -435,6 +459,16 @@ export async function createDistributorSale(
 	input: CreateDistributorSaleRequest,
 ): Promise<DistributorSaleResponse> {
 	return fetchJson<DistributorSaleResponse>("/distributor/sales", {
+		method: "POST",
+		body: JSON.stringify(input),
+	});
+}
+
+export async function cancelDistributorSale(
+	saleId: string,
+	input: CancelDistributorSaleRequest,
+): Promise<CancelDistributorSaleResponse> {
+	return fetchJson<CancelDistributorSaleResponse>(`/distributor/sales/${saleId}/cancel`, {
 		method: "POST",
 		body: JSON.stringify(input),
 	});

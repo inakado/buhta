@@ -111,6 +111,7 @@ describe("PolicyRegistry", () => {
 			});
 
 			expect(actor?.permissions).toContain("distributor.sale.create");
+			expect(actor?.permissions).toContain("distributor.sale.cancel");
 		}
 
 		for (const role of ["director", "production_manager", "courier"] as const) {
@@ -122,6 +123,7 @@ describe("PolicyRegistry", () => {
 			});
 
 			expect(actor?.permissions).not.toContain("distributor.sale.create");
+			expect(actor?.permissions).not.toContain("distributor.sale.cancel");
 		}
 
 		for (const role of ["admin", "director", "commercial_manager", "distributor_worker"] as const) {
@@ -219,6 +221,7 @@ describe("PolicyRegistry", () => {
 			});
 
 			expect(actor?.permissions).toContain("courier.sale.create");
+			expect(actor?.permissions).toContain("courier.sale.cancel");
 			expect(actor?.permissions).toContain("courier.unload.create");
 		}
 
@@ -231,6 +234,7 @@ describe("PolicyRegistry", () => {
 			});
 
 			expect(actor?.permissions).not.toContain("courier.sale.create");
+			expect(actor?.permissions).not.toContain("courier.sale.cancel");
 			expect(actor?.permissions).not.toContain("courier.unload.create");
 		}
 

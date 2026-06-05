@@ -1,7 +1,10 @@
 import type {
+	CancelDistributorSaleResponse,
 	DistributorCashBalanceItem,
 	DistributorCashWithdrawal,
+	DistributorRecentSaleItem,
 	DistributorSale,
+	DistributorSaleCancellation,
 	DistributorSaleStockItem,
 	DistributorInventoryDistributorSummary,
 	DistributorInventoryItem,
@@ -56,6 +59,51 @@ type DistributorSaleRecord = {
 	operationId: string;
 	actorUserId: string;
 	createdAt: Date;
+};
+
+type UserRecord = {
+	id: string;
+	email: string;
+	username: string | null;
+	displayUsername: string | null;
+	name: string;
+};
+
+type DistributorSaleCancellationRecord = {
+	id: string;
+	distributorSaleId: string;
+	distributorProductBalanceId: string;
+	distributorId: string;
+	productBatchId: string;
+	clientId: string;
+	quantity: number;
+	baseUnitPriceCents: number;
+	unitPriceCents: number;
+	discountCentsPerUnit: number;
+	discountTotalCents: number;
+	totalCents: number;
+	paymentMethod: string;
+	reason: string;
+	operationId: string;
+	actorUserId: string;
+	createdAt: Date;
+};
+
+type DistributorRecentSaleRecord = DistributorSaleRecord & {
+	productBatch: {
+		productName: string;
+	};
+	client: {
+		id: string;
+		name: string;
+		phone: string;
+	};
+	operation: {
+		actor: UserRecord;
+	};
+	cancellation: (DistributorSaleCancellationRecord & {
+		actor: UserRecord;
+	}) | null;
 };
 
 type DistributorCashWithdrawalRecord = {
@@ -177,6 +225,73 @@ export function mapDistributorSale(record: DistributorSaleRecord): DistributorSa
 	};
 }
 
+export function mapDistributorSaleCancellation(record: DistributorSaleCancellationRecord): DistributorSaleCancellation {
+	return {
+		id: record.id,
+		distributorSaleId: record.distributorSaleId,
+		distributorProductBalanceId: record.distributorProductBalanceId,
+		distributorId: record.distributorId,
+		productBatchId: record.productBatchId,
+		clientId: record.clientId,
+		quantity: record.quantity,
+		baseUnitPriceCents: record.baseUnitPriceCents,
+		unitPriceCents: record.unitPriceCents,
+		discountCentsPerUnit: record.discountCentsPerUnit,
+		discountTotalCents: record.discountTotalCents,
+		totalCents: record.totalCents,
+		paymentMethod: record.paymentMethod === "cash" ? "cash" : "cashless",
+		reason: record.reason,
+		operationId: record.operationId,
+		actorUserId: record.actorUserId,
+		createdAt: record.createdAt.toISOString(),
+	};
+}
+
+export function mapDistributorRecentSale(record: DistributorRecentSaleRecord): DistributorRecentSaleItem {
+	return {
+		id: record.id,
+		sourceType: "distributor",
+		productName: record.productBatch.productName,
+		clientId: record.client.id,
+		clientName: record.client.name,
+		clientPhone: record.client.phone,
+		quantity: record.quantity,
+		baseUnitPriceCents: record.baseUnitPriceCents,
+		unitPriceCents: record.unitPriceCents,
+		discountCentsPerUnit: record.discountCentsPerUnit,
+		discountTotalCents: record.discountTotalCents,
+		totalCents: record.totalCents,
+		paymentMethod: record.paymentMethod === "cash" ? "cash" : "cashless",
+		comment: record.comment,
+		saleActorUserId: record.actorUserId,
+		saleActorDisplayName: displayNameForUser(record.operation.actor),
+		createdAt: record.createdAt.toISOString(),
+		cancelled: record.cancellation !== null,
+		cancellationId: record.cancellation?.id ?? null,
+		cancellationReason: record.cancellation?.reason ?? null,
+		cancelledByActorUserId: record.cancellation?.actorUserId ?? null,
+		cancelledByActorDisplayName: record.cancellation
+			? displayNameForUser(record.cancellation.actor)
+			: null,
+		cancelledAt: record.cancellation?.createdAt.toISOString() ?? null,
+	};
+}
+
+export function mapCancelDistributorSaleResponse(input: {
+	cancellation: DistributorSaleCancellationRecord;
+	distributorProductBalance: DistributorInventoryRecord;
+	cashBalance: DistributorCashBalanceRecord | null;
+	distributor: { id: string; name: string; active: boolean };
+}): CancelDistributorSaleResponse {
+	return {
+		cancellation: mapDistributorSaleCancellation(input.cancellation),
+		distributorProductBalance: mapDistributorInventoryItem(input.distributorProductBalance),
+		cashBalance: input.cashBalance
+			? mapDistributorCashBalanceRecord(input.cashBalance)
+			: mapDistributorCashBalanceItem(input.distributor, null),
+	};
+}
+
 export function mapProductDiscountAssignment(record: ProductDiscountAssignmentRecord): ProductDiscountAssignment {
 	return {
 		id: record.id,
@@ -248,4 +363,8 @@ function priceSnapshot(baseUnitPriceCents: number, unitPriceCents: number): {
 		discounted: discountCentsPerUnit > 0,
 		discountCentsPerUnit,
 	};
+}
+
+function displayNameForUser(user: UserRecord): string {
+	return user.name ?? user.displayUsername ?? user.username ?? user.email ?? user.id;
 }

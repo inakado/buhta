@@ -9,7 +9,7 @@ import {
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
-import { Bell, Box, Check, ClipboardList, Factory, Gauge, PackageCheck, ReceiptText, Settings, Shield, Truck, Users, type LucideIcon } from "lucide-react";
+import { Bell, Box, Check, ClipboardList, Factory, Gauge, History, PackageCheck, ReceiptText, Settings, Shield, Truck, Users, type LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { LoginForm } from "../auth/LoginForm";
 import { ROLE_LABELS } from "../lib/role-labels";
@@ -194,14 +194,16 @@ function BottomNav({
 	const distributorStockItem: BottomNavItem[] = actor.role === "commercial_manager" && actor.permissions.includes("distributor.stock.read")
 		? [{ id: "distributor", label: "Остатки", icon: Box }]
 		: [];
-	const commercialNotificationItem: BottomNavItem[] = actor.role === "commercial_manager" && actor.permissions.includes("notification.read")
-		? [{ id: "notifications", label: "Задачи", icon: Bell }]
+	const salesHistoryItem: BottomNavItem[] = (actor.role === "commercial_manager" || actor.role === "distributor_worker" || actor.role === "courier")
+		&& (actor.permissions.includes("distributor.sale.create") || actor.permissions.includes("courier.sale.create"))
+		? [{ id: "sales-history", label: "История", icon: History }]
 		: [];
 	const directorDistributorItem: BottomNavItem[] = actor.role === "director" && actor.permissions.includes("distributor.stock.read")
 		? [{ id: "distributor", label: "Распределитель", icon: Box }]
 		: [];
 	const courierItems: BottomNavItem[] = [
 		{ id: "home", label: "Баланс", icon: PackageCheck },
+		...salesHistoryItem,
 		{ id: "settings", label: "Профиль", icon: Settings },
 	];
 	const productionItems: BottomNavItem[] = [
@@ -237,8 +239,8 @@ function BottomNav({
 			...distributorStockItem,
 			...catalogItem,
 			...clientsItem,
-			...commercialNotificationItem,
 			...courierBalancesItem,
+			...salesHistoryItem,
 			{ id: "settings", label: "Профиль", icon: Settings },
 		];
 

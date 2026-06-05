@@ -38,6 +38,7 @@ const commercialActorResponse = {
 			"courier.stock.read",
 			"courier.cash.read",
 			"distributor.sale.create",
+			"distributor.sale.cancel",
 			"notification.read",
 			"notification.create",
 			"client.read",
@@ -57,6 +58,7 @@ const distributorWorkerActorResponse = {
 			"distributor.stock.read",
 			"distributor.cash.read",
 			"distributor.sale.create",
+			"distributor.sale.cancel",
 			"client.read",
 			"client.manage",
 		],
@@ -96,6 +98,7 @@ const courierActorResponse = {
 			"courier.stock.load",
 			"courier.cash.read",
 			"courier.sale.create",
+			"courier.sale.cancel",
 			"courier.unload.create",
 			"client.read",
 			"client.manage",
@@ -159,6 +162,10 @@ const distributorSaleOptionsResponse = {
 		stockValueCents: 250000,
 		updatedAt: new Date(0).toISOString(),
 	}],
+};
+
+const distributorRecentSalesResponse = {
+	items: [],
 };
 
 const courierProductBalancesResponse = {
@@ -238,6 +245,10 @@ const courierSaleOptionsResponse = {
 		stockValueCents: 250000,
 		updatedAt: new Date(0).toISOString(),
 	}],
+};
+
+const courierRecentSalesResponse = {
+	items: [],
 };
 
 const courierUnloadOptionsResponse = {
@@ -1262,6 +1273,10 @@ describe("HomePage", () => {
 				return jsonResponse(distributorSaleOptionsResponse);
 			}
 
+			if (url.includes("/distributor/sales/recent")) {
+				return jsonResponse(distributorRecentSalesResponse);
+			}
+
 			if (url.includes("/clients")) {
 				return jsonResponse(clientsResponse);
 			}
@@ -1309,11 +1324,14 @@ describe("HomePage", () => {
 		)).toBeTruthy();
 		const saleAction = screen.getByRole("button", { name: "Открыть продажу" });
 		expect(saleAction.className).toContain("action-tile");
+		const notifyAction = screen.getByRole("button", { name: "Уведомить производство" });
+		expect(notifyAction.className).toContain("action-tile");
 		expect(screen.queryByRole("heading", { name: "Действия" })).toBeNull();
 		expect(screen.queryByRole("button", { name: "Показать остатки" })).toBeNull();
 		expect(screen.queryByRole("button", { name: "Открыть клиентов" })).toBeNull();
 		expect(screen.queryByRole("button", { name: "Открыть курьеров" })).toBeNull();
 		expect(screen.queryByRole("button", { name: "Продажа" })).toBeNull();
+		expect(screen.queryByRole("button", { name: "Задачи" })).toBeNull();
 		expect(screen.queryByText("Икра горбуши")).toBeNull();
 		expect(screen.queryByText("Распределитель Центральный")).toBeNull();
 
@@ -1337,7 +1355,9 @@ describe("HomePage", () => {
 		fireEvent.click(screen.getByRole("button", { name: "Курьеры" }));
 		expect(await screen.findByText("Балансы курьеров")).toBeTruthy();
 
-		fireEvent.click(screen.getByRole("button", { name: "Задачи" }));
+		fireEvent.click(screen.getByRole("button", { name: "Главная" }));
+		expect(await screen.findByRole("heading", { name: "Продажи" })).toBeTruthy();
+		fireEvent.click(screen.getByRole("button", { name: "Уведомить производство" }));
 		expect(await screen.findByRole("heading", { name: "Задачи производству" })).toBeTruthy();
 		expect(await screen.findByText("Сделать партию икры")).toBeTruthy();
 		expect(document.querySelector(".compact-balance-overview")).toBeNull();
@@ -1358,6 +1378,109 @@ describe("HomePage", () => {
 		expect(await screen.findByText("Задача записана")).toBeTruthy();
 	});
 
+	it("lets a commercial manager cancel distributor sale from the History tab", async () => {
+		let cancelled = false;
+		const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+			const url = String(input);
+			const method = init?.method ?? "GET";
+
+			if (url.endsWith("/auth/me")) {
+				return jsonResponse(commercialActorResponse);
+			}
+
+			if (url.endsWith("/distributor/inventory")) {
+				return jsonResponse(distributorInventoryResponse);
+			}
+
+			if (url.endsWith("/distributor/cash-balances")) {
+				return jsonResponse(distributorCashBalancesResponse);
+			}
+
+			if (url.includes("/distributor/sales/recent")) {
+				return jsonResponse({
+					items: [{
+						id: "sale1",
+						sourceType: "distributor",
+						productName: "Икра горбуши",
+						clientId: "client1",
+						clientName: "Иван Петров",
+						clientPhone: "+7 (900) 111-22-33",
+						quantity: 1,
+						baseUnitPriceCents: 125000,
+						unitPriceCents: 125000,
+						discountCentsPerUnit: 0,
+						discountTotalCents: 0,
+						totalCents: 125000,
+						paymentMethod: "cash",
+						comment: null,
+						saleActorUserId: "seed-commercial-manager",
+						saleActorDisplayName: "Commercial Manager",
+						createdAt: new Date(0).toISOString(),
+						cancelled,
+						cancellationId: cancelled ? "cancel1" : null,
+						cancellationReason: cancelled ? "Ошибка клиента" : null,
+						cancelledByActorUserId: cancelled ? "seed-commercial-manager" : null,
+						cancelledByActorDisplayName: cancelled ? "Commercial Manager" : null,
+						cancelledAt: cancelled ? new Date(1).toISOString() : null,
+					}],
+				});
+			}
+
+			if (url.endsWith("/distributor/sales/sale1/cancel") && method === "POST") {
+				cancelled = true;
+				return jsonResponse({
+					cancellation: {
+						id: "cancel1",
+						distributorSaleId: "sale1",
+						distributorProductBalanceId: "distributor-balance1",
+						distributorId: "dist1",
+						productBatchId: "batch1",
+						clientId: "client1",
+						quantity: 1,
+						baseUnitPriceCents: 125000,
+						unitPriceCents: 125000,
+						discountCentsPerUnit: 0,
+						discountTotalCents: 0,
+						totalCents: 125000,
+						paymentMethod: "cash",
+						reason: "Ошибка клиента",
+						operationId: "op-cancel",
+						actorUserId: "seed-commercial-manager",
+						createdAt: new Date(1).toISOString(),
+					},
+					distributorProductBalance: distributorInventoryResponse.items[0],
+					cashBalance: distributorCashBalancesResponse.items[0],
+				});
+			}
+
+			return jsonResponse({ error: { message: "Unexpected request" } }, 500);
+		});
+
+		vi.stubGlobal("fetch", fetchMock);
+
+		render(<HomePage />);
+
+		fireEvent.click(await screen.findByRole("button", { name: "История" }));
+		expect(await screen.findByRole("heading", { name: "История продаж" })).toBeTruthy();
+		expect(screen.queryByRole("heading", { name: "Последние продажи" })).toBeNull();
+		expect(await screen.findByText("Икра горбуши")).toBeTruthy();
+		fireEvent.click(screen.getByRole("button", { name: "Отменить" }));
+		fireEvent.change(await screen.findByLabelText("Причина отмены"), { target: { value: "Ошибка клиента" } });
+		fireEvent.click(screen.getByRole("button", { name: "Отменить продажу" }));
+
+		await waitFor(() => {
+			expect(fetchMock).toHaveBeenCalledWith(
+				expect.stringContaining("/distributor/sales/sale1/cancel"),
+				expect.objectContaining({
+					method: "POST",
+					body: JSON.stringify({ reason: "Ошибка клиента" }),
+				}),
+			);
+		});
+		expect(await screen.findByText("Продажа отменена")).toBeTruthy();
+		expect(await screen.findByText(/Отменено/)).toBeTruthy();
+	});
+
 	it("renders distributor worker home without non-action tiles or courier management", async () => {
 		const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
 			const url = String(input);
@@ -1376,6 +1499,10 @@ describe("HomePage", () => {
 
 			if (url.endsWith("/distributor/sale-options")) {
 				return jsonResponse(distributorSaleOptionsResponse);
+			}
+
+			if (url.includes("/distributor/sales/recent")) {
+				return jsonResponse(distributorRecentSalesResponse);
 			}
 
 			if (url.includes("/clients")) {
@@ -1627,6 +1754,10 @@ describe("HomePage", () => {
 				return jsonResponse(courierSaleOptionsResponse);
 			}
 
+			if (url.includes("/courier/sales/recent")) {
+				return jsonResponse(courierRecentSalesResponse);
+			}
+
 			if (url.endsWith("/courier/load-options")) {
 				return jsonResponse(courierLoadOptionsResponse);
 			}
@@ -1700,6 +1831,10 @@ describe("HomePage", () => {
 
 			if (url.endsWith("/courier/sale-options")) {
 				return jsonResponse(courierSaleOptionsResponse);
+			}
+
+			if (url.includes("/courier/sales/recent")) {
+				return jsonResponse(courierRecentSalesResponse);
 			}
 
 			if (url.endsWith("/courier/sales") && method === "POST") {
@@ -1819,6 +1954,10 @@ describe("HomePage", () => {
 
 			if (url.endsWith("/courier/sale-options")) {
 				return jsonResponse(courierSaleOptionsResponse);
+			}
+
+			if (url.includes("/courier/sales/recent")) {
+				return jsonResponse(courierRecentSalesResponse);
 			}
 
 			if (url.endsWith("/courier/sales") && method === "POST") {
@@ -2117,6 +2256,10 @@ describe("HomePage", () => {
 
 			if (url.endsWith("/distributor/sale-options")) {
 				return jsonResponse(distributorSaleOptionsResponse);
+			}
+
+			if (url.includes("/distributor/sales/recent")) {
+				return jsonResponse(distributorRecentSalesResponse);
 			}
 
 			if (url.endsWith("/distributor/sales") && method === "POST") {

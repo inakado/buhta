@@ -85,6 +85,7 @@ export function CourierSaleHome({
 				queryClient.invalidateQueries({ queryKey: ["courier", "product-balances"] }),
 				queryClient.invalidateQueries({ queryKey: ["courier", "sale-options"] }),
 				queryClient.invalidateQueries({ queryKey: ["courier", "cash-balances"] }),
+				queryClient.invalidateQueries({ queryKey: ["courier", "sales", "recent"] }),
 				queryClient.invalidateQueries({ queryKey: ["clients"] }),
 			]);
 			onSaleSuccess();

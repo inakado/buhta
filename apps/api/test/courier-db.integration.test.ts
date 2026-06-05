@@ -15,6 +15,7 @@ const courierActor: Actor = {
 		"courier.stock.load",
 		"courier.cash.read",
 		"courier.sale.create",
+		"courier.sale.cancel",
 		"courier.unload.create",
 	],
 };
@@ -28,6 +29,7 @@ const secondCourierActor: Actor = {
 		"courier.stock.load",
 		"courier.cash.read",
 		"courier.sale.create",
+		"courier.sale.cancel",
 		"courier.unload.create",
 	],
 };
@@ -41,6 +43,7 @@ const adminActor: Actor = {
 		"courier.stock.load",
 		"courier.cash.read",
 		"courier.sale.create",
+		"courier.sale.cancel",
 		"courier.unload.create",
 	],
 };
@@ -243,6 +246,15 @@ async function cleanup() {
 				{ actorUserId: { in: actorIds } },
 				{ courierUserId: { in: actorIds } },
 				{ distributorId: { in: distributorIds } },
+			],
+		},
+	});
+	await prisma.courierSaleCancellation.deleteMany({
+		where: {
+			OR: [
+				{ actorUserId: { in: actorIds } },
+				{ courierUserId: { in: actorIds } },
+				{ client: { createdByUserId: { in: actorIds } } },
 			],
 		},
 	});
@@ -924,6 +936,213 @@ describe("Courier load real Postgres integration", () => {
 			expect.objectContaining({ courierCashBalanceBefore: 120000, courierCashBalanceAfter: 170000 }),
 			expect.objectContaining({ courierCashBalanceBefore: 170000, courierCashBalanceAfter: 220000 }),
 		]);
+	});
+
+	it("cancels own cash courier sale by restoring stock and decrementing aggregate courier cash", async () => {
+		const fixture = await createSaleFixture("courier-load-cancel-cash", 4, 90000);
+		const saleResponse = await courierService.createCourierSale(courierActor, {
+			courierProductBalanceId: fixture.courierProductBalance.id,
+			clientId: fixture.client.id,
+			quantity: 2,
+			paymentMethod: "cash",
+			comment: "продажа",
+		});
+
+		const cancelResponse = await courierService.cancelCourierSale(courierActor, saleResponse.sale.id, {
+			reason: "Клиент вернул товар",
+		});
+
+		expect(cancelResponse.cancellation).toMatchObject({
+			courierSaleId: saleResponse.sale.id,
+			courierProductBalanceId: fixture.courierProductBalance.id,
+			courierUserId: courierActor.userId,
+			productBatchId: fixture.productBatch.id,
+			clientId: fixture.client.id,
+			quantity: 2,
+			baseUnitPriceCents: 90000,
+			unitPriceCents: 90000,
+			totalCents: 180000,
+			paymentMethod: "cash",
+			reason: "Клиент вернул товар",
+			actorUserId: courierActor.userId,
+		});
+		expect(cancelResponse.courierProductBalance).toMatchObject({
+			id: fixture.courierProductBalance.id,
+			quantity: 4,
+			stockValueCents: 360000,
+		});
+		expect(cancelResponse.cashBalance).toMatchObject({
+			courierUserId: courierActor.userId,
+			amountCents: 0,
+		});
+		await expect(
+			prisma.auditLog.findFirstOrThrow({
+				where: {
+					action: "courier.sale.cancel",
+					entityId: cancelResponse.cancellation.id,
+				},
+			}),
+		).resolves.toMatchObject({
+			details: expect.objectContaining({
+				courierSaleCancellationId: cancelResponse.cancellation.id,
+				courierSaleId: saleResponse.sale.id,
+				originalSaleOperationId: saleResponse.sale.operationId,
+				courierStockBalanceBefore: 2,
+				courierStockBalanceAfter: 4,
+				courierCashBalanceBefore: 180000,
+				courierCashBalanceAfter: 0,
+				reason: "Клиент вернул товар",
+			}),
+		});
+	});
+
+	it("cancels cashless courier sale without cash row and marks recent sale", async () => {
+		const fixture = await createSaleFixture("courier-load-cancel-cashless", 3, 110000);
+		const saleResponse = await courierService.createCourierSale(courierActor, {
+			courierProductBalanceId: fixture.courierProductBalance.id,
+			clientId: fixture.client.id,
+			quantity: 1,
+			paymentMethod: "cashless",
+		});
+
+		const cancelResponse = await courierService.cancelCourierSale(courierActor, saleResponse.sale.id, {
+			reason: "Ошибка в продаже",
+		});
+		const recent = await courierService.getRecentSales(courierActor, 5);
+
+		expect(cancelResponse.cashBalance).toMatchObject({
+			courierUserId: courierActor.userId,
+			amountCents: 0,
+			updatedAt: null,
+		});
+		await expect(
+			prisma.courierCashBalance.findUnique({
+				where: { courierUserId: courierActor.userId },
+			}),
+		).resolves.toBeNull();
+		expect(recent.items).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					id: saleResponse.sale.id,
+					cancelled: true,
+					cancellationId: cancelResponse.cancellation.id,
+					cancellationReason: "Ошибка в продаже",
+					saleActorUserId: courierActor.userId,
+					cancelledByActorUserId: courierActor.userId,
+				}),
+			]),
+		);
+	});
+
+	it("rejects other courier cancellation and cash-insufficient courier cancellation atomically", async () => {
+		const otherCourier = await createSaleFixture("courier-load-cancel-other-courier", 2, 100000);
+		const otherCourierSale = await courierService.createCourierSale(courierActor, {
+			courierProductBalanceId: otherCourier.courierProductBalance.id,
+			clientId: otherCourier.client.id,
+			quantity: 1,
+			paymentMethod: "cashless",
+		});
+
+		await expect(
+			courierService.cancelCourierSale(secondCourierActor, otherCourierSale.sale.id, {
+				reason: "Чужой возврат",
+			}),
+		).rejects.toMatchObject({ code: "DOMAIN_RULE_VIOLATION" });
+		await expect(
+			prisma.courierProductBalance.findUniqueOrThrow({
+				where: { id: otherCourier.courierProductBalance.id },
+			}),
+		).resolves.toMatchObject({ quantity: 1 });
+
+		const insufficient = await createSaleFixture("courier-load-cancel-insufficient-cash", 2, 100000);
+		const insufficientSale = await courierService.createCourierSale(courierActor, {
+			courierProductBalanceId: insufficient.courierProductBalance.id,
+			clientId: insufficient.client.id,
+			quantity: 1,
+			paymentMethod: "cash",
+		});
+		await prisma.courierCashBalance.update({
+			where: { courierUserId: courierActor.userId },
+			data: { amountCents: 99999 },
+		});
+		await expect(
+			courierService.cancelCourierSale(courierActor, insufficientSale.sale.id, {
+				reason: "Недостаточно наличных",
+			}),
+		).rejects.toMatchObject({ code: "DOMAIN_RULE_VIOLATION" });
+		await expect(
+			prisma.courierProductBalance.findUniqueOrThrow({
+				where: { id: insufficient.courierProductBalance.id },
+			}),
+		).resolves.toMatchObject({ quantity: 1 });
+		expect(await prisma.courierSaleCancellation.count({
+			where: { courierSaleId: insufficientSale.sale.id },
+		})).toBe(0);
+	});
+
+	it("restores discounted courier sale to the same priced stock row", async () => {
+		const fixture = await createSaleFixture("courier-load-cancel-discount", 3, 300000);
+		await prisma.courierProductBalance.update({
+			where: { id: fixture.courierProductBalance.id },
+			data: { unitPriceCents: 250000 },
+		});
+		const saleResponse = await courierService.createCourierSale(courierActor, {
+			courierProductBalanceId: fixture.courierProductBalance.id,
+			clientId: fixture.client.id,
+			quantity: 1,
+			paymentMethod: "cashless",
+		});
+
+		const cancelResponse = await courierService.cancelCourierSale(courierActor, saleResponse.sale.id, {
+			reason: "Возврат дисконтной позиции",
+		});
+
+		expect(cancelResponse.cancellation).toMatchObject({
+			baseUnitPriceCents: 300000,
+			unitPriceCents: 250000,
+			discountCentsPerUnit: 50000,
+			discountTotalCents: 50000,
+		});
+		expect(cancelResponse.courierProductBalance).toMatchObject({
+			id: fixture.courierProductBalance.id,
+			unitPriceCents: 250000,
+			quantity: 3,
+		});
+	});
+
+	it("prevents duplicate courier sale cancellation under concurrency", async () => {
+		const fixture = await createSaleFixture("courier-load-cancel-concurrent", 2, 120000);
+		const saleResponse = await courierService.createCourierSale(courierActor, {
+			courierProductBalanceId: fixture.courierProductBalance.id,
+			clientId: fixture.client.id,
+			quantity: 1,
+			paymentMethod: "cash",
+		});
+
+		const results = await Promise.allSettled([
+			courierService.cancelCourierSale(courierActor, saleResponse.sale.id, {
+				reason: "Параллельный возврат 1",
+			}),
+			courierService.cancelCourierSale(courierActor, saleResponse.sale.id, {
+				reason: "Параллельный возврат 2",
+			}),
+		]);
+
+		expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+		expect(results.filter((result) => result.status === "rejected")).toHaveLength(1);
+		await expect(
+			prisma.courierProductBalance.findUniqueOrThrow({
+				where: { id: fixture.courierProductBalance.id },
+			}),
+		).resolves.toMatchObject({ quantity: 2 });
+		await expect(
+			prisma.courierCashBalance.findUniqueOrThrow({
+				where: { courierUserId: courierActor.userId },
+			}),
+		).resolves.toMatchObject({ amountCents: 0 });
+		expect(await prisma.courierSaleCancellation.count({
+			where: { courierSaleId: saleResponse.sale.id },
+		})).toBe(1);
 	});
 
 	it("returns unload options for courier self-flow", async () => {

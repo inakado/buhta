@@ -9,7 +9,7 @@ const salesActor: Actor = {
 	login: "distributor-sales-manager",
 	displayName: "Distributor Sales Manager",
 	role: "commercial_manager",
-	permissions: ["distributor.sale.create", "distributor.cash.read", "client.read", "client.manage"],
+	permissions: ["distributor.sale.create", "distributor.sale.cancel", "distributor.cash.read", "client.read", "client.manage"],
 };
 const actorEmail = "distributor-sales-manager@internal.buhta.local";
 const directorActor: Actor = {
@@ -173,7 +173,16 @@ async function cleanup() {
 			],
 		},
 	});
-		await prisma.distributorSale.deleteMany({
+	await prisma.distributorSaleCancellation.deleteMany({
+		where: {
+			OR: [
+				{ actorUserId: { in: actorUserIds } },
+				{ distributorId: { in: distributorIds } },
+				{ clientId: { in: clientIds } },
+			],
+		},
+	});
+	await prisma.distributorSale.deleteMany({
 		where: {
 			OR: [
 				{ actorUserId: salesActor.userId },
@@ -181,16 +190,16 @@ async function cleanup() {
 				{ clientId: { in: clientIds } },
 			],
 		},
-		});
-		await prisma.productDiscountAssignment.deleteMany({
-			where: {
-				OR: [
-					{ actorUserId: { in: actorUserIds } },
-					{ distributorId: { in: distributorIds } },
-				],
-			},
-		});
-		await prisma.distributorCashBalance.deleteMany({
+	});
+	await prisma.productDiscountAssignment.deleteMany({
+		where: {
+			OR: [
+				{ actorUserId: { in: actorUserIds } },
+				{ distributorId: { in: distributorIds } },
+			],
+		},
+	});
+	await prisma.distributorCashBalance.deleteMany({
 		where: { distributorId: { in: distributorIds } },
 	});
 	await prisma.distributorProductBalance.deleteMany({
@@ -749,6 +758,219 @@ describe("Distributor sales real Postgres integration", () => {
 		expect(await prisma.distributorCashWithdrawal.count({
 			where: { distributorId: insufficient.distributor.id },
 		})).toBe(0);
+	});
+
+	it("cancels a cash distributor sale by restoring stock and decrementing aggregate cash", async () => {
+		const fixture = await createSalesFixture("distributor-sales-cancel-cash", 4, 90000);
+		const saleResponse = await distributorService.createDistributorSale(salesActor, {
+			distributorProductBalanceId: fixture.distributorProductBalance.id,
+			clientId: fixture.client.id,
+			quantity: 2,
+			paymentMethod: "cash",
+			comment: "продажа",
+		});
+
+		const cancelResponse = await distributorService.cancelDistributorSale(salesActor, saleResponse.sale.id, {
+			reason: "Клиент вернул товар",
+		});
+
+		expect(cancelResponse.cancellation).toMatchObject({
+			distributorSaleId: saleResponse.sale.id,
+			distributorProductBalanceId: fixture.distributorProductBalance.id,
+			distributorId: fixture.distributor.id,
+			productBatchId: fixture.productBatch.id,
+			clientId: fixture.client.id,
+			quantity: 2,
+			baseUnitPriceCents: 90000,
+			unitPriceCents: 90000,
+			totalCents: 180000,
+			paymentMethod: "cash",
+			reason: "Клиент вернул товар",
+			actorUserId: salesActor.userId,
+		});
+		expect(cancelResponse.distributorProductBalance).toMatchObject({
+			id: fixture.distributorProductBalance.id,
+			quantity: 4,
+			stockValueCents: 360000,
+		});
+		expect(cancelResponse.cashBalance).toMatchObject({
+			distributorId: fixture.distributor.id,
+			amountCents: 0,
+		});
+		await expect(
+			prisma.auditLog.findFirstOrThrow({
+				where: {
+					action: "distributor.sale.cancel",
+					entityId: cancelResponse.cancellation.id,
+				},
+			}),
+		).resolves.toMatchObject({
+			details: expect.objectContaining({
+				distributorSaleCancellationId: cancelResponse.cancellation.id,
+				distributorSaleId: saleResponse.sale.id,
+				originalSaleOperationId: saleResponse.sale.operationId,
+				productBalanceBefore: 2,
+				productBalanceAfter: 4,
+				cashBalanceBefore: 180000,
+				cashBalanceAfter: 0,
+				reason: "Клиент вернул товар",
+			}),
+		});
+	});
+
+	it("cancels cashless distributor sale without changing cash balance and marks recent sale", async () => {
+		const fixture = await createSalesFixture("distributor-sales-cancel-cashless", 3, 110000);
+		await prisma.distributorCashBalance.create({
+			data: {
+				distributorId: fixture.distributor.id,
+				amountCents: 50000,
+			},
+		});
+		const saleResponse = await distributorService.createDistributorSale(salesActor, {
+			distributorProductBalanceId: fixture.distributorProductBalance.id,
+			clientId: fixture.client.id,
+			quantity: 1,
+			paymentMethod: "cashless",
+		});
+
+		const cancelResponse = await distributorService.cancelDistributorSale(salesActor, saleResponse.sale.id, {
+			reason: "Ошибка в продаже",
+		});
+		const recent = await distributorService.getRecentSales(5);
+
+		expect(cancelResponse.cashBalance).toMatchObject({
+			distributorId: fixture.distributor.id,
+			amountCents: 50000,
+		});
+		expect(recent.items).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					id: saleResponse.sale.id,
+					cancelled: true,
+					cancellationId: cancelResponse.cancellation.id,
+					cancellationReason: "Ошибка в продаже",
+					saleActorUserId: salesActor.userId,
+					cancelledByActorUserId: salesActor.userId,
+				}),
+			]),
+		);
+	});
+
+	it("restores discounted distributor sale to the same priced stock row", async () => {
+		const fixture = await createSalesFixture("distributor-sales-cancel-discount", 4, 300000);
+		const discountResponse = await distributorService.assignDiscount(directorActor, {
+			distributorProductBalanceId: fixture.distributorProductBalance.id,
+			quantity: 2,
+			discountedUnitPriceCents: 250000,
+		});
+		const saleResponse = await distributorService.createDistributorSale(salesActor, {
+			distributorProductBalanceId: discountResponse.discountedBalance.id,
+			clientId: fixture.client.id,
+			quantity: 1,
+			paymentMethod: "cashless",
+		});
+
+		const cancelResponse = await distributorService.cancelDistributorSale(salesActor, saleResponse.sale.id, {
+			reason: "Возврат дисконтной позиции",
+		});
+
+		expect(cancelResponse.cancellation).toMatchObject({
+			baseUnitPriceCents: 300000,
+			unitPriceCents: 250000,
+			discountCentsPerUnit: 50000,
+			discountTotalCents: 50000,
+		});
+		expect(cancelResponse.distributorProductBalance).toMatchObject({
+			id: discountResponse.discountedBalance.id,
+			unitPriceCents: 250000,
+			quantity: 2,
+		});
+		await expect(
+			prisma.distributorProductBalance.findUniqueOrThrow({
+				where: { id: fixture.distributorProductBalance.id },
+			}),
+		).resolves.toMatchObject({ quantity: 2 });
+	});
+
+	it("rejects repeated and cash-insufficient distributor sale cancellations atomically", async () => {
+		const repeated = await createSalesFixture("distributor-sales-cancel-repeated", 2, 100000);
+		const repeatedSale = await distributorService.createDistributorSale(salesActor, {
+			distributorProductBalanceId: repeated.distributorProductBalance.id,
+			clientId: repeated.client.id,
+			quantity: 1,
+			paymentMethod: "cash",
+		});
+		await distributorService.cancelDistributorSale(salesActor, repeatedSale.sale.id, {
+			reason: "Первый возврат",
+		});
+		await expect(
+			distributorService.cancelDistributorSale(salesActor, repeatedSale.sale.id, {
+				reason: "Повторный возврат",
+			}),
+		).rejects.toMatchObject({ code: "DOMAIN_RULE_VIOLATION" });
+		expect(await prisma.distributorSaleCancellation.count({
+			where: { distributorSaleId: repeatedSale.sale.id },
+		})).toBe(1);
+
+		const insufficient = await createSalesFixture("distributor-sales-cancel-insufficient-cash", 2, 100000);
+		const insufficientSale = await distributorService.createDistributorSale(salesActor, {
+			distributorProductBalanceId: insufficient.distributorProductBalance.id,
+			clientId: insufficient.client.id,
+			quantity: 1,
+			paymentMethod: "cash",
+		});
+		await prisma.distributorCashBalance.update({
+			where: { distributorId: insufficient.distributor.id },
+			data: { amountCents: 99999 },
+		});
+		await expect(
+			distributorService.cancelDistributorSale(salesActor, insufficientSale.sale.id, {
+				reason: "Недостаточно наличных",
+			}),
+		).rejects.toMatchObject({ code: "DOMAIN_RULE_VIOLATION" });
+		await expect(
+			prisma.distributorProductBalance.findUniqueOrThrow({
+				where: { id: insufficient.distributorProductBalance.id },
+			}),
+		).resolves.toMatchObject({ quantity: 1 });
+		expect(await prisma.distributorSaleCancellation.count({
+			where: { distributorSaleId: insufficientSale.sale.id },
+		})).toBe(0);
+	});
+
+	it("prevents duplicate distributor sale cancellation under concurrency", async () => {
+		const fixture = await createSalesFixture("distributor-sales-cancel-concurrent", 2, 120000);
+		const saleResponse = await distributorService.createDistributorSale(salesActor, {
+			distributorProductBalanceId: fixture.distributorProductBalance.id,
+			clientId: fixture.client.id,
+			quantity: 1,
+			paymentMethod: "cash",
+		});
+
+		const results = await Promise.allSettled([
+			distributorService.cancelDistributorSale(salesActor, saleResponse.sale.id, {
+				reason: "Параллельный возврат 1",
+			}),
+			distributorService.cancelDistributorSale(salesActor, saleResponse.sale.id, {
+				reason: "Параллельный возврат 2",
+			}),
+		]);
+
+		expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+		expect(results.filter((result) => result.status === "rejected")).toHaveLength(1);
+		await expect(
+			prisma.distributorProductBalance.findUniqueOrThrow({
+				where: { id: fixture.distributorProductBalance.id },
+			}),
+		).resolves.toMatchObject({ quantity: 2 });
+		await expect(
+			prisma.distributorCashBalance.findUniqueOrThrow({
+				where: { distributorId: fixture.distributor.id },
+			}),
+		).resolves.toMatchObject({ amountCents: 0 });
+		expect(await prisma.distributorSaleCancellation.count({
+			where: { distributorSaleId: saleResponse.sale.id },
+		})).toBe(1);
 	});
 
 	it("prevents negative distributor cash under concurrent withdrawals", async () => {

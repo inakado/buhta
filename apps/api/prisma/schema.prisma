@@ -31,8 +31,11 @@ model User {
   courierCashBalance CourierCashBalance?     @relation("CourierCashBalanceCourier")
   courierLoads       CourierLoad[]           @relation("CourierLoadCourier")
   courierSales       CourierSale[]           @relation("CourierSaleCourier")
+  cancelledCourierSales CourierSaleCancellation[] @relation("CourierSaleCancellationCourier")
+  courierSaleCancellations CourierSaleCancellation[] @relation("CourierSaleCancellationActor")
   courierUnloads     CourierUnload[]         @relation("CourierUnloadCourier")
   distributorCashWithdrawals DistributorCashWithdrawal[] @relation("DistributorCashWithdrawalActor")
+  distributorSaleCancellations DistributorSaleCancellation[] @relation("DistributorSaleCancellationActor")
   productDiscountAssignments ProductDiscountAssignment[] @relation("ProductDiscountAssignmentActor")
   createdProductionNotifications   ProductionNotification[] @relation("ProductionNotificationCreatedBy")
   completedProductionNotifications ProductionNotification[] @relation("ProductionNotificationCompletedBy")
@@ -103,10 +106,12 @@ model Operation {
   productBatches     ProductBatch[]
   productTransfers   ProductTransfer[]
   distributorSales   DistributorSale[]
+  distributorSaleCancellations DistributorSaleCancellation[]
   distributorCashWithdrawals DistributorCashWithdrawal[]
   productDiscountAssignments ProductDiscountAssignment[]
   courierLoads       CourierLoad[]
   courierSales       CourierSale[]
+  courierSaleCancellations CourierSaleCancellation[]
   courierUnloads     CourierUnload[]
   productionNotificationCreates   ProductionNotification[] @relation("ProductionNotificationCreateOperation")
   productionNotificationCompletes ProductionNotification[] @relation("ProductionNotificationCompleteOperation")
@@ -192,6 +197,7 @@ model Distributor {
   productTransfers ProductTransfer[]
   cashBalance      DistributorCashBalance?
   sales            DistributorSale[]
+  saleCancellations DistributorSaleCancellation[]
   cashWithdrawals  DistributorCashWithdrawal[]
   productDiscountAssignments ProductDiscountAssignment[]
   courierLoads     CourierLoad[]
@@ -211,7 +217,9 @@ model Client {
   updatedAt        DateTime          @updatedAt
   createdBy        User              @relation("ClientCreatedBy", fields: [createdByUserId], references: [id], onDelete: Restrict)
   distributorSales DistributorSale[]
+  distributorSaleCancellations DistributorSaleCancellation[]
   courierSales     CourierSale[]
+  courierSaleCancellations CourierSaleCancellation[]
 
   @@index([name])
   @@index([createdByUserId])
@@ -312,9 +320,11 @@ model ProductBatch {
   distributorBalances         DistributorProductBalance[]
   transfers                   ProductTransfer[]
   distributorSales            DistributorSale[]
+  distributorSaleCancellations DistributorSaleCancellation[]
   courierBalances             CourierProductBalance[]
   courierLoads                CourierLoad[]
   courierSales                CourierSale[]
+  courierSaleCancellations    CourierSaleCancellation[]
   courierUnloadItems          CourierUnloadItem[]
   productDiscountAssignments  ProductDiscountAssignment[]
 
@@ -344,6 +354,7 @@ model DistributorProductBalance {
   distributor    Distributor       @relation(fields: [distributorId], references: [id], onDelete: Restrict)
   productBatch   ProductBatch      @relation(fields: [productBatchId], references: [id], onDelete: Restrict)
   sales          DistributorSale[]
+  saleCancellations DistributorSaleCancellation[]
   courierLoads   CourierLoad[]
   unloadItems    CourierUnloadItem[]
   sourceDiscountAssignments ProductDiscountAssignment[] @relation("ProductDiscountSourceBalance")
@@ -428,6 +439,7 @@ model DistributorSale {
   productBatch                ProductBatch              @relation(fields: [productBatchId], references: [id], onDelete: Restrict)
   client                      Client                    @relation(fields: [clientId], references: [id], onDelete: Restrict)
   operation                   Operation                 @relation(fields: [operationId], references: [id], onDelete: Restrict)
+  cancellation                DistributorSaleCancellation?
 
   @@index([distributorId])
   @@index([productBatchId])
@@ -435,6 +447,41 @@ model DistributorSale {
   @@index([actorUserId])
   @@index([createdAt])
   @@map("distributor_sale")
+}
+
+model DistributorSaleCancellation {
+  id                          String                    @id @default(cuid())
+  distributorSaleId           String                    @unique
+  distributorProductBalanceId String
+  distributorId               String
+  productBatchId              String
+  clientId                    String
+  quantity                    Int
+  baseUnitPriceCents          Int
+  unitPriceCents              Int
+  discountCentsPerUnit        Int                       @default(0)
+  discountTotalCents          Int                       @default(0)
+  totalCents                  Int
+  paymentMethod               String
+  reason                      String
+  operationId                 String                    @unique
+  actorUserId                 String
+  createdAt                   DateTime                  @default(now())
+  distributorSale             DistributorSale           @relation(fields: [distributorSaleId], references: [id], onDelete: Restrict)
+  distributorProductBalance   DistributorProductBalance @relation(fields: [distributorProductBalanceId], references: [id], onDelete: Restrict)
+  distributor                 Distributor               @relation(fields: [distributorId], references: [id], onDelete: Restrict)
+  productBatch                ProductBatch              @relation(fields: [productBatchId], references: [id], onDelete: Restrict)
+  client                      Client                    @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  operation                   Operation                 @relation(fields: [operationId], references: [id], onDelete: Restrict)
+  actor                       User                      @relation("DistributorSaleCancellationActor", fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  @@index([distributorProductBalanceId])
+  @@index([distributorId])
+  @@index([productBatchId])
+  @@index([clientId])
+  @@index([actorUserId])
+  @@index([createdAt])
+  @@map("distributor_sale_cancellation")
 }
 
 model CourierProductBalance {
@@ -447,6 +494,7 @@ model CourierProductBalance {
   courier        User          @relation("CourierProductBalanceCourier", fields: [courierUserId], references: [id], onDelete: Restrict)
   productBatch   ProductBatch  @relation(fields: [productBatchId], references: [id], onDelete: Restrict)
   sales          CourierSale[]
+  saleCancellations CourierSaleCancellation[]
   unloadItems    CourierUnloadItem[]
 
   @@unique([courierUserId, productBatchId, unitPriceCents])
@@ -516,6 +564,7 @@ model CourierSale {
   productBatch            ProductBatch          @relation(fields: [productBatchId], references: [id], onDelete: Restrict)
   client                  Client                @relation(fields: [clientId], references: [id], onDelete: Restrict)
   operation               Operation             @relation(fields: [operationId], references: [id], onDelete: Restrict)
+  cancellation            CourierSaleCancellation?
 
   @@index([courierProductBalanceId])
   @@index([courierUserId])
@@ -524,6 +573,41 @@ model CourierSale {
   @@index([actorUserId])
   @@index([createdAt])
   @@map("courier_sale")
+}
+
+model CourierSaleCancellation {
+  id                      String                @id @default(cuid())
+  courierSaleId           String                @unique
+  courierProductBalanceId String
+  courierUserId           String
+  productBatchId          String
+  clientId                String
+  quantity                Int
+  baseUnitPriceCents      Int
+  unitPriceCents          Int
+  discountCentsPerUnit    Int                   @default(0)
+  discountTotalCents      Int                   @default(0)
+  totalCents              Int
+  paymentMethod           String
+  reason                  String
+  operationId             String                @unique
+  actorUserId             String
+  createdAt               DateTime              @default(now())
+  courierSale             CourierSale           @relation(fields: [courierSaleId], references: [id], onDelete: Restrict)
+  courierProductBalance   CourierProductBalance @relation(fields: [courierProductBalanceId], references: [id], onDelete: Restrict)
+  courier                 User                  @relation("CourierSaleCancellationCourier", fields: [courierUserId], references: [id], onDelete: Restrict)
+  productBatch            ProductBatch          @relation(fields: [productBatchId], references: [id], onDelete: Restrict)
+  client                  Client                @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  operation               Operation             @relation(fields: [operationId], references: [id], onDelete: Restrict)
+  actor                   User                  @relation("CourierSaleCancellationActor", fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  @@index([courierProductBalanceId])
+  @@index([courierUserId])
+  @@index([productBatchId])
+  @@index([clientId])
+  @@index([actorUserId])
+  @@index([createdAt])
+  @@map("courier_sale_cancellation")
 }
 
 model CourierUnload {

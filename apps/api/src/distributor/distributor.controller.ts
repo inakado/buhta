@@ -1,6 +1,7 @@
-import { Body, Controller, Get, Inject, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Inject, Param, Post, Query, UseGuards } from "@nestjs/common";
 import {
 	AssignDistributorDiscountRequestSchema,
+	CancelDistributorSaleRequestSchema,
 	CreateDistributorCashWithdrawalRequestSchema,
 	CreateDistributorSaleRequestSchema,
 } from "@buhta/shared";
@@ -29,6 +30,12 @@ export class DistributorController {
 		return this.distributorService.getSaleOptions();
 	}
 
+	@Get("sales/recent")
+	@RequirePermission("distributor.sale.create")
+	async recentSales(@Query("limit") limit?: string) {
+		return this.distributorService.getRecentSales(parseLimit(limit));
+	}
+
 	@Get("cash-balances")
 	@RequirePermission("distributor.cash.read")
 	async cashBalances() {
@@ -41,6 +48,20 @@ export class DistributorController {
 		return this.distributorService.createDistributorSale(
 			requireActor(actor),
 			parseBody(CreateDistributorSaleRequestSchema, body, "Invalid distributor sale payload"),
+		);
+	}
+
+	@Post("sales/:saleId/cancel")
+	@RequirePermission("distributor.sale.cancel")
+	async cancelSale(
+		@CurrentActor() actor: Actor | undefined,
+		@Param("saleId") saleId: string,
+		@Body() body: unknown,
+	) {
+		return this.distributorService.cancelDistributorSale(
+			requireActor(actor),
+			saleId,
+			parseBody(CancelDistributorSaleRequestSchema, body, "Invalid distributor sale cancellation payload"),
 		);
 	}
 
@@ -79,4 +100,13 @@ function parseBody<T extends z.ZodType>(schema: T, body: unknown, message: strin
 	}
 
 	return parsedBody.data;
+}
+
+function parseLimit(value: string | undefined): number | undefined {
+	if (value === undefined) {
+		return undefined;
+	}
+
+	const parsed = Number(value);
+	return Number.isFinite(parsed) ? parsed : undefined;
 }

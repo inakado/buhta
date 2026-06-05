@@ -1,13 +1,15 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { PackageCheck, ReceiptText } from "lucide-react";
+import { PackageCheck, ReceiptText, Send } from "lucide-react";
 import { formatMoneyCents, moneyCents } from "@buhta/shared";
 import { getDistributorCashBalances, getDistributorInventory } from "../../lib/api-client";
 import { DistributorStockList } from "./DistributorStockList";
 
 type DistributorHomeOverviewProps = {
+	onNotify?: () => void;
 	onSale: () => void;
+	notifyDisabled?: boolean;
 	saleDisabled?: boolean;
 	showCashBalance?: boolean;
 	showStockList?: boolean;
@@ -17,7 +19,9 @@ type DistributorHomeOverviewProps = {
 };
 
 export function DistributorHomeOverview({
+	onNotify,
 	onSale,
+	notifyDisabled = false,
 	saleDisabled = false,
 	showCashBalance = false,
 	showStockList = true,
@@ -108,6 +112,18 @@ export function DistributorHomeOverview({
 					<ReceiptText aria-hidden size={22} />
 					<span>{saleDisabled ? "Продать — нет сети" : "Продать"}</span>
 				</button>
+				{onNotify ? (
+					<button
+						aria-label="Уведомить производство"
+						className="action-tile"
+						disabled={notifyDisabled}
+						onClick={onNotify}
+						type="button"
+					>
+						<Send aria-hidden size={22} />
+						<span>{notifyDisabled ? "Уведомить — нет сети" : "Уведомить"}</span>
+					</button>
+				) : null}
 			</div>
 
 			{showStockList ? (

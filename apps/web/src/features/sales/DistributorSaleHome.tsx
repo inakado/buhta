@@ -82,6 +82,7 @@ export function DistributorSaleHome({
 				queryClient.invalidateQueries({ queryKey: ["distributor", "inventory"] }),
 				queryClient.invalidateQueries({ queryKey: ["distributor", "sale-options"] }),
 				queryClient.invalidateQueries({ queryKey: ["distributor", "cash-balances"] }),
+				queryClient.invalidateQueries({ queryKey: ["distributor", "sales", "recent"] }),
 			]);
 			onSaleSuccess();
 		},
