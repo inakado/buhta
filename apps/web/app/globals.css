@@ -2169,7 +2169,22 @@ button:disabled {
 	min-height: 0;
 	overflow: auto;
 	border-top: 1px solid var(--line);
-	padding-top: 2px;
+	padding-top: 4px;
+}
+
+.operation-history-detail-section {
+	padding: 10px 0 4px;
+}
+
+.operation-history-detail-section + .operation-history-detail-section {
+	border-top: 1px solid var(--line);
+}
+
+.operation-history-detail-section h3 {
+	margin: 0 0 4px;
+	font-size: 13px;
+	font-weight: var(--font-weight-emphasis);
+	line-height: 1.15;
 }
 
 .operation-history-detail-list {
@@ -2182,8 +2197,11 @@ button:disabled {
 	display: grid;
 	grid-template-columns: minmax(96px, .42fr) minmax(0, 1fr);
 	gap: 10px;
-	border-bottom: 1px solid var(--line);
-	padding: 10px 0;
+	padding: 7px 0;
+}
+
+.operation-history-detail-row + .operation-history-detail-row {
+	border-top: 1px solid var(--line);
 }
 
 .operation-history-detail-row > div {
@@ -2197,16 +2215,6 @@ button:disabled {
 	font-size: 12px;
 	font-weight: var(--font-weight-emphasis);
 	line-height: 1.25;
-}
-
-.operation-history-detail-nested {
-	border-radius: 10px;
-	background: var(--surface-stock);
-	padding: 8px;
-}
-
-.operation-history-detail-nested .operation-history-detail-row {
-	grid-template-columns: minmax(74px, .4fr) minmax(0, 1fr);
 }
 
 @media (max-width: 380px) {

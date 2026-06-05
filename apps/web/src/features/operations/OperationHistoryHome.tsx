@@ -3,112 +3,21 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronRight, Filter, X } from "lucide-react";
-import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import type { OperationHistoryItem, OperationHistoryQuery } from "@buhta/shared";
 import { getOperationHistory, getOperationHistoryOptions } from "../../lib/api-client";
 import { ROLE_LABELS } from "../../lib/role-labels";
+import {
+	buildOperationDetailPresentation,
+	formatDateTime,
+	formatMoney,
+	getEntityLabel,
+	getOperationLabel,
+} from "./operation-detail-presenter";
 
 const DEFAULT_LIMIT = 30;
 const DEFAULT_RANGE_DAYS = 7;
 const DAY_MS = 24 * 60 * 60 * 1000;
-
-const OPERATION_LABELS: Record<string, string> = {
-	"catalog.distributor.archive": "Архивация распределителя",
-	"catalog.distributor.create": "Создание распределителя",
-	"catalog.distributor.update": "Обновление распределителя",
-	"catalog.packaging_type.archive": "Архивация тары",
-	"catalog.packaging_type.create": "Создание тары",
-	"catalog.packaging_type.update": "Обновление тары",
-	"catalog.product_template.archive": "Архивация продукции",
-	"catalog.product_template.create": "Создание продукции",
-	"catalog.product_template.update": "Обновление продукции",
-	"catalog.raw_material_type.archive": "Архивация сырья",
-	"catalog.raw_material_type.create": "Создание сырья",
-	"catalog.raw_material_type.update": "Обновление сырья",
-	"client.create": "Создание клиента",
-	"client.update": "Обновление клиента",
-	"courier.sale.cancel": "Отмена продажи курьера",
-	"courier.sale.create": "Продажа курьера",
-	"courier.stock.load.create": "Загрузка курьера",
-	"courier.unload.create": "Возврат курьера",
-	"distributor.cash.withdraw": "Списание наличных",
-	"distributor.discount.assign": "Назначение дисконта",
-	"distributor.sale.cancel": "Отмена продажи",
-	"distributor.sale.create": "Продажа",
-	"foundation.baseline": "Проверочная операция",
-	"production.notification.complete": "Задача выполнена",
-	"production.notification.create": "Задача производству",
-	"production.packaging_intake.create": "Поступление тары",
-	"production.product_batch.create": "Выпуск продукции",
-	"production.product_transfer.create": "Передача продукции",
-	"production.raw_material_intake.create": "Поступление сырья",
-	"user.create": "Создание пользователя",
-	"user.password.reset": "Сброс пароля",
-	"user.role.update": "Смена роли",
-};
-
-const ENTITY_LABELS: Record<string, string> = {
-	client: "Клиент",
-	courier_load: "Загрузка курьера",
-	courier_sale: "Продажа курьера",
-	courier_sale_cancellation: "Отмена продажи курьера",
-	courier_unload: "Возврат курьера",
-	distributor: "Распределитель",
-	distributor_cash_withdrawal: "Списание наличных",
-	distributor_sale: "Продажа",
-	distributor_sale_cancellation: "Отмена продажи",
-	packaging_intake: "Прием упаковки",
-	packaging_type: "Тип упаковки",
-	product_batch: "Партия",
-	product_discount_assignment: "Дисконт",
-	product_template: "Товар",
-	product_transfer: "Передача продукции",
-	production_notification: "Задача производству",
-	raw_material_intake: "Прием сырья",
-	raw_material_type: "Тип сырья",
-	user: "Пользователь",
-};
-
-const DETAIL_LABELS: Record<string, string> = {
-	action: "Действие",
-	amountCents: "Сумма",
-	availableQuantity: "Доступно",
-	baseUnitPriceCents: "Базовая цена",
-	cashAmountCents: "Наличными",
-	cashBalanceAfter: "Наличные после",
-	cashBalanceBefore: "Наличные до",
-	clientName: "Клиент",
-	comment: "Комментарий",
-	discountCentsPerUnit: "Скидка за единицу",
-	discountTotalCents: "Сумма скидки",
-	distributorName: "Распределитель",
-	newRole: "Новая роль",
-	oldRole: "Старая роль",
-	paymentMethod: "Оплата",
-	productName: "Товар",
-	quantity: "Количество",
-	reason: "Причина",
-	sourceQuantityAfter: "Остаток источника после",
-	sourceQuantityBefore: "Остаток источника до",
-	status: "Статус",
-	stockValueCents: "Стоимость остатка",
-	totalCents: "Итого",
-	unitPriceCents: "Цена",
-};
-
-const MONEY_DETAIL_KEYS = new Set([
-	"amountCents",
-	"baseUnitPriceCents",
-	"cashAmountCents",
-	"cashBalanceAfter",
-	"cashBalanceBefore",
-	"discountCentsPerUnit",
-	"discountTotalCents",
-	"stockValueCents",
-	"totalCents",
-	"unitPriceCents",
-]);
 
 export function OperationHistoryHome() {
 	const defaultFilters = useMemo(() => getDefaultFilters(), []);
@@ -304,6 +213,8 @@ function OperationDetailsModal({
 	item: OperationHistoryItem | null;
 	onClose: () => void;
 }) {
+	const presentation = item ? buildOperationDetailPresentation(item) : null;
+
 	return (
 		<Dialog.Root open={Boolean(item)} onOpenChange={(open) => {
 			if (!open) {
@@ -313,13 +224,13 @@ function OperationDetailsModal({
 			<Dialog.Portal>
 				<Dialog.Overlay className="operation-history-dialog-overlay" />
 				<Dialog.Content className="operation-history-dialog">
-					{item ? (
+					{presentation ? (
 						<>
 							<div className="operation-history-dialog-heading">
 								<div>
-									<Dialog.Title>{getOperationLabel(item.operationType)}</Dialog.Title>
+									<Dialog.Title>{presentation.title}</Dialog.Title>
 									<Dialog.Description>
-										{formatDateTime(item.createdAt)} · {item.actor.displayName}
+										{presentation.description}
 									</Dialog.Description>
 								</div>
 								<Dialog.Close className="icon-button" aria-label="Закрыть">
@@ -327,15 +238,26 @@ function OperationDetailsModal({
 								</Dialog.Close>
 							</div>
 							<div className="operation-history-detail-summary">
-								<DetailSummary label="Статус" value={item.status} />
-								<DetailSummary label="Роль" value={ROLE_LABELS[item.actor.role]} />
-								<DetailSummary label="Источник" value={getEntityLabel(item.entityType)} />
-								{item.amountCents !== undefined ? (
-									<DetailSummary label="Сумма" value={formatMoney(item.amountCents)} />
-								) : null}
+								{presentation.summary.map((row) => (
+									<DetailSummary key={row.label} label={row.label} value={row.value} />
+								))}
 							</div>
 							<div className="operation-history-details">
-								{renderDetails(item.details)}
+								{presentation.sections.length ? presentation.sections.map((section) => (
+									<section className="operation-history-detail-section" key={section.title}>
+										<h3>{section.title}</h3>
+										<div className="operation-history-detail-list">
+											{section.rows.map((row) => (
+												<div className="operation-history-detail-row" key={`${section.title}-${row.label}-${row.value}`}>
+													<span>{row.label}</span>
+													<div>
+														<strong>{row.value}</strong>
+													</div>
+												</div>
+											))}
+										</div>
+									</section>
+								)) : <p className="muted">Нет деталей.</p>}
 							</div>
 						</>
 					) : null}
@@ -354,58 +276,6 @@ function DetailSummary({ label, value }: { label: string; value: string }) {
 	);
 }
 
-function renderDetails(value: unknown): ReactNode {
-	if (Array.isArray(value)) {
-		return value.length ? (
-			<div className="operation-history-detail-list">
-				{value.map((item, index) => (
-					<div key={index} className="operation-history-detail-nested">
-						{renderDetails(item)}
-					</div>
-				))}
-			</div>
-		) : <p className="muted">Нет деталей.</p>;
-	}
-
-	if (isRecord(value)) {
-		const entries = Object.entries(value);
-		return entries.length ? (
-			<div className="operation-history-detail-list">
-				{entries.map(([key, nestedValue]) => (
-					<div className="operation-history-detail-row" key={key}>
-						<span>{getDetailLabel(key)}</span>
-						<div>{renderDetailValue(key, nestedValue)}</div>
-					</div>
-				))}
-			</div>
-		) : <p className="muted">Нет деталей.</p>;
-	}
-
-	return <p className="muted">{formatValue(value)}</p>;
-}
-
-function renderDetailValue(key: string, value: unknown): ReactNode {
-	if (isRecord(value) || Array.isArray(value)) {
-		return <div className="operation-history-detail-nested">{renderDetails(value)}</div>;
-	}
-
-	return <strong>{formatValue(value, key)}</strong>;
-}
-
-function formatValue(value: unknown, key?: string): string {
-	if (typeof value === "number" && key && MONEY_DETAIL_KEYS.has(key)) {
-		return formatMoney(value);
-	}
-	if (typeof value === "boolean") {
-		return value ? "Да" : "Нет";
-	}
-	if (value === null || value === undefined || value === "") {
-		return "Не указано";
-	}
-
-	return String(value);
-}
-
 function getDefaultFilters(): OperationHistoryQuery {
 	const dateTo = new Date();
 	const dateFrom = new Date(dateTo.getTime() - DEFAULT_RANGE_DAYS * DAY_MS);
@@ -421,33 +291,4 @@ function toDateInputValue(date: Date): string {
 	const month = String(date.getMonth() + 1).padStart(2, "0");
 	const day = String(date.getDate()).padStart(2, "0");
 	return `${year}-${month}-${day}`;
-}
-
-function getOperationLabel(operationType: string): string {
-	return OPERATION_LABELS[operationType] ?? operationType;
-}
-
-function getEntityLabel(entityType: string): string {
-	return ENTITY_LABELS[entityType] ?? entityType;
-}
-
-function getDetailLabel(key: string): string {
-	return DETAIL_LABELS[key] ?? key;
-}
-
-function formatMoney(amountCents: number): string {
-	return `${(amountCents / 100).toFixed(2)} ₽`;
-}
-
-function formatDateTime(value: string): string {
-	return new Intl.DateTimeFormat("ru-RU", {
-		day: "2-digit",
-		hour: "2-digit",
-		minute: "2-digit",
-		month: "short",
-	}).format(new Date(value));
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === "object" && value !== null && !Array.isArray(value);
 }

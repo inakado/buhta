@@ -553,10 +553,10 @@ describe("HomePage", () => {
 
 		fireEvent.click(await screen.findByRole("button", { name: "История" }));
 		expect(await screen.findByRole("heading", { name: "История" })).toBeTruthy();
-		const saleHistoryRow = await screen.findByRole("button", { name: /Director.*2500\.00 ₽/ });
+		const saleHistoryRow = await screen.findByRole("button", { name: /Director.*2 500\.00 ₽/ });
 		expect(saleHistoryRow).toBeTruthy();
 		expect(screen.getByText(/Director · Директор/)).toBeTruthy();
-		expect(screen.getByText("2500.00 ₽")).toBeTruthy();
+		expect(screen.getAllByText("2 500.00 ₽").length).toBeGreaterThan(0);
 
 		fireEvent.change(screen.getByLabelText("Событие"), { target: { value: "courier.sale.create" } });
 		await waitFor(() => {
@@ -567,11 +567,11 @@ describe("HomePage", () => {
 		});
 		expect(fetchMock.mock.calls.some(([input]) => String(input).includes("type=courier.sale.create"))).toBe(false);
 
-		const updatedSaleHistoryRow = await screen.findByRole("button", { name: /Director.*2500\.00 ₽/ });
+		const updatedSaleHistoryRow = await screen.findByRole("button", { name: /Director.*2 500\.00 ₽/ });
 		fireEvent.click(updatedSaleHistoryRow);
 		expect(await screen.findByRole("dialog")).toBeTruthy();
 		expect(screen.getByText("Икра горбуши")).toBeTruthy();
-		expect(screen.getByText("[redacted]")).toBeTruthy();
+		expect(screen.queryByText("[redacted]")).toBeNull();
 	});
 
 	it("renders catalog management for an admin and submits raw material type", async () => {
@@ -2227,7 +2227,7 @@ describe("HomePage", () => {
 
 		fireEvent.click(await screen.findByRole("button", { name: "История" }));
 		expect(await screen.findByRole("heading", { name: "История" })).toBeTruthy();
-		expect(await screen.findByRole("button", { name: /Director.*2500\.00 ₽/ })).toBeTruthy();
+		expect(await screen.findByRole("button", { name: /Director.*2 500\.00 ₽/ })).toBeTruthy();
 	});
 
 	it("shows director overview as a compact summary and keeps details in tabs", async () => {
