@@ -67,10 +67,21 @@
 | `production.notification.create` | коммерческий руководитель или администратор создал свободную задачу производству | `production_notification`; audit details содержат `notificationId`, текст, создателя, recipient role и статус после создания |
 | `production.notification.complete` | заведующий производством или администратор отметил задачу производству выполненной | `production_notification`; audit details содержат `notificationId`, текст, создателя, исполнителя и статус до/после |
 
-## 4. Кандидаты на будущую фиксацию
+## 4. Read Model Истории
 
-Не является финальным списком:
+`GET /operations/history` не создает новый operation type. Это управленческий read model поверх `audit_log`, `operation` и actor user.
 
-- корректировка без полной отмены продажи;
+Правила выдачи:
 
-Финальные имена и payload фиксируются только после проектирования schema/API.
+- доступ только по `operation.history.read`;
+- default period — последние 7 дней;
+- максимальный период одного запроса — 90 дней;
+- фильтр типа события называется `operationType`;
+- cursor pagination строится по `audit_log.createdAt desc, audit_log.id desc`;
+- `details` перед выдачей маскирует потенциально секретные ключи `password`, `token`, `secret`, `accessToken`, `refreshToken`, `hash` на любой глубине объекта.
+
+`GET /operations/history/options` возвращает варианты фильтров отдельно от текущей страницы истории.
+
+## 5. Кандидаты на будущую фиксацию
+
+Раздел не фиксирует финальный список будущих событий. Финальные имена и payload новых событий фиксируются только после проектирования schema/API.

@@ -9,7 +9,7 @@ import {
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
-import { Bell, Box, Check, ClipboardList, Factory, Gauge, History, PackageCheck, ReceiptText, Settings, Shield, Truck, Users, type LucideIcon } from "lucide-react";
+import { Bell, Box, Check, ClipboardList, Factory, Gauge, History, PackageCheck, ReceiptText, Settings, Truck, Users, type LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { LoginForm } from "../auth/LoginForm";
 import { ROLE_LABELS } from "../lib/role-labels";
@@ -201,6 +201,9 @@ function BottomNav({
 	const directorDistributorItem: BottomNavItem[] = actor.role === "director" && actor.permissions.includes("distributor.stock.read")
 		? [{ id: "distributor", label: "Распределитель", icon: Box }]
 		: [];
+	const operationHistoryItem: BottomNavItem[] = actor.permissions.includes("operation.history.read")
+		? [{ id: "operation-history", label: "История", icon: ReceiptText }]
+		: [];
 	const courierItems: BottomNavItem[] = [
 		{ id: "home", label: "Баланс", icon: PackageCheck },
 		...salesHistoryItem,
@@ -219,7 +222,7 @@ function BottomNav({
 			...catalogItem,
 			...clientsItem,
 			...courierBalancesItem,
-			{ id: "audit", label: "Аудит", icon: Shield },
+			...operationHistoryItem,
 			{ id: "settings", label: "Настройки", icon: Settings },
 		]
 		: actor.role === "production_manager"
@@ -232,6 +235,7 @@ function BottomNav({
 			...directorDistributorItem,
 			...clientsItem,
 			...courierBalancesItem,
+			...operationHistoryItem,
 			{ id: "settings", label: "Профиль", icon: Settings },
 		]
 				: [

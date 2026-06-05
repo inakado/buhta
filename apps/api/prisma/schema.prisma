@@ -118,6 +118,7 @@ model Operation {
 
   @@unique([actorUserId, idempotencyKey])
   @@index([actorUserId])
+  @@index([type, createdAt], map: "operation_type_createdAt_idx")
   @@map("operation")
 }
 
@@ -136,6 +137,10 @@ model AuditLog {
   @@index([operationId])
   @@index([actorUserId])
   @@index([entityType, entityId])
+  @@index([createdAt, id], map: "audit_log_createdAt_id_idx")
+  @@index([action, createdAt], map: "audit_log_action_createdAt_idx")
+  @@index([actorUserId, createdAt, id], map: "audit_log_actorUserId_createdAt_id_idx")
+  @@index([entityType, createdAt, id], map: "audit_log_entityType_createdAt_id_idx")
   @@map("audit_log")
 }
 

@@ -47,6 +47,9 @@ import type {
 	PackagingTypesListResponse,
 	NotificationResponse,
 	NotificationsListResponse,
+	OperationHistoryOptionsResponse,
+	OperationHistoryQuery,
+	OperationHistoryResponse,
 	ProductBatchResponse,
 	ProductBatchesResponse,
 	ProductTransferResponse,
@@ -191,6 +194,23 @@ export async function completeNotification(notificationId: string): Promise<Noti
 		method: "PATCH",
 		body: JSON.stringify({}),
 	});
+}
+
+export async function getOperationHistory(query: OperationHistoryQuery = {}): Promise<OperationHistoryResponse> {
+	const params = new URLSearchParams();
+
+	for (const [key, value] of Object.entries(query)) {
+		if (value !== undefined && value !== "") {
+			params.set(key, String(value));
+		}
+	}
+
+	const queryString = params.toString();
+	return fetchJson<OperationHistoryResponse>(`/operations/history${queryString ? `?${queryString}` : ""}`);
+}
+
+export async function getOperationHistoryOptions(): Promise<OperationHistoryOptionsResponse> {
+	return fetchJson<OperationHistoryOptionsResponse>("/operations/history/options");
 }
 
 export async function listRawMaterialTypes(): Promise<RawMaterialTypesListResponse> {

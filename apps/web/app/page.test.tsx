@@ -10,7 +10,14 @@ const adminActorResponse = {
 		login: "admin",
 		displayName: "Admin",
 		role: "admin",
-		permissions: ["users.manage", "catalog.manage", "client.read", "client.manage", "distributor.sale.create"],
+		permissions: [
+			"users.manage",
+			"catalog.manage",
+			"client.read",
+			"client.manage",
+			"distributor.sale.create",
+			"operation.history.read",
+		],
 	},
 };
 
@@ -81,6 +88,7 @@ const directorActorResponse = {
 				"notification.read",
 				"cash.withdraw",
 				"discount.assign",
+				"operation.history.read",
 			],
 		},
 	};
@@ -311,6 +319,58 @@ const notificationsResponse = {
 	},
 };
 
+const operationHistoryOptionsResponse = {
+	operationTypes: ["distributor.sale.create", "courier.sale.create"],
+	roles: ["director", "courier"],
+	actorUsers: [{
+		userId: "seed-director",
+		login: "director",
+		displayName: "Director",
+		role: "director",
+	}, {
+		userId: "seed-courier",
+		login: "courier",
+		displayName: "Courier",
+		role: "courier",
+	}],
+	entityTypes: ["distributor_sale", "courier_sale"],
+};
+
+const operationHistoryResponse = {
+	items: [{
+		id: "audit1",
+		operationId: "operation1",
+		operationType: "distributor.sale.create",
+		action: "distributor.sale.create",
+		status: "succeeded",
+		entityType: "distributor_sale",
+		entityId: "sale1",
+		createdAt: "2026-06-05T01:16:00.000Z",
+		actor: {
+			userId: "seed-director",
+			login: "director",
+			displayName: "Director",
+			role: "director",
+		},
+		summary: "Продажа",
+		amountCents: 250000,
+		quantity: 2,
+		details: {
+			productName: "Икра горбуши",
+			clientName: "Иван Петров",
+			totalCents: 250000,
+			quantity: 2,
+			token: "[redacted]",
+		},
+	}],
+	filters: {
+		dateFrom: "2026-05-29T00:00:00.000Z",
+		dateTo: "2026-06-05T00:00:00.000Z",
+		limit: 30,
+	},
+	nextCursor: null,
+};
+
 function jsonResponse(body: unknown, status = 200) {
 	return new Response(JSON.stringify(body), {
 		status,
@@ -462,6 +522,56 @@ describe("HomePage", () => {
 				expect.objectContaining({ method: "POST" }),
 			);
 		});
+	});
+
+	it("shows operation history to admin with filters and details", async () => {
+		const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+			const url = String(input);
+
+			if (url.endsWith("/auth/me")) {
+				return jsonResponse(adminActorResponse);
+			}
+
+			if (url.endsWith("/users")) {
+				return jsonResponse({ users: [] });
+			}
+
+			if (url.endsWith("/operations/history/options")) {
+				return jsonResponse(operationHistoryOptionsResponse);
+			}
+
+			if (url.includes("/operations/history")) {
+				return jsonResponse(operationHistoryResponse);
+			}
+
+			return jsonResponse({ error: { message: "Unexpected request" } }, 500);
+		});
+
+		vi.stubGlobal("fetch", fetchMock);
+
+		render(<HomePage />);
+
+		fireEvent.click(await screen.findByRole("button", { name: "История" }));
+		expect(await screen.findByRole("heading", { name: "История" })).toBeTruthy();
+		const saleHistoryRow = await screen.findByRole("button", { name: /Director.*2500\.00 ₽/ });
+		expect(saleHistoryRow).toBeTruthy();
+		expect(screen.getByText(/Director · Директор/)).toBeTruthy();
+		expect(screen.getByText("2500.00 ₽")).toBeTruthy();
+
+		fireEvent.change(screen.getByLabelText("Событие"), { target: { value: "courier.sale.create" } });
+		await waitFor(() => {
+			expect(fetchMock).toHaveBeenCalledWith(
+				expect.stringContaining("operationType=courier.sale.create"),
+				expect.any(Object),
+			);
+		});
+		expect(fetchMock.mock.calls.some(([input]) => String(input).includes("type=courier.sale.create"))).toBe(false);
+
+		const updatedSaleHistoryRow = await screen.findByRole("button", { name: /Director.*2500\.00 ₽/ });
+		fireEvent.click(updatedSaleHistoryRow);
+		expect(await screen.findByRole("dialog")).toBeTruthy();
+		expect(screen.getByText("Икра горбуши")).toBeTruthy();
+		expect(screen.getByText("[redacted]")).toBeTruthy();
 	});
 
 	it("renders catalog management for an admin and submits raw material type", async () => {
@@ -2074,6 +2184,50 @@ describe("HomePage", () => {
 		expect(screen.getAllByText("1 позиций").length).toBeGreaterThan(0);
 		expect(screen.getByText("Итого товаром")).toBeTruthy();
 		expect(screen.queryByRole("button", { name: "Записать загрузку" })).toBeNull();
+	});
+
+	it("shows operation history tab to director", async () => {
+		const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+			const url = String(input);
+
+			if (url.endsWith("/auth/me")) {
+				return jsonResponse(directorActorResponse);
+			}
+
+			if (url.endsWith("/distributor/inventory")) {
+				return jsonResponse(distributorInventoryResponse);
+			}
+
+			if (url.endsWith("/distributor/cash-balances")) {
+				return jsonResponse(distributorCashBalancesResponse);
+			}
+
+			if (url.endsWith("/courier/product-balances")) {
+				return jsonResponse(courierProductBalancesResponse);
+			}
+
+			if (url.endsWith("/courier/cash-balances")) {
+				return jsonResponse(courierCashBalancesResponse);
+			}
+
+			if (url.endsWith("/operations/history/options")) {
+				return jsonResponse(operationHistoryOptionsResponse);
+			}
+
+			if (url.includes("/operations/history")) {
+				return jsonResponse(operationHistoryResponse);
+			}
+
+			return jsonResponse({ error: { message: "Unexpected request" } }, 500);
+		});
+
+		vi.stubGlobal("fetch", fetchMock);
+
+		render(<HomePage />);
+
+		fireEvent.click(await screen.findByRole("button", { name: "История" }));
+		expect(await screen.findByRole("heading", { name: "История" })).toBeTruthy();
+		expect(await screen.findByRole("button", { name: /Director.*2500\.00 ₽/ })).toBeTruthy();
 	});
 
 	it("shows director overview as a compact summary and keeps details in tabs", async () => {

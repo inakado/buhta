@@ -1,6 +1,6 @@
 "use client";
 
-import { LogOut, Settings, Shield, type LucideIcon } from "lucide-react";
+import { LogOut, Settings, type LucideIcon } from "lucide-react";
 import { CatalogHome } from "../features/catalog/CatalogHome";
 import { ClientsHome } from "../features/clients/ClientsHome";
 import { CourierBalanceHome } from "../features/courier/CourierBalanceHome";
@@ -9,6 +9,7 @@ import { CourierSaleHome } from "../features/courier/CourierSaleHome";
 import { CourierUnloadHome } from "../features/courier/CourierUnloadHome";
 import { DistributorInventoryHome } from "../features/distributor/DistributorInventoryHome";
 import { NotificationsHome } from "../features/notifications/NotificationsHome";
+import { OperationHistoryHome } from "../features/operations/OperationHistoryHome";
 import { ProductionHome } from "../features/production/ProductionHome";
 import { DistributorSaleHome } from "../features/sales/DistributorSaleHome";
 import { SalesHistoryHome } from "../features/sales/SalesHistoryHome";
@@ -63,6 +64,10 @@ export function RoleHomeRouter({
 		return <NotificationsHome actor={actor} online={online} />;
 	}
 
+	if (activeTab === "operation-history" && actor.permissions.includes("operation.history.read")) {
+		return <OperationHistoryHome />;
+	}
+
 	if (actor.role === "production_manager") {
 		if (activeTab === "distributor") {
 			return (
@@ -84,7 +89,7 @@ export function RoleHomeRouter({
 
 	if (actor.role === "admin") {
 		if (activeTab !== "people") {
-			return <PlaceholderScreen title="Аудит" text="Журнал действий будет подключен следующим экраном." icon={Shield} />;
+			return <PlaceholderScreen title="История" text="Раздел недоступен для текущей роли." icon={Settings} />;
 		}
 
 		return <AdminHome actor={actor} />;

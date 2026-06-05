@@ -22,6 +22,7 @@ export const PERMISSIONS = [
 	"cash.withdraw",
 	"discount.assign",
 	"operation.correct",
+	"operation.history.read",
 	"audit.read",
 	"reports.read",
 ] as const;
@@ -41,6 +42,7 @@ export const ROLE_PERMISSIONS = {
 		"cash.withdraw",
 		"discount.assign",
 		"operation.correct",
+		"operation.history.read",
 		"audit.read",
 		"reports.read",
 	],

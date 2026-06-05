@@ -317,6 +317,30 @@ describe("PolicyRegistry", () => {
 			expect(actor?.permissions).not.toContain("notification.complete");
 		}
 	});
+
+	it("keeps operation history restricted to director and admin", () => {
+		for (const role of ["admin", "director"] as const) {
+			const actor = registry.buildActor({
+				id: `operation-history-${role}`,
+				username: role,
+				name: role,
+				role,
+			});
+
+			expect(actor?.permissions).toContain("operation.history.read");
+		}
+
+		for (const role of ["production_manager", "commercial_manager", "distributor_worker", "courier"] as const) {
+			const actor = registry.buildActor({
+				id: `no-operation-history-${role}`,
+				username: role,
+				name: role,
+				role,
+			});
+
+			expect(actor?.permissions).not.toContain("operation.history.read");
+		}
+	});
 });
 
 describe("PolicyGuard", () => {

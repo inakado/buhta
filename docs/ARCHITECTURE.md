@@ -156,7 +156,7 @@ Priced stock model: `ProductBatch.priceCents` остается базовой ц
 
 Client master data хранится в таблице `client`. Телефон нормализуется в `phoneNormalized` удалением всех нецифровых символов и защищается unique constraint. Клиентская карточка является mutable master data: создание и редактирование пишут `operation`/`audit_log`, но будущие продажи должны ссылаться на `clientId` и показывать актуальные имя/телефон/описание через join на `Client`, а не хранить старые ошибочные данные как operational source of truth.
 
-Distributor sales добавляет `distributor_sale` как typed fact продажи и `distributor_cash_balance` как projection наличного баланса распределителя. Продажа создается по `distributorProductBalanceId`: backend сам загружает распределитель, партию и цену строки, затем в одной transaction делает conditional decrement товарного остатка, при наличной оплате upsert/increment cash projection, создает `Operation`, `DistributorSale` и `AuditLog`. `DistributorSale` хранит базовую цену партии, фактическую цену, дисконт за единицу, суммарный дисконт и `totalCents`, поэтому будущие отчеты и корректировки не зависят от текущей цены шаблона или join-пересчета старого факта.
+Distributor sales добавляет `distributor_sale` как typed fact продажи и `distributor_cash_balance` как projection наличного баланса распределителя. Продажа создается по `distributorProductBalanceId`: backend сам загружает распределитель, партию и цену строки, затем в одной transaction делает conditional decrement товарного остатка, при наличной оплате upsert/increment cash projection, создает `Operation`, `DistributorSale` и `AuditLog`. `DistributorSale` хранит базовую цену партии, фактическую цену, дисконт за единицу, суммарный дисконт и `totalCents`, поэтому будущие отчеты и отмены не зависят от текущей цены шаблона или join-пересчета старого факта.
 
 Distributor sale cancellation добавляет `distributor_sale_cancellation` как append-only typed fact обратной операции. Исходная `distributor_sale` не редактируется; уникальность `distributorSaleId` в cancellation table запрещает повторную отмену. Transaction сначала создает `Operation` и cancellation fact, затем возвращает количество в исходную priced stock row и, для cash sale, делает conditional decrement агрегированного `distributor_cash_balance`. Audit before/after рассчитывается от результата успешного update: product before = product after - quantity, cash before = cash after + totalCents. Если текущего cash balance не хватает, вся transaction откатывается.
 
@@ -167,6 +167,8 @@ Courier sales добавляет `courier_sale` как typed fact продажи
 Courier sale cancellation добавляет `courier_sale_cancellation` как append-only typed fact. Курьер может отменить только собственную продажу; администратор имеет backend support-flow. Исходная `courier_sale` не редактируется, unique `courierSaleId` запрещает повторную отмену. Transaction создает cancellation fact до движения balances, возвращает товар в исходную priced courier row и, для cash sale, делает conditional decrement агрегированного `courier_cash_balance`. Cash считается текущей projection источника, а не набором конкретных купюр от продажи.
 
 Distributor discount assignment добавляет typed fact `product_discount_assignment`. Операция `distributor.discount.assign` доступна Директору и администратору, делает conditional decrement исходной строки `distributor_product_balance`, upsert/increment целевой строки с новой `unitPriceCents`, сохраняет базовую цену партии, текущую цену исходной строки, новую цену, общий дисконт и шаг текущего снижения. Audit before/after рассчитывается от результатов успешного update/upsert, а не от предварительного чтения.
+
+Operation History — read-only query service в модуле `operations`. `GET /operations/history` строит управленческий журнал из `audit_log` с join на `operation` и actor user, поддерживает период, `operationType`, actor user/role, `entityType`, cursor pagination и не создает новые `operation`/`audit_log`. Максимальный период одного запроса — 90 дней, default — последние 7 дней. Перед выдачей `details` сервис выполняет generic redaction потенциально секретных ключей (`password`, `token`, `secret`, `accessToken`, `refreshToken`, `hash`) на любой глубине объекта. `GET /operations/history/options` возвращает варианты фильтров отдельно от текущей страницы истории.
 
 Базовый принцип для следующих доменных операций:
 
@@ -184,8 +186,7 @@ Typed details нужны минимум для:
 - перемещения на распределитель;
 - списания наличных;
 - назначения дисконта;
-- отмены продажи;
-- корректировки.
+- отмены продажи.
 
 Не использовать один универсальный JSON payload как единственное место хранения деталей критичных операций, если эти детали нужны для отчетов, тестов, связей и доменных инвариантов.
 

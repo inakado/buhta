@@ -47,6 +47,9 @@ import {
 	NotificationsListQuerySchema,
 	NotificationsListResponseSchema,
 	NotificationResponseSchema,
+	OperationHistoryOptionsResponseSchema,
+	OperationHistoryQuerySchema,
+	OperationHistoryResponseSchema,
 	ProductionOptionsResponseSchema,
 	ProductionTransferOptionsResponseSchema,
 	ProductTemplateSchema,
@@ -80,12 +83,14 @@ describe("shared contracts", () => {
 		expect(permissionsForRole("director")).not.toContain("courier.sale.create");
 		expect(permissionsForRole("director")).not.toContain("courier.unload.create");
 		expect(permissionsForRole("director")).toContain("cash.withdraw");
+		expect(permissionsForRole("director")).toContain("operation.history.read");
 		expect(permissionsForRole("commercial_manager")).toContain("client.read");
 		expect(permissionsForRole("commercial_manager")).toContain("client.manage");
 		expect(permissionsForRole("commercial_manager")).toContain("courier.stock.read");
 		expect(permissionsForRole("commercial_manager")).toContain("courier.cash.read");
 		expect(permissionsForRole("commercial_manager")).toContain("notification.read");
 		expect(permissionsForRole("commercial_manager")).toContain("notification.create");
+		expect(permissionsForRole("commercial_manager")).not.toContain("operation.history.read");
 		expect(permissionsForRole("commercial_manager")).not.toContain("notification.complete");
 		expect(permissionsForRole("commercial_manager")).not.toContain("courier.stock.load");
 		expect(permissionsForRole("commercial_manager")).not.toContain("courier.sale.create");
@@ -302,6 +307,61 @@ describe("shared contracts", () => {
 				newCount: 1,
 				completedCount: 0,
 			},
+		}).success).toBe(true);
+	});
+
+	it("validates operation history contracts", () => {
+		expect(OperationHistoryQuerySchema.parse({
+			actorRole: "director",
+			limit: "30",
+			operationType: "distributor.sale.create",
+		})).toEqual({
+			actorRole: "director",
+			limit: 30,
+			operationType: "distributor.sale.create",
+		});
+		expect(OperationHistoryQuerySchema.safeParse({ limit: "101" }).success).toBe(false);
+		expect(OperationHistoryQuerySchema.safeParse({ type: "distributor.sale.create" }).success).toBe(false);
+		expect(OperationHistoryResponseSchema.safeParse({
+			items: [{
+				id: "audit-1",
+				operationId: "operation-1",
+				operationType: "distributor.sale.create",
+				action: "distributor.sale.create",
+				status: "succeeded",
+				entityType: "distributor_sale",
+				entityId: "sale-1",
+				createdAt: new Date(0).toISOString(),
+				actor: {
+					userId: "director-1",
+					login: "director",
+					displayName: "Директор",
+					role: "director",
+				},
+				summary: "Продажа с распределителя",
+				amountCents: 250000,
+				quantity: 2,
+				details: {
+					totalCents: 250000,
+				},
+			}],
+			filters: {
+				dateFrom: new Date(0).toISOString(),
+				dateTo: new Date(1).toISOString(),
+				limit: 30,
+			},
+			nextCursor: null,
+		}).success).toBe(true);
+		expect(OperationHistoryOptionsResponseSchema.safeParse({
+			operationTypes: ["distributor.sale.create"],
+			roles: ["admin", "director"],
+			actorUsers: [{
+				userId: "director-1",
+				login: "director",
+				displayName: "Директор",
+				role: "director",
+			}],
+			entityTypes: ["distributor_sale"],
 		}).success).toBe(true);
 	});
 
