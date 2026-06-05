@@ -80,6 +80,7 @@ const directorActorResponse = {
 		displayName: "Director",
 		role: "director",
 		permissions: [
+			"catalog.manage",
 			"distributor.stock.read",
 			"distributor.cash.read",
 			"courier.stock.read",
@@ -735,6 +736,7 @@ describe("HomePage", () => {
 
 		fireEvent.click(await screen.findByRole("button", { name: "Каталог" }));
 		expect(await screen.findByText("Горбуша")).toBeTruthy();
+		expect(screen.queryByLabelText("Название")).toBeNull();
 		expect(screen.queryByText("Архивная горбуша")).toBeNull();
 		fireEvent.click(screen.getByRole("button", { name: "Архив (1)" }));
 		expect(await screen.findByText("Архивная горбуша")).toBeTruthy();
@@ -748,6 +750,7 @@ describe("HomePage", () => {
 			);
 		});
 
+		fireEvent.click(screen.getByRole("button", { name: "Новый" }));
 		fireEvent.change(await screen.findByLabelText("Название"), { target: { value: "Кета" } });
 		fireEvent.change(screen.getByLabelText("Единица измерения"), { target: { value: "кг" } });
 		fireEvent.click(screen.getByRole("button", { name: "Добавить" }));
@@ -2340,6 +2343,22 @@ describe("HomePage", () => {
 				return jsonResponse(directorAnalyticsResponse);
 			}
 
+			if (url.endsWith("/catalog/raw-material-types")) {
+				return jsonResponse({ rawMaterialTypes: [] });
+			}
+
+			if (url.endsWith("/catalog/packaging-types")) {
+				return jsonResponse({ packagingTypes: [] });
+			}
+
+			if (url.endsWith("/catalog/distributors")) {
+				return jsonResponse({ distributors: [] });
+			}
+
+			if (url.endsWith("/catalog/product-templates")) {
+				return jsonResponse({ productTemplates: [] });
+			}
+
 				if (url.endsWith("/distributor/cash-withdrawals") && method === "POST") {
 					return jsonResponse({
 					withdrawal: {
@@ -2433,6 +2452,10 @@ describe("HomePage", () => {
 			expect(screen.getByText("12 шт · сырье 8 кг")).toBeTruthy();
 			expect(screen.queryByText("Движение наличных")).toBeNull();
 			expect(fetchMock.mock.calls.some(([input]) => String(input).includes("/analytics/director?periodPreset=30d"))).toBe(true);
+
+		fireEvent.click(screen.getByRole("button", { name: "Каталог" }));
+		expect(await screen.findByRole("heading", { name: "Справочники" })).toBeTruthy();
+		expect(screen.getByRole("button", { name: "Новый" })).toBeTruthy();
 
 		fireEvent.click(screen.getByRole("button", { name: "Распределитель" }));
 		expect(await screen.findByRole("heading", { name: "Распределитель" })).toBeTruthy();

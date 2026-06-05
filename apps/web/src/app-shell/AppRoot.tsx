@@ -237,6 +237,7 @@ function BottomNav({
 			{ id: "home", label: "Главная", icon: PackageCheck },
 			...directorAnalyticsItem,
 			...directorDistributorItem,
+			...catalogItem,
 			...clientsItem,
 			...courierBalancesItem,
 			...operationHistoryItem,

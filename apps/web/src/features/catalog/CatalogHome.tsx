@@ -169,6 +169,7 @@ function SimpleCatalogSection({
 	const queryClient = useQueryClient();
 	const [name, setName] = useState("");
 	const [unit, setUnit] = useState("");
+	const [createOpen, setCreateOpen] = useState(false);
 	const [showArchived, setShowArchived] = useState(false);
 	const activeItems = useMemo(() => items.filter((item) => item.active), [items]);
 	const archivedItems = useMemo(() => items.filter((item) => !item.active), [items]);
@@ -178,6 +179,7 @@ function SimpleCatalogSection({
 		onSuccess: async () => {
 			setName("");
 			setUnit("");
+			setCreateOpen(false);
 			await queryClient.invalidateQueries({ queryKey });
 		},
 	});
@@ -204,26 +206,52 @@ function SimpleCatalogSection({
 
 	return (
 		<div className="catalog-section">
-			<form className="form-panel" onSubmit={handleCreate}>
-				<div className="section-heading compact">
-					<h2>{title}</h2>
-				</div>
-				<label className="field">
-					<span>Название</span>
-					<input onChange={(event) => setName(event.target.value)} required type="text" value={name} />
-				</label>
-				{unitLabel ? (
-					<label className="field">
-						<span>{unitLabel}</span>
-						<input onChange={(event) => setUnit(event.target.value)} required type="text" value={unit} />
-					</label>
-				) : null}
-				{createMutation.isError ? <p className="form-error">{createMutation.error.message}</p> : null}
-				<button className="primary-button" disabled={!online || createMutation.isPending} type="submit">
-					<Plus aria-hidden size={18} />
-					Добавить
+			<div className="section-heading compact">
+				<h2>{title}</h2>
+				<button
+					className="secondary-button compact-button"
+					disabled={!online}
+					onClick={() => setCreateOpen(true)}
+					type="button"
+				>
+					<Plus aria-hidden size={16} />
+					Новый
 				</button>
-			</form>
+			</div>
+
+			{createOpen ? (
+				<form className="form-panel" onSubmit={handleCreate}>
+					<label className="field">
+						<span>Название</span>
+						<input onChange={(event) => setName(event.target.value)} required type="text" value={name} />
+					</label>
+					{unitLabel ? (
+						<label className="field">
+							<span>{unitLabel}</span>
+							<input onChange={(event) => setUnit(event.target.value)} required type="text" value={unit} />
+						</label>
+					) : null}
+					{createMutation.isError ? <p className="form-error">{createMutation.error.message}</p> : null}
+					<div className="entity-actions">
+						<button
+							className="secondary-button"
+							onClick={() => {
+								setName("");
+								setUnit("");
+								createMutation.reset();
+								setCreateOpen(false);
+							}}
+							type="button"
+						>
+							Отмена
+						</button>
+						<button className="primary-button" disabled={!online || createMutation.isPending} type="submit">
+							<Plus aria-hidden size={18} />
+							Добавить
+						</button>
+					</div>
+				</form>
+			) : null}
 
 			<CatalogArchiveHeader
 				archivedCount={archivedItems.length}
@@ -370,6 +398,7 @@ function ProductTemplatesSection({
 	const [packagingTypeId, setPackagingTypeId] = useState("");
 	const [priceRubles, setPriceRubles] = useState("");
 	const [priceError, setPriceError] = useState("");
+	const [createOpen, setCreateOpen] = useState(false);
 	const [showArchived, setShowArchived] = useState(false);
 	const activeItems = useMemo(() => items.filter((item) => item.active), [items]);
 	const archivedItems = useMemo(() => items.filter((item) => !item.active), [items]);
@@ -382,6 +411,7 @@ function ProductTemplatesSection({
 			setPackagingTypeId("");
 			setPriceRubles("");
 			setPriceError("");
+			setCreateOpen(false);
 			await queryClient.invalidateQueries({ queryKey: ["catalog", "product-templates"] });
 		},
 	});
@@ -417,69 +447,98 @@ function ProductTemplatesSection({
 
 	return (
 		<div className="catalog-section">
-			<form className="form-panel" onSubmit={handleCreate}>
-				<div className="section-heading compact">
-					<h2>Шаблон продукции</h2>
-				</div>
-				<label className="field">
-					<span>Название</span>
-					<input onChange={(event) => setName(event.target.value)} required type="text" value={name} />
-				</label>
-				<label className="field">
-					<span>Связанный вид сырья</span>
-					<select
-						onChange={(event) => setRawMaterialTypeId(event.target.value)}
-						required
-						value={rawMaterialTypeId}
-					>
-						<option value="">Выберите сырье</option>
-						{activeRawMaterialTypes.map((item) => (
-							<option key={item.id} value={item.id}>
-								{item.name}
-							</option>
-						))}
-					</select>
-				</label>
-				<label className="field">
-					<span>Связанный вид тары</span>
-					<select
-						onChange={(event) => setPackagingTypeId(event.target.value)}
-						required
-						value={packagingTypeId}
-					>
-						<option value="">Выберите тару</option>
-						{activePackagingTypes.map((item) => (
-							<option key={item.id} value={item.id}>
-								{item.name}
-							</option>
-						))}
-					</select>
-				</label>
-				<label className="field">
-					<span>Цена продукции, ₽</span>
-					<input
-						inputMode="decimal"
-						onChange={(event) => setPriceRubles(event.target.value)}
-						placeholder="1250.00"
-						required
-						type="text"
-						value={priceRubles}
-					/>
-				</label>
-				{dependenciesReady ? null : (
-					<p className="muted">Сначала нужны активные виды сырья и тары.</p>
-				)}
-				{priceError ? <p className="form-error">{priceError}</p> : null}
-				{createMutation.isError ? <p className="form-error">{createMutation.error.message}</p> : null}
+			<div className="section-heading compact">
+				<h2>Шаблоны продукции</h2>
 				<button
-					className="primary-button"
-					disabled={!online || !dependenciesReady || createMutation.isPending}
-					type="submit"
+					className="secondary-button compact-button"
+					disabled={!online}
+					onClick={() => setCreateOpen(true)}
+					type="button"
 				>
-					<Plus aria-hidden size={18} />
-					Добавить
+					<Plus aria-hidden size={16} />
+					Новый
 				</button>
-			</form>
+			</div>
+
+			{createOpen ? (
+				<form className="form-panel" onSubmit={handleCreate}>
+					<label className="field">
+						<span>Название</span>
+						<input onChange={(event) => setName(event.target.value)} required type="text" value={name} />
+					</label>
+					<label className="field">
+						<span>Связанный вид сырья</span>
+						<select
+							onChange={(event) => setRawMaterialTypeId(event.target.value)}
+							required
+							value={rawMaterialTypeId}
+						>
+							<option value="">Выберите сырье</option>
+							{activeRawMaterialTypes.map((item) => (
+								<option key={item.id} value={item.id}>
+									{item.name}
+								</option>
+							))}
+						</select>
+					</label>
+					<label className="field">
+						<span>Связанный вид тары</span>
+						<select
+							onChange={(event) => setPackagingTypeId(event.target.value)}
+							required
+							value={packagingTypeId}
+						>
+							<option value="">Выберите тару</option>
+							{activePackagingTypes.map((item) => (
+								<option key={item.id} value={item.id}>
+									{item.name}
+								</option>
+							))}
+						</select>
+					</label>
+					<label className="field">
+						<span>Цена продукции, ₽</span>
+						<input
+							inputMode="decimal"
+							onChange={(event) => setPriceRubles(event.target.value)}
+							placeholder="1250.00"
+							required
+							type="text"
+							value={priceRubles}
+						/>
+					</label>
+					{dependenciesReady ? null : (
+						<p className="muted">Сначала нужны активные виды сырья и тары.</p>
+					)}
+					{priceError ? <p className="form-error">{priceError}</p> : null}
+					{createMutation.isError ? <p className="form-error">{createMutation.error.message}</p> : null}
+					<div className="entity-actions">
+						<button
+							className="secondary-button"
+							onClick={() => {
+								setName("");
+								setRawMaterialTypeId("");
+								setPackagingTypeId("");
+								setPriceRubles("");
+								setPriceError("");
+								createMutation.reset();
+								setCreateOpen(false);
+							}}
+							type="button"
+						>
+							Отмена
+						</button>
+						<button
+							className="primary-button"
+							disabled={!online || !dependenciesReady || createMutation.isPending}
+							type="submit"
+						>
+							<Plus aria-hidden size={18} />
+							Добавить
+						</button>
+					</div>
+				</form>
+			) : null}
 
 			<CatalogArchiveHeader
 				archivedCount={archivedItems.length}
