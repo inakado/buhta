@@ -3,6 +3,7 @@ import { APP_FILTER } from "@nestjs/core";
 import { AuthModule } from "@thallesp/nestjs-better-auth";
 import { AuthSpikeController } from "./auth/auth-spike.controller";
 import { AuthMeController } from "./auth/auth-me.controller";
+import { AnalyticsModule } from "./analytics/analytics.module";
 import { auth } from "./auth/auth";
 import { CatalogModule } from "./catalog/catalog.module";
 import { ClientsModule } from "./clients/clients.module";
@@ -26,6 +27,7 @@ import { UsersModule } from "./users/users.module";
 			},
 		}),
 		PolicyModule,
+		AnalyticsModule,
 		OperationsModule,
 		UsersModule,
 		CatalogModule,

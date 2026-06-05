@@ -85,13 +85,14 @@ const directorActorResponse = {
 			"courier.stock.read",
 			"courier.cash.read",
 			"client.read",
-				"notification.read",
-				"cash.withdraw",
-				"discount.assign",
-				"operation.history.read",
-			],
-		},
-	};
+			"notification.read",
+			"cash.withdraw",
+			"discount.assign",
+			"operation.history.read",
+			"director.analytics.read",
+		],
+	},
+};
 
 const courierActorResponse = {
 	authenticated: true,
@@ -369,6 +370,86 @@ const operationHistoryResponse = {
 		limit: 30,
 	},
 	nextCursor: null,
+};
+
+const directorAnalyticsResponse = {
+	filters: {
+		dateFrom: "2026-05-06T14:00:00.000Z",
+		dateTo: "2026-06-05T14:00:00.000Z",
+		periodPreset: "30d",
+		timezone: "Asia/Vladivostok",
+	},
+	money: {
+		grossRevenueCents: 320000,
+		cancelledRevenueCents: 70000,
+		netRevenueCents: 250000,
+		cashRevenueCents: 125000,
+		cashlessRevenueCents: 125000,
+		saleCount: 3,
+		cancellationCount: 1,
+		currentCash: {
+			distributorCashCents: 125000,
+			courierCashCents: 70000,
+			totalCashCents: 195000,
+		},
+		cashMovement: {
+			cashSalesCents: 150000,
+			courierCashReturnedCents: 40000,
+			directorWithdrawalsCents: 50000,
+			cashSaleCancellationsCents: 25000,
+		},
+	},
+	production: {
+		rawMaterialIntakes: [{
+			rawMaterialTypeId: "raw1",
+			rawMaterialName: "Икра горбуши сырец",
+			unit: "кг",
+			quantity: 12,
+		}],
+		rawMaterialConsumed: [{
+			rawMaterialTypeId: "raw1",
+			rawMaterialName: "Икра горбуши сырец",
+			unit: "кг",
+			quantity: 8,
+		}],
+		currentRawMaterialBalances: [{
+			rawMaterialTypeId: "raw1",
+			rawMaterialName: "Икра горбуши сырец",
+			unit: "кг",
+			quantity: 4,
+		}],
+			productReleased: [{
+				productName: "Икра горбуши",
+				quantity: 12,
+				rawMaterialConsumedQuantity: 8,
+				rawMaterialUnit: "кг",
+			}],
+		productTransferredToDistributorUnits: 8,
+		currentWorkshopProductUnits: 4,
+		summary: {
+			rawMaterialConsumedQuantity: 8,
+			rawMaterialConsumedUnit: "кг",
+			productReleasedUnits: 12,
+		},
+	},
+	charts: {
+		revenueByDay: [{
+			date: "2026-06-05",
+			grossRevenueCents: 320000,
+			cancelledRevenueCents: 70000,
+			netRevenueCents: 250000,
+		}],
+		paymentSplit: {
+			cashRevenueCents: 125000,
+			cashlessRevenueCents: 125000,
+		},
+		rawMaterialAndProductOutput: {
+			rawMaterialConsumedQuantity: 8,
+			rawMaterialConsumedUnit: "кг",
+			productReleasedUnits: 12,
+		},
+	},
+	warnings: [],
 };
 
 function jsonResponse(body: unknown, status = 200) {
@@ -2255,6 +2336,10 @@ describe("HomePage", () => {
 				return jsonResponse(courierCashBalancesResponse);
 			}
 
+			if (url.includes("/analytics/director")) {
+				return jsonResponse(directorAnalyticsResponse);
+			}
+
 				if (url.endsWith("/distributor/cash-withdrawals") && method === "POST") {
 					return jsonResponse({
 					withdrawal: {
@@ -2335,8 +2420,19 @@ describe("HomePage", () => {
 		expect(screen.queryByText("Последние операции")).toBeNull();
 		expect(screen.queryByText("Продажи сегодня")).toBeNull();
 		expect(screen.queryByText("Статистика")).toBeNull();
+		expect(screen.queryByRole("heading", { name: "Аналитика" })).toBeNull();
+		expect(fetchMock.mock.calls.some(([input]) => String(input).includes("/analytics/director"))).toBe(false);
 		expect(screen.queryByRole("button", { name: "Продажа" })).toBeNull();
 		expect(screen.queryByRole("button", { name: "Назначить дисконт пока недоступно" })).toBeNull();
+
+			fireEvent.click(screen.getByRole("button", { name: "Аналитика" }));
+			expect(await screen.findByRole("heading", { name: "Аналитика" })).toBeTruthy();
+			expect(await screen.findByText("Деньги за период")).toBeTruthy();
+			expect(screen.getByText("Сырье")).toBeTruthy();
+			expect(screen.getByText("Продукция")).toBeTruthy();
+			expect(screen.getByText("12 шт · сырье 8 кг")).toBeTruthy();
+			expect(screen.queryByText("Движение наличных")).toBeNull();
+			expect(fetchMock.mock.calls.some(([input]) => String(input).includes("/analytics/director?periodPreset=30d"))).toBe(true);
 
 		fireEvent.click(screen.getByRole("button", { name: "Распределитель" }));
 		expect(await screen.findByRole("heading", { name: "Распределитель" })).toBeTruthy();

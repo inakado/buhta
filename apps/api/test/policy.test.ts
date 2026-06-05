@@ -101,6 +101,30 @@ describe("PolicyRegistry", () => {
 		}
 	});
 
+	it("limits director analytics to director and admin", () => {
+		for (const role of ["admin", "director"] as const) {
+			const actor = registry.buildActor({
+				id: `analytics-${role}`,
+				username: role,
+				name: role,
+				role,
+			});
+
+			expect(actor?.permissions).toContain("director.analytics.read");
+		}
+
+		for (const role of ["commercial_manager", "distributor_worker", "production_manager", "courier"] as const) {
+			const actor = registry.buildActor({
+				id: `no-analytics-${role}`,
+				username: role,
+				name: role,
+				role,
+			});
+
+			expect(actor?.permissions).not.toContain("director.analytics.read");
+		}
+	});
+
 	it("keeps distributor sale and cash permissions separated", () => {
 		for (const role of ["admin", "commercial_manager", "distributor_worker"] as const) {
 			const actor = registry.buildActor({

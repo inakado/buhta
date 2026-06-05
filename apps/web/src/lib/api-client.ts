@@ -24,6 +24,8 @@ import type {
 	CreateRawMaterialTypeRequest,
 	CreateUserRequest,
 	CreateUserResponse,
+	DirectorAnalyticsQuery,
+	DirectorAnalyticsResponse,
 	CourierCashBalancesResponse,
 	CourierLoadOptionsResponse,
 	CourierLoadResponse,
@@ -211,6 +213,21 @@ export async function getOperationHistory(query: OperationHistoryQuery = {}): Pr
 
 export async function getOperationHistoryOptions(): Promise<OperationHistoryOptionsResponse> {
 	return fetchJson<OperationHistoryOptionsResponse>("/operations/history/options");
+}
+
+export async function getDirectorAnalytics(
+	query: DirectorAnalyticsQuery = {},
+): Promise<DirectorAnalyticsResponse> {
+	const params = new URLSearchParams();
+
+	for (const [key, value] of Object.entries(query)) {
+		if (value !== undefined && value !== "") {
+			params.set(key, String(value));
+		}
+	}
+
+	const queryString = params.toString();
+	return fetchJson<DirectorAnalyticsResponse>(`/analytics/director${queryString ? `?${queryString}` : ""}`);
 }
 
 export async function listRawMaterialTypes(): Promise<RawMaterialTypesListResponse> {

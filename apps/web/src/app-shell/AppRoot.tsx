@@ -9,7 +9,7 @@ import {
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
-import { Bell, Box, Check, ClipboardList, Factory, Gauge, History, PackageCheck, ReceiptText, Settings, Truck, Users, type LucideIcon } from "lucide-react";
+import { BarChart3, Bell, Box, Check, ClipboardList, Factory, Gauge, History, PackageCheck, ReceiptText, Settings, Truck, Users, type LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { LoginForm } from "../auth/LoginForm";
 import { ROLE_LABELS } from "../lib/role-labels";
@@ -201,6 +201,9 @@ function BottomNav({
 	const directorDistributorItem: BottomNavItem[] = actor.role === "director" && actor.permissions.includes("distributor.stock.read")
 		? [{ id: "distributor", label: "Распределитель", icon: Box }]
 		: [];
+	const directorAnalyticsItem: BottomNavItem[] = actor.role === "director" && actor.permissions.includes("director.analytics.read")
+		? [{ id: "analytics", label: "Аналитика", icon: BarChart3 }]
+		: [];
 	const operationHistoryItem: BottomNavItem[] = actor.permissions.includes("operation.history.read")
 		? [{ id: "operation-history", label: "История", icon: ReceiptText }]
 		: [];
@@ -232,6 +235,7 @@ function BottomNav({
 				: actor.role === "director"
 					? [
 			{ id: "home", label: "Главная", icon: PackageCheck },
+			...directorAnalyticsItem,
 			...directorDistributorItem,
 			...clientsItem,
 			...courierBalancesItem,

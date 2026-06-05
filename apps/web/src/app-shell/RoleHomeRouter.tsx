@@ -2,6 +2,7 @@
 
 import { LogOut, Settings, type LucideIcon } from "lucide-react";
 import { CatalogHome } from "../features/catalog/CatalogHome";
+import { DirectorAnalyticsHome } from "../features/analytics/DirectorAnalyticsHome";
 import { ClientsHome } from "../features/clients/ClientsHome";
 import { CourierBalanceHome } from "../features/courier/CourierBalanceHome";
 import { CourierLoadHome } from "../features/courier/CourierLoadHome";
@@ -66,6 +67,14 @@ export function RoleHomeRouter({
 
 	if (activeTab === "operation-history" && actor.permissions.includes("operation.history.read")) {
 		return <OperationHistoryHome />;
+	}
+
+	if (
+		activeTab === "analytics"
+		&& actor.role === "director"
+		&& actor.permissions.includes("director.analytics.read")
+	) {
+		return <DirectorAnalyticsHome />;
 	}
 
 	if (actor.role === "production_manager") {

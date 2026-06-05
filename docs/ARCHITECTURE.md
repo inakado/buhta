@@ -38,6 +38,7 @@
   - `production` — поступления сырья/тары, текущие балансы цеха и выпуск партии продукции;
   - `distributor` — read-only товарные остатки распределителя из projection table;
   - `operations` — baseline operation/idempotency services;
+  - `analytics` — read-only директорская аналитика денег, сырья и выпуска продукции;
   - `common/errors` — единый `AppError` и mapper в `{ error: { code, message, details } }`;
   - `health` — публичный health contract.
 - `packages/shared` содержит runtime contracts, которые нужны API и web:
@@ -48,6 +49,7 @@
   - client contracts для списка, поиска, создания и редактирования клиентов;
   - production contracts для поступлений, балансов цеха и выпуска партии;
   - distributor contracts для read-only inventory summary и строк остатков;
+  - analytics contracts для директорского read-only экрана денег, сырья, выпуска и простых chart datasets;
   - health constants.
 - Foundation data flow:
 
@@ -169,6 +171,8 @@ Courier sale cancellation добавляет `courier_sale_cancellation` как 
 Distributor discount assignment добавляет typed fact `product_discount_assignment`. Операция `distributor.discount.assign` доступна Директору и администратору, делает conditional decrement исходной строки `distributor_product_balance`, upsert/increment целевой строки с новой `unitPriceCents`, сохраняет базовую цену партии, текущую цену исходной строки, новую цену, общий дисконт и шаг текущего снижения. Audit before/after рассчитывается от результатов успешного update/upsert, а не от предварительного чтения.
 
 Operation History — read-only query service в модуле `operations`. `GET /operations/history` строит управленческий журнал из `audit_log` с join на `operation` и actor user, поддерживает период, `operationType`, actor user/role, `entityType`, cursor pagination и не создает новые `operation`/`audit_log`. Максимальный период одного запроса — 90 дней, default — последние 7 дней. Перед выдачей `details` сервис выполняет generic redaction потенциально секретных ключей (`password`, `token`, `secret`, `accessToken`, `refreshToken`, `hash`) на любой глубине объекта. `GET /operations/history/options` возвращает варианты фильтров отдельно от текущей страницы истории.
+
+Director analytics — read-only query service в модуле `analytics`. `GET /analytics/director` доступен только по `director.analytics.read` и строит первый узкий экран аналитики из typed facts и projections: продажи и отмены, cash balances, courier unload cash movement, director cash withdrawals, raw material intakes/balances, product batches, product transfers и workshop product balances. Периоды `today`, `7d`, `30d`, `90d` считаются по бизнес-таймзоне `Asia/Vladivostok`; если переданы `dateFrom/dateTo`, они имеют приоритет над preset. `revenueByDay` считает продажи дня минус отмены дня, причем отмена попадает в день отмены, а не в день исходной продажи.
 
 Базовый принцип для следующих доменных операций:
 

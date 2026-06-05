@@ -20,6 +20,7 @@
 - `@tanstack/react-query` для server-state.
 - `Radix UI primitives` для доступных составных UI controls; пакеты `@radix-ui/react-*` добавляются точечно под конкретный primitive, а не как готовая visual library.
 - `lucide-react` для иконок.
+- Директорская аналитика v1 строится без chart-библиотеки: сначала компактные KPI и read-only строки. Chart-зависимость добавлять только отдельным решением, если появится конкретный график, который нельзя понятно показать простым UI.
 - `Tailwind CSS` для стилей.
 - `@testing-library/react` и `jsdom` для component tests.
 

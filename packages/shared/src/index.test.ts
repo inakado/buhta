@@ -43,6 +43,8 @@ import {
 	DistributorInventoryResponseSchema,
 	DistributorRecentSalesResponseSchema,
 	DistributorSaleOptionsResponseSchema,
+	DirectorAnalyticsQuerySchema,
+	DirectorAnalyticsResponseSchema,
 	LoginSchema,
 	NotificationsListQuerySchema,
 	NotificationsListResponseSchema,
@@ -84,6 +86,7 @@ describe("shared contracts", () => {
 		expect(permissionsForRole("director")).not.toContain("courier.unload.create");
 		expect(permissionsForRole("director")).toContain("cash.withdraw");
 		expect(permissionsForRole("director")).toContain("operation.history.read");
+		expect(permissionsForRole("director")).toContain("director.analytics.read");
 		expect(permissionsForRole("commercial_manager")).toContain("client.read");
 		expect(permissionsForRole("commercial_manager")).toContain("client.manage");
 		expect(permissionsForRole("commercial_manager")).toContain("courier.stock.read");
@@ -91,6 +94,7 @@ describe("shared contracts", () => {
 		expect(permissionsForRole("commercial_manager")).toContain("notification.read");
 		expect(permissionsForRole("commercial_manager")).toContain("notification.create");
 		expect(permissionsForRole("commercial_manager")).not.toContain("operation.history.read");
+		expect(permissionsForRole("commercial_manager")).not.toContain("director.analytics.read");
 		expect(permissionsForRole("commercial_manager")).not.toContain("notification.complete");
 		expect(permissionsForRole("commercial_manager")).not.toContain("courier.stock.load");
 		expect(permissionsForRole("commercial_manager")).not.toContain("courier.sale.create");
@@ -100,6 +104,7 @@ describe("shared contracts", () => {
 		expect(permissionsForRole("distributor_worker")).not.toContain("courier.stock.read");
 		expect(permissionsForRole("distributor_worker")).not.toContain("courier.cash.read");
 		expect(permissionsForRole("distributor_worker")).not.toContain("notification.read");
+		expect(permissionsForRole("distributor_worker")).not.toContain("director.analytics.read");
 		expect(permissionsForRole("courier")).toContain("client.read");
 		expect(permissionsForRole("courier")).toContain("client.manage");
 		expect(permissionsForRole("courier")).toContain("courier.stock.read");
@@ -109,12 +114,14 @@ describe("shared contracts", () => {
 		expect(permissionsForRole("courier")).toContain("courier.unload.create");
 		expect(permissionsForRole("courier")).not.toContain("notification.read");
 		expect(permissionsForRole("courier")).not.toContain("cash.withdraw");
+		expect(permissionsForRole("courier")).not.toContain("director.analytics.read");
 		expect(permissionsForRole("production_manager")).not.toContain("client.read");
 		expect(permissionsForRole("production_manager")).not.toContain("client.manage");
 		expect(permissionsForRole("production_manager")).not.toContain("courier.cash.read");
 		expect(permissionsForRole("production_manager")).toContain("notification.read");
 		expect(permissionsForRole("production_manager")).toContain("notification.complete");
 		expect(permissionsForRole("production_manager")).not.toContain("notification.create");
+		expect(permissionsForRole("production_manager")).not.toContain("director.analytics.read");
 	});
 
 	it("handles money only as integer cents", () => {
@@ -362,6 +369,94 @@ describe("shared contracts", () => {
 				role: "director",
 			}],
 			entityTypes: ["distributor_sale"],
+		}).success).toBe(true);
+	});
+
+	it("validates director analytics contracts", () => {
+		expect(DirectorAnalyticsQuerySchema.parse({ periodPreset: "today" })).toEqual({
+			periodPreset: "today",
+		});
+		expect(DirectorAnalyticsQuerySchema.safeParse({ periodPreset: "365d" }).success).toBe(false);
+		expect(DirectorAnalyticsQuerySchema.safeParse({ type: "money" }).success).toBe(false);
+
+		expect(DirectorAnalyticsResponseSchema.safeParse({
+			filters: {
+				dateFrom: "2036-06-04T14:00:00.000Z",
+				dateTo: "2036-06-05T14:00:00.000Z",
+				periodPreset: "today",
+				timezone: "Asia/Vladivostok",
+			},
+			money: {
+				grossRevenueCents: 250000,
+				cancelledRevenueCents: 50000,
+				netRevenueCents: 200000,
+				cashRevenueCents: 125000,
+				cashlessRevenueCents: 75000,
+				saleCount: 2,
+				cancellationCount: 1,
+				currentCash: {
+					distributorCashCents: 100000,
+					courierCashCents: 25000,
+					totalCashCents: 125000,
+				},
+				cashMovement: {
+					cashSalesCents: 150000,
+					courierCashReturnedCents: 50000,
+					directorWithdrawalsCents: 25000,
+					cashSaleCancellationsCents: 25000,
+				},
+			},
+			production: {
+				rawMaterialIntakes: [{
+					rawMaterialTypeId: "raw-1",
+					rawMaterialName: "Икра горбуши",
+					unit: "кг",
+					quantity: 12.5,
+				}],
+				rawMaterialConsumed: [{
+					rawMaterialTypeId: "raw-1",
+					rawMaterialName: "Икра горбуши",
+					unit: "кг",
+					quantity: 10,
+				}],
+				currentRawMaterialBalances: [{
+					rawMaterialTypeId: "raw-1",
+					rawMaterialName: "Икра горбуши",
+					unit: "кг",
+					quantity: 2.5,
+				}],
+					productReleased: [{
+						productName: "Икра горбуши 250 г",
+						quantity: 40,
+						rawMaterialConsumedQuantity: 10,
+						rawMaterialUnit: "кг",
+					}],
+				productTransferredToDistributorUnits: 30,
+				currentWorkshopProductUnits: 10,
+				summary: {
+					rawMaterialConsumedQuantity: 10,
+					rawMaterialConsumedUnit: "кг",
+					productReleasedUnits: 40,
+				},
+			},
+			charts: {
+				revenueByDay: [{
+					date: "2036-06-05",
+					grossRevenueCents: 250000,
+					cancelledRevenueCents: 50000,
+					netRevenueCents: 200000,
+				}],
+				paymentSplit: {
+					cashRevenueCents: 125000,
+					cashlessRevenueCents: 75000,
+				},
+				rawMaterialAndProductOutput: {
+					rawMaterialConsumedQuantity: 10,
+					rawMaterialConsumedUnit: "кг",
+					productReleasedUnits: 40,
+				},
+			},
+			warnings: [],
 		}).success).toBe(true);
 	});
 
