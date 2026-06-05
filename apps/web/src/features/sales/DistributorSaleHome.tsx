@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FormEvent, useState } from "react";
 import { ReceiptText, UserPlus } from "lucide-react";
-import { formatMoneyCents, moneyCents, type DistributorSaleStockItem } from "@buhta/shared";
+import { formatMoneyCents, moneyCents, type DistributorSaleStockItem, type PaymentMethod } from "@buhta/shared";
 import {
 	createClient,
 	createDistributorSale,
@@ -11,6 +11,7 @@ import {
 	listClients,
 } from "../../lib/api-client";
 import { ClientCombobox } from "../clients/ClientCombobox";
+import { PaymentMethodSegmentedControl } from "../operations/PaymentMethodSegmentedControl";
 import { OperationProductSelect } from "../operations/OperationProductSelect";
 
 export function DistributorSaleHome({
@@ -25,7 +26,7 @@ export function DistributorSaleHome({
 	const [selectedClientId, setSelectedClientId] = useState("");
 	const [selectedBalanceId, setSelectedBalanceId] = useState("");
 	const [quantity, setQuantity] = useState("");
-	const [paymentMethod, setPaymentMethod] = useState<"cash" | "cashless">("cash");
+	const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
 	const [comment, setComment] = useState("");
 	const [localError, setLocalError] = useState("");
 	const [showNewClientForm, setShowNewClientForm] = useState(false);
@@ -242,16 +243,11 @@ export function DistributorSaleHome({
 						value={quantity}
 					/>
 				</label>
-				<label className="field">
-					<span>Способ оплаты</span>
-					<select
-						onChange={(event) => setPaymentMethod(event.target.value === "cashless" ? "cashless" : "cash")}
-						value={paymentMethod}
-					>
-						<option value="cash">Наличные</option>
-						<option value="cashless">Безнал</option>
-					</select>
-				</label>
+				<PaymentMethodSegmentedControl
+					id="distributor-payment-method-label"
+					onChange={setPaymentMethod}
+					value={paymentMethod}
+				/>
 				<label className="field">
 					<span>Комментарий</span>
 					<textarea onChange={(event) => setComment(event.target.value)} rows={2} value={comment} />

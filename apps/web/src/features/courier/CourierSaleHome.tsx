@@ -2,8 +2,8 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FormEvent, useState } from "react";
-import { Banknote, CreditCard, ReceiptText, UserPlus } from "lucide-react";
-import { formatMoneyCents, moneyCents, type CourierSaleOption } from "@buhta/shared";
+import { ReceiptText, UserPlus } from "lucide-react";
+import { formatMoneyCents, moneyCents, type CourierSaleOption, type PaymentMethod } from "@buhta/shared";
 import {
 	createClient,
 	createCourierSale,
@@ -11,6 +11,7 @@ import {
 	listClients,
 } from "../../lib/api-client";
 import { ClientCombobox } from "../clients/ClientCombobox";
+import { PaymentMethodSegmentedControl } from "../operations/PaymentMethodSegmentedControl";
 import { OperationProductSelect } from "../operations/OperationProductSelect";
 
 export function CourierSaleHome({
@@ -25,7 +26,7 @@ export function CourierSaleHome({
 	const [selectedClientId, setSelectedClientId] = useState("");
 	const [selectedBalanceId, setSelectedBalanceId] = useState("");
 	const [quantity, setQuantity] = useState("");
-	const [paymentMethod, setPaymentMethod] = useState<"cash" | "cashless">("cash");
+	const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
 	const [comment, setComment] = useState("");
 	const [localError, setLocalError] = useState("");
 	const [showNewClientForm, setShowNewClientForm] = useState(false);
@@ -247,6 +248,7 @@ export function CourierSaleHome({
 					/>
 				</label>
 				<PaymentMethodSegmentedControl
+					id="courier-payment-method-label"
 					onChange={setPaymentMethod}
 					value={paymentMethod}
 				/>
@@ -277,41 +279,6 @@ export function CourierSaleHome({
 				</button>
 			</form>
 		</section>
-	);
-}
-
-function PaymentMethodSegmentedControl({
-	onChange,
-	value,
-}: {
-	onChange: (value: "cash" | "cashless") => void;
-	value: "cash" | "cashless";
-}) {
-	const options = [
-		{ icon: Banknote, label: "Наличные", value: "cash" as const },
-		{ icon: CreditCard, label: "Безнал", value: "cashless" as const },
-	];
-
-	return (
-		<div aria-labelledby="courier-payment-method-label" className="payment-segmented" role="group">
-			<span id="courier-payment-method-label">Способ оплаты</span>
-			{options.map((option) => {
-				const Icon = option.icon;
-				const active = value === option.value;
-				return (
-					<button
-						aria-pressed={active}
-						className={active ? "active" : ""}
-						key={option.value}
-						onClick={() => onChange(option.value)}
-						type="button"
-					>
-						<Icon aria-hidden size={17} />
-						{option.label}
-					</button>
-				);
-			})}
-		</div>
 	);
 }
 
