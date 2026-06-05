@@ -13,6 +13,7 @@ import {
 import { ClientCombobox } from "../clients/ClientCombobox";
 import { PaymentMethodSegmentedControl } from "../operations/PaymentMethodSegmentedControl";
 import { OperationProductSelect } from "../operations/OperationProductSelect";
+import { getSaleSubmitBlockReason } from "../operations/operation-submit-reasons";
 
 export function DistributorSaleHome({
 	onSaleSuccess,
@@ -88,13 +89,17 @@ export function DistributorSaleHome({
 			onSaleSuccess();
 		},
 	});
-	const submitDisabled = !online
-		|| saleMutation.isPending
-		|| saleOptions.isLoading
-		|| (saleOptions.data?.items.length ?? 0) === 0
-		|| !selectedClientId
-		|| !selectedBalanceId
-		|| !isValidQuantity(parsedQuantity, selectedStock);
+	const submitBlockReason = getSaleSubmitBlockReason({
+		availableQuantity: selectedStock?.availableQuantity,
+		hasClient: !!selectedClientId,
+		hasProduct: !!selectedStock,
+		hasProductOptions: (saleOptions.data?.items.length ?? 0) > 0,
+		loadingOptions: saleOptions.isLoading,
+		online,
+		pending: saleMutation.isPending,
+		quantity: parsedQuantity,
+	});
+	const submitDisabled = !!submitBlockReason;
 
 	function handleCreateClient(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
@@ -261,6 +266,7 @@ export function DistributorSaleHome({
 				</div>
 				{localError ? <p className="form-error">{localError}</p> : null}
 				{saleMutation.isError ? <p className="form-error">{saleMutation.error.message}</p> : null}
+				{submitBlockReason ? <p className="muted">{submitBlockReason}</p> : null}
 				<button className="primary-button" disabled={submitDisabled} type="submit">
 					<ReceiptText aria-hidden size={18} />
 					Записать продажу

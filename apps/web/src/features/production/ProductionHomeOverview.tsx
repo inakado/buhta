@@ -57,7 +57,7 @@ export function ProductionHomeOverview({
 			/>
 
 			<div className="action-grid">
-				<button className="action-tile primary-action" onClick={onOpenBatchRelease} type="button">
+				<button className="action-tile primary-action" disabled={!online} onClick={onOpenBatchRelease} type="button">
 					<Factory aria-hidden size={22} />
 					<span>Выпустить</span>
 				</button>
@@ -65,11 +65,11 @@ export function ProductionHomeOverview({
 					<ArrowRightLeft aria-hidden size={22} />
 					<span>Передать</span>
 				</button>
-				<button className="action-tile" onClick={onOpenRawIntake} type="button">
+				<button className="action-tile" disabled={!online} onClick={onOpenRawIntake} type="button">
 					<CirclePlus aria-hidden size={22} />
 					<span>Добавить сырье</span>
 				</button>
-				<button className="action-tile" onClick={onOpenPackagingIntake} type="button">
+				<button className="action-tile" disabled={!online} onClick={onOpenPackagingIntake} type="button">
 					<PackagePlus aria-hidden size={22} />
 					<span>Добавить тару</span>
 				</button>

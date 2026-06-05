@@ -46,6 +46,10 @@
 - Выбранный клиент в sale combobox показывает имя и телефон, чтобы снизить риск ошибки при однофамильцах.
 - Продажи с распределителя и курьера используют общий `PaymentMethodSegmentedControl`, без расхождения select vs segmented.
 - Product select в продаже и загрузке курьера одинаково показывает маркер сниженной цены.
+- Продажа с распределителя, курьерская продажа и загрузка курьера показывают короткую причину disabled submit рядом с кнопкой: offline, loading, нет options, не выбран клиент/товар, не задано количество или количество больше остатка.
+- Production write action tiles на главной блокируются offline уже на первом уровне: выпуск, передача, приход сырья и приход тары.
+- Экран клиентов использует live/debounced поиск без ручной кнопки `Найти`, имеет очистку поиска и быстрый copy phone в строке клиента.
+- Действие `Списать наличные` у Директора блокируется до раскрытия формы, если cash balance еще загружается, нет активного распределителя или нет наличных для списания.
 - Отмена продажи реализована отдельной append-only операцией с обязательной причиной; исходная продажа не редактируется и не удаляется.
 - `История операций` для Директора и администратора уже есть: фильтры, backend cursor для следующей страницы, readable summary и details modal без technical ids.
 - Details истории операций уже показываются управленческими секциями, а не raw JSON.
@@ -65,10 +69,6 @@
 | UX-004 | P1 | Reports / control | Первый слой контроля закрыт историей операций и директорской аналитикой, но это еще не полноценный отчетный contour для сверки: нет экспорта/печати, discount analytics, сохраненных фильтров, коммерческого среза и быстрого объяснения движения по конкретному товару или клиенту. | Сформировать следующий reports/control pack поверх уже реализованных read models: export/print, скидки, товары/клиенты, cash movement, сохранение периода/фильтров, отдельный коммерческий срез без доступа к директорским данным. | `docs/exec-plans/completed/2026-06-05-operation-history.md`, `docs/exec-plans/completed/2026-06-05-director-money-production-analytics.md`, `docs/crm-requirements.md` |
 | UX-005 | P2 | Desktop/tablet | На desktop приложение остается в mobile shell шириной около 430px. Для операционных mobile-flow это нормально, но история, аналитика и админские списки на большом экране будут искусственно зажаты. | Оставить mobile shell для ежедневных операций, но для history/control/admin списков добавить tablet/desktop layout с широкой таблицей и фильтрами. | `apps/web/app/globals.css` |
 | UX-006 | P2 | Админка пользователей | Список пользователей уже длинный, но нет поиска, фильтра по роли, архива/деактивации, копирования логина. Смена роли происходит сразу через select. Admin write-действия не получают `online` и визуально доступны offline. | Добавить поиск по имени/login, фильтр роли, быстрый copy login, явное подтверждение смены критичной роли или undo/success notice, offline block reason для создания пользователя, смены роли и сброса пароля. | `apps/web/src/features/users/AdminUsersHome.tsx`, `apps/web/src/app-shell/RoleHomeRouter.tsx` |
-| UX-007 | P2 | Клиенты | Экран клиентов использует ручной submit `Найти`, без live/debounced поиска и без очистки активного поиска. В продаже поиск клиента уже работает как combobox. | Привести экран клиентов к быстрому паттерну: live/debounce, кнопка очистки, сохранение списка при пустом фокусе, возможно быстрый copy phone. | `apps/web/src/features/clients/ClientsHome.tsx`, `apps/web/src/features/clients/ClientCombobox.tsx` |
-| UX-009 | P2 | Продажа / загрузка | В sale/load формах disabled submit часто не объясняет причину рядом с кнопкой. Возврат и списание наличных уже показывают block reason. | Вынести общий block reason pattern для write-форм: offline, loading options, не выбран клиент/товар, некорректное количество, нет остатков. | `apps/web/src/features/sales/DistributorSaleHome.tsx`, `apps/web/src/features/courier/CourierSaleHome.tsx`, `apps/web/src/features/courier/CourierLoadHome.tsx` |
-| UX-011 | P2 | Производство / offline | На главной производства часть write action tiles остается активной offline и блокируется только внутри формы. | Offline-блокировку показывать на первом уровне для всех write action tiles: выпуск, приход сырья, приход тары, передача. | `apps/web/src/features/production/ProductionHomeOverview.tsx` |
-| UX-012 | P2 | Директор / наличные | `Списать наличные` показывает понятную причину блокировки внутри формы, но при нулевом cash balance действие все еще можно раскрыть, если есть активный распределитель. | Если наличных нет, показывать неактивное действие с причиной или компактный read-only state без раскрытия формы. | `apps/web/src/features/distributor/DistributorInventoryHome.tsx` |
 | UX-013 | P2 | Long lists / mobile | В `screen-stack` уже есть bottom padding, но после появления истории операций, истории продаж, аналитики и длинных админских списков нужен повторный mobile smoke: проверить последние строки, inline-формы отмены, модалки и success notices относительно bottom nav. | Зафиксировать единый safe bottom spacer и browser smoke checklist для всех длинных экранов и форм: пользователи, история операций, история продаж, клиенты, каталог, аналитика. | `apps/web/app/globals.css`, `apps/web/src/features/users/AdminUsersHome.tsx`, `apps/web/src/features/operations/OperationHistoryHome.tsx`, `apps/web/src/features/sales/SalesHistoryHome.tsx` |
 | UX-014 | P2 | Director home | Строки `Распределитель` и `Курьеры` выглядят как контрольные контуры, но не ведут во вкладки. Переход доступен только через icon-only bottom nav. | Сделать строки кликабельными или добавить явный affordance перехода, сохранив read-only стиль. | `apps/web/src/roles/director/DirectorHome.tsx` |
 | UX-015 | P3 | Login | На экране входа нет подсказки про формат логина и нет recovery path. Для dev это нормально, для v1 внутренней команды могут быть частые ошибки при первом входе. | Добавить аккуратную подсказку `Логин выдает администратор`; recovery не делать публичным, но показать контакт/инструкцию для обращения к администратору. | `apps/web/src/auth/LoginForm.tsx` |
@@ -100,9 +100,9 @@ Out of scope:
 
 Scope:
 
-- общий submit block reason;
+- общий submit block reason для следующих write-форм, которые будут добавляться после v1;
 - одинаковый discounted marker во всех будущих product picker/list расширениях;
-- offline-blocking на action tiles до входа в форму.
+- offline-blocking на action tiles до входа в форму для следующих write-действий.
 
 Out of scope:
 

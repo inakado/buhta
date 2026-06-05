@@ -670,6 +670,16 @@ button:disabled {
 	padding: 0 12px;
 }
 
+input[type="search"] {
+	appearance: none;
+}
+
+input[type="search"]::-webkit-search-cancel-button,
+input[type="search"]::-webkit-search-decoration {
+	appearance: none;
+	display: none;
+}
+
 .field textarea {
 	min-height: 86px;
 	resize: vertical;
@@ -694,15 +704,7 @@ button:disabled {
 }
 
 .client-search {
-	display: grid;
-	grid-template-columns: minmax(0, 1fr) auto;
-	align-items: end;
-	gap: 8px;
-}
-
-.client-search .compact-button {
-	min-height: 46px;
-	padding: 0 16px;
+	display: block;
 }
 
 .clients-heading {
@@ -757,6 +759,12 @@ button:disabled {
 	color: var(--text-muted);
 	font-size: 12px;
 	line-height: 1.15;
+}
+
+.client-list-actions {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
 }
 
 .client-combobox {

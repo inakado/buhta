@@ -67,6 +67,12 @@ export function DistributorInventoryHome({
 	const availableCashCents = selectedCashItem?.amountCents ?? 0;
 	const remainingCashCents = Math.max(availableCashCents - amountCents, 0);
 	const showWithdrawalAction = canWithdrawCash && showCashBalance;
+	const withdrawalActionBlockReason = getWithdrawalActionBlockReason(
+		cashBalances.isLoading,
+		activeCashItems.length > 0,
+		totalCashCents,
+	);
+	const withdrawalActionDisabled = withdrawalActionBlockReason !== "";
 	const parsedDiscountQuantity = parsePositiveInteger(discountQuantity);
 	const parsedDiscountPriceCents = parseAmountCents(discountPriceRubles);
 	const discountPriceCents = parsedDiscountPriceCents.ok ? parsedDiscountPriceCents.value : 0;
@@ -239,8 +245,11 @@ export function DistributorInventoryHome({
 				<div className="cash-withdrawal-actions">
 					<button
 						className="action-tile primary-action"
-						disabled={cashBalances.isLoading || activeCashItems.length === 0}
+						disabled={withdrawalActionDisabled}
 						onClick={() => {
+							if (withdrawalActionDisabled) {
+								return;
+							}
 							setWithdrawalOpen((current) => !current);
 							setLocalError("");
 							setSuccessMessage("");
@@ -250,6 +259,7 @@ export function DistributorInventoryHome({
 						<Banknote aria-hidden size={20} />
 						<span>Списать наличные</span>
 					</button>
+					{withdrawalActionBlockReason ? <p className="muted">{withdrawalActionBlockReason}</p> : null}
 				</div>
 			) : null}
 
@@ -471,6 +481,24 @@ function getWithdrawalBlockReason(
 	}
 	if (amountCents > availableCashCents) {
 		return "Сумма больше доступных наличных.";
+	}
+
+	return "";
+}
+
+function getWithdrawalActionBlockReason(
+	loading: boolean,
+	hasActiveDistributor: boolean,
+	totalCashCents: number,
+): string {
+	if (loading) {
+		return "Загружаем наличные.";
+	}
+	if (!hasActiveDistributor) {
+		return "Нет активного распределителя.";
+	}
+	if (totalCashCents <= 0) {
+		return "Нет наличных для списания.";
 	}
 
 	return "";

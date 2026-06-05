@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { ArrowLeft, Check, Edit3, Plus, Search, UserPlus } from "lucide-react";
+import { ArrowLeft, Check, Copy, Edit3, Plus, Search, UserPlus, X } from "lucide-react";
 import type { Client } from "@buhta/shared";
 import {
 	createClient,
@@ -17,6 +17,8 @@ type SuccessNotice = {
 	id: number;
 	message: string;
 };
+
+const CLIENT_SEARCH_DEBOUNCE_MS = 250;
 
 export function ClientsHome({
 	actor,
@@ -49,6 +51,14 @@ export function ClientsHome({
 		return () => window.clearTimeout(timeoutId);
 	}, [successNotice]);
 
+	useEffect(() => {
+		const timeoutId = window.setTimeout(() => {
+			setActiveSearch(searchDraft.trim());
+		}, CLIENT_SEARCH_DEBOUNCE_MS);
+
+		return () => window.clearTimeout(timeoutId);
+	}, [searchDraft]);
+
 	function showSuccess(message: string) {
 		successNoticeId.current += 1;
 		setMode("list");
@@ -57,11 +67,6 @@ export function ClientsHome({
 			id: successNoticeId.current,
 			message,
 		});
-	}
-
-	function handleSearch(event: FormEvent<HTMLFormElement>) {
-		event.preventDefault();
-		setActiveSearch(searchDraft.trim());
 	}
 
 	if (mode === "create" && canManage) {
@@ -108,7 +113,7 @@ export function ClientsHome({
 				) : null}
 			</div>
 
-			<form className="client-search" onSubmit={handleSearch}>
+			<div className="client-search">
 				<label className="field">
 					<span>Поиск</span>
 					<div className="input-shell">
@@ -119,12 +124,19 @@ export function ClientsHome({
 							type="search"
 							value={searchDraft}
 						/>
+						{searchDraft ? (
+							<button
+								aria-label="Очистить поиск"
+								className="client-combobox-clear"
+								onClick={() => setSearchDraft("")}
+								type="button"
+							>
+								<X aria-hidden size={16} />
+							</button>
+						) : null}
 					</div>
 				</label>
-				<button className="secondary-button compact-button" type="submit">
-					Найти
-				</button>
-			</form>
+			</div>
 
 			{clients.isLoading ? <p className="muted">Загрузка клиентов</p> : null}
 			{clients.isError ? <p className="form-error">{clients.error.message}</p> : null}
@@ -247,6 +259,13 @@ function ClientList({
 	clients: Client[];
 	onEdit: (client: Client) => void;
 }) {
+	const [copiedClientId, setCopiedClientId] = useState("");
+
+	async function handleCopyPhone(client: Client) {
+		await navigator.clipboard?.writeText(client.phone);
+		setCopiedClientId(client.id);
+	}
+
 	return (
 		<div className="client-list-table" role="list">
 			{clients.map((client) => (
@@ -256,7 +275,17 @@ function ClientList({
 						<p>{client.phone}</p>
 						{client.description ? <p>{client.description}</p> : null}
 					</div>
-					{canManage ? (
+					<div className="client-list-actions">
+						<button
+							aria-label={`Скопировать телефон ${client.name}`}
+							className="secondary-icon-button"
+							onClick={() => void handleCopyPhone(client)}
+							title={copiedClientId === client.id ? "Телефон скопирован" : "Скопировать телефон"}
+							type="button"
+						>
+							{copiedClientId === client.id ? <Check aria-hidden size={17} /> : <Copy aria-hidden size={17} />}
+						</button>
+						{canManage ? (
 						<button
 							aria-label={`Редактировать ${client.name}`}
 							className="secondary-icon-button"
@@ -265,7 +294,8 @@ function ClientList({
 						>
 							<Edit3 aria-hidden size={17} />
 						</button>
-					) : null}
+						) : null}
+					</div>
 				</div>
 			))}
 		</div>

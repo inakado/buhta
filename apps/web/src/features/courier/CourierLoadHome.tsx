@@ -10,6 +10,7 @@ import {
 } from "@buhta/shared";
 import { createCourierLoad, getCourierLoadOptions } from "../../lib/api-client";
 import { OperationProductSelect } from "../operations/OperationProductSelect";
+import { getLoadSubmitBlockReason } from "../operations/operation-submit-reasons";
 
 export function CourierLoadHome({
 	onLoadSuccess,
@@ -53,12 +54,16 @@ export function CourierLoadHome({
 			onLoadSuccess();
 		},
 	});
-	const submitDisabled = !online
-		|| loadMutation.isPending
-		|| loadOptions.isLoading
-		|| (loadOptions.data?.items.length ?? 0) === 0
-		|| !selectedBalanceId
-		|| !isValidQuantity(parsedQuantity, selectedStock);
+	const submitBlockReason = getLoadSubmitBlockReason({
+		availableQuantity: selectedStock?.availableQuantity,
+		hasProduct: !!selectedStock,
+		hasProductOptions: (loadOptions.data?.items.length ?? 0) > 0,
+		loadingOptions: loadOptions.isLoading,
+		online,
+		pending: loadMutation.isPending,
+		quantity: parsedQuantity,
+	});
+	const submitDisabled = !!submitBlockReason;
 
 	function handleSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
@@ -129,6 +134,7 @@ export function CourierLoadHome({
 				</div>
 				{localError ? <p className="form-error">{localError}</p> : null}
 				{loadMutation.isError ? <p className="form-error">{loadMutation.error.message}</p> : null}
+				{submitBlockReason ? <p className="muted">{submitBlockReason}</p> : null}
 				<button className="primary-button" disabled={submitDisabled} type="submit">
 					<PackagePlus aria-hidden size={18} />
 					Записать загрузку

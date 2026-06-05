@@ -2687,11 +2687,30 @@ describe("HomePage", () => {
 		});
 
 		vi.stubGlobal("fetch", fetchMock);
+		const writeText = vi.fn(async () => undefined);
+		Object.defineProperty(window.navigator, "clipboard", {
+			configurable: true,
+			value: { writeText },
+		});
 
 		render(<HomePage />);
 
 		fireEvent.click(await screen.findByRole("button", { name: "Клиенты" }));
 		expect(await screen.findByText("Иван Петров")).toBeTruthy();
+		expect(screen.queryByRole("button", { name: "Найти" })).toBeNull();
+		fireEvent.change(screen.getByLabelText("Поиск"), { target: { value: "Иван" } });
+		expect(screen.getByRole("button", { name: "Очистить поиск" })).toBeTruthy();
+		await waitFor(() => {
+			expect(fetchMock.mock.calls.some(([input]) => decodeURIComponent(String(input)).includes("/clients?search=Иван"))).toBe(true);
+		});
+		fireEvent.click(screen.getByRole("button", { name: "Очистить поиск" }));
+		await waitFor(() => {
+			expect((screen.getByLabelText("Поиск") as HTMLInputElement).value).toBe("");
+		});
+		fireEvent.click(screen.getByRole("button", { name: "Скопировать телефон Иван Петров" }));
+		await waitFor(() => {
+			expect(writeText).toHaveBeenCalledWith("+7 (999) 123-45-67");
+		});
 		fireEvent.click(screen.getByRole("button", { name: "Добавить клиента" }));
 		fireEvent.change(await screen.findByLabelText("Имя"), { target: { value: "Анна" } });
 		fireEvent.change(screen.getByLabelText("Телефон"), { target: { value: "+7 (999) 888-77-66" } });
