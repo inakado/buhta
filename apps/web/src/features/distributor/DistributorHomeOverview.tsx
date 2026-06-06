@@ -2,8 +2,8 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { PackageCheck, ReceiptText, Send } from "lucide-react";
-import { formatMoneyCents, moneyCents } from "@buhta/shared";
 import { getDistributorCashBalances, getDistributorInventory } from "../../lib/api-client";
+import { formatCompactRubles } from "../../lib/money-format";
 import { DistributorStockList } from "./DistributorStockList";
 
 type DistributorHomeOverviewProps = {
@@ -66,8 +66,8 @@ export function DistributorHomeOverview({
 					</div>
 					<dl className="commercial-overview-metrics">
 						<div>
-							<dt>Стоимость</dt>
-							<dd>{formatRubles(stockValueCents)}</dd>
+							<dt>Продукция</dt>
+							<dd>{formatCompactRubles(stockValueCents)}</dd>
 						</div>
 						<div>
 							<dt>Позиций</dt>
@@ -76,7 +76,7 @@ export function DistributorHomeOverview({
 						{showCashBalance ? (
 							<div>
 								<dt>Наличные</dt>
-								<dd>{cashBalances.isLoading ? "Загрузка" : formatRubles(cashAmountCents)}</dd>
+								<dd>{cashBalances.isLoading ? "Загрузка" : formatCompactRubles(cashAmountCents)}</dd>
 							</div>
 						) : null}
 					</dl>
@@ -85,13 +85,13 @@ export function DistributorHomeOverview({
 			) : (
 				<div className="compact-balance-overview">
 					<div>
-						<span>Стоимость</span>
-						<strong>{formatRubles(stockValueCents)}</strong>
+						<span>Продукция</span>
+						<strong>{formatCompactRubles(stockValueCents)}</strong>
 					</div>
 					{showCashBalance ? (
 						<div>
 							<span>Наличные</span>
-							<strong>{cashBalances.isLoading ? "Загрузка" : formatRubles(cashAmountCents)}</strong>
+							<strong>{cashBalances.isLoading ? "Загрузка" : formatCompactRubles(cashAmountCents)}</strong>
 						</div>
 					) : null}
 				</div>
@@ -142,8 +142,4 @@ export function DistributorHomeOverview({
 			) : null}
 		</section>
 	);
-}
-
-function formatRubles(priceCents: number): string {
-	return `${formatMoneyCents(moneyCents(priceCents))}\u00A0₽`;
 }

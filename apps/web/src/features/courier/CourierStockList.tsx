@@ -1,4 +1,5 @@
-import { formatMoneyCents, moneyCents, type CourierProductBalanceItem } from "@buhta/shared";
+import type { CourierProductBalanceItem } from "@buhta/shared";
+import { formatCompactRubles } from "../../lib/money-format";
 
 export function CourierStockList({
 	items,
@@ -10,9 +11,9 @@ export function CourierStockList({
 	return (
 		<div className="inventory-table-list" role="table" aria-label="Продукция курьера">
 			<div className="inventory-table-head" role="row">
-				<span>Товар</span>
+				<span>Продукция</span>
 				<span>Количество</span>
-				<span>Сумма</span>
+				<span>Итого</span>
 			</div>
 			{items.map((item) => (
 				<div className="inventory-table-row" key={item.id} role="row">
@@ -34,5 +35,5 @@ export function CourierStockList({
 }
 
 function formatRubles(priceCents: number): string {
-	return `${formatMoneyCents(moneyCents(priceCents))}\u00A0₽`;
+	return formatCompactRubles(priceCents);
 }

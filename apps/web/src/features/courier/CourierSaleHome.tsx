@@ -3,13 +3,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FormEvent, useState } from "react";
 import { ReceiptText, UserPlus } from "lucide-react";
-import { formatMoneyCents, moneyCents, type CourierSaleOption, type PaymentMethod } from "@buhta/shared";
+import type { CourierSaleOption, PaymentMethod } from "@buhta/shared";
 import {
 	createClient,
 	createCourierSale,
 	getCourierSaleOptions,
 	listClients,
 } from "../../lib/api-client";
+import { formatCompactMoneyCents } from "../../lib/money-format";
 import { ClientCombobox } from "../clients/ClientCombobox";
 import { PaymentMethodSegmentedControl } from "../operations/PaymentMethodSegmentedControl";
 import { OperationProductSelect } from "../operations/OperationProductSelect";
@@ -314,5 +315,5 @@ function isValidQuantity(quantity: number, stock: CourierSaleOption | undefined)
 }
 
 function formatRubles(priceCents: number): string {
-	return formatMoneyCents(moneyCents(priceCents));
+	return formatCompactMoneyCents(priceCents);
 }

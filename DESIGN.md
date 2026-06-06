@@ -47,6 +47,24 @@ typography:
     fontWeight: 400
     lineHeight: 1.15
     letterSpacing: "0"
+  metricOverview:
+    fontFamily: "Helvetica, Arial, sans-serif"
+    fontSize: "22px"
+    fontWeight: 500
+    lineHeight: 1
+    letterSpacing: "0"
+  metricStrip:
+    fontFamily: "Helvetica, Arial, sans-serif"
+    fontSize: "16px"
+    fontWeight: 500
+    lineHeight: 1
+    letterSpacing: "0"
+  metricDense:
+    fontFamily: "Helvetica, Arial, sans-serif"
+    fontSize: "17px"
+    fontWeight: 500
+    lineHeight: 1.1
+    letterSpacing: "0"
 rounded:
   control: "8px"
   panel: "14px"
@@ -93,6 +111,14 @@ components:
     textColor: "{colors.base-black}"
     rounded: "{rounded.summary}"
     padding: "14px"
+  metric-summary-strip:
+    backgroundColor: "{colors.brand-lime}"
+    textColor: "{colors.base-black}"
+    rounded: "{rounded.settings}"
+    padding: "8px"
+    labelTypography: "11px / 1.15"
+    valueTypography: "{typography.metricStrip}"
+    moneyFormat: "compact rubles, no trailing .00"
   bottom-nav:
     backgroundColor: "{colors.base-black}"
     textColor: "{colors.base-white}"
@@ -163,6 +189,9 @@ components:
 - **Title** (500, 16-18px, line-height 1.1): section headings, row titles, card titles.
 - **Body** (400, 13-15px, line-height 1.2-1.35): form copy, list details, explanations and inline messages.
 - **Label** (400, 11-12px, letter-spacing 0): captions, field labels, meta, dates, small button text. Uppercase допустим только для коротких служебных labels.
+- **Metric overview** (500, 22px, line-height 1): KPI в компактных overview-карточках вроде директорских `За период` и `Сейчас`.
+- **Metric strip** (500, 16px, line-height 1): значения в трехколоночных lime/green summary strips, где деньги и количество должны оставаться в одну строку.
+- **Metric dense** (500, 17px, line-height 1.1): значения в двухколоночных compact balance blocks and small analytics panels.
 
 ### Named Rules
 
@@ -208,6 +237,8 @@ components:
 - **Shadow Strategy:** flat at rest. Shadows are reserved for shell, popover, dialog and toast.
 - **Border:** `line` borders and separators are the main structure.
 - **Internal Padding:** compact default 12-14px; role summary may use 14-16px.
+- **Money formatting:** overview metrics, read-only stock lists, production read-only prices and operation summaries use compact rubles without trailing `.00`; keep kopecks when they are non-zero. Audit/detail views and money inputs keep exact two-decimal formatting.
+- **Metric summary strip:** three-column lime/green status strips use 18px radius, 8px outer padding, 7-8px cell padding, 11px labels and 16px tabular values. Money values use compact rubles without trailing `.00`. Do not promote these values to display size on mobile.
 
 ### Inputs / Fields
 

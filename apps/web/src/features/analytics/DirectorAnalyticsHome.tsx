@@ -4,8 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import { AlertTriangle, Banknote, Factory, RefreshCw, WalletCards } from "lucide-react";
 import { useId, useMemo, useState, type ReactNode } from "react";
 import {
-	formatMoneyCents,
-	moneyCents,
 	type DirectorAnalyticsPeriodPreset,
 	type DirectorAnalyticsProductOutputRow,
 	type DirectorAnalyticsRawMaterialRow,
@@ -13,6 +11,8 @@ import {
 	type DirectorAnalyticsResponse,
 } from "@buhta/shared";
 import { getDirectorAnalytics } from "../../lib/api-client";
+import { formatCompactMoneyCents } from "../../lib/money-format";
+import { SegmentedControl } from "../../ui/SegmentedControl";
 
 const PERIOD_OPTIONS: Array<{ value: DirectorAnalyticsPeriodPreset; label: string }> = [
 	{ value: "today", label: "Сегодня" },
@@ -62,33 +62,22 @@ export function DirectorAnalyticsHome({ title = "Аналитика" }: { title?
 				) : null}
 			</div>
 
-			<div className="analytics-period-control" role="group" aria-label="Период аналитики">
-				{PERIOD_OPTIONS.map((option) => (
-					<button
-						key={option.value}
-						type="button"
-						className={option.value === periodPreset ? "active" : ""}
-						onClick={() => setPeriodPreset(option.value)}
-					>
-						{option.label}
-					</button>
-				))}
-			</div>
+			<SegmentedControl
+				ariaLabel="Период аналитики"
+				className="analytics-period-control"
+				items={PERIOD_OPTIONS}
+				onChange={setPeriodPreset}
+				role="group"
+				value={periodPreset}
+			/>
 
-			<div className="analytics-view-tabs" role="tablist" aria-label="Раздел аналитики">
-				{VIEW_OPTIONS.map((option) => (
-					<button
-						key={option.value}
-						type="button"
-						role="tab"
-						aria-selected={option.value === viewMode}
-						className={option.value === viewMode ? "active" : ""}
-						onClick={() => setViewMode(option.value)}
-					>
-						{option.label}
-					</button>
-				))}
-			</div>
+			<SegmentedControl
+				ariaLabel="Раздел аналитики"
+				className="analytics-view-tabs"
+				items={VIEW_OPTIONS}
+				onChange={setViewMode}
+				value={viewMode}
+			/>
 
 			{analytics.isError ? (
 				<div className="analytics-message error">
@@ -390,7 +379,7 @@ function AnalyticsSkeleton() {
 
 function formatRubles(priceCents: number): string {
 	const sign = priceCents < 0 ? "-" : "";
-	return `${sign}${formatMoneyCents(moneyCents(Math.abs(priceCents)))} ₽`;
+	return `${sign}${formatCompactMoneyCents(Math.abs(priceCents))} ₽`;
 }
 
 function formatQuantity(value: number): string {

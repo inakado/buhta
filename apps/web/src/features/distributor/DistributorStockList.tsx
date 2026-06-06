@@ -1,7 +1,8 @@
 "use client";
 
-import { formatMoneyCents, moneyCents, type DistributorInventoryItem } from "@buhta/shared";
+import type { DistributorInventoryItem } from "@buhta/shared";
 import { BadgePercent } from "lucide-react";
+import { formatCompactRubles } from "../../lib/money-format";
 
 export function DistributorStockList({
 	items,
@@ -13,9 +14,9 @@ export function DistributorStockList({
 	return (
 		<div className="inventory-table-list" role="table" aria-label="Позиции на распределителе">
 			<div className="inventory-table-head" role="row">
-				<span>Позиция</span>
+				<span>Продукция</span>
 				<span>Количество</span>
-				<span>Сумма</span>
+				<span>Итого</span>
 			</div>
 			{items.map((item) => (
 				<div className="inventory-table-row" key={item.id} role="row">
@@ -58,5 +59,5 @@ export function DistributorStockList({
 }
 
 function formatRubles(priceCents: number): string {
-	return `${formatMoneyCents(moneyCents(priceCents))}\u00A0₽`;
+	return formatCompactRubles(priceCents);
 }

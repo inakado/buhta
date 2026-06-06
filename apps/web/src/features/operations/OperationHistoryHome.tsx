@@ -22,8 +22,10 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 export function OperationHistoryHome() {
 	const defaultFilters = useMemo(() => getDefaultFilters(), []);
 	const [filters, setFilters] = useState(defaultFilters);
+	const [filtersOpen, setFiltersOpen] = useState(false);
 	const [cursor, setCursor] = useState<string | undefined>();
 	const [selectedItem, setSelectedItem] = useState<OperationHistoryItem | null>(null);
+	const activeFilterCount = getAdvancedFilterCount(filters);
 	const options = useQuery({
 		queryKey: ["operations", "history", "options"],
 		queryFn: getOperationHistoryOptions,
@@ -49,6 +51,7 @@ export function OperationHistoryHome() {
 	function resetFilters() {
 		setCursor(undefined);
 		setFilters(defaultFilters);
+		setFiltersOpen(false);
 	}
 
 	return (
@@ -58,88 +61,106 @@ export function OperationHistoryHome() {
 				{history.isFetching || options.isFetching ? <span>Обновление</span> : null}
 			</div>
 
-			<div className="operation-history-filters" aria-label="Фильтры истории">
-				<div className="operation-history-filter-title">
-					<Filter aria-hidden size={16} />
-					<span>Фильтры</span>
+			<div className="operation-history-filter-summary" aria-label="Период истории">
+				<div>
+					<span>Период</span>
+					<strong>{formatDateRange(filters)}</strong>
 				</div>
-				<label>
-					<span>С</span>
-					<input
-						type="date"
-						value={filters.dateFrom ?? ""}
-						onChange={(event) => updateFilter("dateFrom", event.target.value)}
-					/>
-				</label>
-				<label>
-					<span>По</span>
-					<input
-						type="date"
-						value={filters.dateTo ?? ""}
-						onChange={(event) => updateFilter("dateTo", event.target.value)}
-					/>
-				</label>
-				<label>
-					<span>Событие</span>
-					<select
-						value={filters.operationType ?? ""}
-						onChange={(event) => updateFilter("operationType", event.target.value)}
-					>
-						<option value="">Все</option>
-						{options.data?.operationTypes.map((operationType) => (
-							<option key={operationType} value={operationType}>
-								{getOperationLabel(operationType)}
-							</option>
-						))}
-					</select>
-				</label>
-				<label>
-					<span>Пользователь</span>
-					<select
-						value={filters.actorUserId ?? ""}
-						onChange={(event) => updateFilter("actorUserId", event.target.value)}
-					>
-						<option value="">Все</option>
-						{options.data?.actorUsers.map((actor) => (
-							<option key={actor.userId} value={actor.userId}>
-								{actor.displayName}
-							</option>
-						))}
-					</select>
-				</label>
-				<label>
-					<span>Роль</span>
-					<select
-						value={filters.actorRole ?? ""}
-						onChange={(event) => updateFilter("actorRole", event.target.value)}
-					>
-						<option value="">Все</option>
-						{options.data?.roles.map((role) => (
-							<option key={role} value={role}>
-								{ROLE_LABELS[role]}
-							</option>
-						))}
-					</select>
-				</label>
-				<label>
-					<span>Источник</span>
-					<select
-						value={filters.entityType ?? ""}
-						onChange={(event) => updateFilter("entityType", event.target.value)}
-					>
-						<option value="">Все</option>
-						{options.data?.entityTypes.map((entityType) => (
-							<option key={entityType} value={entityType}>
-								{getEntityLabel(entityType)}
-							</option>
-						))}
-					</select>
-				</label>
-				<button className="secondary-button compact-button" onClick={resetFilters} type="button">
-					<X aria-hidden size={15} />
-					Сбросить
+				<button
+					aria-controls="operation-history-filters"
+					aria-expanded={filtersOpen}
+					className={filtersOpen
+						? "secondary-button compact-button operation-history-filter-toggle active"
+						: "secondary-button compact-button operation-history-filter-toggle"}
+					onClick={() => setFiltersOpen((open) => !open)}
+					type="button"
+				>
+					<Filter aria-hidden size={15} />
+					Фильтры
+					{activeFilterCount > 0 ? <span>{activeFilterCount}</span> : null}
 				</button>
 			</div>
+
+			{filtersOpen ? (
+				<div className="operation-history-filters" id="operation-history-filters" aria-label="Фильтры истории">
+					<label>
+						<span>С</span>
+						<input
+							type="date"
+							value={filters.dateFrom ?? ""}
+							onChange={(event) => updateFilter("dateFrom", event.target.value)}
+						/>
+					</label>
+					<label>
+						<span>По</span>
+						<input
+							type="date"
+							value={filters.dateTo ?? ""}
+							onChange={(event) => updateFilter("dateTo", event.target.value)}
+						/>
+					</label>
+					<label>
+						<span>Событие</span>
+						<select
+							value={filters.operationType ?? ""}
+							onChange={(event) => updateFilter("operationType", event.target.value)}
+						>
+							<option value="">Все</option>
+							{options.data?.operationTypes.map((operationType) => (
+								<option key={operationType} value={operationType}>
+									{getOperationLabel(operationType)}
+								</option>
+							))}
+						</select>
+					</label>
+					<label>
+						<span>Пользователь</span>
+						<select
+							value={filters.actorUserId ?? ""}
+							onChange={(event) => updateFilter("actorUserId", event.target.value)}
+						>
+							<option value="">Все</option>
+							{options.data?.actorUsers.map((actor) => (
+								<option key={actor.userId} value={actor.userId}>
+									{actor.displayName}
+								</option>
+							))}
+						</select>
+					</label>
+					<label>
+						<span>Роль</span>
+						<select
+							value={filters.actorRole ?? ""}
+							onChange={(event) => updateFilter("actorRole", event.target.value)}
+						>
+							<option value="">Все</option>
+							{options.data?.roles.map((role) => (
+								<option key={role} value={role}>
+									{ROLE_LABELS[role]}
+								</option>
+							))}
+						</select>
+					</label>
+					<label>
+						<span>Источник</span>
+						<select
+							value={filters.entityType ?? ""}
+							onChange={(event) => updateFilter("entityType", event.target.value)}
+						>
+							<option value="">Все</option>
+							{options.data?.entityTypes.map((entityType) => (
+								<option key={entityType} value={entityType}>
+									{getEntityLabel(entityType)}
+								</option>
+							))}
+						</select>
+					</label>
+					<button className="secondary-button compact-button" onClick={resetFilters} type="button">
+						<X aria-hidden size={15} />
+						Сбросить
+					</button>
+				</div>
+			) : null}
 
 			{history.isError ? <p className="form-error">{history.error.message}</p> : null}
 			{options.isError ? <p className="form-error">{options.error.message}</p> : null}
@@ -184,6 +205,7 @@ function OperationHistoryRow({
 	item: OperationHistoryItem;
 	onOpen: () => void;
 }) {
+	const hasMetrics = item.amountCents !== undefined || item.quantity !== undefined;
 	const meta = [
 		item.actor.displayName,
 		ROLE_LABELS[item.actor.role],
@@ -197,10 +219,12 @@ function OperationHistoryRow({
 				<strong>{getOperationLabel(item.operationType)}</strong>
 				<p>{meta}</p>
 			</div>
-			<div className="operation-history-row-side">
-				{item.amountCents !== undefined ? <strong>{formatMoney(item.amountCents)}</strong> : null}
-				{item.quantity !== undefined ? <span>{item.quantity} шт</span> : null}
-			</div>
+			{hasMetrics ? (
+				<div className="operation-history-row-side">
+					{item.amountCents !== undefined ? <strong>{formatMoney(item.amountCents)}</strong> : null}
+					{item.quantity !== undefined ? <span>{item.quantity} шт</span> : null}
+				</div>
+			) : null}
 			<ChevronRight aria-hidden size={18} />
 		</button>
 	);
@@ -284,6 +308,33 @@ function getDefaultFilters(): OperationHistoryQuery {
 		dateFrom: toDateInputValue(dateFrom),
 		dateTo: toDateInputValue(dateTo),
 	};
+}
+
+function getAdvancedFilterCount(filters: OperationHistoryQuery): number {
+	const keys: Array<keyof OperationHistoryQuery> = ["operationType", "actorUserId", "actorRole", "entityType"];
+
+	return keys.filter((key) => Boolean(filters[key])).length;
+}
+
+function formatDateRange(filters: OperationHistoryQuery): string {
+	const from = filters.dateFrom ? formatDateInputLabel(filters.dateFrom) : null;
+	const to = filters.dateTo ? formatDateInputLabel(filters.dateTo) : null;
+
+	if (from && to) {
+		return `${from}-${to}`;
+	}
+
+	return from ?? to ?? "Все даты";
+}
+
+function formatDateInputLabel(value: string): string {
+	const [, month, day] = value.split("-");
+
+	if (!month || !day) {
+		return value;
+	}
+
+	return `${day}.${month}`;
 }
 
 function toDateInputValue(date: Date): string {

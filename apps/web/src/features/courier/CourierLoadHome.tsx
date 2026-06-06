@@ -3,12 +3,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FormEvent, useState } from "react";
 import { PackagePlus } from "lucide-react";
-import {
-	formatMoneyCents,
-	moneyCents,
-	type CourierLoadOption,
-} from "@buhta/shared";
+import type { CourierLoadOption } from "@buhta/shared";
 import { createCourierLoad, getCourierLoadOptions } from "../../lib/api-client";
+import { formatCompactMoneyCents } from "../../lib/money-format";
 import { OperationProductSelect } from "../operations/OperationProductSelect";
 import { getLoadSubmitBlockReason } from "../operations/operation-submit-reasons";
 
@@ -169,5 +166,5 @@ function isValidQuantity(quantity: number, selectedStock: CourierLoadOption | un
 }
 
 function formatRubles(priceCents: number): string {
-	return formatMoneyCents(moneyCents(priceCents));
+	return formatCompactMoneyCents(priceCents);
 }

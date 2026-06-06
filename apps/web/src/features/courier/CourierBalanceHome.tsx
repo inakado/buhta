@@ -5,18 +5,19 @@ import {
 	type CourierCashBalanceItem,
 	type CourierProductBalanceItem,
 	type CourierProductBalancesCourierSummary,
-	formatMoneyCents,
-	moneyCents,
 } from "@buhta/shared";
 import { getCourierCashBalances, getCourierProductBalances } from "../../lib/api-client";
+import { formatCompactMoneyCents, formatCompactRubles } from "../../lib/money-format";
 import { CourierStockList } from "./CourierStockList";
 
 export function CourierBalanceHome({
 	embedded = false,
+	hideHeading = false,
 	mode = "own",
 	title: titleOverride,
 }: {
 	embedded?: boolean;
+	hideHeading?: boolean;
 	mode?: "own" | "all";
 	title?: string;
 }) {
@@ -39,31 +40,35 @@ export function CourierBalanceHome({
 
 	return (
 		<Frame className={embedded ? "embedded-screen-stack" : "screen-stack"}>
-			<div className="section-heading">
-				<h2>{title}</h2>
-				<span>{stockItemCount} позиций</span>
-			</div>
+			{hideHeading ? null : (
+				<div className="section-heading">
+					<h2>{title}</h2>
+					<span>{stockItemCount} позиций</span>
+				</div>
+			)}
 
 			<div className="inventory-overview-strip">
 				<div>
-					<span>Товар</span>
+					<span>Количество</span>
 					<strong>{balances.isLoading ? "Загрузка" : `${totalUnits} шт`}</strong>
 				</div>
 				<div>
-					<span>Стоимость</span>
-					<strong>{formatRubles(totalStockValueCents)} ₽</strong>
+					<span>Продукция</span>
+					<strong>{formatCompactRubles(totalStockValueCents)}</strong>
 				</div>
 				<div>
 					<span>Наличные</span>
-					<strong>{cashBalances.isLoading ? "Загрузка" : `${formatRubles(totalCashCents)} ₽`}</strong>
+					<strong>{cashBalances.isLoading ? "Загрузка" : formatCompactRubles(totalCashCents)}</strong>
 				</div>
 			</div>
 
-			{balances.isLoading ? <p className="muted">Загрузка баланса курьера</p> : null}
+			{balances.isLoading ? (
+				<p className="muted">{mode === "all" ? "Загрузка остатков курьеров" : "Загрузка баланса курьера"}</p>
+			) : null}
 			{balances.isError ? <p className="form-error">{balances.error.message}</p> : null}
-			{cashBalances.isError ? <p className="form-error">Не удалось загрузить cash-балансы</p> : null}
+			{cashBalances.isError ? <p className="form-error">Не удалось загрузить наличные курьеров</p> : null}
 			{!balances.isLoading && !balances.isError && data?.items.length === 0 ? (
-				<p className="muted">У курьера пока нет продукции.</p>
+				<p className="muted">{mode === "all" ? "У курьеров пока нет продукции." : "У курьера пока нет продукции."}</p>
 			) : null}
 
 			{mode === "own" ? <CourierCashPanel items={cashData?.items ?? []} /> : null}
@@ -129,11 +134,7 @@ function CourierPeopleList({
 	}
 
 	return (
-		<div className="production-stock-stack">
-			<div className="section-heading compact">
-				<h2>Курьеры</h2>
-				<span>{summaries.length}</span>
-			</div>
+		<div className="courier-balance-list">
 			{summaries.map((summary) => (
 				<div className="courier-balance-card" key={summary.courierUserId}>
 					<div className="courier-balance-head">
@@ -148,9 +149,9 @@ function CourierPeopleList({
 					</div>
 					<div className="courier-product-table">
 						<div className="courier-product-table-head">
-							<span>Товар</span>
+							<span>Продукция</span>
 							<span>Количество</span>
-							<span>Сумма</span>
+							<span>Итого</span>
 						</div>
 						{(productsByCourier.get(summary.courierUserId) ?? []).map((item) => (
 							<div className="courier-product-row" key={item.id}>
@@ -168,7 +169,7 @@ function CourierPeopleList({
 						))}
 					</div>
 					<div className="courier-product-total">
-						<span>Итого товаром</span>
+						<span>Всего продукции</span>
 						<strong>{formatRubles(summary.totalStockValueCents)} ₽</strong>
 					</div>
 				</div>
@@ -178,5 +179,5 @@ function CourierPeopleList({
 }
 
 function formatRubles(priceCents: number): string {
-	return formatMoneyCents(moneyCents(priceCents));
+	return formatCompactMoneyCents(priceCents);
 }

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { CourierBalanceHome } from "../../features/courier/CourierBalanceHome";
 import { DistributorInventoryHome } from "../../features/distributor/DistributorInventoryHome";
 import type { CurrentActor } from "../../lib/api-client";
+import { SegmentedControl } from "../../ui/SegmentedControl";
 
 const STOCK_VIEWS = [
 	{ value: "distributor", label: "Распределитель" },
@@ -48,29 +49,16 @@ export function DirectorStockHome({
 		<section className="screen-stack director-stock-home">
 			<div className="section-heading">
 				<h2>Остатки</h2>
-				<span>{activeView === "distributor" ? "Распределитель" : "Курьеры"}</span>
 			</div>
 
 			{availableViews.length > 1 ? (
-				<div
+				<SegmentedControl
+					ariaLabel="Контур остатков"
 					className="analytics-view-tabs director-stock-tabs"
-					role="tablist"
-					aria-label="Контур остатков"
-					style={{ gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}
-				>
-					{availableViews.map((view) => (
-						<button
-							key={view.value}
-							type="button"
-							role="tab"
-							aria-selected={view.value === activeView}
-							className={view.value === activeView ? "active" : ""}
-							onClick={() => setSelectedView(view.value)}
-						>
-							{view.label}
-						</button>
-					))}
-				</div>
+					items={availableViews}
+					onChange={setSelectedView}
+					value={activeView}
+				/>
 			) : null}
 
 			{activeView === "distributor" ? (
@@ -78,12 +66,12 @@ export function DirectorStockHome({
 					canAssignDiscount={actor.permissions.includes("discount.assign")}
 					canWithdrawCash={actor.permissions.includes("cash.withdraw")}
 					embedded
+					hideHeading
 					online={online}
 					showCashBalance={actor.permissions.includes("distributor.cash.read")}
-					title="Распределитель"
 				/>
 			) : (
-				<CourierBalanceHome embedded mode="all" title="Курьеры" />
+				<CourierBalanceHome embedded hideHeading mode="all" />
 			)}
 		</section>
 	);

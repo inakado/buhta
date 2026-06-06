@@ -2,8 +2,8 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { PackageMinus, PackagePlus, ReceiptText } from "lucide-react";
-import { formatMoneyCents, moneyCents } from "@buhta/shared";
 import { getCourierCashBalances, getCourierProductBalances } from "../../lib/api-client";
+import { formatCompactRubles } from "../../lib/money-format";
 import { CourierStockList } from "./CourierStockList";
 
 type CourierHomeOverviewProps = {
@@ -34,12 +34,12 @@ export function CourierHomeOverview({ onLoad, onSale, onUnload, online }: Courie
 
 			<div className="compact-balance-overview courier-home-overview">
 				<div>
-					<span>Стоимость</span>
-					<strong>{formatRubles(data?.summary.totalStockValueCents ?? 0)}</strong>
+					<span>Продукция</span>
+					<strong>{formatCompactRubles(data?.summary.totalStockValueCents ?? 0)}</strong>
 				</div>
 				<div>
 					<span>Наличные</span>
-					<strong>{cashBalances.isLoading ? "Загрузка" : formatRubles(ownCashBalance?.amountCents ?? 0)}</strong>
+					<strong>{cashBalances.isLoading ? "Загрузка" : formatCompactRubles(ownCashBalance?.amountCents ?? 0)}</strong>
 				</div>
 			</div>
 			{cashBalances.isError ? <span className="inline-error">Не удалось загрузить наличные</span> : null}
@@ -89,8 +89,4 @@ export function CourierHomeOverview({ onLoad, onSale, onUnload, online }: Courie
 			<CourierStockList items={data?.items ?? []} />
 		</section>
 	);
-}
-
-function formatRubles(priceCents: number): string {
-	return `${formatMoneyCents(moneyCents(priceCents))}\u00A0₽`;
 }

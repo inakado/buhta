@@ -125,7 +125,7 @@ describe("DirectorAnalyticsHome", () => {
 		expect(await screen.findByText("За период")).toBeTruthy();
 		expect(screen.getByText("Сейчас")).toBeTruthy();
 		expect(screen.getByText("Выручка")).toBeTruthy();
-		expect(screen.getByText("2500.00 ₽")).toBeTruthy();
+		expect(screen.getByText("2500 ₽")).toBeTruthy();
 		expect(screen.getByText("3 продажи")).toBeTruthy();
 		expect(screen.getByText("Выпуск")).toBeTruthy();
 		expect(screen.getByText("Сырье: 8 кг")).toBeTruthy();

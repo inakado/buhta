@@ -12,8 +12,6 @@ import {
 	type LucideIcon,
 } from "lucide-react";
 import {
-	formatMoneyCents,
-	moneyCents,
 	type Distributor,
 	type PackagingType,
 	type ProductBatch,
@@ -35,6 +33,7 @@ import {
 	listRawMaterialBalances,
 	listWorkshopProductBalances,
 } from "../../lib/api-client";
+import { formatCompactMoneyCents } from "../../lib/money-format";
 import { ProductionHomeOverview } from "./ProductionHomeOverview";
 
 type ProductionTab = "home" | "history";
@@ -960,7 +959,7 @@ function formatQuantity(value: number): string {
 }
 
 function formatPriceRubles(priceCents: number): string {
-	return formatMoneyCents(moneyCents(priceCents));
+	return formatCompactMoneyCents(priceCents);
 }
 
 function formatDateTime(value: string): string {

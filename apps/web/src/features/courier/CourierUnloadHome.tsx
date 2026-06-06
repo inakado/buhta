@@ -9,6 +9,7 @@ import {
 	type CourierUnloadProductOption,
 } from "@buhta/shared";
 import { createCourierUnload, getCourierUnloadOptions } from "../../lib/api-client";
+import { formatCompactRubles } from "../../lib/money-format";
 
 export function CourierUnloadHome({
 	onUnloadSuccess,
@@ -290,7 +291,7 @@ function parseCashAmountCents(value: string): number | null {
 }
 
 function formatRubles(priceCents: number): string {
-	return `${formatMoneyCents(moneyCents(priceCents))}\u00A0₽`;
+	return formatCompactRubles(priceCents);
 }
 
 function getSubmitBlockReason({

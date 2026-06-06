@@ -15,12 +15,14 @@ import {
 	getDistributorCashBalances,
 	getDistributorInventory,
 } from "../../lib/api-client";
+import { formatCompactRubles } from "../../lib/money-format";
 import { DistributorStockList } from "./DistributorStockList";
 
 export function DistributorInventoryHome({
 	canAssignDiscount = false,
 	canWithdrawCash = false,
 	embedded = false,
+	hideHeading = false,
 	online = true,
 	showCashBalance = false,
 	title = "Остатки",
@@ -28,6 +30,7 @@ export function DistributorInventoryHome({
 	canAssignDiscount?: boolean;
 	canWithdrawCash?: boolean;
 	embedded?: boolean;
+	hideHeading?: boolean;
 	online?: boolean;
 	showCashBalance?: boolean;
 	title?: string;
@@ -222,24 +225,26 @@ export function DistributorInventoryHome({
 
 	return (
 		<Frame className={embedded ? "embedded-screen-stack" : "screen-stack"}>
-			<div className="section-heading">
-				<h2>{title}</h2>
-				<span>{stockItemCount} позиций</span>
-			</div>
+			{hideHeading ? null : (
+				<div className="section-heading">
+					<h2>{title}</h2>
+					<span>{stockItemCount} позиций</span>
+				</div>
+			)}
 
 			<div className="inventory-overview-strip">
 				<div>
-					<span>Товар</span>
+					<span>Количество</span>
 					<strong>{inventory.isLoading ? "Загрузка" : `${totalUnits} шт`}</strong>
 				</div>
 				<div>
-					<span>Стоимость</span>
-					<MoneyValue valueCents={totalStockValueCents} />
+					<span>Продукция</span>
+					<MoneyValue compact valueCents={totalStockValueCents} />
 				</div>
 				{showCashBalance ? (
 					<div>
 						<span>Наличные</span>
-						{cashBalances.isLoading ? <strong>Загрузка</strong> : <MoneyValue valueCents={totalCashCents} />}
+						{cashBalances.isLoading ? <strong>Загрузка</strong> : <MoneyValue compact valueCents={totalCashCents} />}
 					</div>
 				) : null}
 			</div>
@@ -320,7 +325,7 @@ export function DistributorInventoryHome({
 					{withdrawal.isError ? <p className="form-error">{withdrawal.error.message}</p> : null}
 					{withdrawDisabled ? <p className="muted">{getWithdrawalBlockReason(online, selectedCashItem !== null, parsedAmountCents.ok, amountCents, availableCashCents, withdrawal.isPending)}</p> : null}
 					<button className="primary-button" disabled={withdrawDisabled} type="submit">
-						Списать
+						Подтвердить списание
 					</button>
 					</form>
 				) : null}
@@ -395,7 +400,7 @@ export function DistributorInventoryHome({
 								Отмена
 							</button>
 							<button className="primary-button" disabled={discountDisabled} type="submit">
-								Назначить
+								Сохранить цену
 							</button>
 						</div>
 					</form>
@@ -540,14 +545,14 @@ function getDiscountBlockReason(
 	return "";
 }
 
-function MoneyValue({ valueCents }: { valueCents: number }) {
+function MoneyValue({ compact = false, valueCents }: { compact?: boolean; valueCents: number }) {
 	return (
 		<strong className="money-value-nowrap">
-			{formatRubles(valueCents)}
+			{compact ? formatCompactRubles(valueCents) : formatRubles(valueCents)}
 		</strong>
 	);
 }
 
 function formatRubles(priceCents: number): string {
-	return `${formatMoneyCents(moneyCents(priceCents))}\u00A0₽`;
+	return formatCompactRubles(priceCents);
 }
