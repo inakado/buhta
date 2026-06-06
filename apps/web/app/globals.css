@@ -1219,22 +1219,25 @@ input[type="search"]::-webkit-search-decoration {
 	padding-bottom: 116px;
 }
 
+.director-more-home {
+	gap: 14px;
+}
+
 .director-more-list {
 	display: flex;
 	flex-direction: column;
 	border-top: 1px solid var(--line);
-	border-bottom: 1px solid var(--line);
 }
 
 .director-more-row {
 	display: grid;
-	grid-template-columns: auto minmax(0, 1fr);
+	grid-template-columns: 28px minmax(0, 1fr);
 	align-items: center;
-	gap: 12px;
+	gap: 10px;
 	border: 0;
 	border-bottom: 1px solid var(--line);
 	background: transparent;
-	padding: 14px 0;
+	padding: 12px 0;
 	color: var(--base-black);
 	text-align: left;
 }
@@ -1244,6 +1247,7 @@ input[type="search"]::-webkit-search-decoration {
 }
 
 .director-more-row svg {
+	justify-self: start;
 	color: #25772d;
 }
 
@@ -1253,7 +1257,7 @@ input[type="search"]::-webkit-search-decoration {
 }
 
 .director-more-row strong {
-	font-size: 16px;
+	font-size: 15px;
 	font-weight: var(--font-weight-emphasis);
 	line-height: 1.1;
 }
@@ -1261,13 +1265,81 @@ input[type="search"]::-webkit-search-decoration {
 .director-more-row small {
 	margin-top: 4px;
 	color: var(--text-muted);
-	font-size: 12px;
+	font-size: 11px;
 	line-height: 1.2;
 }
 
 .director-more-row:focus-visible {
 	outline: 2px solid var(--brand-green);
 	outline-offset: 3px;
+}
+
+.director-account-panel {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	align-items: center;
+	column-gap: 12px;
+	margin-top: 20px;
+	border-radius: 12px;
+	background: var(--surface-muted);
+	padding: 10px 10px 10px 12px;
+}
+
+.director-account-head {
+	min-width: 0;
+}
+
+.director-account-head strong,
+.director-account-head span {
+	display: block;
+	overflow-wrap: anywhere;
+}
+
+.director-account-head strong {
+	color: var(--base-black);
+	font-size: 14px;
+	font-weight: var(--font-weight-emphasis);
+	line-height: 1.15;
+}
+
+.director-account-head span {
+	margin-top: 3px;
+	color: var(--text-muted);
+	font-size: 11px;
+	line-height: 1.2;
+}
+
+.director-logout-button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 6px;
+	width: fit-content;
+	min-height: 44px;
+	border: 0;
+	border-radius: 999px;
+	background: transparent;
+	color: var(--text-muted);
+	padding: 0 4px;
+	font: inherit;
+	font-size: 13px;
+	font-weight: var(--font-weight-label);
+	white-space: nowrap;
+	cursor: pointer;
+}
+
+.director-logout-button:hover {
+	color: var(--base-black);
+}
+
+.director-logout-button:focus-visible {
+	outline: 2px solid var(--brand-green);
+	outline-offset: 3px;
+}
+
+.director-logout-button:disabled {
+	cursor: not-allowed;
+	opacity: 0.55;
 }
 
 .analytics-summary-grid {

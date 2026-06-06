@@ -39,10 +39,7 @@ export function DirectorMoreHome({
 
 	return (
 		<section className="screen-stack director-more-home">
-			<div className="section-heading">
-				<h2>Еще</h2>
-				<span>{rows.length + 1}</span>
-			</div>
+			<h2 className="sr-only">Еще</h2>
 
 			{rows.length > 0 ? (
 				<div className="director-more-list">
@@ -64,21 +61,77 @@ export function DirectorMoreHome({
 				</div>
 			) : null}
 
-			<div className="settings-panel">
-				<div className="section-heading compact">
-					<h2>{actor.displayName}</h2>
-					<span>{ROLE_LABELS[actor.role]}</span>
+			<div
+				className="director-account-panel"
+				style={{
+					alignItems: "center",
+					background: "var(--surface-muted)",
+					borderRadius: 12,
+					columnGap: 12,
+					display: "grid",
+					gridTemplateColumns: "minmax(0, 1fr) auto",
+					marginTop: 20,
+					padding: "10px 10px 10px 12px",
+				}}
+			>
+				<div
+					className="director-account-head"
+					style={{ minWidth: 0 }}
+				>
+					<strong
+						style={{
+							color: "var(--base-black)",
+							display: "block",
+							fontSize: 14,
+							fontWeight: "var(--font-weight-emphasis)",
+							lineHeight: 1.15,
+							overflowWrap: "anywhere",
+						}}
+					>
+						{actor.displayName}
+					</strong>
+					<span
+						style={{
+							color: "var(--text-muted)",
+							display: "block",
+							fontSize: 11,
+							lineHeight: 1.2,
+							marginTop: 3,
+							overflowWrap: "anywhere",
+						}}
+					>
+						{ROLE_LABELS[actor.role]} · @{actor.login}
+					</span>
 				</div>
-				<div className="settings-row">
-					<span>Логин</span>
-					<strong>@{actor.login}</strong>
-				</div>
-				<button className="primary-button danger-button" disabled={logoutPending} onClick={logout} type="button">
-					<LogOut aria-hidden size={18} />
+				<button
+					className="director-logout-button"
+					aria-label="Выйти из профиля"
+					disabled={logoutPending}
+					onClick={logout}
+					style={{
+						alignItems: "center",
+						background: "transparent",
+						border: 0,
+						color: "var(--text-muted)",
+						cursor: logoutPending ? "not-allowed" : "pointer",
+						display: "inline-flex",
+						font: "inherit",
+						fontSize: 13,
+						fontWeight: "var(--font-weight-label)",
+						gap: 6,
+						justifyContent: "flex-end",
+						minHeight: 44,
+						opacity: logoutPending ? 0.55 : 1,
+						padding: "0 4px",
+						whiteSpace: "nowrap",
+						width: "fit-content",
+					}}
+					type="button"
+				>
+					<LogOut aria-hidden size={15} />
 					{logoutPending ? "Выходим" : "Выйти"}
 				</button>
 			</div>
-
 		</section>
 	);
 }
