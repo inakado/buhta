@@ -122,16 +122,30 @@ describe("DirectorAnalyticsHome", () => {
 
 		expect(await screen.findByRole("heading", { name: "Аналитика" })).toBeTruthy();
 		expect(screen.queryByText("Директор")).toBeNull();
-		expect(await screen.findByText("Деньги")).toBeTruthy();
-		expect(screen.getByText("Текущие наличные")).toBeTruthy();
-		expect(screen.getByText("Деньги за период")).toBeTruthy();
-		expect(screen.getByText("Сырье в продукт: 8 кг")).toBeTruthy();
-		expect(screen.getByText("Сырье")).toBeTruthy();
+		expect(await screen.findByText("За период")).toBeTruthy();
+		expect(screen.getByText("Сейчас")).toBeTruthy();
+		expect(screen.getByText("Выручка")).toBeTruthy();
+		expect(screen.getByText("2500.00 ₽")).toBeTruthy();
+		expect(screen.getByText("3 продажи")).toBeTruthy();
+		expect(screen.getByText("Выпуск")).toBeTruthy();
+		expect(screen.getByText("Сырье: 8 кг")).toBeTruthy();
+		expect(screen.getByText("Наличные")).toBeTruthy();
+		expect(screen.getByText("Распределитель")).toBeTruthy();
+		expect(screen.getByText("Курьеры")).toBeTruthy();
+		expect(screen.queryByText("Отмены")).toBeNull();
+		expect(screen.queryByText("1 отмена")).toBeNull();
+		expect(screen.queryByText("Движение наличных")).toBeNull();
+
+		fireEvent.click(screen.getByRole("tab", { name: "Деньги" }));
+		expect(await screen.findByText("Оплата за период")).toBeTruthy();
+		expect(screen.getByText("Динамика по дням")).toBeTruthy();
+		expect(screen.getByText("Безнал")).toBeTruthy();
+
+		fireEvent.click(screen.getByRole("tab", { name: "Производство" }));
+		expect(await screen.findByText("Сырье")).toBeTruthy();
 		expect(screen.getByText("Продукция")).toBeTruthy();
 		expect(screen.getByText("12 шт · сырье 8 кг")).toBeTruthy();
 		expect(screen.getAllByText("Икра горбуши сырец")).toHaveLength(1);
-		expect(screen.queryByText("Движение наличных")).toBeNull();
-		expect(screen.queryByText("Выручка по дням")).toBeNull();
 		expect(fetchMock.mock.calls.some(([input]) => String(input).includes("/analytics/director?periodPreset=30d"))).toBe(true);
 
 		fireEvent.click(screen.getByRole("button", { name: "7 дней" }));
@@ -145,7 +159,8 @@ describe("DirectorAnalyticsHome", () => {
 
 		renderAnalytics();
 
-		expect(await screen.findByText("Не удалось загрузить аналитику")).toBeTruthy();
-		expect(screen.queryByText("Деньги за период")).toBeNull();
+		expect(await screen.findByText("Не удалось загрузить аналитику.")).toBeTruthy();
+		expect(screen.getByRole("button", { name: "Повторить" })).toBeTruthy();
+		expect(screen.queryByText("За период")).toBeNull();
 	});
 });

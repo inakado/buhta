@@ -11,7 +11,15 @@ import {
 import { getCourierCashBalances, getCourierProductBalances } from "../../lib/api-client";
 import { CourierStockList } from "./CourierStockList";
 
-export function CourierBalanceHome({ mode = "own" }: { mode?: "own" | "all" }) {
+export function CourierBalanceHome({
+	embedded = false,
+	mode = "own",
+	title: titleOverride,
+}: {
+	embedded?: boolean;
+	mode?: "own" | "all";
+	title?: string;
+}) {
 	const balances = useQuery({
 		queryKey: ["courier", "product-balances"],
 		queryFn: getCourierProductBalances,
@@ -22,14 +30,15 @@ export function CourierBalanceHome({ mode = "own" }: { mode?: "own" | "all" }) {
 	});
 	const data = balances.data;
 	const cashData = cashBalances.data;
-	const title = mode === "own" ? "Баланс курьера" : "Балансы курьеров";
+	const title = titleOverride ?? (mode === "own" ? "Баланс курьера" : "Балансы курьеров");
 	const totalUnits = data?.summary.totalUnits ?? 0;
 	const totalStockValueCents = data?.summary.totalStockValueCents ?? 0;
 	const totalCashCents = cashData?.totalAmountCents ?? 0;
 	const stockItemCount = data?.summary.stockItemCount ?? 0;
+	const Frame = embedded ? "div" : "section";
 
 	return (
-		<section className="screen-stack">
+		<Frame className={embedded ? "embedded-screen-stack" : "screen-stack"}>
 			<div className="section-heading">
 				<h2>{title}</h2>
 				<span>{stockItemCount} позиций</span>
@@ -75,7 +84,7 @@ export function CourierBalanceHome({ mode = "own" }: { mode?: "own" | "all" }) {
 					<CourierStockList items={data?.items ?? []} />
 				</>
 			) : null}
-		</section>
+		</Frame>
 	);
 }
 

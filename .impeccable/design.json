@@ -1,0 +1,235 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-06-06T02:59:27+10:00",
+  "title": "Design System: Бухта CRM",
+  "extensions": {
+    "colorMeta": {
+      "brand-green": {
+        "role": "primary",
+        "displayName": "Рабочий зеленый",
+        "canonical": "#4AB855",
+        "tonalRamp": ["oklch(18% 0.05 145)", "oklch(28% 0.08 145)", "oklch(40% 0.11 145)", "oklch(52% 0.14 145)", "oklch(64% 0.16 145)", "oklch(76% 0.12 145)", "oklch(88% 0.07 145)", "oklch(95% 0.035 145)"]
+      },
+      "brand-lime": {
+        "role": "primary",
+        "displayName": "Мягкий lime",
+        "canonical": "#E8FBCB",
+        "tonalRamp": ["oklch(20% 0.04 125)", "oklch(34% 0.06 125)", "oklch(48% 0.08 125)", "oklch(62% 0.09 125)", "oklch(74% 0.08 125)", "oklch(84% 0.07 125)", "oklch(91% 0.055 125)", "oklch(96% 0.035 125)"]
+      },
+      "base-black": {
+        "role": "neutral",
+        "displayName": "Черный каркас",
+        "canonical": "#000000",
+        "tonalRamp": ["#000000", "#151515", "#2A2A2A", "#404040", "#666666", "#999999", "#CCCCCC", "#F5F5F5"]
+      },
+      "surface-muted": {
+        "role": "neutral",
+        "displayName": "Серо-зеленый фон",
+        "canonical": "#F2F4F1",
+        "tonalRamp": ["oklch(18% 0.01 145)", "oklch(30% 0.012 145)", "oklch(45% 0.014 145)", "oklch(60% 0.012 145)", "oklch(74% 0.01 145)", "oklch(86% 0.008 145)", "oklch(93% 0.006 145)", "oklch(97% 0.004 145)"]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Линия учета",
+        "canonical": "#E3E8E2",
+        "tonalRamp": ["oklch(16% 0.01 145)", "oklch(28% 0.012 145)", "oklch(42% 0.012 145)", "oklch(58% 0.01 145)", "oklch(72% 0.008 145)", "oklch(84% 0.006 145)", "oklch(91% 0.005 145)", "oklch(96% 0.004 145)"]
+      },
+      "text-muted": {
+        "role": "neutral",
+        "displayName": "Muted text",
+        "canonical": "#66706A",
+        "tonalRamp": ["#151816", "#252A27", "#3A413D", "#505A55", "#66706A", "#838C87", "#B3BAB6", "#E7EAE8"]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Summary Number",
+        "purpose": "Большие числа role summary and key balances only."
+      },
+      "headline": {
+        "displayName": "Screen Headline",
+        "purpose": "Короткие заголовки control screens."
+      },
+      "title": {
+        "displayName": "Section Title",
+        "purpose": "Секции, строки, панели и compact cards."
+      },
+      "body": {
+        "displayName": "Product Body",
+        "purpose": "Forms, rows, inline messages and operational copy."
+      },
+      "label": {
+        "displayName": "Operational Label",
+        "purpose": "Captions, meta, dates, field labels and small controls."
+      }
+    },
+    "shadows": [
+      {
+        "name": "app-shell-ambient",
+        "value": "0 18px 60px rgb(0 0 0 / 10%)",
+        "purpose": "Outer mobile shell only."
+      },
+      {
+        "name": "popover-lift",
+        "value": "0 14px 38px rgb(0 0 0 / 14%)",
+        "purpose": "Search combobox and floating pickers."
+      },
+      {
+        "name": "dialog-lift",
+        "value": "0 18px 54px rgb(0 0 0 / 18%)",
+        "purpose": "Centered modal dialogs."
+      },
+      {
+        "name": "toast-lift",
+        "value": "0 10px 28px rgb(0 0 0 / 18%)",
+        "purpose": "Temporary success notice above bottom nav."
+      }
+    ],
+    "motion": [
+      {
+        "name": "state-fast",
+        "value": "150ms ease-out",
+        "purpose": "Small hover, active and feedback transitions when added."
+      },
+      {
+        "name": "state-standard",
+        "value": "200ms ease-out",
+        "purpose": "Popover, dialog and notice state changes."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "narrow-phone",
+        "value": "380px"
+      },
+      {
+        "name": "phone-shell",
+        "value": "430px"
+      },
+      {
+        "name": "tablet-control",
+        "value": "720px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Black pill action for submitting frequent operations.",
+      "html": "<button class=\"ds-btn-primary\"><svg aria-hidden=\"true\" viewBox=\"0 0 24 24\"><path d=\"M20 6 9 17l-5-5\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/></svg>Сохранить</button>",
+      "css": ".ds-btn-primary{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;border:0;border-radius:999px;background:var(--base-black,#000);color:var(--base-white,#fff);padding:0 16px;font:500 13px/1.2 Helvetica,Arial,sans-serif}.ds-btn-primary svg{width:18px;height:18px}.ds-btn-primary:hover{filter:brightness(1.08)}.ds-btn-primary:focus-visible{outline:2px solid var(--brand-green,#4ab855);outline-offset:2px}.ds-btn-primary:disabled{opacity:.55;cursor:not-allowed}"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Compact bordered command for create, copy, close and secondary flows.",
+      "html": "<button class=\"ds-btn-secondary\"><svg aria-hidden=\"true\" viewBox=\"0 0 24 24\"><path d=\"M12 5v14M5 12h14\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"/></svg>Новый</button>",
+      "css": ".ds-btn-secondary{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:38px;border:1px solid var(--line,#e3e8e2);border-radius:8px;background:var(--base-white,#fff);color:var(--base-black,#000);padding:0 10px;font:500 12px/1.15 Helvetica,Arial,sans-serif}.ds-btn-secondary svg{width:16px;height:16px}.ds-btn-secondary:hover,.ds-btn-secondary:focus-visible{background:var(--surface-muted,#f2f4f1);outline:0}.ds-btn-secondary:focus-visible{box-shadow:0 0 0 2px var(--brand-green,#4ab855)}"
+    },
+    {
+      "name": "Input Field",
+      "kind": "input",
+      "refersTo": "input-field",
+      "description": "Quiet stock-surface field for operational forms.",
+      "html": "<label class=\"ds-field\"><span>Количество, шт</span><input type=\"number\" value=\"12\" /></label>",
+      "css": ".ds-field{display:flex;flex-direction:column;gap:7px;color:var(--text-muted,#66706a);font:400 13px/1.15 Helvetica,Arial,sans-serif}.ds-field input{width:100%;min-height:46px;border:1px solid var(--line,#e3e8e2);border-radius:8px;background:var(--surface-stock,#fbfcfb);color:var(--base-black,#000);padding:0 12px;font:400 13px/1.25 Helvetica,Arial,sans-serif}.ds-field input:focus-visible{outline:2px solid var(--brand-green,#4ab855);outline-offset:1px}"
+    },
+    {
+      "name": "Segmented Control",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Two-option payment selector with black active state.",
+      "html": "<div class=\"ds-segmented\" role=\"group\" aria-label=\"Способ оплаты\"><button class=\"active\">Наличные</button><button>Безнал</button></div>",
+      "css": ".ds-segmented{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.ds-segmented button{min-height:46px;border:1px solid var(--line,#e3e8e2);border-radius:8px;background:var(--surface-stock,#fbfcfb);color:var(--base-black,#000);font:500 13px/1.15 Helvetica,Arial,sans-serif}.ds-segmented button.active{border-color:var(--base-black,#000);background:var(--base-black,#000);color:var(--base-white,#fff)}.ds-segmented button:focus-visible{outline:2px solid var(--brand-green,#4ab855);outline-offset:2px}"
+    },
+    {
+      "name": "Summary Card",
+      "kind": "card",
+      "refersTo": "summary-card",
+      "description": "Lime role overview for balances, cash and production summary.",
+      "html": "<section class=\"ds-summary-card\"><span>В обороте</span><strong>128 шт</strong><p>245 000 ₽ товаром</p></section>",
+      "css": ".ds-summary-card{display:flex;flex-direction:column;gap:6px;border:0;border-radius:24px;background:linear-gradient(135deg,var(--brand-lime,#e8fbcb),#eefbdf 72%);color:var(--base-black,#000);padding:14px;font-family:Helvetica,Arial,sans-serif}.ds-summary-card span{color:rgba(0,0,0,.62);font-size:12px;line-height:1.15}.ds-summary-card strong{font-size:42px;font-weight:500;font-variant-numeric:tabular-nums;letter-spacing:0;line-height:.95}.ds-summary-card p{margin:0;color:var(--text-muted,#66706a);font-size:14px;line-height:1.2}"
+    },
+    {
+      "name": "Data Row",
+      "kind": "custom",
+      "refersTo": "form-panel",
+      "description": "Read-only operational row with divider, no false card affordance.",
+      "html": "<div class=\"ds-data-row\"><div><strong>Икра кеты</strong><span>24 шт · 1 900 ₽</span></div><strong>45 600 ₽</strong></div>",
+      "css": ".ds-data-row{display:grid;grid-template-columns:minmax(0,1fr)auto;align-items:center;gap:12px;border-bottom:1px solid var(--line,#e3e8e2);padding:11px 0;font-family:Helvetica,Arial,sans-serif}.ds-data-row div{min-width:0}.ds-data-row strong{overflow-wrap:anywhere;color:var(--base-black,#000);font-size:15px;font-weight:500;line-height:1.15}.ds-data-row span{display:block;margin-top:5px;color:var(--text-muted,#66706a);font-size:12px;line-height:1.15}.ds-data-row>strong{font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right}"
+    },
+    {
+      "name": "Bottom Navigation",
+      "kind": "nav",
+      "refersTo": "bottom-nav",
+      "description": "Black mobile app nav with white active pill.",
+      "html": "<nav class=\"ds-bottom-nav\" aria-label=\"Основная навигация\"><button class=\"active\">Главная</button><button>История</button><button>Профиль</button></nav>",
+      "css": ".ds-bottom-nav{display:flex;justify-content:space-around;gap:4px;border-radius:999px;background:var(--base-black,#000);padding:8px;font-family:Helvetica,Arial,sans-serif}.ds-bottom-nav button{flex:1;min-height:42px;min-width:0;border:0;border-radius:999px;background:transparent;color:var(--base-white,#fff);font-size:12px;font-weight:500}.ds-bottom-nav button.active{background:var(--base-white,#fff);color:var(--base-black,#000)}.ds-bottom-nav button:focus-visible{outline:2px solid var(--brand-green,#4ab855);outline-offset:2px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Операционный журнал на ладони",
+    "overview": "Дизайн-система «Бухты» строится как спокойный рабочий журнал для повторяющихся операций с товаром и деньгами. Она не продает продукт, не украшает икру и не пытается выглядеть как большая ERP. Она помогает сотруднику быстро увидеть роль, остаток, сумму, доступное действие и причину блокировки.\n\nОсновная поверхность: светлая mobile-app оболочка шириной около 430px, белые рабочие панели, серо-зеленый фон, черная навигация и редкий зеленый акцент для состояния, успеха и активного выбора. Интерфейс должен быть строгим, практичным, спокойным, удобным, плавным и быстрым. Крупные числа допустимы только для role summary и ключевых показателей; обычные формы, списки и control screens сохраняют плотность.",
+    "keyCharacteristics": [
+      "Mobile-first PWA shell с нижней навигацией и рабочей плотностью.",
+      "Черный цвет отвечает за основной текст, primary action и активную навигацию.",
+      "Зеленый отвечает за успех, активное состояние и операционный статус, а не за декор.",
+      "Списки, история и справочники строятся как строки с разделителями, без ложных карточек.",
+      "Плавность выражается короткими state transitions и мгновенным feedback, без page-load choreography."
+    ],
+    "rules": [
+      {
+        "name": "The Green Rarity Rule",
+        "body": "Зеленый не должен занимать весь экран. Он появляется там, где пользователь выбирает, завершает или считывает статус.",
+        "section": "colors"
+      },
+      {
+        "name": "The No Acid Rule",
+        "body": "Запрещен кислотно-зеленый интерфейс и монотонная зеленая палитра. Белый, черный и серо-зеленые нейтрали обязаны балансировать акцент.",
+        "section": "colors"
+      },
+      {
+        "name": "The Density Before Drama Rule",
+        "body": "Не увеличивать шрифт, если проблему можно решить порядком, отступом, divider или коротким текстом.",
+        "section": "typography"
+      },
+      {
+        "name": "The Numbers Must Settle Rule",
+        "body": "Деньги, количество и KPI используют tabular numbers, nowrap там, где это не ломает мобильную ширину, и не становятся декоративными hero metrics.",
+        "section": "typography"
+      },
+      {
+        "name": "The Ledger Line Rule",
+        "body": "Списки и контрольные экраны получают разделители, а не карточные тени. Если строка read-only, она не должна выглядеть как drill-down card без действия.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Floating Layer Rule",
+        "body": "Тень разрешена, когда слой реально плавает над интерфейсом: popover, dialog, toast. На обычной карточке сначала использовать border or tonal surface.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do keep the product register: familiar controls, consistent affordances, restrained color and dense but readable screens.",
+      "Do use `#000000` for primary action, selected states and bottom nav.",
+      "Do use `#4AB855` and `#E8FBCB` as state accents, not decorative wash.",
+      "Do keep forms short, with clear block reasons for offline, loading, missing selection, invalid quantity and permission problems.",
+      "Do preserve row-based read-only lists with `#E3E8E2` dividers.",
+      "Do keep touch targets comfortable without making every element oversized.",
+      "Do use tabular numbers for money, quantity and KPI values."
+    ],
+    "donts": [
+      "Don't make this a SaaS-лендинг or marketing витрина.",
+      "Don't turn it into a банковский dark dashboard.",
+      "Don't imitate a перегруженная ERP with noisy tables on every mobile screen.",
+      "Don't use декоративная премиальная витрина про икру as a visual metaphor.",
+      "Don't build a кислотно-зеленый интерфейс or монотонная зеленая палитра.",
+      "Don't let карточки, тени, градиенты и анимации become more important than accounting товар, деньги and actions.",
+      "Don't over-enlarge controls: touch targets must stay usable, but density is part of the product.",
+      "Don't use side-stripe borders, gradient text, glassmorphism, ghost-card border plus large shadow, or 32px+ radii on ordinary cards."
+    ]
+  }
+}

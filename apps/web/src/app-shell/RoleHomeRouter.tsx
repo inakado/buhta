@@ -19,7 +19,8 @@ import type { CurrentActor } from "../lib/api-client";
 import { AdminHome } from "../roles/admin/AdminHome";
 import { CommercialManagerHome } from "../roles/commercial-manager/CommercialManagerHome";
 import { CourierHome } from "../roles/courier/CourierHome";
-import { DirectorHome } from "../roles/director/DirectorHome";
+import { DirectorMoreHome } from "../roles/director/DirectorMoreHome";
+import { DirectorStockHome } from "../roles/director/DirectorStockHome";
 import { DistributorWorkerHome } from "../roles/distributor-worker/DistributorWorkerHome";
 
 type RoleHomeRouterProps = {
@@ -41,6 +42,17 @@ export function RoleHomeRouter({
 	onActionSuccess,
 	onTabChange,
 }: RoleHomeRouterProps) {
+	if (actor.role === "director" && activeTab === "more") {
+		return (
+			<DirectorMoreHome
+				actor={actor}
+				logout={logout}
+				logoutPending={logoutPending}
+				onTabChange={onTabChange}
+			/>
+		);
+	}
+
 	if (activeTab === "settings") {
 		return <SettingsScreen actor={actor} logout={logout} logoutPending={logoutPending} />;
 	}
@@ -70,11 +82,19 @@ export function RoleHomeRouter({
 	}
 
 	if (
-		activeTab === "analytics"
+		(activeTab === "analytics" || activeTab === "home")
 		&& actor.role === "director"
 		&& actor.permissions.includes("director.analytics.read")
 	) {
-		return <DirectorAnalyticsHome />;
+		return <DirectorAnalyticsHome title={activeTab === "home" ? "Главная" : "Аналитика"} />;
+	}
+
+	if (
+		activeTab === "stock"
+		&& actor.role === "director"
+		&& (actor.permissions.includes("distributor.stock.read") || actor.permissions.includes("courier.stock.read"))
+	) {
+		return <DirectorStockHome actor={actor} online={online} />;
 	}
 
 	if (actor.role === "production_manager") {
@@ -106,16 +126,15 @@ export function RoleHomeRouter({
 
 	if (
 		activeTab === "distributor"
-		&& (actor.role === "commercial_manager" || actor.role === "director")
+		&& actor.role === "commercial_manager"
 		&& actor.permissions.includes("distributor.stock.read")
 	) {
 		return (
 				<DistributorInventoryHome
 					canAssignDiscount={actor.permissions.includes("discount.assign")}
-					canWithdrawCash={actor.role === "director" && actor.permissions.includes("cash.withdraw")}
 					online={online}
 					showCashBalance={actor.permissions.includes("distributor.cash.read")}
-				title={actor.role === "director" ? "Распределитель" : "Остатки"}
+				title="Остатки"
 			/>
 		);
 	}
@@ -169,7 +188,7 @@ export function RoleHomeRouter({
 
 	if (actor.permissions.includes("distributor.stock.read")) {
 		if (actor.role === "director") {
-			return <DirectorHome />;
+			return <DirectorStockHome actor={actor} online={online} />;
 		}
 
 		if (actor.role === "courier") {

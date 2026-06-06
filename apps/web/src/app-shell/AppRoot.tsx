@@ -9,7 +9,7 @@ import {
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
-import { BarChart3, Bell, Box, Check, ClipboardList, Factory, Gauge, History, PackageCheck, ReceiptText, Settings, Truck, Users, type LucideIcon } from "lucide-react";
+import { Bell, Box, Check, ClipboardList, Factory, Gauge, History, MoreHorizontal, PackageCheck, ReceiptText, Settings, Truck, Users, type LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { LoginForm } from "../auth/LoginForm";
 import { ROLE_LABELS } from "../lib/role-labels";
@@ -198,11 +198,12 @@ function BottomNav({
 		&& (actor.permissions.includes("distributor.sale.create") || actor.permissions.includes("courier.sale.create"))
 		? [{ id: "sales-history", label: "История", icon: History }]
 		: [];
-	const directorDistributorItem: BottomNavItem[] = actor.role === "director" && actor.permissions.includes("distributor.stock.read")
-		? [{ id: "distributor", label: "Распределитель", icon: Box }]
+	const directorStockItem: BottomNavItem[] = actor.role === "director"
+		&& (actor.permissions.includes("distributor.stock.read") || actor.permissions.includes("courier.stock.read"))
+		? [{ id: "stock", label: "Остатки", icon: Box }]
 		: [];
-	const directorAnalyticsItem: BottomNavItem[] = actor.role === "director" && actor.permissions.includes("director.analytics.read")
-		? [{ id: "analytics", label: "Аналитика", icon: BarChart3 }]
+	const directorMoreItem: BottomNavItem[] = actor.role === "director"
+		? [{ id: "more", label: "Еще", icon: MoreHorizontal }]
 		: [];
 	const operationHistoryItem: BottomNavItem[] = actor.permissions.includes("operation.history.read")
 		? [{ id: "operation-history", label: "История", icon: ReceiptText }]
@@ -234,14 +235,10 @@ function BottomNav({
 				? courierItems
 				: actor.role === "director"
 					? [
-			{ id: "home", label: "Главная", icon: PackageCheck },
-			...directorAnalyticsItem,
-			...directorDistributorItem,
-			...catalogItem,
-			...clientsItem,
-			...courierBalancesItem,
+			{ id: "home", label: "Главная", icon: Gauge },
+			...directorStockItem,
 			...operationHistoryItem,
-			{ id: "settings", label: "Профиль", icon: Settings },
+			...directorMoreItem,
 		]
 				: [
 			{ id: "home", label: "Главная", icon: Gauge },
@@ -255,11 +252,18 @@ function BottomNav({
 
 	return (
 		<nav className="bottom-nav" aria-label="Основная навигация">
-			{items.map((item) => (
+			{items.map((item) => {
+				const isActive = activeTab === item.id || (
+					actor.role === "director"
+					&& item.id === "more"
+					&& (activeTab === "catalog" || activeTab === "clients" || activeTab === "settings")
+				);
+
+				return (
 				<button
-					aria-current={activeTab === item.id ? "page" : undefined}
+					aria-current={isActive ? "page" : undefined}
 					aria-label={item.badgeCount ? `${item.label}, новых задач: ${item.badgeCount}` : item.label}
-					className={activeTab === item.id ? "active" : ""}
+					className={isActive ? "active" : ""}
 					onClick={() => onTabChange(item.id)}
 					type="button"
 					key={item.id}
@@ -271,7 +275,8 @@ function BottomNav({
 						</span>
 					) : null}
 				</button>
-			))}
+			);
+			})}
 		</nav>
 	);
 }

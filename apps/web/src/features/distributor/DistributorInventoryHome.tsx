@@ -20,12 +20,14 @@ import { DistributorStockList } from "./DistributorStockList";
 export function DistributorInventoryHome({
 	canAssignDiscount = false,
 	canWithdrawCash = false,
+	embedded = false,
 	online = true,
 	showCashBalance = false,
 	title = "Остатки",
 }: {
 	canAssignDiscount?: boolean;
 	canWithdrawCash?: boolean;
+	embedded?: boolean;
 	online?: boolean;
 	showCashBalance?: boolean;
 	title?: string;
@@ -136,6 +138,7 @@ export function DistributorInventoryHome({
 		|| discountPriceCents >= (discountItem?.unitPriceCents ?? 0);
 	const discountBeforeValueCents = (discountItem?.unitPriceCents ?? 0) * selectedDiscountQuantity;
 	const discountStockValueCents = parsedDiscountPriceCents.ok ? selectedDiscountQuantity * discountPriceCents : 0;
+	const Frame = embedded ? "div" : "section";
 
 	useEffect(() => {
 		if (activeCashItems.length === 1) {
@@ -218,7 +221,7 @@ export function DistributorInventoryHome({
 	}
 
 	return (
-		<section className="screen-stack">
+		<Frame className={embedded ? "embedded-screen-stack" : "screen-stack"}>
 			<div className="section-heading">
 				<h2>{title}</h2>
 				<span>{stockItemCount} позиций</span>
@@ -431,7 +434,7 @@ export function DistributorInventoryHome({
 					items={data?.items ?? []}
 					{...(canAssignDiscount ? { onAssignDiscount: openDiscountForm } : {})}
 				/>
-		</section>
+		</Frame>
 	);
 }
 

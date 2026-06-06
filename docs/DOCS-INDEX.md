@@ -5,6 +5,8 @@
 ## Основные документы
 
 - `AGENTS.md` — правила работы агента с репозиторием и документацией.
+- `PRODUCT.md` — стратегический дизайн-контекст Impeccable: register, пользователи, назначение продукта, brand personality, anti-references и дизайн-принципы.
+- `DESIGN.md` — визуальная дизайн-система Impeccable: токены, палитра, типографика, elevation, компоненты и guardrails.
 - `docs/crm-requirements.md` — основной документ бизнес-требований CRM.
 - `docs/ARCHITECTURE-PRINCIPLES.md` — общие архитектурные и инженерные принципы.
 - `docs/TECH-STACK.md` — выбранный базовый стек, auth-направление и Docker-dev принцип.

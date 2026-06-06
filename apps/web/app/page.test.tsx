@@ -2204,6 +2204,10 @@ describe("HomePage", () => {
 				return jsonResponse(distributorCashBalancesResponse);
 			}
 
+			if (url.includes("/analytics/director")) {
+				return jsonResponse(directorAnalyticsResponse);
+			}
+
 			if (url.endsWith("/courier/product-balances")) {
 				return jsonResponse(courierProductBalancesResponse);
 			}
@@ -2246,6 +2250,10 @@ describe("HomePage", () => {
 				return jsonResponse(distributorCashBalancesResponse);
 			}
 
+			if (url.includes("/analytics/director")) {
+				return jsonResponse(directorAnalyticsResponse);
+			}
+
 			if (url.endsWith("/courier/product-balances")) {
 				return jsonResponse(courierProductBalancesResponse);
 			}
@@ -2261,8 +2269,9 @@ describe("HomePage", () => {
 
 		render(<HomePage />);
 
-		fireEvent.click(await screen.findByRole("button", { name: "Курьеры" }));
-		expect(await screen.findByText("Балансы курьеров")).toBeTruthy();
+		fireEvent.click(await screen.findByRole("button", { name: "Остатки" }));
+		fireEvent.click(await screen.findByRole("tab", { name: "Курьеры" }));
+		expect(await screen.findByRole("heading", { name: "Курьеры" })).toBeTruthy();
 		expect(screen.getByText("Стоимость")).toBeTruthy();
 		expect(await screen.findByText("Courier")).toBeTruthy();
 		expect(screen.getAllByText("1 позиций").length).toBeGreaterThan(0);
@@ -2284,6 +2293,10 @@ describe("HomePage", () => {
 
 			if (url.endsWith("/distributor/cash-balances")) {
 				return jsonResponse(distributorCashBalancesResponse);
+			}
+
+			if (url.includes("/analytics/director")) {
+				return jsonResponse(directorAnalyticsResponse);
 			}
 
 			if (url.endsWith("/courier/product-balances")) {
@@ -2314,7 +2327,7 @@ describe("HomePage", () => {
 		expect(await screen.findByRole("button", { name: /Director.*2 500\.00 ₽/ })).toBeTruthy();
 	});
 
-	it("shows director overview as a compact summary and keeps details in tabs", async () => {
+	it("shows director work in the distilled four-tab contour", async () => {
 		const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
 			const url = String(input);
 			const method = init?.method ?? "GET";
@@ -2426,38 +2439,49 @@ describe("HomePage", () => {
 
 		render(<HomePage />);
 
-		expect(await screen.findByText("В обороте")).toBeTruthy();
-		expect(await screen.findByText("4 шт")).toBeTruthy();
-		expect(screen.queryByText("Контроль")).toBeNull();
-		expect(screen.getAllByText("Наличные").length).toBeGreaterThan(0);
-		expect(await screen.findByText("1950.00 ₽")).toBeTruthy();
-		expect(screen.getAllByText("Распределитель").length).toBeGreaterThan(0);
-		expect(screen.getAllByText("Курьеры").length).toBeGreaterThan(0);
+		expect(await screen.findByRole("heading", { name: "Главная" })).toBeTruthy();
+		expect(await screen.findByText("За период")).toBeTruthy();
+		expect(screen.getByText("Сейчас")).toBeTruthy();
+		expect(screen.getByText("Выручка")).toBeTruthy();
+		expect(screen.getByRole("button", { name: "Главная" })).toBeTruthy();
+		expect(screen.getByRole("button", { name: "Остатки" })).toBeTruthy();
+		expect(screen.getByRole("button", { name: "История" })).toBeTruthy();
+		expect(screen.getByRole("button", { name: "Еще" })).toBeTruthy();
+		expect(screen.queryByRole("button", { name: "Аналитика" })).toBeNull();
+		expect(screen.queryByRole("button", { name: "Распределитель" })).toBeNull();
+		expect(screen.queryByRole("button", { name: "Курьеры" })).toBeNull();
+		expect(screen.queryByRole("button", { name: "Каталог" })).toBeNull();
+		expect(screen.queryByRole("button", { name: "Клиенты" })).toBeNull();
+		expect(screen.queryByRole("button", { name: "Профиль" })).toBeNull();
 		expect(screen.queryByText("Икра горбуши")).toBeNull();
 		expect(screen.queryByText("Courier")).toBeNull();
 		expect(screen.queryByText("Courier · @courier")).toBeNull();
 		expect(screen.queryByText("Последние операции")).toBeNull();
 		expect(screen.queryByText("Продажи сегодня")).toBeNull();
 		expect(screen.queryByText("Статистика")).toBeNull();
-		expect(screen.queryByRole("heading", { name: "Аналитика" })).toBeNull();
-		expect(fetchMock.mock.calls.some(([input]) => String(input).includes("/analytics/director"))).toBe(false);
 		expect(screen.queryByRole("button", { name: "Продажа" })).toBeNull();
 		expect(screen.queryByRole("button", { name: "Назначить дисконт пока недоступно" })).toBeNull();
 
-			fireEvent.click(screen.getByRole("button", { name: "Аналитика" }));
-			expect(await screen.findByRole("heading", { name: "Аналитика" })).toBeTruthy();
-			expect(await screen.findByText("Деньги за период")).toBeTruthy();
-			expect(screen.getByText("Сырье")).toBeTruthy();
-			expect(screen.getByText("Продукция")).toBeTruthy();
-			expect(screen.getByText("12 шт · сырье 8 кг")).toBeTruthy();
-			expect(screen.queryByText("Движение наличных")).toBeNull();
-			expect(fetchMock.mock.calls.some(([input]) => String(input).includes("/analytics/director?periodPreset=30d"))).toBe(true);
+		expect(screen.queryByText("Отмены")).toBeNull();
+		fireEvent.click(screen.getByRole("tab", { name: "Деньги" }));
+		expect(await screen.findByText("Динамика по дням")).toBeTruthy();
+		fireEvent.click(screen.getByRole("tab", { name: "Производство" }));
+		expect(await screen.findByText("Сырье")).toBeTruthy();
+		expect(screen.getByText("Продукция")).toBeTruthy();
+		expect(screen.getByText("12 шт · сырье 8 кг")).toBeTruthy();
+		expect(screen.queryByText("Движение наличных")).toBeNull();
+		expect(fetchMock.mock.calls.some(([input]) => String(input).includes("/analytics/director?periodPreset=30d"))).toBe(true);
 
+		fireEvent.click(screen.getByRole("button", { name: "Еще" }));
+		expect(await screen.findByRole("heading", { name: "Еще" })).toBeTruthy();
 		fireEvent.click(screen.getByRole("button", { name: "Каталог" }));
 		expect(await screen.findByRole("heading", { name: "Справочники" })).toBeTruthy();
 		expect(screen.getByRole("button", { name: "Новый" })).toBeTruthy();
 
-		fireEvent.click(screen.getByRole("button", { name: "Распределитель" }));
+		fireEvent.click(screen.getByRole("button", { name: "Остатки" }));
+		expect(await screen.findByRole("heading", { name: "Остатки" })).toBeTruthy();
+		expect(screen.getByRole("tab", { name: "Распределитель" })).toBeTruthy();
+		expect(screen.getByRole("tab", { name: "Курьеры" })).toBeTruthy();
 		expect(await screen.findByRole("heading", { name: "Распределитель" })).toBeTruthy();
 		expect(await screen.findByText("Икра горбуши")).toBeTruthy();
 		const cashWithdrawalAction = screen.getByRole("button", { name: "Списать наличные" });
@@ -2794,6 +2818,10 @@ describe("HomePage", () => {
 				return jsonResponse(distributorCashBalancesResponse);
 			}
 
+			if (url.includes("/analytics/director")) {
+				return jsonResponse(directorAnalyticsResponse);
+			}
+
 			if (url.includes("/clients")) {
 				return jsonResponse(clientsResponse);
 			}
@@ -2804,6 +2832,7 @@ describe("HomePage", () => {
 		vi.stubGlobal("fetch", directorFetch);
 		render(<HomePage />);
 
+		fireEvent.click(await screen.findByRole("button", { name: "Еще" }));
 		fireEvent.click(await screen.findByRole("button", { name: "Клиенты" }));
 		expect(await screen.findByText("Иван Петров")).toBeTruthy();
 		expect(screen.queryByRole("button", { name: "Добавить клиента" })).toBeNull();
