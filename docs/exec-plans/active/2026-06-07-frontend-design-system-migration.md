@@ -189,7 +189,26 @@
 7. **Extraction Gate:** если pattern повторился, обновить `DESIGN.md`/`docs/FRONTEND.md` или отложить с явной причиной.
 8. **Owner Review Gate:** владелец продукта проверяет визуально. Автоматические screenshot/browser checks не запускать без отдельного запроса.
 
-### 7.5 Screen Migration Note
+### 7.5 Browser Policy
+
+Браузер не является постоянным gate для каждой правки интерфейса. Владелец продукта сам делает основной визуальный контроль и дает точечные замечания.
+
+Разрешенные browser checks:
+
+- **Первичная оценка текущего состояния:** перед крупной переработкой экрана можно один раз открыть экран в браузере, чтобы понять реальную структуру, плотность, явные переполнения и расхождение с эталоном. Это не постоянная проверка после каждой мелкой правки.
+- **Постройка или сверка нового мока:** если stage требует mock/structural sketch, можно использовать браузер для первичной оценки текущей версии и для подготовки нового варианта.
+- **Отдельный запрос владельца продукта:** если пользователь явно попросил визуальную проверку, screenshot, browser QA или сравнение viewport, тогда браузерный проход выполняется в рамках этого запроса.
+
+Запрещено по умолчанию:
+
+- запускать browser screenshot/QA после каждой polish-правки;
+- считать browser check обязательным для style port из уже принятого директорского стандарта;
+- заменять owner visual review автоматической проверкой;
+- запускать `$impeccable critique` с browser/detector частью без явного разрешения для конкретного прохода.
+
+Обычный цикл после кодовой правки: code/CSS review, typecheck/lint/tests/docs check, затем owner visual review.
+
+### 7.6 Screen Migration Note
 
 Для каждого крупного экрана в stage plan, commit summary or docs update фиксировать короткую note:
 
@@ -283,7 +302,7 @@
 5. Если pattern повторяется второй раз, вынести или документировать стандарт.
 6. Обновить docs вместе с кодом, если stage меняет visual/system rule.
 7. Запустить релевантные проверки.
-8. Передать владельцу продукта на ручную визуальную проверку. Browser screenshot/QA не запускать без отдельного запроса.
+8. Передать владельцу продукта на ручную визуальную проверку. Browser screenshot/QA не запускать без отдельного запроса, кроме случаев из Browser Policy.
 
 ## 10. Тестовый План
 
@@ -299,6 +318,7 @@
 - `pnpm --filter @buhta/web test -- <screen-or-feature>`
 - API tests only when stage touches contracts or behavior.
 - Manual owner visual review on target viewport set.
+- Browser check only for initial assessment/mock work or when explicitly requested.
 
 ## 11. Риски И Rollback
 
