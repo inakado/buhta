@@ -2306,7 +2306,8 @@ describe("HomePage", () => {
 		expect(screen.getAllByText("Продукция").length).toBeGreaterThan(0);
 		expect(await screen.findByText("Courier")).toBeTruthy();
 		expect(screen.getAllByText("1 позиций").length).toBeGreaterThan(0);
-		expect(screen.getByText("Всего продукции")).toBeTruthy();
+		expect(screen.getByRole("table", { name: "Продукция курьера Courier" })).toBeTruthy();
+		expect(screen.queryByText("Всего продукции")).toBeNull();
 		expect(screen.queryByRole("button", { name: "Записать загрузку" })).toBeNull();
 	});
 
@@ -2541,6 +2542,15 @@ describe("HomePage", () => {
 			);
 			});
 			expect(await screen.findByText("Наличные списаны")).toBeTruthy();
+
+			fireEvent.click(screen.getByRole("button", { name: "Снизить цену" }));
+			expect(await screen.findByRole("heading", { name: "Снизить цену" })).toBeTruthy();
+			const discountOverlay = document.querySelector(".discount-dialog-overlay");
+			expect(discountOverlay).toBeTruthy();
+			fireEvent.pointerDown(discountOverlay as Element);
+			await waitFor(() => {
+				expect(screen.queryByRole("heading", { name: "Снизить цену" })).toBeNull();
+			});
 
 			fireEvent.click(screen.getByRole("button", { name: "Снизить цену" }));
 			expect(await screen.findByRole("heading", { name: "Снизить цену" })).toBeTruthy();

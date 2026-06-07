@@ -15,11 +15,13 @@ export function CourierBalanceHome({
 	hideHeading = false,
 	mode = "own",
 	title: titleOverride,
+	variant = "default",
 }: {
 	embedded?: boolean;
 	hideHeading?: boolean;
 	mode?: "own" | "all";
 	title?: string;
+	variant?: "default" | "director-stock";
 }) {
 	const balances = useQuery({
 		queryKey: ["courier", "product-balances"],
@@ -78,6 +80,7 @@ export function CourierBalanceHome({
 				productItems={data?.items ?? []}
 				summaries={data?.courierSummaries ?? []}
 				mode={mode}
+				variant={variant}
 			/>
 
 			{mode === "own" ? (
@@ -116,11 +119,13 @@ function CourierPeopleList({
 	productItems,
 	summaries,
 	mode,
+	variant,
 }: {
 	cashItems: CourierCashBalanceItem[];
 	productItems: CourierProductBalanceItem[];
 	summaries: CourierProductBalancesCourierSummary[];
 	mode: "own" | "all";
+	variant: "default" | "director-stock";
 }) {
 	if (mode !== "all" || summaries.length === 0) {
 		return null;
@@ -135,45 +140,79 @@ function CourierPeopleList({
 
 	return (
 		<div className="courier-balance-list">
-			{summaries.map((summary) => (
-				<div className="courier-balance-card" key={summary.courierUserId}>
-					<div className="courier-balance-head">
-						<div>
-							<strong>{summary.courierDisplayName}</strong>
-							<p>{summary.stockItemCount} позиций</p>
-						</div>
-						<div className="courier-cash-value">
-							<strong>{formatRubles(cashByCourier.get(summary.courierUserId) ?? 0)} ₽</strong>
-							<span>наличные</span>
-						</div>
-					</div>
-					<div className="courier-product-table">
-						<div className="courier-product-table-head">
-							<span>Продукция</span>
-							<span>Количество</span>
-							<span>Итого</span>
-						</div>
-						{(productsByCourier.get(summary.courierUserId) ?? []).map((item) => (
-							<div className="courier-product-row" key={item.id}>
-								<div>
-									<strong>{item.productName}</strong>
-									<span>{formatRubles(item.unitPriceCents)} ₽/шт</span>
-								</div>
-								<div>
-									<strong>{item.quantity} шт</strong>
-								</div>
-								<div>
-									<strong>{formatRubles(item.stockValueCents)} ₽</strong>
-								</div>
-							</div>
-						))}
-					</div>
-					<div className="courier-product-total">
-						<span>Всего продукции</span>
-						<strong>{formatRubles(summary.totalStockValueCents)} ₽</strong>
-					</div>
+			{variant === "director-stock" ? (
+				<div className="director-courier-table-head">
+					<span>Курьер</span>
+					<span>Остаток</span>
+					<span>Наличные</span>
 				</div>
-			))}
+			) : null}
+			{summaries.map((summary) => {
+				const courierProducts = productsByCourier.get(summary.courierUserId) ?? [];
+				const courierCashCents = cashByCourier.get(summary.courierUserId) ?? 0;
+
+				return (
+					<div className="courier-balance-card" key={summary.courierUserId}>
+						<div className="courier-balance-head">
+							<div>
+								<strong>{summary.courierDisplayName}</strong>
+								<p>{summary.stockItemCount} позиций</p>
+							</div>
+							{variant === "director-stock" ? (
+								<div className="courier-balance-metrics">
+									<strong>{formatRubles(summary.totalStockValueCents)} ₽</strong>
+									<strong>{formatRubles(courierCashCents)} ₽</strong>
+								</div>
+							) : (
+								<div className="courier-cash-value">
+									<strong>{formatRubles(courierCashCents)} ₽</strong>
+									<span>наличные</span>
+								</div>
+							)}
+						</div>
+						<div className="courier-product-table" role="table" aria-label={`Продукция курьера ${summary.courierDisplayName}`}>
+							{variant === "director-stock" ? (
+								<div className="sr-only" role="row">
+									<span role="columnheader">Товар</span>
+									<span role="columnheader">Количество</span>
+									<span role="columnheader">Итого</span>
+								</div>
+							) : (
+								<div className="courier-product-table-head" role="row">
+									<span role="columnheader">Продукция</span>
+									<span role="columnheader">Количество</span>
+									<span role="columnheader">Итого</span>
+								</div>
+							)}
+							{courierProducts.length ? courierProducts.map((item) => (
+								<div className="courier-product-row" key={item.id} role="row">
+									<div role="cell">
+										<strong>{item.productName}</strong>
+										{variant === "director-stock" ? null : <span>{formatRubles(item.unitPriceCents)} ₽/шт</span>}
+									</div>
+									<div role="cell">
+										<strong>{item.quantity} шт</strong>
+										{variant === "director-stock" ? <span>{formatRubles(item.unitPriceCents)} ₽/шт</span> : null}
+									</div>
+									<div role="cell">
+										<strong>{formatRubles(item.stockValueCents)} ₽</strong>
+									</div>
+								</div>
+							)) : (
+								<div className="courier-product-empty" role="row">
+									<span role="cell">Нет продукции</span>
+								</div>
+							)}
+						</div>
+						{variant === "director-stock" ? null : (
+							<div className="courier-product-total">
+								<span>Всего продукции</span>
+								<strong>{formatRubles(summary.totalStockValueCents)} ₽</strong>
+							</div>
+						)}
+					</div>
+				);
+			})}
 		</div>
 	);
 }

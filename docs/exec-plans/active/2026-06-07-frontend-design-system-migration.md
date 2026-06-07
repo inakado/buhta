@@ -53,12 +53,12 @@
 | Приоритет | Экран | Entry point | Компоненты | Варианты и особенности |
 | --- | --- | --- | --- | --- |
 | Done | Главная | `home` | `DirectorAnalyticsHome` | Эталон новой системы. Деньги, выпуск, период, вкладки обзор/деньги/производство уже отполированы. |
-| 1 | Остатки | `stock` | `DirectorStockHome`, `DistributorInventoryHome`, `CourierBalanceHome` | Следующий экран. Внутренние табы `Распределитель` и `Курьеры`; embedded/hideHeading variants; списание наличных и скидка доступны только при правах. |
-| 2 | История | `operation-history` | `OperationHistoryHome` | Фильтры, список операций, pagination, details dialog. Нужно привести к директорскому table/list rhythm и не потерять читаемость деталей. |
-| 3 | Еще | `more` | `DirectorMoreHome` | Меню `Каталог`, `Клиенты`, `Настройки`, account/logout panel. Сейчас есть inline styles, их надо убрать в системные classes. |
-| 4 | Каталог | `catalog` из more | `CatalogHome` | Директор/admin shared management surface. Нужна очистка форм, списков, actions и archive/confirm rows. |
-| 4 | Клиенты | `clients` из more | `ClientsHome` | Read/manage variants зависят от прав. Нужен единый dense list/search/form pattern. |
-| 5 | Настройки | `settings` из more | `SettingsScreen` | Не должен спорить с директорским `Еще` и общим profile standard. |
+| Done | Остатки | `stock` | `DirectorStockHome`, `DistributorInventoryHome`, `CourierBalanceHome` | Второй эталон директорского control contour. Внутренние табы, распределитель, курьеры, списание наличных и снижение цены приведены к compact table/panel rhythm без повторов и декоративных карточек. |
+| 1 | История | `operation-history` | `OperationHistoryHome` | Следующий экран. Фильтры, список операций, pagination, details dialog. Нужно привести к директорскому table/list rhythm и не потерять читаемость деталей. |
+| 2 | Еще | `more` | `DirectorMoreHome` | Меню `Каталог`, `Клиенты`, `Настройки`, account/logout panel. Сейчас есть inline styles, их надо убрать в системные classes. |
+| 3 | Каталог | `catalog` из more | `CatalogHome` | Директор/admin shared management surface. Нужна очистка форм, списков, actions и archive/confirm rows. |
+| 3 | Клиенты | `clients` из more | `ClientsHome` | Read/manage variants зависят от прав. Нужен единый dense list/search/form pattern. |
+| 4 | Настройки | `settings` из more | `SettingsScreen` | Не должен спорить с директорским `Еще` и общим profile standard. |
 
 ### 5.3 Администратор
 
@@ -232,15 +232,16 @@
 - Для каждого экрана заводить короткий локальный checklist: role, entry point, props/permissions, empty/loading/error/offline states, long data values.
 - Все новые или обновленные styles мапить на `DESIGN.md`: font scale, line color, radii, tabs, buttons, spacing, table/list rhythm.
 
-### Stage 1. Director Stock, следующий экран
+### Stage 1. Director Stock, completed 2026-06-07
 
-- Перевести `DirectorStockHome` на тот же segmented/tab treatment, что и главная Директора.
-- Привести embedded `DistributorInventoryHome` и `CourierBalanceHome` к director control surface.
-- Сохранить ролевую семантику: распределитель, курьеры, наличные, скидка, списание наличных.
-- Убрать визуальные повторы и декоративные summary cards, если данные уже показаны в верхнем контуре экрана.
-- Проверить узкие ширины логически по CSS и DOM, без автоматической визуальной QA без отдельного запроса.
+- `DirectorStockHome` переведен на тот же fixed topbar + embedded segmented treatment, что и главная Директора: заголовок и внутренние табы не исчезают при прокрутке body.
+- `Распределитель` использует white ledger panel: верхняя strip-сводка, full-width `Списать наличные`, таблица с материнской строкой распределителя, отдельными колонками `Продукция / Количество / Итого` и inline action `Снизить`.
+- Снижение цены открывается в modal dialog с overlay, click outside отменяет действие; форма и кнопки приведены к compact director style.
+- `Курьеры` использует один read-only courier ledger: глобальная шапка `Курьер / Остаток / Наличные`, материнские строки курьеров и облегченные товарные detail rows без повторных labels.
+- Убраны визуальные повторы, декоративные summary cards, лишние local class hooks и director-only table-head selectors, которые больше не используются.
+- Browser QA не запускался по policy этого плана; owner visual review выполняется вручную владельцем продукта.
 
-### Stage 2. Director Operation History
+### Stage 2. Director Operation History, next
 
 - Привести filter summary, advanced filters, rows, pagination button and details dialog к единому dense list/control rhythm.
 - Разделить поведение и стиль: исправления pagination/filter behavior делать только если stage явно включает behavioral bugfix.

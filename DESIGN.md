@@ -132,6 +132,13 @@ components:
     rounded: "compact panel radius"
     density: "dense mobile control rhythm"
     typography: "compact titles, labels, tabular values"
+  director-stock-ledger:
+    backgroundColor: "{colors.base-white}"
+    textColor: "{colors.base-black}"
+    borderColor: "{colors.line}"
+    rounded: "compact panel radius"
+    density: "single header, owner rows, light detail rows"
+    typography: "11-13px labels and tabular values"
   bottom-nav:
     backgroundColor: "{colors.base-black}"
     textColor: "{colors.base-white}"
@@ -254,6 +261,7 @@ components:
 - **Money formatting:** overview metrics, read-only stock lists, production read-only prices and operation summaries use compact rubles without trailing `.00`; keep kopecks when they are non-zero. Audit/detail views and money inputs keep exact two-decimal formatting.
 - **Metric summary strip:** three-column lime/green status strips use 18px radius, 8px outer padding, 7-8px cell padding, 11px labels and 16px tabular values. Money values use compact rubles without trailing `.00`. Do not promote these values to display size on mobile.
 - **Director control surface:** the extracted Director home is the reference for future dashboard/control screens. Use white panels, thin ledger borders, restrained radii, dense inner padding, compact section titles, small table labels and tabular values. Do not reintroduce stacked decorative cards, oversized KPI blocks, broad shadows, arbitrary status colors or data duplicated across tabs.
+- **Director stock ledger:** `Остатки Директора` extends the control surface standard for stock screens. Keep a fixed topbar with embedded segmented tabs, one compact summary strip, then white ledger panels. Owner rows such as distributor or courier are stronger than product detail rows. Table labels appear once per panel or section, not under every entity. Use tonal separators and thin lines to separate owners instead of nested cards.
 
 ### Inputs / Fields
 
@@ -283,6 +291,7 @@ Director home defines the product's dashboard language. A dashboard is not a lan
 - **Segmented context:** period controls and internal tabs use the same segmented vocabulary, with active white fill on muted surface when embedded into an analytics panel.
 - **One rhythm per panel:** overview, chart and table content share the same inner padding, title scale, label scale, row scale and divider style.
 - **Rows over cards:** read-only data uses rows, table headers and dividers. Cards are reserved for the outer panel or true summaries.
+- **Owner/detail separation:** when a stock table groups data by owner, the owner row carries name and aggregate values, while product rows below carry detail values without repeating the same labels.
 - **Facts only:** dashboards show measured facts from API/read models. No plans, fake statuses, invented interpretations or decorative "health" labels.
 - **Compact charts:** charts are allowed when they answer a specific question and stay visually subordinate to the accounting data. Prefer local SVG for a single lightweight series; add a chart library only for multi-series interaction, tooltips or deeper exploration.
 - **Responsive compression:** narrow mobile widths compress through local tokens and shorter labels, not by letting text overlap or by scaling fonts fluidly.

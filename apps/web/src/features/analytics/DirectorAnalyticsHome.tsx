@@ -141,114 +141,118 @@ export function DirectorAnalyticsHome({ title = "Аналитика" }: { title?
 
 	return (
 		<section className="screen-stack director-home director-dashboard">
-			<div className="director-dashboard-header">
-				<h1>{title}</h1>
-				{analytics.data ? (
-					<Popover.Root open={periodPickerOpen} onOpenChange={setPeriodPickerOpenState}>
-						<Popover.Trigger asChild>
-							<button
-								aria-controls="director-dashboard-period-picker"
-								aria-expanded={periodPickerOpen}
-								className="director-dashboard-date"
-								type="button"
-							>
-								<CalendarDays aria-hidden size={18} />
-								<span>{formatPeriodRange(analytics.data.filters.dateFrom, analytics.data.filters.dateTo)}</span>
-								<ChevronDown aria-hidden size={16} />
-							</button>
-						</Popover.Trigger>
-						<Popover.Content
-							align="end"
-							aria-label="Выбор периода аналитики"
-							className="director-dashboard-period-picker"
-							collisionPadding={12}
-							id="director-dashboard-period-picker"
-							sideOffset={8}
-						>
-							<DayPicker
-								className="director-dashboard-calendar"
-								defaultMonth={customDateRange?.from ?? new Date()}
-								locale={ru}
-								max={ANALYTICS_MAX_RANGE_DAYS}
-								mode="range"
-								onSelect={selectCalendarRange}
-								selected={customDateRange}
-								weekStartsOn={1}
-							/>
-							<div className="director-dashboard-period-custom">
-								<label>
-									<span>С</span>
-									<input
-										onChange={(event) => {
-											setCustomDateFrom(event.target.value);
-											setCustomPeriodError(null);
-										}}
-										type="date"
-										value={customDateFrom}
-									/>
-								</label>
-								<label>
-									<span>По</span>
-									<input
-										onChange={(event) => {
-											setCustomDateTo(event.target.value);
-											setCustomPeriodError(null);
-										}}
-										type="date"
-										value={customDateTo}
-									/>
-								</label>
-							</div>
-							{customPeriodError ? (
-								<p className="director-dashboard-period-error">{customPeriodError}</p>
-							) : null}
-							<div className="director-dashboard-period-actions">
-								<Popover.Close asChild>
-									<button type="button">
-										Отмена
-									</button>
-								</Popover.Close>
-								<button type="button" onClick={applyCustomPeriod}>
-									Применить
+			<div className="director-dashboard-topbar">
+				<div className="director-dashboard-header">
+					<h1>{title}</h1>
+					{analytics.data ? (
+						<Popover.Root open={periodPickerOpen} onOpenChange={setPeriodPickerOpenState}>
+							<Popover.Trigger asChild>
+								<button
+									aria-controls="director-dashboard-period-picker"
+									aria-expanded={periodPickerOpen}
+									className="director-dashboard-date"
+									type="button"
+								>
+									<CalendarDays aria-hidden size={18} />
+									<span>{formatPeriodRange(analytics.data.filters.dateFrom, analytics.data.filters.dateTo)}</span>
+									<ChevronDown aria-hidden size={16} />
 								</button>
-							</div>
-						</Popover.Content>
-					</Popover.Root>
-				) : null}
-				{analytics.isFetching ? (
-					<span className="director-dashboard-sync" aria-label="Обновление">
-						<RefreshCw aria-hidden size={16} />
-					</span>
-				) : null}
+							</Popover.Trigger>
+							<Popover.Content
+								align="end"
+								aria-label="Выбор периода аналитики"
+								className="director-dashboard-period-picker"
+								collisionPadding={12}
+								id="director-dashboard-period-picker"
+								sideOffset={8}
+							>
+								<DayPicker
+									className="director-dashboard-calendar"
+									defaultMonth={customDateRange?.from ?? new Date()}
+									locale={ru}
+									max={ANALYTICS_MAX_RANGE_DAYS}
+									mode="range"
+									onSelect={selectCalendarRange}
+									selected={customDateRange}
+									weekStartsOn={1}
+								/>
+								<div className="director-dashboard-period-custom">
+									<label>
+										<span>С</span>
+										<input
+											onChange={(event) => {
+												setCustomDateFrom(event.target.value);
+												setCustomPeriodError(null);
+											}}
+											type="date"
+											value={customDateFrom}
+										/>
+									</label>
+									<label>
+										<span>По</span>
+										<input
+											onChange={(event) => {
+												setCustomDateTo(event.target.value);
+												setCustomPeriodError(null);
+											}}
+											type="date"
+											value={customDateTo}
+										/>
+									</label>
+								</div>
+								{customPeriodError ? (
+									<p className="director-dashboard-period-error">{customPeriodError}</p>
+								) : null}
+								<div className="director-dashboard-period-actions">
+									<Popover.Close asChild>
+										<button type="button">
+											Отмена
+										</button>
+									</Popover.Close>
+									<button type="button" onClick={applyCustomPeriod}>
+										Применить
+									</button>
+								</div>
+							</Popover.Content>
+						</Popover.Root>
+					) : null}
+					{analytics.isFetching ? (
+						<span className="director-dashboard-sync" aria-label="Обновление">
+							<RefreshCw aria-hidden size={16} />
+						</span>
+					) : null}
+				</div>
+
+				<SegmentedControl
+					ariaLabel="Период аналитики"
+					className="director-dashboard-period-control"
+					items={PERIOD_OPTIONS}
+					onChange={selectPresetPeriod}
+					role="group"
+					value={periodSelection.mode === "preset" ? periodSelection.periodPreset : null}
+				/>
 			</div>
 
-			<SegmentedControl
-				ariaLabel="Период аналитики"
-				className="director-dashboard-period-control"
-				items={PERIOD_OPTIONS}
-				onChange={selectPresetPeriod}
-				role="group"
-				value={periodSelection.mode === "preset" ? periodSelection.periodPreset : null}
-			/>
+			<div className="director-dashboard-body">
+				{analytics.isError ? (
+					<div className="director-dashboard-message error">
+						<AlertTriangle aria-hidden size={18} />
+						<span>Не удалось загрузить аналитику.</span>
+						<button type="button" onClick={() => void analytics.refetch()}>
+							Повторить
+						</button>
+					</div>
+				) : null}
 
-			{analytics.isError ? (
-				<div className="director-dashboard-message error">
-					<AlertTriangle aria-hidden size={18} />
-					<span>Не удалось загрузить аналитику.</span>
-					<button type="button" onClick={() => void analytics.refetch()}>
-						Повторить
-					</button>
-				</div>
-			) : null}
-
-			{analytics.data ? (
-				<DirectorAnalyticsView
-					data={analytics.data}
-					onViewModeChange={setViewMode}
-					viewMode={viewMode}
-				/>
-			) : null}
-			{analytics.isLoading ? <AnalyticsSkeleton /> : null}
+				{analytics.data ? (
+					<DirectorAnalyticsView
+						data={analytics.data}
+						onViewModeChange={setViewMode}
+						viewMode={viewMode}
+					/>
+				) : null}
+				{analytics.isLoading ? <AnalyticsSkeleton /> : null}
+			</div>
 		</section>
 	);
 }

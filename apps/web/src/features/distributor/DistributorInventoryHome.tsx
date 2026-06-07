@@ -1,7 +1,8 @@
 "use client";
 
+import * as Dialog from "@radix-ui/react-dialog";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { BadgePercent, Banknote, Box } from "lucide-react";
+import { BadgePercent, Banknote, Box, X } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
 	formatMoneyCents,
@@ -21,6 +22,7 @@ import { DistributorStockList } from "./DistributorStockList";
 export function DistributorInventoryHome({
 	canAssignDiscount = false,
 	canWithdrawCash = false,
+	discountActionLabel = "Снизить цену",
 	embedded = false,
 	hideHeading = false,
 	online = true,
@@ -29,6 +31,7 @@ export function DistributorInventoryHome({
 }: {
 	canAssignDiscount?: boolean;
 	canWithdrawCash?: boolean;
+	discountActionLabel?: string;
 	embedded?: boolean;
 	hideHeading?: boolean;
 	online?: boolean;
@@ -62,6 +65,10 @@ export function DistributorInventoryHome({
 	const totalStockValueCents = data?.summary.totalStockValueCents ?? 0;
 	const totalCashCents = cashData?.totalAmountCents ?? 0;
 	const stockItemCount = data?.summary.stockItemCount ?? 0;
+	const distributorCount = data?.distributorSummaries.length ?? 0;
+	const singleDistributorName = distributorCount === 1 ? data?.distributorSummaries[0]?.distributorName : undefined;
+	const stockTableTitle = singleDistributorName ?? (distributorCount > 1 ? formatDistributorCount(distributorCount) : "Продукция");
+	const stockTableMeta = stockItemCount > 0 ? formatPositionCount(stockItemCount) : undefined;
 	const activeCashItems = useMemo(
 		() => (cashData?.items ?? []).filter((item) => item.active),
 		[cashData?.items],
@@ -188,6 +195,17 @@ export function DistributorInventoryHome({
 		setDiscountError("");
 		setLocalError("");
 		setSuccessMessage("");
+	}
+
+	function closeDiscountForm() {
+		if (discountAssignment.isPending) {
+			return;
+		}
+		setDiscountItem(null);
+		setDiscountQuantity("");
+		setDiscountPriceRubles("");
+		setDiscountComment("");
+		setDiscountError("");
 	}
 
 	function handleDiscountSubmit(event: FormEvent<HTMLFormElement>) {
@@ -330,80 +348,111 @@ export function DistributorInventoryHome({
 					</form>
 				) : null}
 
-				{canAssignDiscount && discountItem ? (
-					<form className="form-panel discount-panel" onSubmit={handleDiscountSubmit}>
-						<div className="section-heading compact">
-							<h2>Снизить цену</h2>
-							<span>{discountItem.productName}</span>
-						</div>
-						<div className="discount-source-card">
-							<BadgePercent aria-hidden size={18} />
-							<div>
-								<strong>{formatRubles(discountItem.unitPriceCents)}/шт</strong>
-								<span>{discountItem.distributorName} · доступно {discountItem.quantity} шт</span>
-							</div>
-						</div>
-						<label className="field">
-							<span>Количество</span>
-							<input
-								inputMode="numeric"
-								onChange={(event) => setDiscountQuantity(event.target.value)}
-								value={discountQuantity}
-							/>
-						</label>
-						<label className="field">
-							<span>Новая цена, ₽</span>
-							<input
-								inputMode="decimal"
-								onChange={(event) => setDiscountPriceRubles(event.target.value)}
-								value={discountPriceRubles}
-							/>
-						</label>
-						<label className="field">
-							<span>Комментарий</span>
-							<textarea
-								onChange={(event) => setDiscountComment(event.target.value)}
-								rows={2}
-								value={discountComment}
-							/>
-						</label>
-						<div className="cash-withdrawal-summary">
-							<div>
-								<span>Было</span>
-								<MoneyValue valueCents={discountBeforeValueCents} />
-							</div>
-							<div>
-								<span>Станет</span>
-								<MoneyValue valueCents={discountStockValueCents} />
-							</div>
-							<div>
-								<span>Скидка</span>
-								<MoneyValue valueCents={Math.max(discountBeforeValueCents - discountStockValueCents, 0)} />
-							</div>
-						</div>
-						{discountError ? <p className="form-error">{discountError}</p> : null}
-						{discountAssignment.isError ? <p className="form-error">{discountAssignment.error.message}</p> : null}
-						{discountDisabled ? (
-							<p className="muted">
-								{getDiscountBlockReason(
-									online,
-									discountItem,
-									parsedDiscountQuantity,
-									parsedDiscountPriceCents.ok,
-									discountPriceCents,
-									discountAssignment.isPending,
-								)}
-							</p>
-						) : null}
-						<div className="form-actions">
-							<button className="secondary-button" onClick={() => setDiscountItem(null)} type="button">
-								Отмена
-							</button>
-							<button className="primary-button" disabled={discountDisabled} type="submit">
-								Сохранить цену
-							</button>
-						</div>
-					</form>
+				{canAssignDiscount ? (
+					<Dialog.Root
+						open={Boolean(discountItem)}
+						onOpenChange={(open) => {
+							if (!open) {
+								closeDiscountForm();
+							}
+						}}
+					>
+						<Dialog.Portal>
+							<Dialog.Overlay className="discount-dialog-overlay" />
+							<Dialog.Content className="discount-dialog">
+								{discountItem ? (
+									<form className="discount-dialog-form discount-panel" onSubmit={handleDiscountSubmit}>
+										<div className="discount-dialog-heading">
+											<div>
+												<Dialog.Title>Снизить цену</Dialog.Title>
+												<Dialog.Description>{discountItem.productName}</Dialog.Description>
+											</div>
+											<Dialog.Close
+												aria-label="Закрыть"
+												className="icon-button"
+												disabled={discountAssignment.isPending}
+												type="button"
+											>
+												<X aria-hidden size={18} />
+											</Dialog.Close>
+										</div>
+										<div className="discount-source-card">
+											<BadgePercent aria-hidden size={18} />
+											<div>
+												<strong>{formatRubles(discountItem.unitPriceCents)}/шт</strong>
+												<span>{discountItem.distributorName} · доступно {discountItem.quantity} шт</span>
+											</div>
+										</div>
+										<label className="field">
+											<span>Количество</span>
+											<input
+												inputMode="numeric"
+												onChange={(event) => setDiscountQuantity(event.target.value)}
+												value={discountQuantity}
+											/>
+										</label>
+										<label className="field">
+											<span>Новая цена, ₽</span>
+											<input
+												inputMode="decimal"
+												onChange={(event) => setDiscountPriceRubles(event.target.value)}
+												value={discountPriceRubles}
+											/>
+										</label>
+										<label className="field">
+											<span>Комментарий</span>
+											<textarea
+												onChange={(event) => setDiscountComment(event.target.value)}
+												rows={1}
+												value={discountComment}
+											/>
+										</label>
+										<div className="cash-withdrawal-summary">
+											<div>
+												<span>Было</span>
+												<MoneyValue valueCents={discountBeforeValueCents} />
+											</div>
+											<div>
+												<span>Станет</span>
+												<MoneyValue valueCents={discountStockValueCents} />
+											</div>
+											<div>
+												<span>Скидка</span>
+												<MoneyValue valueCents={Math.max(discountBeforeValueCents - discountStockValueCents, 0)} />
+											</div>
+										</div>
+										{discountError ? <p className="form-error">{discountError}</p> : null}
+										{discountAssignment.isError ? <p className="form-error">{discountAssignment.error.message}</p> : null}
+										{discountDisabled ? (
+											<p className="muted">
+												{getDiscountBlockReason(
+													online,
+													discountItem,
+													parsedDiscountQuantity,
+													parsedDiscountPriceCents.ok,
+													discountPriceCents,
+													discountAssignment.isPending,
+												)}
+											</p>
+										) : null}
+										<div className="form-actions">
+											<button
+												className="secondary-button"
+												disabled={discountAssignment.isPending}
+												onClick={closeDiscountForm}
+												type="button"
+											>
+												Отмена
+											</button>
+											<button className="primary-button" disabled={discountDisabled} type="submit">
+												Сохранить цену
+											</button>
+										</div>
+									</form>
+								) : null}
+							</Dialog.Content>
+						</Dialog.Portal>
+					</Dialog.Root>
 				) : null}
 
 				{successMessage ? <p className="success-inline">{successMessage}</p> : null}
@@ -436,8 +485,17 @@ export function DistributorInventoryHome({
 			) : null}
 
 				<DistributorStockList
+					discountActionLabel={discountActionLabel}
+					groupByDistributor={distributorCount > 1}
 					items={data?.items ?? []}
 					{...(canAssignDiscount ? { onAssignDiscount: openDiscountForm } : {})}
+					showDistributorName={!hideHeading}
+					{...(hideHeading
+						? {
+							tableTitle: stockTableTitle,
+							...(stockTableMeta ? { tableMeta: stockTableMeta } : {}),
+						}
+						: {})}
 				/>
 		</Frame>
 	);
@@ -555,4 +613,28 @@ function MoneyValue({ compact = false, valueCents }: { compact?: boolean; valueC
 
 function formatRubles(priceCents: number): string {
 	return formatCompactRubles(priceCents);
+}
+
+function formatDistributorCount(count: number): string {
+	const mod10 = count % 10;
+	const mod100 = count % 100;
+	if (mod10 === 1 && mod100 !== 11) {
+		return `${count} распределитель`;
+	}
+	if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
+		return `${count} распределителя`;
+	}
+	return `${count} распределителей`;
+}
+
+function formatPositionCount(count: number): string {
+	const mod10 = count % 10;
+	const mod100 = count % 100;
+	if (mod10 === 1 && mod100 !== 11) {
+		return `${count} позиция`;
+	}
+	if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
+		return `${count} позиции`;
+	}
+	return `${count} позиций`;
 }

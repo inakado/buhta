@@ -47,32 +47,37 @@ export function DirectorStockHome({
 
 	return (
 		<section className="screen-stack director-stock-home">
-			<div className="section-heading">
-				<h2>Остатки</h2>
+			<div className="director-stock-topbar">
+				<div className="director-dashboard-header">
+					<h1>Остатки</h1>
+				</div>
+
+				{availableViews.length > 1 ? (
+					<SegmentedControl
+						ariaLabel="Контур остатков"
+						className="director-stock-tabs"
+						items={availableViews}
+						onChange={setSelectedView}
+						value={activeView}
+					/>
+				) : null}
 			</div>
 
-			{availableViews.length > 1 ? (
-				<SegmentedControl
-					ariaLabel="Контур остатков"
-					className="analytics-view-tabs director-stock-tabs"
-					items={availableViews}
-					onChange={setSelectedView}
-					value={activeView}
-				/>
-			) : null}
-
-			{activeView === "distributor" ? (
-				<DistributorInventoryHome
-					canAssignDiscount={actor.permissions.includes("discount.assign")}
-					canWithdrawCash={actor.permissions.includes("cash.withdraw")}
-					embedded
-					hideHeading
-					online={online}
-					showCashBalance={actor.permissions.includes("distributor.cash.read")}
-				/>
-			) : (
-				<CourierBalanceHome embedded hideHeading mode="all" />
-			)}
+			<div className="director-stock-body">
+				{activeView === "distributor" ? (
+					<DistributorInventoryHome
+						canAssignDiscount={actor.permissions.includes("discount.assign")}
+						canWithdrawCash={actor.permissions.includes("cash.withdraw")}
+						discountActionLabel="Снизить"
+						embedded
+						hideHeading
+						online={online}
+						showCashBalance={actor.permissions.includes("distributor.cash.read")}
+					/>
+				) : (
+					<CourierBalanceHome embedded hideHeading mode="all" variant="director-stock" />
+				)}
+			</div>
 		</section>
 	);
 }
