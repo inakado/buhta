@@ -185,6 +185,16 @@ export function DistributorInventoryHome({
 		withdrawal.mutate();
 	}
 
+	function closeWithdrawalForm() {
+		if (withdrawal.isPending) {
+			return;
+		}
+		setWithdrawalOpen(false);
+		setAmountRubles("");
+		setComment("");
+		setLocalError("");
+	}
+
 	function openDiscountForm(item: DistributorInventoryItem) {
 		const suggestedPriceCents = Math.max(item.unitPriceCents - 100, 1);
 
@@ -276,7 +286,7 @@ export function DistributorInventoryHome({
 							if (withdrawalActionDisabled) {
 								return;
 							}
-							setWithdrawalOpen((current) => !current);
+							setWithdrawalOpen(true);
 							setLocalError("");
 							setSuccessMessage("");
 						}}
@@ -289,63 +299,107 @@ export function DistributorInventoryHome({
 				</div>
 			) : null}
 
-				{showWithdrawalAction && withdrawalOpen ? (
-					<form className="form-panel cash-withdrawal-panel" onSubmit={handleWithdrawSubmit}>
-					<div className="section-heading compact">
-						<h2>Списать наличные</h2>
-					</div>
-					<label className="field">
-						<span>Распределитель</span>
-						<select
-							disabled={activeCashItems.length <= 1}
-							onChange={(event) => setSelectedDistributorId(event.target.value)}
-							value={selectedDistributorId}
-						>
-							{activeCashItems.length !== 1 ? <option value="">Выберите распределитель</option> : null}
-							{activeCashItems.map((item) => (
-								<option key={item.distributorId} value={item.distributorId}>
-									{item.distributorName}
-								</option>
-							))}
-						</select>
-					</label>
-					<label className="field">
-						<span>Сумма, ₽</span>
-						<input
-							inputMode="decimal"
-							onChange={(event) => setAmountRubles(event.target.value)}
-							value={amountRubles}
-						/>
-					</label>
-					<label className="field">
-						<span>Комментарий</span>
-						<textarea
-							onChange={(event) => setComment(event.target.value)}
-							rows={2}
-							value={comment}
-						/>
-					</label>
-					<div className="cash-withdrawal-summary">
-						<div>
-							<span>Доступно</span>
-							<MoneyValue valueCents={availableCashCents} />
-						</div>
-						<div>
-							<span>Списать</span>
-							<MoneyValue valueCents={amountCents} />
-						</div>
-						<div>
-							<span>Остаток</span>
-							<MoneyValue valueCents={remainingCashCents} />
-						</div>
-					</div>
-					{localError ? <p className="form-error">{localError}</p> : null}
-					{withdrawal.isError ? <p className="form-error">{withdrawal.error.message}</p> : null}
-					{withdrawDisabled ? <p className="muted">{getWithdrawalBlockReason(online, selectedCashItem !== null, parsedAmountCents.ok, amountCents, availableCashCents, withdrawal.isPending)}</p> : null}
-					<button className="primary-button" disabled={withdrawDisabled} type="submit">
-						Подтвердить списание
-					</button>
-					</form>
+				{showWithdrawalAction ? (
+					<Dialog.Root
+						open={withdrawalOpen}
+						onOpenChange={(open) => {
+							if (!open) {
+								closeWithdrawalForm();
+								return;
+							}
+							setWithdrawalOpen(true);
+						}}
+					>
+						<Dialog.Portal>
+							<Dialog.Overlay className="operation-dialog-overlay" />
+							<Dialog.Content className="operation-dialog">
+								<form className="operation-dialog-form cash-withdrawal-panel" onSubmit={handleWithdrawSubmit}>
+									<div className="operation-dialog-heading">
+										<div>
+											<Dialog.Title>Списать наличные</Dialog.Title>
+											<Dialog.Description>Списание из текущего остатка</Dialog.Description>
+										</div>
+										<Dialog.Close
+											aria-label="Закрыть"
+											className="icon-button"
+											disabled={withdrawal.isPending}
+											type="button"
+										>
+											<X aria-hidden size={18} />
+										</Dialog.Close>
+									</div>
+									<div className="operation-source-card">
+										<Banknote aria-hidden size={18} />
+										<div>
+											<strong>{selectedCashItem?.distributorName ?? "Распределитель"}</strong>
+											<span>Наличные {formatRubles(availableCashCents)}</span>
+										</div>
+									</div>
+									<label className="field">
+										<span>Распределитель</span>
+										<select
+											disabled={activeCashItems.length <= 1}
+											onChange={(event) => setSelectedDistributorId(event.target.value)}
+											value={selectedDistributorId}
+										>
+											{activeCashItems.length !== 1 ? <option value="">Выберите распределитель</option> : null}
+											{activeCashItems.map((item) => (
+												<option key={item.distributorId} value={item.distributorId}>
+													{item.distributorName}
+												</option>
+											))}
+										</select>
+									</label>
+									<label className="field">
+										<span>Сумма, ₽</span>
+										<input
+											inputMode="decimal"
+											onChange={(event) => setAmountRubles(event.target.value)}
+											value={amountRubles}
+										/>
+									</label>
+									<label className="field">
+										<span>Комментарий</span>
+										<textarea
+											onChange={(event) => setComment(event.target.value)}
+											rows={1}
+											value={comment}
+										/>
+									</label>
+									<div className="cash-withdrawal-summary">
+										<div>
+											<span>Доступно</span>
+											<MoneyValue valueCents={availableCashCents} />
+										</div>
+										<div>
+											<span>Списать</span>
+											<MoneyValue valueCents={amountCents} />
+										</div>
+										<div>
+											<span>Остаток</span>
+											<MoneyValue valueCents={remainingCashCents} />
+										</div>
+									</div>
+									{localError ? <p className="form-error">{localError}</p> : null}
+									{withdrawal.isError ? <p className="form-error">{withdrawal.error.message}</p> : null}
+									{withdrawDisabled ? <p className="muted">{getWithdrawalBlockReason(online, selectedCashItem !== null, parsedAmountCents.ok, amountCents, availableCashCents, withdrawal.isPending)}</p> : null}
+									<div className="form-actions">
+										<button
+											className="secondary-button"
+											disabled={withdrawal.isPending}
+											onClick={closeWithdrawalForm}
+											type="button"
+										>
+											Отмена
+										</button>
+										<button className="primary-button" disabled={withdrawDisabled} type="submit">
+											Подтвердить списание
+										</button>
+									</div>
+								</form>
+							</Dialog.Content>
+						</Dialog.Portal>
+					</Dialog.Root>
 				) : null}
 
 				{canAssignDiscount ? (
@@ -358,11 +412,11 @@ export function DistributorInventoryHome({
 						}}
 					>
 						<Dialog.Portal>
-							<Dialog.Overlay className="discount-dialog-overlay" />
-							<Dialog.Content className="discount-dialog">
+							<Dialog.Overlay className="operation-dialog-overlay" />
+							<Dialog.Content className="operation-dialog">
 								{discountItem ? (
-									<form className="discount-dialog-form discount-panel" onSubmit={handleDiscountSubmit}>
-										<div className="discount-dialog-heading">
+									<form className="operation-dialog-form discount-panel" onSubmit={handleDiscountSubmit}>
+										<div className="operation-dialog-heading">
 											<div>
 												<Dialog.Title>Снизить цену</Dialog.Title>
 												<Dialog.Description>{discountItem.productName}</Dialog.Description>
@@ -376,7 +430,7 @@ export function DistributorInventoryHome({
 												<X aria-hidden size={18} />
 											</Dialog.Close>
 										</div>
-										<div className="discount-source-card">
+										<div className="operation-source-card">
 											<BadgePercent aria-hidden size={18} />
 											<div>
 												<strong>{formatRubles(discountItem.unitPriceCents)}/шт</strong>

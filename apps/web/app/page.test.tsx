@@ -2545,7 +2545,7 @@ describe("HomePage", () => {
 
 			fireEvent.click(screen.getByRole("button", { name: "Снизить цену" }));
 			expect(await screen.findByRole("heading", { name: "Снизить цену" })).toBeTruthy();
-			const discountOverlay = document.querySelector(".discount-dialog-overlay");
+			const discountOverlay = document.querySelector(".operation-dialog-overlay");
 			expect(discountOverlay).toBeTruthy();
 			fireEvent.pointerDown(discountOverlay as Element);
 			await waitFor(() => {
