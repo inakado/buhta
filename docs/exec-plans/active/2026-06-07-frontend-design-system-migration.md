@@ -56,8 +56,8 @@
 | Done | Остатки | `stock` | `DirectorStockHome`, `DistributorInventoryHome`, `CourierBalanceHome` | Второй эталон директорского control contour. Внутренние табы, распределитель, курьеры, списание наличных и снижение цены приведены к compact table/panel rhythm без повторов и декоративных карточек. |
 | Done | История | `operation-history` | `OperationHistoryHome` | Фильтры вынесены в модалку, верхняя область закреплена, список и details dialog приведены к директорскому compact list/dialog rhythm; технический шум скрыт через presenter, date inputs оставлены платформенными. |
 | 2 | Еще | `more` | `DirectorMoreHome` | Меню `Каталог`, `Клиенты`, `Настройки`, account/logout panel. Сейчас есть inline styles, их надо убрать в системные classes. |
-| 3 | Каталог | `catalog` из more | `CatalogHome` | Директор/admin shared management surface. Нужна очистка форм, списков, actions и archive/confirm rows. |
-| 3 | Клиенты | `clients` из more | `ClientsHome` | Read/manage variants зависят от прав. Нужен единый dense list/search/form pattern. |
+| In progress | Каталог | `catalog` из more | `CatalogHome` | Директор/admin shared management surface. Create/edit/archive переведены в modal rhythm; экран остается активным до owner visual pass и следующих правок. |
+| Done | Клиенты | `clients` из more | `ClientsHome` | Shared client surface приведен к compact heading/search/list rhythm: счетчик в heading row справа, поиск без отдельной action row, строки с ledger-разделителями и стабильными copy/edit actions. |
 | 4 | Настройки | `settings` из more | `SettingsScreen` | Не должен спорить с директорским `Еще` и общим profile standard. |
 
 ### 5.3 Администратор
@@ -132,7 +132,7 @@
 - `DistributorHomeOverview`: distributor worker home and commercial manager home, different summary layout, optional cash, optional production notify, optional stock list.
 - `SalesHistoryHome` and `RecentSalesPanel`: shared sales history and cancellation flow for distributor/courier/commercial contexts.
 - `OperationHistoryHome`: director/admin history, filters, pagination, modal details.
-- `CatalogHome`, `ClientsHome`, `AdminUsersHome`: management surfaces with lists, forms, inline actions and confirmations.
+- `CatalogHome`, `ClientsHome`, `AdminUsersHome`: management surfaces with lists, forms, actions, dialogs and confirmations.
 - Operational forms: distributor sale, courier sale, courier load, courier unload, production intake, production release, production transfer.
 - Search and segmented primitives: `ClientCombobox`, `OperationProductSelect`, `SearchCombobox`, `PaymentMethodSegmentedControl`, `SegmentedControl`.
 
@@ -252,7 +252,10 @@
 
 - Убрать inline styles из `DirectorMoreHome`.
 - Сделать rows/account/logout частью будущего settings/menu standard.
-- Затем мигрировать `CatalogHome` и `ClientsHome` в директорском контексте как shared management surfaces.
+- 2026-06-08 Clients polish pass: `ClientsHome` мигрирован как shared management surface для director read-only и manage-ролей.
+- 2026-06-08 Catalog interaction pass: `CatalogHome` получил modal create/edit/archive flow на shared `operation-dialog` vocabulary; экран не закрыт до owner visual review и следующих точечных правок.
+- 2026-06-08 Catalog polish pass: tabs приведены к текстовому director segmented rhythm, toolbar/list/dialog buttons нормализованы под `management-surface` control tokens; экран остается активным.
+- Оставшиеся задачи stage: `DirectorMoreHome` и продолжение polish `CatalogHome`.
 
 ### Stage 4. Shared Stock Surfaces Across Roles
 

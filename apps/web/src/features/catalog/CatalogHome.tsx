@@ -1,8 +1,9 @@
 "use client";
 
+import * as Dialog from "@radix-ui/react-dialog";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FormEvent, useMemo, useState } from "react";
-import { Archive, Check, ClipboardList, Edit3, Package, Plus, Scale, Truck, type LucideIcon } from "lucide-react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
+import { Archive, Check, Edit3, Plus, X } from "lucide-react";
 import type {
 	Distributor,
 	PackagingType,
@@ -43,16 +44,22 @@ type SimpleCatalogUpdate = {
 	unit?: string;
 	active?: boolean;
 };
+type ProductTemplateFormInput = {
+	name: string;
+	rawMaterialTypeId: string;
+	packagingTypeId: string;
+	priceCents: number;
+};
 type CatalogNoticeState = {
 	message: string;
 	restoreItem?: { id: string; name: string };
 };
 
-const tabs: Array<{ value: CatalogTab; label: string; icon: LucideIcon }> = [
-	{ value: "raw", label: "Сырье", icon: Scale },
-	{ value: "packaging", label: "Тара", icon: Package },
-	{ value: "distributors", label: "Распределители", icon: Truck },
-	{ value: "products", label: "Шаблоны", icon: ClipboardList },
+const tabs: Array<{ value: CatalogTab; label: string }> = [
+	{ value: "raw", label: "Сырье" },
+	{ value: "packaging", label: "Тара" },
+	{ value: "distributors", label: "Распределители" },
+	{ value: "products", label: "Шаблоны" },
 ];
 
 export function CatalogHome({ online }: { online: boolean }) {
@@ -160,9 +167,9 @@ function SimpleCatalogSection({
 	updateItem: (id: string, input: SimpleCatalogUpdate) => Promise<unknown>;
 }) {
 	const queryClient = useQueryClient();
-	const [name, setName] = useState("");
-	const [unit, setUnit] = useState("");
 	const [createOpen, setCreateOpen] = useState(false);
+	const [editingItem, setEditingItem] = useState<SimpleCatalogItem | null>(null);
+	const [archiveTarget, setArchiveTarget] = useState<SimpleCatalogItem | null>(null);
 	const [showArchived, setShowArchived] = useState(false);
 	const [notice, setNotice] = useState<CatalogNoticeState | null>(null);
 	const activeItems = useMemo(() => items.filter((item) => item.active), [items]);
@@ -171,8 +178,6 @@ function SimpleCatalogSection({
 	const createMutation = useMutation({
 		mutationFn: createItem,
 		onSuccess: async () => {
-			setName("");
-			setUnit("");
 			setCreateOpen(false);
 			setNotice({ message: "Запись добавлена." });
 			await queryClient.invalidateQueries({ queryKey });
@@ -181,6 +186,7 @@ function SimpleCatalogSection({
 	const updateMutation = useMutation({
 		mutationFn: ({ id, input }: { id: string; input: SimpleCatalogUpdate }) => updateItem(id, input),
 		onSuccess: async (_result, variables) => {
+			setEditingItem(null);
 			setNotice({ message: variables.input.active ? "Запись восстановлена." : "Изменения сохранены." });
 			await queryClient.invalidateQueries({ queryKey });
 		},
@@ -188,6 +194,7 @@ function SimpleCatalogSection({
 	const archiveMutation = useMutation({
 		mutationFn: (item: SimpleCatalogItem) => archiveItem(item.id),
 		onSuccess: async (_result, item) => {
+			setArchiveTarget(null);
 			setNotice({
 				message: `${item.name} в архиве.`,
 				restoreItem: { id: item.id, name: item.name },
@@ -203,15 +210,6 @@ function SimpleCatalogSection({
 			}
 		: undefined;
 
-	function handleCreate(event: FormEvent<HTMLFormElement>) {
-		event.preventDefault();
-		setNotice(null);
-		createMutation.mutate({
-			name,
-			...(unitLabel ? { unit } : {}),
-		});
-	}
-
 	return (
 		<div className="catalog-section management-surface">
 			<CatalogListToolbar
@@ -223,40 +221,69 @@ function SimpleCatalogSection({
 				visibleCount={visibleItems.length}
 			/>
 
-			{createOpen ? (
-				<form className="form-panel" onSubmit={handleCreate}>
-					<label className="field">
-						<span>Название</span>
-						<input onChange={(event) => setName(event.target.value)} required type="text" value={name} />
-					</label>
-					{unitLabel ? (
-						<label className="field">
-							<span>{unitLabel}</span>
-							<input onChange={(event) => setUnit(event.target.value)} required type="text" value={unit} />
-						</label>
-					) : null}
-					{createMutation.isError ? <p className="form-error">{createMutation.error.message}</p> : null}
-					<div className="entity-actions">
-						<button
-							className="secondary-button"
-							onClick={() => {
-								setName("");
-								setUnit("");
-								createMutation.reset();
-								setCreateOpen(false);
-								setNotice(null);
-							}}
-							type="button"
-						>
-							Отмена
-						</button>
-						<button className="primary-button" disabled={!online || createMutation.isPending} type="submit">
-							<Plus aria-hidden size={18} />
-							Добавить
-						</button>
-					</div>
-				</form>
-			) : null}
+			<SimpleCatalogFormDialog
+				error={createMutation.isError ? createMutation.error.message : null}
+				item={null}
+				onOpenChange={(open) => {
+					setCreateOpen(open);
+					if (!open) {
+						createMutation.reset();
+					}
+				}}
+				onSubmit={(input) => {
+					setNotice(null);
+					createMutation.mutate(input);
+				}}
+				online={online}
+				open={createOpen}
+				pending={createMutation.isPending}
+				submitLabel="Добавить"
+				title="Новая запись"
+				{...(unitLabel ? { unitLabel } : {})}
+			/>
+
+			<SimpleCatalogFormDialog
+				error={updateMutation.isError && editingItem ? updateMutation.error.message : null}
+				item={editingItem}
+				onOpenChange={(open) => {
+					if (!open) {
+						setEditingItem(null);
+						updateMutation.reset();
+					}
+				}}
+				onSubmit={(input) => {
+					if (!editingItem) {
+						return;
+					}
+					setNotice(null);
+					updateMutation.mutate({ id: editingItem.id, input });
+				}}
+				online={online}
+				open={Boolean(editingItem)}
+				pending={updateMutation.isPending}
+				submitLabel="Сохранить"
+				title="Редактировать запись"
+				{...(unitLabel ? { unitLabel } : {})}
+			/>
+
+			<CatalogArchiveDialog
+				error={archiveMutation.isError ? archiveMutation.error.message : null}
+				itemName={archiveTarget?.name ?? ""}
+				onConfirm={() => {
+					if (archiveTarget) {
+						setNotice(null);
+						archiveMutation.mutate(archiveTarget);
+					}
+				}}
+				onOpenChange={(open) => {
+					if (!open) {
+						setArchiveTarget(null);
+						archiveMutation.reset();
+					}
+				}}
+				open={Boolean(archiveTarget)}
+				pending={archiveMutation.isPending}
+			/>
 
 			<CatalogListState
 				count={visibleItems.length}
@@ -282,21 +309,16 @@ function SimpleCatalogSection({
 						pending={updateMutation.isPending || archiveMutation.isPending}
 						{...(unitLabel ? { unitLabel } : {})}
 						archiveItem={() => {
-							setNotice(null);
-							archiveMutation.mutate(item);
+							setArchiveTarget(item);
 						}}
+						editItem={() => setEditingItem(item)}
 						restoreItem={() => {
 							setNotice(null);
 							updateMutation.mutate({ id: item.id, input: { active: true } });
 						}}
-						updateItem={(input) => {
-							setNotice(null);
-							updateMutation.mutate({ id: item.id, input });
-						}}
 					/>
 				))}
-				{updateMutation.isError ? <p className="form-error">{updateMutation.error.message}</p> : null}
-				{archiveMutation.isError ? <p className="form-error">{archiveMutation.error.message}</p> : null}
+				{updateMutation.isError && !editingItem ? <p className="form-error">{updateMutation.error.message}</p> : null}
 			</div>
 		</div>
 	);
@@ -308,57 +330,18 @@ function SimpleCatalogListItem({
 	pending,
 	unitLabel,
 	archiveItem,
+	editItem,
 	restoreItem,
-	updateItem,
 }: {
 	item: SimpleCatalogItem;
 	online: boolean;
 	pending: boolean;
 	unitLabel?: string;
 	archiveItem: () => void;
+	editItem: () => void;
 	restoreItem: () => void;
-	updateItem: (input: SimpleCatalogUpdate) => void;
 }) {
-	const [editing, setEditing] = useState(false);
-	const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false);
-	const [name, setName] = useState(item.name);
 	const unitValue = "unit" in item ? item.unit : "";
-	const [unit, setUnit] = useState(unitValue);
-
-	function handleSave() {
-		updateItem({
-			name,
-			...(unitLabel ? { unit } : {}),
-		});
-		setArchiveConfirmOpen(false);
-		setEditing(false);
-	}
-
-	if (editing) {
-		return (
-			<article className="form-panel edit-card">
-				<label className="field">
-					<span>Название</span>
-					<input onChange={(event) => setName(event.target.value)} type="text" value={name} />
-				</label>
-				{unitLabel ? (
-					<label className="field">
-						<span>{unitLabel}</span>
-						<input onChange={(event) => setUnit(event.target.value)} type="text" value={unit} />
-					</label>
-				) : null}
-				<div className="entity-actions">
-					<button className="secondary-button" onClick={() => setEditing(false)} type="button">
-						Отмена
-					</button>
-					<button className="secondary-button" disabled={!online || pending} onClick={handleSave} type="button">
-						<Check aria-hidden size={16} />
-						Сохранить
-					</button>
-				</div>
-			</article>
-		);
-	}
 
 	return (
 		<article className="catalog-list-row">
@@ -367,52 +350,25 @@ function SimpleCatalogListItem({
 				{unitLabel ? <p>{unitValue}</p> : null}
 			</div>
 			<div className="entity-actions">
-				{item.active && archiveConfirmOpen ? null : (
-					<ArchiveButton
-						active={item.active}
-						disabled={!online || pending}
-						onArchive={() => setArchiveConfirmOpen(true)}
-						onRestore={restoreItem}
-					/>
-				)}
-				{archiveConfirmOpen || !item.active ? null : (
+				<ArchiveButton
+					active={item.active}
+					disabled={!online || pending}
+					onArchive={archiveItem}
+					onRestore={restoreItem}
+				/>
+				{item.active ? (
 					<button
 						aria-label={`Редактировать ${item.name}`}
 						className="secondary-icon-button"
 						disabled={!online || pending}
-						onClick={() => {
-							setArchiveConfirmOpen(false);
-							setEditing(true);
-						}}
+						onClick={editItem}
 						title="Редактировать"
 						type="button"
 					>
 						<Edit3 aria-hidden size={16} />
 					</button>
-				)}
+				) : null}
 			</div>
-			{item.active && archiveConfirmOpen ? (
-				<div className="catalog-row-confirm" role="group" aria-label={`Подтвердить архив ${item.name}`}>
-					<span>Убрать в архив?</span>
-					<div>
-						<button className="secondary-button compact-button" onClick={() => setArchiveConfirmOpen(false)} type="button">
-							Нет
-						</button>
-						<button
-							className="status-button archive"
-							disabled={!online || pending}
-							onClick={() => {
-								archiveItem();
-								setArchiveConfirmOpen(false);
-							}}
-							type="button"
-						>
-							<Archive aria-hidden size={14} />
-							В архив
-						</button>
-					</div>
-				</div>
-			) : null}
 		</article>
 	);
 }
@@ -441,12 +397,9 @@ function ProductTemplatesSection({
 		() => packagingTypes.filter((item) => item.active),
 		[packagingTypes],
 	);
-	const [name, setName] = useState("");
-	const [rawMaterialTypeId, setRawMaterialTypeId] = useState("");
-	const [packagingTypeId, setPackagingTypeId] = useState("");
-	const [priceRubles, setPriceRubles] = useState("");
-	const [priceError, setPriceError] = useState("");
 	const [createOpen, setCreateOpen] = useState(false);
+	const [editingItem, setEditingItem] = useState<ProductTemplate | null>(null);
+	const [archiveTarget, setArchiveTarget] = useState<ProductTemplate | null>(null);
 	const [showArchived, setShowArchived] = useState(false);
 	const [notice, setNotice] = useState<CatalogNoticeState | null>(null);
 	const activeItems = useMemo(() => items.filter((item) => item.active), [items]);
@@ -455,11 +408,6 @@ function ProductTemplatesSection({
 	const createMutation = useMutation({
 		mutationFn: createProductTemplate,
 		onSuccess: async () => {
-			setName("");
-			setRawMaterialTypeId("");
-			setPackagingTypeId("");
-			setPriceRubles("");
-			setPriceError("");
 			setCreateOpen(false);
 			setNotice({ message: "Шаблон добавлен." });
 			await queryClient.invalidateQueries({ queryKey: ["catalog", "product-templates"] });
@@ -468,6 +416,7 @@ function ProductTemplatesSection({
 	const updateMutation = useMutation({
 		mutationFn: ({ id, input }: { id: string; input: UpdateProductTemplateRequest }) => updateProductTemplate(id, input),
 		onSuccess: async (_result, variables) => {
+			setEditingItem(null);
 			setNotice({ message: variables.input.active ? "Шаблон восстановлен." : "Изменения сохранены." });
 			await queryClient.invalidateQueries({ queryKey: ["catalog", "product-templates"] });
 		},
@@ -475,6 +424,7 @@ function ProductTemplatesSection({
 	const archiveMutation = useMutation({
 		mutationFn: (item: ProductTemplate) => archiveItem(item.id),
 		onSuccess: async (_result, item) => {
+			setArchiveTarget(null);
 			setNotice({
 				message: `${item.name} в архиве.`,
 				restoreItem: { id: item.id, name: item.name },
@@ -491,23 +441,6 @@ function ProductTemplatesSection({
 		: undefined;
 	const dependenciesReady = activeRawMaterialTypes.length > 0 && activePackagingTypes.length > 0;
 
-	function handleCreate(event: FormEvent<HTMLFormElement>) {
-		event.preventDefault();
-		const parsedPrice = parsePriceRubles(priceRubles);
-		if (!parsedPrice.ok) {
-			setPriceError(parsedPrice.message);
-			return;
-		}
-		setPriceError("");
-		setNotice(null);
-		createMutation.mutate({
-			name,
-			rawMaterialTypeId,
-			packagingTypeId,
-			priceCents: parsedPrice.value,
-		});
-	}
-
 	return (
 		<div className="catalog-section management-surface">
 			<CatalogListToolbar
@@ -519,96 +452,73 @@ function ProductTemplatesSection({
 				visibleCount={visibleItems.length}
 			/>
 
-			{createOpen ? (
-				<form className="form-panel catalog-product-form" onSubmit={handleCreate}>
-					<div className="catalog-form-group">
-						<label className="field">
-							<span>Название шаблона</span>
-							<input onChange={(event) => setName(event.target.value)} required type="text" value={name} />
-						</label>
-					</div>
+			<ProductTemplateFormDialog
+				dependenciesReady={dependenciesReady}
+				error={createMutation.isError ? createMutation.error.message : null}
+				item={null}
+				onOpenChange={(open) => {
+					setCreateOpen(open);
+					if (!open) {
+						createMutation.reset();
+					}
+				}}
+				onSubmit={(input) => {
+					setNotice(null);
+					createMutation.mutate(input);
+				}}
+				online={online}
+				open={createOpen}
+				packagingTypes={activePackagingTypes}
+				pending={createMutation.isPending}
+				rawMaterialTypes={activeRawMaterialTypes}
+				submitLabel="Добавить"
+				title="Новый шаблон"
+			/>
 
-					<div className="catalog-form-group">
-						<div className="catalog-form-grid">
-							<label className="field">
-								<span>Сырье</span>
-								<select
-									onChange={(event) => setRawMaterialTypeId(event.target.value)}
-									required
-									value={rawMaterialTypeId}
-								>
-									<option value="">Выберите сырье</option>
-									{activeRawMaterialTypes.map((item) => (
-										<option key={item.id} value={item.id}>
-											{item.name}
-										</option>
-									))}
-								</select>
-							</label>
-							<label className="field">
-								<span>Тара</span>
-								<select
-									onChange={(event) => setPackagingTypeId(event.target.value)}
-									required
-									value={packagingTypeId}
-								>
-									<option value="">Выберите тару</option>
-									{activePackagingTypes.map((item) => (
-										<option key={item.id} value={item.id}>
-											{item.name}
-										</option>
-									))}
-								</select>
-							</label>
-						</div>
-					</div>
+			<ProductTemplateFormDialog
+				dependenciesReady={dependenciesReady}
+				error={updateMutation.isError && editingItem ? updateMutation.error.message : null}
+				item={editingItem}
+				onOpenChange={(open) => {
+					if (!open) {
+						setEditingItem(null);
+						updateMutation.reset();
+					}
+				}}
+				onSubmit={(input) => {
+					if (!editingItem) {
+						return;
+					}
+					setNotice(null);
+					updateMutation.mutate({ id: editingItem.id, input });
+				}}
+				online={online}
+				open={Boolean(editingItem)}
+				packagingTypes={activePackagingTypes}
+				pending={updateMutation.isPending}
+				rawMaterialTypes={activeRawMaterialTypes}
+				submitLabel="Сохранить"
+				title="Редактировать шаблон"
+			/>
 
-					<div className="catalog-form-group">
-						<label className="field">
-							<span>Цена за единицу, ₽</span>
-							<input
-								inputMode="decimal"
-								onChange={(event) => setPriceRubles(event.target.value)}
-								placeholder="1250"
-								required
-								type="text"
-								value={priceRubles}
-							/>
-						</label>
-					</div>
-					{dependenciesReady ? null : (
-						<p className="muted">Сначала нужны активные виды сырья и тары.</p>
-					)}
-					{priceError ? <p className="form-error">{priceError}</p> : null}
-					{createMutation.isError ? <p className="form-error">{createMutation.error.message}</p> : null}
-					<div className="entity-actions">
-						<button
-							className="secondary-button"
-							onClick={() => {
-								setName("");
-								setRawMaterialTypeId("");
-								setPackagingTypeId("");
-								setPriceRubles("");
-								setPriceError("");
-								createMutation.reset();
-								setCreateOpen(false);
-								setNotice(null);
-							}}
-							type="button"
-						>
-							Отмена
-						</button>
-						<button
-							className="primary-button"
-							disabled={!online || !dependenciesReady || createMutation.isPending}
-							type="submit"
-						>
-							<Plus aria-hidden size={18} />
-							Добавить
-						</button>
-					</div>
-				</form>
-			) : null}
+			<CatalogArchiveDialog
+				error={archiveMutation.isError ? archiveMutation.error.message : null}
+				itemName={archiveTarget?.name ?? ""}
+				onConfirm={() => {
+					if (archiveTarget) {
+						setNotice(null);
+						archiveMutation.mutate(archiveTarget);
+					}
+				}}
+				onOpenChange={(open) => {
+					if (!open) {
+						setArchiveTarget(null);
+						archiveMutation.reset();
+					}
+				}}
+				open={Boolean(archiveTarget)}
+				pending={archiveMutation.isPending}
+			/>
 
 			<CatalogListState
 				count={visibleItems.length}
@@ -631,25 +541,18 @@ function ProductTemplatesSection({
 						item={item}
 						key={item.id}
 						online={online}
-						packagingTypes={activePackagingTypes}
 						pending={updateMutation.isPending || archiveMutation.isPending}
-						rawMaterialTypes={activeRawMaterialTypes}
 						archiveItem={() => {
-							setNotice(null);
-							archiveMutation.mutate(item);
+							setArchiveTarget(item);
 						}}
+						editItem={() => setEditingItem(item)}
 						restoreItem={() => {
 							setNotice(null);
 							updateMutation.mutate({ id: item.id, input: { active: true } });
 						}}
-						updateItem={(input) => {
-							setNotice(null);
-							updateMutation.mutate({ id: item.id, input });
-						}}
 					/>
 				))}
-				{updateMutation.isError ? <p className="form-error">{updateMutation.error.message}</p> : null}
-				{archiveMutation.isError ? <p className="form-error">{archiveMutation.error.message}</p> : null}
+				{updateMutation.isError && !editingItem ? <p className="form-error">{updateMutation.error.message}</p> : null}
 			</div>
 		</div>
 	);
@@ -658,107 +561,18 @@ function ProductTemplatesSection({
 function ProductTemplateListItem({
 	item,
 	online,
-	packagingTypes,
 	pending,
-	rawMaterialTypes,
 	archiveItem,
+	editItem,
 	restoreItem,
-	updateItem,
 }: {
 	item: ProductTemplate;
 	online: boolean;
-	packagingTypes: PackagingType[];
 	pending: boolean;
-	rawMaterialTypes: RawMaterialType[];
 	archiveItem: () => void;
+	editItem: () => void;
 	restoreItem: () => void;
-	updateItem: (input: UpdateProductTemplateRequest) => void;
 }) {
-	const [editing, setEditing] = useState(false);
-	const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false);
-	const [name, setName] = useState(item.name);
-	const [rawMaterialTypeId, setRawMaterialTypeId] = useState(item.rawMaterialTypeId);
-	const [packagingTypeId, setPackagingTypeId] = useState(item.packagingTypeId);
-	const [priceRubles, setPriceRubles] = useState(formatPriceRubles(item.priceCents));
-	const [priceError, setPriceError] = useState("");
-
-	function handleSave() {
-		const parsedPrice = parsePriceRubles(priceRubles);
-		if (!parsedPrice.ok) {
-			setPriceError(parsedPrice.message);
-			return;
-		}
-		setPriceError("");
-		updateItem({
-			name,
-			rawMaterialTypeId,
-			packagingTypeId,
-			priceCents: parsedPrice.value,
-		});
-		setArchiveConfirmOpen(false);
-		setEditing(false);
-	}
-
-	if (editing) {
-		return (
-			<article className="form-panel edit-card catalog-product-form">
-				<div className="catalog-form-group">
-					<label className="field">
-						<span>Название шаблона</span>
-						<input onChange={(event) => setName(event.target.value)} type="text" value={name} />
-					</label>
-				</div>
-
-				<div className="catalog-form-group">
-					<div className="catalog-form-grid">
-						<label className="field">
-							<span>Сырье</span>
-							<select onChange={(event) => setRawMaterialTypeId(event.target.value)} value={rawMaterialTypeId}>
-								{rawMaterialTypes.map((rawMaterialType) => (
-									<option key={rawMaterialType.id} value={rawMaterialType.id}>
-										{rawMaterialType.name}
-									</option>
-								))}
-							</select>
-						</label>
-						<label className="field">
-							<span>Тара</span>
-							<select onChange={(event) => setPackagingTypeId(event.target.value)} value={packagingTypeId}>
-								{packagingTypes.map((packagingType) => (
-									<option key={packagingType.id} value={packagingType.id}>
-										{packagingType.name}
-									</option>
-								))}
-							</select>
-						</label>
-					</div>
-				</div>
-
-				<div className="catalog-form-group">
-					<label className="field">
-						<span>Цена за единицу, ₽</span>
-						<input
-							inputMode="decimal"
-							onChange={(event) => setPriceRubles(event.target.value)}
-							type="text"
-							value={priceRubles}
-						/>
-					</label>
-				</div>
-				{priceError ? <p className="form-error">{priceError}</p> : null}
-				<div className="entity-actions">
-					<button className="secondary-button" onClick={() => setEditing(false)} type="button">
-						Отмена
-					</button>
-					<button className="secondary-button" disabled={!online || pending} onClick={handleSave} type="button">
-						<Check aria-hidden size={16} />
-						Сохранить
-					</button>
-				</div>
-			</article>
-		);
-	}
-
 	return (
 		<article className="catalog-list-row">
 			<div className="catalog-item-main">
@@ -769,53 +583,296 @@ function ProductTemplateListItem({
 				<p>{formatCompactMoneyCents(item.priceCents)} ₽</p>
 			</div>
 			<div className="entity-actions">
-				{item.active && archiveConfirmOpen ? null : (
-					<ArchiveButton
-						active={item.active}
-						disabled={!online || pending}
-						onArchive={() => setArchiveConfirmOpen(true)}
-						onRestore={restoreItem}
-					/>
-				)}
-				{archiveConfirmOpen || !item.active ? null : (
+				<ArchiveButton
+					active={item.active}
+					disabled={!online || pending}
+					onArchive={archiveItem}
+					onRestore={restoreItem}
+				/>
+				{item.active ? (
 					<button
 						aria-label={`Редактировать ${item.name}`}
 						className="secondary-icon-button"
 						disabled={!online || pending}
-						onClick={() => {
-							setArchiveConfirmOpen(false);
-							setEditing(true);
-						}}
+						onClick={editItem}
 						title="Редактировать"
 						type="button"
 					>
 						<Edit3 aria-hidden size={16} />
 					</button>
-				)}
+				) : null}
 			</div>
-			{item.active && archiveConfirmOpen ? (
-				<div className="catalog-row-confirm" role="group" aria-label={`Подтвердить архив ${item.name}`}>
-					<span>Убрать в архив?</span>
-					<div>
-						<button className="secondary-button compact-button" onClick={() => setArchiveConfirmOpen(false)} type="button">
-							Нет
-						</button>
-						<button
-							className="status-button archive"
-							disabled={!online || pending}
-							onClick={() => {
-								archiveItem();
-								setArchiveConfirmOpen(false);
-							}}
-							type="button"
-						>
+		</article>
+	);
+}
+
+function SimpleCatalogFormDialog({
+	error,
+	item,
+	onOpenChange,
+	onSubmit,
+	online,
+	open,
+	pending,
+	submitLabel,
+	title,
+	unitLabel,
+}: {
+	error: string | null;
+	item: SimpleCatalogItem | null;
+	onOpenChange: (open: boolean) => void;
+	onSubmit: (input: SimpleCatalogInput) => void;
+	online: boolean;
+	open: boolean;
+	pending: boolean;
+	submitLabel: string;
+	title: string;
+	unitLabel?: string;
+}) {
+	const [name, setName] = useState("");
+	const [unit, setUnit] = useState("");
+
+	useEffect(() => {
+		if (!open) {
+			return;
+		}
+
+		setName(item?.name ?? "");
+		setUnit(item && "unit" in item ? item.unit : "");
+	}, [item, open]);
+
+	function handleSubmit(event: FormEvent<HTMLFormElement>) {
+		event.preventDefault();
+		onSubmit({
+			name,
+			...(unitLabel ? { unit } : {}),
+		});
+	}
+
+	return (
+		<Dialog.Root open={open} onOpenChange={onOpenChange}>
+			<Dialog.Portal>
+				<Dialog.Overlay className="operation-dialog-overlay" />
+				<Dialog.Content aria-describedby={undefined} className="operation-dialog catalog-dialog">
+					<div className="operation-dialog-heading">
+						<Dialog.Title>{title}</Dialog.Title>
+						<Dialog.Close aria-label="Закрыть" className="icon-button" type="button">
+							<X aria-hidden size={18} />
+						</Dialog.Close>
+					</div>
+					<form className="catalog-dialog-form" onSubmit={handleSubmit}>
+						<label className="field">
+							<span>Название</span>
+							<input onChange={(event) => setName(event.target.value)} required type="text" value={name} />
+						</label>
+						{unitLabel ? (
+							<label className="field">
+								<span>{unitLabel}</span>
+								<input onChange={(event) => setUnit(event.target.value)} required type="text" value={unit} />
+							</label>
+						) : null}
+						{error ? <p className="form-error">{error}</p> : null}
+						<div className="form-actions">
+							<Dialog.Close className="secondary-button" type="button">
+								Отмена
+							</Dialog.Close>
+							<button className="primary-button" disabled={!online || pending} type="submit">
+								{submitLabel === "Сохранить" ? <Check aria-hidden size={18} /> : <Plus aria-hidden size={18} />}
+								{submitLabel}
+							</button>
+						</div>
+					</form>
+				</Dialog.Content>
+			</Dialog.Portal>
+		</Dialog.Root>
+	);
+}
+
+function ProductTemplateFormDialog({
+	dependenciesReady,
+	error,
+	item,
+	onOpenChange,
+	onSubmit,
+	online,
+	open,
+	packagingTypes,
+	pending,
+	rawMaterialTypes,
+	submitLabel,
+	title,
+}: {
+	dependenciesReady: boolean;
+	error: string | null;
+	item: ProductTemplate | null;
+	onOpenChange: (open: boolean) => void;
+	onSubmit: (input: ProductTemplateFormInput) => void;
+	online: boolean;
+	open: boolean;
+	packagingTypes: PackagingType[];
+	pending: boolean;
+	rawMaterialTypes: RawMaterialType[];
+	submitLabel: string;
+	title: string;
+}) {
+	const [name, setName] = useState("");
+	const [rawMaterialTypeId, setRawMaterialTypeId] = useState("");
+	const [packagingTypeId, setPackagingTypeId] = useState("");
+	const [priceRubles, setPriceRubles] = useState("");
+	const [priceError, setPriceError] = useState("");
+
+	useEffect(() => {
+		if (!open) {
+			return;
+		}
+
+		setName(item?.name ?? "");
+		setRawMaterialTypeId(item?.rawMaterialTypeId ?? "");
+		setPackagingTypeId(item?.packagingTypeId ?? "");
+		setPriceRubles(item ? formatPriceRubles(item.priceCents) : "");
+		setPriceError("");
+	}, [item, open]);
+
+	function handleSubmit(event: FormEvent<HTMLFormElement>) {
+		event.preventDefault();
+		const parsedPrice = parsePriceRubles(priceRubles);
+		if (!parsedPrice.ok) {
+			setPriceError(parsedPrice.message);
+			return;
+		}
+
+		setPriceError("");
+		onSubmit({
+			name,
+			rawMaterialTypeId,
+			packagingTypeId,
+			priceCents: parsedPrice.value,
+		});
+	}
+
+	return (
+		<Dialog.Root open={open} onOpenChange={onOpenChange}>
+			<Dialog.Portal>
+				<Dialog.Overlay className="operation-dialog-overlay" />
+				<Dialog.Content aria-describedby={undefined} className="operation-dialog catalog-dialog">
+					<div className="operation-dialog-heading">
+						<Dialog.Title>{title}</Dialog.Title>
+						<Dialog.Close aria-label="Закрыть" className="icon-button" type="button">
+							<X aria-hidden size={18} />
+						</Dialog.Close>
+					</div>
+					<form className="catalog-dialog-form catalog-product-form" onSubmit={handleSubmit}>
+						<label className="field">
+							<span>Название шаблона</span>
+							<input onChange={(event) => setName(event.target.value)} required type="text" value={name} />
+						</label>
+						<div className="catalog-form-grid">
+							<label className="field">
+								<span>Сырье</span>
+								<select
+									onChange={(event) => setRawMaterialTypeId(event.target.value)}
+									required
+									value={rawMaterialTypeId}
+								>
+									<option value="">Выберите сырье</option>
+									{rawMaterialTypes.map((rawMaterialType) => (
+										<option key={rawMaterialType.id} value={rawMaterialType.id}>
+											{rawMaterialType.name}
+										</option>
+									))}
+								</select>
+							</label>
+							<label className="field">
+								<span>Тара</span>
+								<select
+									onChange={(event) => setPackagingTypeId(event.target.value)}
+									required
+									value={packagingTypeId}
+								>
+									<option value="">Выберите тару</option>
+									{packagingTypes.map((packagingType) => (
+										<option key={packagingType.id} value={packagingType.id}>
+											{packagingType.name}
+										</option>
+									))}
+								</select>
+							</label>
+						</div>
+						<label className="field">
+							<span>Цена за единицу, ₽</span>
+							<input
+								inputMode="decimal"
+								onChange={(event) => setPriceRubles(event.target.value)}
+								placeholder="1250"
+								required
+								type="text"
+								value={priceRubles}
+							/>
+						</label>
+						{dependenciesReady ? null : (
+							<p className="muted">Сначала нужны активные виды сырья и тары.</p>
+						)}
+						{priceError ? <p className="form-error">{priceError}</p> : null}
+						{error ? <p className="form-error">{error}</p> : null}
+						<div className="form-actions">
+							<Dialog.Close className="secondary-button" type="button">
+								Отмена
+							</Dialog.Close>
+							<button
+								className="primary-button"
+								disabled={!online || !dependenciesReady || pending}
+								type="submit"
+							>
+								{submitLabel === "Сохранить" ? <Check aria-hidden size={18} /> : <Plus aria-hidden size={18} />}
+								{submitLabel}
+							</button>
+						</div>
+					</form>
+				</Dialog.Content>
+			</Dialog.Portal>
+		</Dialog.Root>
+	);
+}
+
+function CatalogArchiveDialog({
+	error,
+	itemName,
+	onConfirm,
+	onOpenChange,
+	open,
+	pending,
+}: {
+	error: string | null;
+	itemName: string;
+	onConfirm: () => void;
+	onOpenChange: (open: boolean) => void;
+	open: boolean;
+	pending: boolean;
+}) {
+	return (
+		<Dialog.Root open={open} onOpenChange={onOpenChange}>
+			<Dialog.Portal>
+				<Dialog.Overlay className="operation-dialog-overlay" />
+				<Dialog.Content aria-describedby={undefined} className="operation-dialog catalog-dialog catalog-archive-dialog">
+					<div className="operation-dialog-heading">
+						<Dialog.Title className="catalog-archive-title">{itemName}</Dialog.Title>
+						<Dialog.Close aria-label="Закрыть" className="icon-button" type="button">
+							<X aria-hidden size={18} />
+						</Dialog.Close>
+					</div>
+					{error ? <p className="form-error">{error}</p> : null}
+					<div className="form-actions">
+						<Dialog.Close className="secondary-button" type="button">
+							Отмена
+						</Dialog.Close>
+						<button className="status-button archive" disabled={pending} onClick={onConfirm} type="button">
 							<Archive aria-hidden size={14} />
-							В архив
+							Архив
 						</button>
 					</div>
-				</div>
-			) : null}
-		</article>
+				</Dialog.Content>
+			</Dialog.Portal>
+		</Dialog.Root>
 	);
 }
 
@@ -895,7 +952,7 @@ function CatalogListToolbar({
 					type="button"
 				>
 					<Plus aria-hidden size={16} />
-					Новый
+					Добавить
 				</button>
 				<button className="secondary-button compact-button" onClick={onToggleArchive} type="button">
 					{showArchived ? "Показать активные" : `Архив (${archivedCount})`}

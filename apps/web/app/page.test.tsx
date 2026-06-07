@@ -759,11 +759,14 @@ describe("HomePage", () => {
 		expect(screen.queryByText("Горбуша")).toBeNull();
 		fireEvent.click(screen.getByRole("button", { name: "Показать активные" }));
 		fireEvent.click(await screen.findByRole("button", { name: "В архив" }));
-		expect(await screen.findByText("Убрать в архив?")).toBeTruthy();
-		fireEvent.click(screen.getByRole("button", { name: "Нет" }));
-		expect(screen.queryByText("Убрать в архив?")).toBeNull();
+		expect(await screen.findByRole("dialog")).toBeTruthy();
+		expect(screen.getByRole("heading", { name: "Горбуша" })).toBeTruthy();
+		fireEvent.click(screen.getByRole("button", { name: "Отмена" }));
+		await waitFor(() => {
+			expect(screen.queryByRole("dialog")).toBeNull();
+		});
 		fireEvent.click(await screen.findByRole("button", { name: "В архив" }));
-		fireEvent.click(screen.getByRole("button", { name: "В архив" }));
+		fireEvent.click(screen.getByRole("button", { name: "Архив" }));
 		await waitFor(() => {
 			expect(fetchMock).toHaveBeenCalledWith(
 				expect.stringContaining("/catalog/raw-material-types/raw1/archive"),
@@ -782,7 +785,7 @@ describe("HomePage", () => {
 			);
 		});
 
-		fireEvent.click(screen.getByRole("button", { name: "Новый" }));
+		fireEvent.click(screen.getByRole("button", { name: "Добавить" }));
 		fireEvent.change(await screen.findByLabelText("Название"), { target: { value: "Кета" } });
 		fireEvent.change(screen.getByLabelText("Единица измерения"), { target: { value: "кг" } });
 		fireEvent.click(screen.getByRole("button", { name: "Добавить" }));
@@ -2514,7 +2517,7 @@ describe("HomePage", () => {
 		expect(await screen.findByRole("heading", { name: "Еще" })).toBeTruthy();
 		fireEvent.click(screen.getByRole("button", { name: "Каталог" }));
 		expect(await screen.findByRole("heading", { name: "Справочники" })).toBeTruthy();
-		expect(screen.getByRole("button", { name: "Новый" })).toBeTruthy();
+		expect(screen.getByRole("button", { name: "Добавить" })).toBeTruthy();
 
 		fireEvent.click(screen.getByRole("button", { name: "Остатки" }));
 		expect(await screen.findByRole("heading", { name: "Остатки" })).toBeTruthy();

@@ -93,32 +93,33 @@ export function ClientsHome({
 	}
 
 	return (
-		<section className="screen-stack">
+		<section className="screen-stack clients-home management-surface">
 			<div className="section-heading compact clients-heading">
-				<div>
-					<h2>Клиенты</h2>
+				<h2>Клиенты</h2>
+				<div className="clients-heading-side">
 					<span>{clients.isLoading ? "Загрузка" : `${clients.data?.clients.length ?? 0} клиентов`}</span>
+					{canManage ? (
+						<button
+							aria-label="Добавить клиента"
+							className="secondary-button compact-button client-create-button"
+							disabled={!online}
+							onClick={() => setMode("create")}
+							type="button"
+						>
+							<UserPlus aria-hidden size={16} />
+							Новый
+						</button>
+					) : null}
 				</div>
-				{canManage ? (
-					<button
-						aria-label="Добавить клиента"
-						className="secondary-button compact-button client-create-button"
-						onClick={() => setMode("create")}
-						type="button"
-						disabled={!online}
-					>
-						<UserPlus aria-hidden size={16} />
-						Новый
-					</button>
-				) : null}
 			</div>
 
 			<div className="client-search">
 				<label className="field">
-					<span>Поиск</span>
+					<span className="sr-only">Поиск</span>
 					<div className="input-shell">
 						<Search aria-hidden size={18} />
 						<input
+							aria-label="Поиск"
 							onChange={(event) => setSearchDraft(event.target.value)}
 							placeholder="Имя или телефон"
 							type="search"
@@ -168,7 +169,7 @@ function ClientDetailScreen({
 	title: string;
 }) {
 	return (
-		<section className="screen-stack" aria-label={title}>
+		<section className="screen-stack clients-detail-screen management-surface" aria-label={title}>
 			<button className="secondary-button production-back-button" onClick={onBack} type="button">
 				<ArrowLeft aria-hidden size={20} />
 				Назад
@@ -224,7 +225,7 @@ function ClientForm({
 	}
 
 	return (
-		<form className="form-panel" onSubmit={handleSubmit}>
+		<form className="form-panel client-form" onSubmit={handleSubmit}>
 			<div className="section-heading compact">
 				<h2>{client ? "Редактировать клиента" : "Добавить клиента"}</h2>
 			</div>
@@ -266,14 +267,18 @@ function ClientList({
 		setCopiedClientId(client.id);
 	}
 
+	if (clients.length === 0) {
+		return null;
+	}
+
 	return (
 		<div className="client-list-table" role="list">
 			{clients.map((client) => (
 				<div className="client-list-row" key={client.id} role="listitem">
 					<div className="client-list-main">
 						<strong>{client.name}</strong>
-						<p>{client.phone}</p>
-						{client.description ? <p>{client.description}</p> : null}
+						<p className="client-list-phone">{client.phone}</p>
+						{client.description ? <p className="client-list-description">{client.description}</p> : null}
 					</div>
 					<div className="client-list-actions">
 						<button
@@ -286,14 +291,14 @@ function ClientList({
 							{copiedClientId === client.id ? <Check aria-hidden size={17} /> : <Copy aria-hidden size={17} />}
 						</button>
 						{canManage ? (
-						<button
-							aria-label={`Редактировать ${client.name}`}
-							className="secondary-icon-button"
-							onClick={() => onEdit(client)}
-							type="button"
-						>
-							<Edit3 aria-hidden size={17} />
-						</button>
+							<button
+								aria-label={`Редактировать ${client.name}`}
+								className="secondary-icon-button"
+								onClick={() => onEdit(client)}
+								type="button"
+							>
+								<Edit3 aria-hidden size={17} />
+							</button>
 						) : null}
 					</div>
 				</div>
