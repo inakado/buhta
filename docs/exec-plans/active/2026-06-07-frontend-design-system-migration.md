@@ -54,7 +54,7 @@
 | --- | --- | --- | --- | --- |
 | Done | Главная | `home` | `DirectorAnalyticsHome` | Эталон новой системы. Деньги, выпуск, период, вкладки обзор/деньги/производство уже отполированы. |
 | Done | Остатки | `stock` | `DirectorStockHome`, `DistributorInventoryHome`, `CourierBalanceHome` | Второй эталон директорского control contour. Внутренние табы, распределитель, курьеры, списание наличных и снижение цены приведены к compact table/panel rhythm без повторов и декоративных карточек. |
-| 1 | История | `operation-history` | `OperationHistoryHome` | Следующий экран. Фильтры, список операций, pagination, details dialog. Нужно привести к директорскому table/list rhythm и не потерять читаемость деталей. |
+| Done | История | `operation-history` | `OperationHistoryHome` | Фильтры вынесены в модалку, верхняя область закреплена, список и details dialog приведены к директорскому compact list/dialog rhythm; технический шум скрыт через presenter, date inputs оставлены платформенными. |
 | 2 | Еще | `more` | `DirectorMoreHome` | Меню `Каталог`, `Клиенты`, `Настройки`, account/logout panel. Сейчас есть inline styles, их надо убрать в системные classes. |
 | 3 | Каталог | `catalog` из more | `CatalogHome` | Директор/admin shared management surface. Нужна очистка форм, списков, actions и archive/confirm rows. |
 | 3 | Клиенты | `clients` из more | `ClientsHome` | Read/manage variants зависят от прав. Нужен единый dense list/search/form pattern. |
@@ -241,11 +241,12 @@
 - Убраны визуальные повторы, декоративные summary cards, лишние local class hooks и director-only table-head selectors, которые больше не используются.
 - Browser QA не запускался по policy этого плана; owner visual review выполняется вручную владельцем продукта.
 
-### Stage 2. Director Operation History, next
+### Stage 2. Director Operation History, completed 2026-06-08
 
-- Привести filter summary, advanced filters, rows, pagination button and details dialog к единому dense list/control rhythm.
-- Разделить поведение и стиль: исправления pagination/filter behavior делать только если stage явно включает behavioral bugfix.
-- Сохранить управленческую читаемость details, не возвращать raw JSON/technical ids.
+- 2026-06-08 polish pass: кнопка `Фильтры` открывает Radix Dialog поверх экрана, верхняя область `Истории` закреплена как на директорских экранах с табами, а details dialog переведен на общий `operation-dialog` vocabulary с compact summary/details sections.
+- Список, pagination button и details rows приведены к dense list/control rhythm без декоративных карточек.
+- Управленческая читаемость details сохранена: raw JSON, technical ids и внутренние ключи не возвращаются в UI.
+- Период в фильтрах оставлен на платформенных date inputs после owner review: отдельный календарный компонент для этого места не вводится.
 
 ### Stage 3. Director More And Secondary Director Screens
 

@@ -52,7 +52,7 @@ describe("operation detail presenter", () => {
 		expect(text).toContain("1 250.00 ₽");
 		expect(text).toContain("2 500.00 ₽");
 		expect(text).toContain("Наличные");
-		expect(text).toContain("5 -> 3");
+		expect(text).toContain("5 → 3");
 		expect(text).not.toContain("client-1");
 		expect(text).not.toContain("batch-1");
 		expect(text).not.toContain("balance-1");
@@ -199,8 +199,8 @@ describe("operation detail presenter", () => {
 		expect(text).toContain("Икра А");
 		expect(text).toContain("2 шт");
 		expect(text).toContain("1 000.00 ₽/шт");
-		expect(text).toContain("5 -> 3");
-		expect(text).toContain("1 -> 3");
+		expect(text).toContain("5 → 3");
+		expect(text).toContain("1 → 3");
 		expect(text).not.toContain("courier-balance-1");
 		expect(text).not.toContain("distributor-balance-1");
 		expect(text).not.toContain("batch-1");
@@ -230,8 +230,8 @@ describe("operation detail presenter", () => {
 
 		expect(text).toContain("Ошибочная продажа");
 		expect(text).toContain("Иван Петров");
-		expect(text).toContain("3 -> 5");
-		expect(text).toContain("3 000.00 ₽ -> 500.00 ₽");
+		expect(text).toContain("3 → 5");
+		expect(text).toContain("3 000.00 ₽ → 500.00 ₽");
 		expect(text).not.toContain("cancel-1");
 		expect(text).not.toContain("sale-1");
 		expect(text).not.toContain("operation-sale-1");
@@ -265,8 +265,8 @@ describe("operation detail presenter", () => {
 		expect(text).toContain("1 250.00 ₽");
 		expect(text).toContain("1 000.00 ₽");
 		expect(text).toContain("250.00 ₽");
-		expect(text).toContain("10 -> 4");
-		expect(text).toContain("0 -> 6");
+		expect(text).toContain("10 → 4");
+		expect(text).toContain("0 → 6");
 		expect(text).not.toContain("source-balance-1");
 		expect(text).not.toContain("target-balance-1");
 		expect(text).not.toContain("discount-1");
@@ -295,8 +295,8 @@ describe("operation detail presenter", () => {
 		expect(text).toContain("Портовая 1");
 		expect(text).toContain("20 шт");
 		expect(text).toContain("25 000.00 ₽");
-		expect(text).toContain("50 -> 30");
-		expect(text).toContain("0 -> 20");
+		expect(text).toContain("50 → 30");
+		expect(text).toContain("0 → 20");
 		expect(text).not.toContain("batch-1");
 		expect(text).not.toContain("distributor-1");
 	});

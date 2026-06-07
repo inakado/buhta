@@ -641,6 +641,7 @@ describe("HomePage", () => {
 		expect(screen.getAllByText("2 500.00 ₽").length).toBeGreaterThan(0);
 
 		fireEvent.click(screen.getByRole("button", { name: /Фильтры/ }));
+		expect(await screen.findByRole("heading", { name: "Фильтры" })).toBeTruthy();
 		fireEvent.change(screen.getByLabelText("Событие"), { target: { value: "courier.sale.create" } });
 		await waitFor(() => {
 			expect(fetchMock).toHaveBeenCalledWith(
@@ -649,6 +650,7 @@ describe("HomePage", () => {
 			);
 		});
 		expect(fetchMock.mock.calls.some(([input]) => String(input).includes("type=courier.sale.create"))).toBe(false);
+		fireEvent.click(screen.getByRole("button", { name: "Готово" }));
 
 		const updatedSaleHistoryRow = await screen.findByRole("button", { name: /Director.*2 500\.00 ₽/ });
 		fireEvent.click(updatedSaleHistoryRow);

@@ -510,7 +510,7 @@ function addBalancePair(
 		const money = MONEY_DETAIL_KEYS.has(beforeKey) || MONEY_DETAIL_KEYS.has(afterKey);
 		rows.push({
 			label,
-			value: `${formatValue(before, money ? "amountCents" : beforeKey)} -> ${formatValue(after, money ? "amountCents" : afterKey)}`,
+			value: `${formatValue(before, money ? "amountCents" : beforeKey)} → ${formatValue(after, money ? "amountCents" : afterKey)}`,
 		});
 	}
 }

@@ -56,139 +56,72 @@ export function OperationHistoryHome() {
 
 	return (
 		<section className="screen-stack operation-history-home">
-			<div className="section-heading compact">
-				<h2>История</h2>
-				{history.isFetching || options.isFetching ? <span>Обновление</span> : null}
-			</div>
-
-			<div className="operation-history-filter-summary" aria-label="Период истории">
-				<div>
-					<span>Период</span>
-					<strong>{formatDateRange(filters)}</strong>
+			<div className="operation-history-topbar">
+				<div className="section-heading compact">
+					<h2>История</h2>
+					{history.isFetching || options.isFetching ? <span>Обновление</span> : null}
 				</div>
-				<button
-					aria-controls="operation-history-filters"
-					aria-expanded={filtersOpen}
-					className={filtersOpen
-						? "secondary-button compact-button operation-history-filter-toggle active"
-						: "secondary-button compact-button operation-history-filter-toggle"}
-					onClick={() => setFiltersOpen((open) => !open)}
-					type="button"
-				>
-					<Filter aria-hidden size={15} />
-					Фильтры
-					{activeFilterCount > 0 ? <span>{activeFilterCount}</span> : null}
-				</button>
-			</div>
 
-			{filtersOpen ? (
-				<div className="operation-history-filters" id="operation-history-filters" aria-label="Фильтры истории">
-					<label>
-						<span>С</span>
-						<input
-							type="date"
-							value={filters.dateFrom ?? ""}
-							onChange={(event) => updateFilter("dateFrom", event.target.value)}
-						/>
-					</label>
-					<label>
-						<span>По</span>
-						<input
-							type="date"
-							value={filters.dateTo ?? ""}
-							onChange={(event) => updateFilter("dateTo", event.target.value)}
-						/>
-					</label>
-					<label>
-						<span>Событие</span>
-						<select
-							value={filters.operationType ?? ""}
-							onChange={(event) => updateFilter("operationType", event.target.value)}
-						>
-							<option value="">Все</option>
-							{options.data?.operationTypes.map((operationType) => (
-								<option key={operationType} value={operationType}>
-									{getOperationLabel(operationType)}
-								</option>
-							))}
-						</select>
-					</label>
-					<label>
-						<span>Пользователь</span>
-						<select
-							value={filters.actorUserId ?? ""}
-							onChange={(event) => updateFilter("actorUserId", event.target.value)}
-						>
-							<option value="">Все</option>
-							{options.data?.actorUsers.map((actor) => (
-								<option key={actor.userId} value={actor.userId}>
-									{actor.displayName}
-								</option>
-							))}
-						</select>
-					</label>
-					<label>
-						<span>Роль</span>
-						<select
-							value={filters.actorRole ?? ""}
-							onChange={(event) => updateFilter("actorRole", event.target.value)}
-						>
-							<option value="">Все</option>
-							{options.data?.roles.map((role) => (
-								<option key={role} value={role}>
-									{ROLE_LABELS[role]}
-								</option>
-							))}
-						</select>
-					</label>
-					<label>
-						<span>Источник</span>
-						<select
-							value={filters.entityType ?? ""}
-							onChange={(event) => updateFilter("entityType", event.target.value)}
-						>
-							<option value="">Все</option>
-							{options.data?.entityTypes.map((entityType) => (
-								<option key={entityType} value={entityType}>
-									{getEntityLabel(entityType)}
-								</option>
-							))}
-						</select>
-					</label>
-					<button className="secondary-button compact-button" onClick={resetFilters} type="button">
-						<X aria-hidden size={15} />
-						Сбросить
+				<div className="operation-history-filter-summary" aria-label="Период истории">
+					<div>
+						<span>Период</span>
+						<strong>{formatDateRange(filters)}</strong>
+					</div>
+					<button
+						aria-controls="operation-history-filters-dialog"
+						aria-expanded={filtersOpen}
+						className={filtersOpen
+							? "secondary-button compact-button operation-history-filter-toggle active"
+							: "secondary-button compact-button operation-history-filter-toggle"}
+						onClick={() => setFiltersOpen(true)}
+						type="button"
+					>
+						<Filter aria-hidden size={15} />
+						Фильтры
+						{activeFilterCount > 0 ? <span>{activeFilterCount}</span> : null}
 					</button>
 				</div>
-			) : null}
-
-			{history.isError ? <p className="form-error">{history.error.message}</p> : null}
-			{options.isError ? <p className="form-error">{options.error.message}</p> : null}
-			{history.isLoading ? <p className="muted">Загрузка истории</p> : null}
-			{!history.isLoading && !history.isError && (history.data?.items.length ?? 0) === 0 ? (
-				<p className="muted">Операций за выбранный период нет.</p>
-			) : null}
-
-			<div className="operation-history-list">
-				{history.data?.items.map((item) => (
-					<OperationHistoryRow
-						item={item}
-						key={item.id}
-						onOpen={() => setSelectedItem(item)}
-					/>
-				))}
 			</div>
 
-			{history.data?.nextCursor ? (
-				<button
-					className="secondary-button operation-history-more"
-					disabled={history.isFetching}
-					onClick={() => setCursor(history.data?.nextCursor ?? undefined)}
-					type="button"
-				>
-					Показать еще
-				</button>
-			) : null}
+			<OperationFiltersDialog
+				activeFilterCount={activeFilterCount}
+				filters={filters}
+				onClose={() => setFiltersOpen(false)}
+				onReset={resetFilters}
+				onUpdate={updateFilter}
+				open={filtersOpen}
+				options={options.data}
+			/>
+
+			<div className="operation-history-body">
+				{history.isError ? <p className="form-error">{history.error.message}</p> : null}
+				{options.isError ? <p className="form-error">{options.error.message}</p> : null}
+				{history.isLoading ? <p className="muted">Загрузка истории</p> : null}
+				{!history.isLoading && !history.isError && (history.data?.items.length ?? 0) === 0 ? (
+					<p className="muted">Операций за выбранный период нет.</p>
+				) : null}
+
+				<div className="operation-history-list">
+					{history.data?.items.map((item) => (
+						<OperationHistoryRow
+							item={item}
+							key={item.id}
+							onOpen={() => setSelectedItem(item)}
+						/>
+					))}
+				</div>
+
+				{history.data?.nextCursor ? (
+					<button
+						className="secondary-button operation-history-more"
+						disabled={history.isFetching}
+						onClick={() => setCursor(history.data?.nextCursor ?? undefined)}
+						type="button"
+					>
+						Показать еще
+					</button>
+				) : null}
+			</div>
 
 			<OperationDetailsModal
 				item={selectedItem}
@@ -230,6 +163,131 @@ function OperationHistoryRow({
 	);
 }
 
+function OperationFiltersDialog({
+	activeFilterCount,
+	filters,
+	onClose,
+	onReset,
+	onUpdate,
+	open,
+	options,
+}: {
+	activeFilterCount: number;
+	filters: OperationHistoryQuery;
+	onClose: () => void;
+	onReset: () => void;
+	onUpdate: (key: keyof OperationHistoryQuery, value: string) => void;
+	open: boolean;
+	options: Awaited<ReturnType<typeof getOperationHistoryOptions>> | undefined;
+}) {
+	return (
+		<Dialog.Root open={open} onOpenChange={(nextOpen) => {
+			if (!nextOpen) {
+				onClose();
+			}
+		}}>
+			<Dialog.Portal>
+				<Dialog.Overlay className="operation-dialog-overlay" />
+				<Dialog.Content className="operation-dialog operation-history-filter-dialog" id="operation-history-filters-dialog">
+					<div className="operation-dialog-heading">
+						<div>
+							<Dialog.Title>Фильтры</Dialog.Title>
+							<Dialog.Description>
+								{activeFilterCount > 0 ? `${activeFilterCount} активных` : "Период и параметры истории"}
+							</Dialog.Description>
+						</div>
+						<Dialog.Close aria-label="Закрыть" className="icon-button" type="button">
+							<X aria-hidden size={18} />
+						</Dialog.Close>
+					</div>
+					<div className="operation-history-filters" aria-label="Фильтры истории">
+						<label>
+							<span>С</span>
+							<input
+								onChange={(event) => onUpdate("dateFrom", event.target.value)}
+								type="date"
+								value={filters.dateFrom ?? ""}
+							/>
+						</label>
+						<label>
+							<span>По</span>
+							<input
+								onChange={(event) => onUpdate("dateTo", event.target.value)}
+								type="date"
+								value={filters.dateTo ?? ""}
+							/>
+						</label>
+						<label>
+							<span>Событие</span>
+							<select
+								onChange={(event) => onUpdate("operationType", event.target.value)}
+								value={filters.operationType ?? ""}
+							>
+								<option value="">Все</option>
+								{options?.operationTypes.map((operationType) => (
+									<option key={operationType} value={operationType}>
+										{getOperationLabel(operationType)}
+									</option>
+								))}
+							</select>
+						</label>
+						<label>
+							<span>Пользователь</span>
+							<select
+								onChange={(event) => onUpdate("actorUserId", event.target.value)}
+								value={filters.actorUserId ?? ""}
+							>
+								<option value="">Все</option>
+								{options?.actorUsers.map((actor) => (
+									<option key={actor.userId} value={actor.userId}>
+										{actor.displayName}
+									</option>
+								))}
+							</select>
+						</label>
+						<label>
+							<span>Роль</span>
+							<select
+								onChange={(event) => onUpdate("actorRole", event.target.value)}
+								value={filters.actorRole ?? ""}
+							>
+								<option value="">Все</option>
+								{options?.roles.map((role) => (
+									<option key={role} value={role}>
+										{ROLE_LABELS[role]}
+									</option>
+								))}
+							</select>
+						</label>
+						<label>
+							<span>Источник</span>
+							<select
+								onChange={(event) => onUpdate("entityType", event.target.value)}
+								value={filters.entityType ?? ""}
+							>
+								<option value="">Все</option>
+								{options?.entityTypes.map((entityType) => (
+									<option key={entityType} value={entityType}>
+										{getEntityLabel(entityType)}
+									</option>
+								))}
+							</select>
+						</label>
+					</div>
+					<div className="form-actions">
+						<button className="secondary-button" onClick={onReset} type="button">
+							Сбросить
+						</button>
+						<Dialog.Close className="primary-button" type="button">
+							Готово
+						</Dialog.Close>
+					</div>
+				</Dialog.Content>
+			</Dialog.Portal>
+		</Dialog.Root>
+	);
+}
+
 function OperationDetailsModal({
 	item,
 	onClose,
@@ -246,11 +304,11 @@ function OperationDetailsModal({
 			}
 		}}>
 			<Dialog.Portal>
-				<Dialog.Overlay className="operation-history-dialog-overlay" />
-				<Dialog.Content className="operation-history-dialog">
+				<Dialog.Overlay className="operation-dialog-overlay" />
+				<Dialog.Content className="operation-dialog operation-history-dialog">
 					{presentation ? (
 						<>
-							<div className="operation-history-dialog-heading">
+							<div className="operation-dialog-heading">
 								<div>
 									<Dialog.Title>{presentation.title}</Dialog.Title>
 									<Dialog.Description>

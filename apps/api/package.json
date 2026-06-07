@@ -4,7 +4,7 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
-		"dev": "dotenv -e ../../.env.example -e ../../.env -- tsx watch src/main.ts",
+		"dev": "dotenv -e ../../.env.example -e ../../.env -- tsx watch --exclude \"../../node_modules/**\" --exclude \"node_modules/**\" src/main.ts",
 		"build": "prisma generate && tsc -p tsconfig.build.json",
 		"lint": "eslint src test --ext .ts",
 		"typecheck": "prisma generate && tsc -p tsconfig.json --noEmit",

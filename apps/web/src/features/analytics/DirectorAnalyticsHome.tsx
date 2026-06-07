@@ -4,8 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import * as Popover from "@radix-ui/react-popover";
 import { AlertTriangle, Banknote, CalendarDays, ChevronDown, Clock3, Factory, RefreshCw, Vault, WalletCards } from "lucide-react";
 import { useId, useMemo, useState, type ReactNode } from "react";
-import { DayPicker, type DateRange } from "react-day-picker";
-import { ru } from "react-day-picker/locale";
 import {
 	type DirectorAnalyticsPeriodPreset,
 	type DirectorAnalyticsProductOutputRow,
@@ -15,6 +13,7 @@ import {
 } from "@buhta/shared";
 import { getDirectorAnalytics } from "../../lib/api-client";
 import { formatCompactMoneyCents } from "../../lib/money-format";
+import { DateRangePickerPanel } from "../../ui/DateRangePickerPanel";
 import { SegmentedControl } from "../../ui/SegmentedControl";
 
 const PERIOD_OPTIONS: Array<{ value: DirectorAnalyticsPeriodPreset; label: string }> = [
@@ -131,14 +130,6 @@ export function DirectorAnalyticsHome({ title = "Аналитика" }: { title?
 		setPeriodPickerOpen(false);
 	}
 
-	function selectCalendarRange(range: DateRange | undefined) {
-		setCustomDateFrom(range?.from ? toDateInputValue(range.from) : "");
-		setCustomDateTo(range?.to ? toDateInputValue(range.to) : "");
-		setCustomPeriodError(null);
-	}
-
-	const customDateRange = toCalendarDateRange(customDateFrom, customDateTo);
-
 	return (
 		<section className="screen-stack director-home director-dashboard">
 			<div className="director-dashboard-topbar">
@@ -166,43 +157,18 @@ export function DirectorAnalyticsHome({ title = "Аналитика" }: { title?
 								id="director-dashboard-period-picker"
 								sideOffset={8}
 							>
-								<DayPicker
-									className="director-dashboard-calendar"
-									defaultMonth={customDateRange?.from ?? new Date()}
-									locale={ru}
-									max={ANALYTICS_MAX_RANGE_DAYS}
-									mode="range"
-									onSelect={selectCalendarRange}
-									selected={customDateRange}
-									weekStartsOn={1}
+								<DateRangePickerPanel
+									ariaLabel="Календарь периода аналитики"
+									dateFrom={customDateFrom}
+									dateTo={customDateTo}
+									error={customPeriodError}
+									maxDays={ANALYTICS_MAX_RANGE_DAYS}
+									onChange={({ dateFrom, dateTo }) => {
+										setCustomDateFrom(dateFrom);
+										setCustomDateTo(dateTo);
+										setCustomPeriodError(null);
+									}}
 								/>
-								<div className="director-dashboard-period-custom">
-									<label>
-										<span>С</span>
-										<input
-											onChange={(event) => {
-												setCustomDateFrom(event.target.value);
-												setCustomPeriodError(null);
-											}}
-											type="date"
-											value={customDateFrom}
-										/>
-									</label>
-									<label>
-										<span>По</span>
-										<input
-											onChange={(event) => {
-												setCustomDateTo(event.target.value);
-												setCustomPeriodError(null);
-											}}
-											type="date"
-											value={customDateTo}
-										/>
-									</label>
-								</div>
-								{customPeriodError ? (
-									<p className="director-dashboard-period-error">{customPeriodError}</p>
-								) : null}
 								<div className="director-dashboard-period-actions">
 									<Popover.Close asChild>
 										<button type="button">
@@ -654,35 +620,6 @@ function formatBusinessDateInputValue(value: string): string {
 	);
 
 	return `${parts.year}-${parts.month}-${parts.day}`;
-}
-
-function toCalendarDateRange(dateFrom: string, dateTo: string): DateRange | undefined {
-	const from = parseDateInputValue(dateFrom);
-	if (!from) {
-		return undefined;
-	}
-
-	return {
-		from,
-		to: parseDateInputValue(dateTo),
-	};
-}
-
-function parseDateInputValue(value: string): Date | undefined {
-	const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
-	if (!match) {
-		return undefined;
-	}
-
-	const [, year, month, day] = match;
-	return new Date(Number(year), Number(month) - 1, Number(day));
-}
-
-function toDateInputValue(date: Date): string {
-	const year = date.getFullYear();
-	const month = String(date.getMonth() + 1).padStart(2, "0");
-	const day = String(date.getDate()).padStart(2, "0");
-	return `${year}-${month}-${day}`;
 }
 
 function validateCustomPeriod(dateFrom: string, dateTo: string): string | null {
