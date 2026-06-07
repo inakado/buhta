@@ -17,7 +17,7 @@ type SegmentedControlProps<TValue extends string> = {
 	items: readonly SegmentedControlItem<TValue>[];
 	onChange: (value: TValue) => void;
 	role?: "group" | "tablist";
-	value: TValue;
+	value: TValue | null;
 };
 
 export function SegmentedControl<TValue extends string>({

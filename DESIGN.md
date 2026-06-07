@@ -65,6 +65,12 @@ typography:
     fontWeight: 500
     lineHeight: 1.1
     letterSpacing: "0"
+  controlTable:
+    fontFamily: "Helvetica, Arial, sans-serif"
+    fontSize: "12px"
+    fontWeight: 400
+    lineHeight: 1.1
+    letterSpacing: "0"
 rounded:
   control: "8px"
   panel: "14px"
@@ -119,6 +125,13 @@ components:
     labelTypography: "11px / 1.15"
     valueTypography: "{typography.metricStrip}"
     moneyFormat: "compact rubles, no trailing .00"
+  director-control-surface:
+    backgroundColor: "{colors.base-white}"
+    textColor: "{colors.base-black}"
+    borderColor: "{colors.line}"
+    rounded: "compact panel radius"
+    density: "dense mobile control rhythm"
+    typography: "compact titles, labels, tabular values"
   bottom-nav:
     backgroundColor: "{colors.base-black}"
     textColor: "{colors.base-white}"
@@ -134,7 +147,7 @@ components:
 
 Дизайн-система «Бухты» строится как спокойный рабочий журнал для повторяющихся операций с товаром и деньгами. Она не продает продукт, не украшает икру и не пытается выглядеть как большая ERP. Она помогает сотруднику быстро увидеть роль, остаток, сумму, доступное действие и причину блокировки.
 
-Основная поверхность: светлая mobile-app оболочка шириной около 430px, белые рабочие панели, серо-зеленый фон, черная навигация и редкий зеленый акцент для состояния, успеха и активного выбора. Интерфейс должен быть строгим, практичным, спокойным, удобным, плавным и быстрым. Крупные числа допустимы только для role summary и ключевых показателей; обычные формы, списки и control screens сохраняют плотность.
+Основная поверхность: светлая mobile-app оболочка шириной около 430px, белые рабочие панели, серо-зеленый фон, черная навигация и редкий зеленый акцент для состояния, успеха и активного выбора. Интерфейс должен быть строгим, практичным, спокойным, удобным, плавным и быстрым. Главная Директора после extraction является эталоном контрольной поверхности: плотная, табличная, без декоративных карточек, с небольшими радиусами, тонкими линиями и компактной типографикой. Крупные числа допустимы только для настоящей верхней сводки; обычные формы, списки, вкладки и control screens сохраняют плотность.
 
 **Key Characteristics:**
 
@@ -189,9 +202,10 @@ components:
 - **Title** (500, 16-18px, line-height 1.1): section headings, row titles, card titles.
 - **Body** (400, 13-15px, line-height 1.2-1.35): form copy, list details, explanations and inline messages.
 - **Label** (400, 11-12px, letter-spacing 0): captions, field labels, meta, dates, small button text. Uppercase допустим только для коротких служебных labels.
-- **Metric overview** (500, 22px, line-height 1): KPI в компактных overview-карточках вроде директорских `За период` и `Сейчас`.
+- **Metric overview** (500, 22px, line-height 1): KPI в компактных summary-зонах, когда число действительно является главным объектом блока.
 - **Metric strip** (500, 16px, line-height 1): значения в трехколоночных lime/green summary strips, где деньги и количество должны оставаться в одну строку.
 - **Metric dense** (500, 17px, line-height 1.1): значения в двухколоночных compact balance blocks and small analytics panels.
+- **Control table** (400, 11-12px, line-height 1.1): строки, подписи, даты и числовые значения в директорских, складских и read-only control surfaces. Это базовый масштаб для плотных мобильных данных.
 
 ### Named Rules
 
@@ -239,6 +253,7 @@ components:
 - **Internal Padding:** compact default 12-14px; role summary may use 14-16px.
 - **Money formatting:** overview metrics, read-only stock lists, production read-only prices and operation summaries use compact rubles without trailing `.00`; keep kopecks when they are non-zero. Audit/detail views and money inputs keep exact two-decimal formatting.
 - **Metric summary strip:** three-column lime/green status strips use 18px radius, 8px outer padding, 7-8px cell padding, 11px labels and 16px tabular values. Money values use compact rubles without trailing `.00`. Do not promote these values to display size on mobile.
+- **Director control surface:** the extracted Director home is the reference for future dashboard/control screens. Use white panels, thin ledger borders, restrained radii, dense inner padding, compact section titles, small table labels and tabular values. Do not reintroduce stacked decorative cards, oversized KPI blocks, broad shadows, arbitrary status colors or data duplicated across tabs.
 
 ### Inputs / Fields
 
@@ -260,6 +275,28 @@ Search combobox uses Radix Popover, opens on focus, previews first 3 options, re
 
 Clients, catalog, courier products, recent sales and operation history prefer compact rows with dividers. Use cards only when the component is an actual form, edit mode, summary or floating layer.
 
+### Dashboard / Control Surfaces
+
+Director home defines the product's dashboard language. A dashboard is not a landing page and not a collection of equal cards. It is a control surface with a small number of semantic zones:
+
+- **Top summary first:** money, stock or production headline facts live at the top and are not repeated in tabs below.
+- **Segmented context:** period controls and internal tabs use the same segmented vocabulary, with active white fill on muted surface when embedded into an analytics panel.
+- **One rhythm per panel:** overview, chart and table content share the same inner padding, title scale, label scale, row scale and divider style.
+- **Rows over cards:** read-only data uses rows, table headers and dividers. Cards are reserved for the outer panel or true summaries.
+- **Facts only:** dashboards show measured facts from API/read models. No plans, fake statuses, invented interpretations or decorative "health" labels.
+- **Compact charts:** charts are allowed when they answer a specific question and stay visually subordinate to the accounting data. Prefer local SVG for a single lightweight series; add a chart library only for multi-series interaction, tooltips or deeper exploration.
+- **Responsive compression:** narrow mobile widths compress through local tokens and shorter labels, not by letting text overlap or by scaling fonts fluidly.
+
+### Selector / Token Architecture
+
+The design system migration is intentional and incremental. Screens may keep isolated local selectors while the system is being extracted, but they must map back to the shared visual language.
+
+- **Isolated by screen:** complex surfaces use a stable screen prefix, such as `director-dashboard-*`, so local polish cannot leak into other roles.
+- **Shared standards underneath:** local selectors should reuse the same font scale, tab treatment, button vocabulary, spacing rhythm, line color and state colors defined here or in shared primitives.
+- **No screen-local inventions by default:** new radius, font sizes, shadows, action blocks or button styles need a reason. If the intent already exists, reuse or extend the standard.
+- **Extract after repetition:** when a local pattern appears across multiple screens with the same intent, promote it to a shared primitive or documented token instead of copying CSS.
+- **Known unfinished areas:** action blocks, compact command buttons and some role-specific summary strips are not fully standardized yet. Future cleanup should extract them from the best current examples rather than preserve older decorative variants.
+
 ## 6. Do's and Don'ts
 
 ### Do:
@@ -271,6 +308,7 @@ Clients, catalog, courier products, recent sales and operation history prefer co
 - **Do** preserve row-based read-only lists with `#E3E8E2` dividers.
 - **Do** keep touch targets comfortable without making every element oversized.
 - **Do** use tabular numbers for money, quantity and KPI values.
+- **Do** use the Director home control surface as the migration target when replacing old dashboard, analytics, stock and read-only report screens.
 
 ### Don't:
 
@@ -281,4 +319,5 @@ Clients, catalog, courier products, recent sales and operation history prefer co
 - **Don't** build a кислотно-зеленый интерфейс or монотонная зеленая палитра.
 - **Don't** let карточки, тени, градиенты и анимации become more important than accounting товар, деньги and actions.
 - **Don't** over-enlarge controls: touch targets must stay usable, but density is part of the product.
+- **Don't** create new screen-local visual tokens when the Director control surface already defines the needed rhythm.
 - **Don't** use side-stripe borders, gradient text, glassmorphism, ghost-card border plus large shadow, or 32px+ radii on ordinary cards.

@@ -19,7 +19,7 @@ import {
 const BUSINESS_TIMEZONE = "Asia/Vladivostok" as const;
 const VLADIVOSTOK_OFFSET_MS = 10 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
-const MAX_RANGE_DAYS = 90;
+const MAX_RANGE_DAYS = 366;
 const DEFAULT_PERIOD_PRESET: DirectorAnalyticsPeriodPreset = "30d";
 
 type NormalizedDirectorAnalyticsQuery = {
@@ -240,7 +240,7 @@ export function normalizeDirectorAnalyticsQuery(
 	}
 
 	if (normalized.dateTo.getTime() - normalized.dateFrom.getTime() > MAX_RANGE_DAYS * DAY_MS) {
-		throw new AppError("VALIDATION_ERROR", "Director analytics range cannot exceed 90 days");
+		throw new AppError("VALIDATION_ERROR", "Director analytics range cannot exceed 366 days");
 	}
 
 	return normalized;

@@ -2471,9 +2471,8 @@ describe("HomePage", () => {
 		render(<HomePage />);
 
 		expect(await screen.findByRole("heading", { name: "Главная" })).toBeTruthy();
-		expect(await screen.findByText("За период")).toBeTruthy();
-		expect(screen.getByText("Сейчас")).toBeTruthy();
-		expect(screen.getByText("Выручка")).toBeTruthy();
+		expect(await screen.findByText("Выручка")).toBeTruthy();
+		expect(screen.getByText("Касса")).toBeTruthy();
 		expect(screen.getByRole("button", { name: "Главная" })).toBeTruthy();
 		expect(screen.getByRole("button", { name: "Остатки" })).toBeTruthy();
 		expect(screen.getByRole("button", { name: "История" })).toBeTruthy();
@@ -2484,7 +2483,6 @@ describe("HomePage", () => {
 		expect(screen.queryByRole("button", { name: "Каталог" })).toBeNull();
 		expect(screen.queryByRole("button", { name: "Клиенты" })).toBeNull();
 		expect(screen.queryByRole("button", { name: "Профиль" })).toBeNull();
-		expect(screen.queryByText("Икра горбуши")).toBeNull();
 		expect(screen.queryByText("Courier")).toBeNull();
 		expect(screen.queryByText("Courier · @courier")).toBeNull();
 		expect(screen.queryByText("Последние операции")).toBeNull();
@@ -2494,12 +2492,18 @@ describe("HomePage", () => {
 		expect(screen.queryByRole("button", { name: "Назначить дисконт пока недоступно" })).toBeNull();
 
 		expect(screen.queryByText("Отмены")).toBeNull();
+		fireEvent.click(screen.getByRole("tab", { name: "Обзор" }));
+		expect(await screen.findByText("Средний чек")).toBeTruthy();
+		expect(screen.getByText("Отменено")).toBeTruthy();
+		expect(screen.getByText("Приход")).toBeTruthy();
 		fireEvent.click(screen.getByRole("tab", { name: "Деньги" }));
-		expect(await screen.findByText("Динамика по дням")).toBeTruthy();
+		expect(await screen.findByText("Выручка по дням")).toBeTruthy();
 		fireEvent.click(screen.getByRole("tab", { name: "Производство" }));
 		expect(await screen.findByText("Сырье")).toBeTruthy();
 		expect(screen.getAllByText("Продукция").length).toBeGreaterThan(0);
-		expect(screen.getByText("12 шт · сырье 8 кг")).toBeTruthy();
+		expect(screen.getByText("Количество")).toBeTruthy();
+		expect(screen.getByText("Сырье на 1 шт")).toBeTruthy();
+		expect(screen.getByText("0,667 кг/шт")).toBeTruthy();
 		expect(screen.queryByText("Движение наличных")).toBeNull();
 		expect(fetchMock.mock.calls.some(([input]) => String(input).includes("/analytics/director?periodPreset=30d"))).toBe(true);
 

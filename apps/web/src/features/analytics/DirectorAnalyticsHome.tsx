@@ -1,8 +1,11 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle, Banknote, Factory, RefreshCw, WalletCards } from "lucide-react";
+import * as Popover from "@radix-ui/react-popover";
+import { AlertTriangle, Banknote, CalendarDays, ChevronDown, Clock3, Factory, RefreshCw, Vault, WalletCards } from "lucide-react";
 import { useId, useMemo, useState, type ReactNode } from "react";
+import { DayPicker, type DateRange } from "react-day-picker";
+import { ru } from "react-day-picker/locale";
 import {
 	type DirectorAnalyticsPeriodPreset,
 	type DirectorAnalyticsProductOutputRow,
@@ -20,14 +23,27 @@ const PERIOD_OPTIONS: Array<{ value: DirectorAnalyticsPeriodPreset; label: strin
 	{ value: "30d", label: "30 дней" },
 	{ value: "90d", label: "90 дней" },
 ];
+const ANALYTICS_MAX_RANGE_DAYS = 366;
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 const VIEW_OPTIONS = [
-	{ value: "overview", label: "Обзор" },
-	{ value: "money", label: "Деньги" },
-	{ value: "production", label: "Производство" },
+	{ value: "overview", label: "Обзор", icon: Clock3 },
+	{ value: "money", label: "Деньги", icon: WalletCards },
+	{ value: "production", label: "Производство", icon: Factory },
 ] as const;
 
 type AnalyticsViewMode = typeof VIEW_OPTIONS[number]["value"];
+
+type DirectorPeriodSelection =
+	| {
+		mode: "preset";
+		periodPreset: DirectorAnalyticsPeriodPreset;
+	}
+	| {
+		mode: "custom";
+		dateFrom: string;
+		dateTo: string;
+	};
 
 type RawMaterialSummaryRow = {
 	rawMaterialTypeId: string;
@@ -38,25 +54,169 @@ type RawMaterialSummaryRow = {
 	balanceQuantity: number;
 };
 
+type RevenueChartPoint = {
+	date: string;
+	value: number;
+	x: number;
+	y: number;
+};
+
+type RevenueChartGeometry = {
+	areaPath: string;
+	gridLines: Array<{ label: string; y: number }>;
+	lastPoint: RevenueChartPoint | null;
+	linePath: string;
+	plot: {
+		left: number;
+		right: number;
+	};
+	points: RevenueChartPoint[];
+};
+
 export function DirectorAnalyticsHome({ title = "Аналитика" }: { title?: string } = {}) {
-	const [periodPreset, setPeriodPreset] = useState<DirectorAnalyticsPeriodPreset>("30d");
-	const [viewMode, setViewMode] = useState<AnalyticsViewMode>("overview");
+	const [periodSelection, setPeriodSelection] = useState<DirectorPeriodSelection>({
+		mode: "preset",
+		periodPreset: "30d",
+	});
+	const [periodPickerOpen, setPeriodPickerOpen] = useState(false);
+	const [customDateFrom, setCustomDateFrom] = useState("");
+	const [customDateTo, setCustomDateTo] = useState("");
+	const [customPeriodError, setCustomPeriodError] = useState<string | null>(null);
+	const [viewMode, setViewMode] = useState<AnalyticsViewMode>("production");
+	const analyticsQuery = useMemo(() => {
+		if (periodSelection.mode === "custom") {
+			return {
+				dateFrom: periodSelection.dateFrom,
+				dateTo: periodSelection.dateTo,
+			};
+		}
+
+		return { periodPreset: periodSelection.periodPreset };
+	}, [periodSelection]);
 	const analytics = useQuery({
-		queryKey: ["analytics", "director", periodPreset],
-		queryFn: () => getDirectorAnalytics({ periodPreset }),
+		queryKey: ["analytics", "director", analyticsQuery],
+		queryFn: () => getDirectorAnalytics(analyticsQuery),
 	});
 
+	function selectPresetPeriod(periodPreset: DirectorAnalyticsPeriodPreset) {
+		setPeriodSelection({ mode: "preset", periodPreset });
+		setCustomPeriodError(null);
+		setPeriodPickerOpen(false);
+	}
+
+	function setPeriodPickerOpenState(open: boolean) {
+		if (open && analytics.data) {
+			setCustomDateFrom(formatBusinessDateInputValue(analytics.data.filters.dateFrom));
+			setCustomDateTo(formatBusinessDateInputValue(
+				new Date(new Date(analytics.data.filters.dateTo).getTime() - 1).toISOString(),
+			));
+			setCustomPeriodError(null);
+		}
+		setPeriodPickerOpen(open);
+	}
+
+	function applyCustomPeriod() {
+		const validationError = validateCustomPeriod(customDateFrom, customDateTo);
+		if (validationError) {
+			setCustomPeriodError(validationError);
+			return;
+		}
+
+		setPeriodSelection({
+			mode: "custom",
+			dateFrom: customDateFrom,
+			dateTo: customDateTo,
+		});
+		setCustomPeriodError(null);
+		setPeriodPickerOpen(false);
+	}
+
+	function selectCalendarRange(range: DateRange | undefined) {
+		setCustomDateFrom(range?.from ? toDateInputValue(range.from) : "");
+		setCustomDateTo(range?.to ? toDateInputValue(range.to) : "");
+		setCustomPeriodError(null);
+	}
+
+	const customDateRange = toCalendarDateRange(customDateFrom, customDateTo);
+
 	return (
-		<section className="screen-stack director-home analytics-home">
-			<div className="director-analytics-header">
-				<div>
-					<h1>{title}</h1>
-					{analytics.data ? (
-						<p>{formatPeriodRange(analytics.data.filters.dateFrom, analytics.data.filters.dateTo)}</p>
-					) : null}
-				</div>
+		<section className="screen-stack director-home director-dashboard">
+			<div className="director-dashboard-header">
+				<h1>{title}</h1>
+				{analytics.data ? (
+					<Popover.Root open={periodPickerOpen} onOpenChange={setPeriodPickerOpenState}>
+						<Popover.Trigger asChild>
+							<button
+								aria-controls="director-dashboard-period-picker"
+								aria-expanded={periodPickerOpen}
+								className="director-dashboard-date"
+								type="button"
+							>
+								<CalendarDays aria-hidden size={18} />
+								<span>{formatPeriodRange(analytics.data.filters.dateFrom, analytics.data.filters.dateTo)}</span>
+								<ChevronDown aria-hidden size={16} />
+							</button>
+						</Popover.Trigger>
+						<Popover.Content
+							align="end"
+							aria-label="Выбор периода аналитики"
+							className="director-dashboard-period-picker"
+							collisionPadding={12}
+							id="director-dashboard-period-picker"
+							sideOffset={8}
+						>
+							<DayPicker
+								className="director-dashboard-calendar"
+								defaultMonth={customDateRange?.from ?? new Date()}
+								locale={ru}
+								max={ANALYTICS_MAX_RANGE_DAYS}
+								mode="range"
+								onSelect={selectCalendarRange}
+								selected={customDateRange}
+								weekStartsOn={1}
+							/>
+							<div className="director-dashboard-period-custom">
+								<label>
+									<span>С</span>
+									<input
+										onChange={(event) => {
+											setCustomDateFrom(event.target.value);
+											setCustomPeriodError(null);
+										}}
+										type="date"
+										value={customDateFrom}
+									/>
+								</label>
+								<label>
+									<span>По</span>
+									<input
+										onChange={(event) => {
+											setCustomDateTo(event.target.value);
+											setCustomPeriodError(null);
+										}}
+										type="date"
+										value={customDateTo}
+									/>
+								</label>
+							</div>
+							{customPeriodError ? (
+								<p className="director-dashboard-period-error">{customPeriodError}</p>
+							) : null}
+							<div className="director-dashboard-period-actions">
+								<Popover.Close asChild>
+									<button type="button">
+										Отмена
+									</button>
+								</Popover.Close>
+								<button type="button" onClick={applyCustomPeriod}>
+									Применить
+								</button>
+							</div>
+						</Popover.Content>
+					</Popover.Root>
+				) : null}
 				{analytics.isFetching ? (
-					<span className="analytics-sync" aria-label="Обновление">
+					<span className="director-dashboard-sync" aria-label="Обновление">
 						<RefreshCw aria-hidden size={16} />
 					</span>
 				) : null}
@@ -64,23 +224,15 @@ export function DirectorAnalyticsHome({ title = "Аналитика" }: { title?
 
 			<SegmentedControl
 				ariaLabel="Период аналитики"
-				className="analytics-period-control"
+				className="director-dashboard-period-control"
 				items={PERIOD_OPTIONS}
-				onChange={setPeriodPreset}
+				onChange={selectPresetPeriod}
 				role="group"
-				value={periodPreset}
-			/>
-
-			<SegmentedControl
-				ariaLabel="Раздел аналитики"
-				className="analytics-view-tabs"
-				items={VIEW_OPTIONS}
-				onChange={setViewMode}
-				value={viewMode}
+				value={periodSelection.mode === "preset" ? periodSelection.periodPreset : null}
 			/>
 
 			{analytics.isError ? (
-				<div className="analytics-message error">
+				<div className="director-dashboard-message error">
 					<AlertTriangle aria-hidden size={18} />
 					<span>Не удалось загрузить аналитику.</span>
 					<button type="button" onClick={() => void analytics.refetch()}>
@@ -89,93 +241,150 @@ export function DirectorAnalyticsHome({ title = "Аналитика" }: { title?
 				</div>
 			) : null}
 
-			{analytics.data ? <DirectorAnalyticsView data={analytics.data} viewMode={viewMode} /> : null}
+			{analytics.data ? (
+				<DirectorAnalyticsView
+					data={analytics.data}
+					onViewModeChange={setViewMode}
+					viewMode={viewMode}
+				/>
+			) : null}
 			{analytics.isLoading ? <AnalyticsSkeleton /> : null}
 		</section>
 	);
 }
 
-function DirectorAnalyticsView({ data, viewMode }: { data: DirectorAnalyticsResponse; viewMode: AnalyticsViewMode }) {
+function DirectorAnalyticsView({
+	data,
+	onViewModeChange,
+	viewMode,
+}: {
+	data: DirectorAnalyticsResponse;
+	onViewModeChange: (value: AnalyticsViewMode) => void;
+	viewMode: AnalyticsViewMode;
+}) {
 	const rawMaterialRows = useMemo(
 		() => buildRawMaterialSummaryRows(data.production),
 		[data.production],
 	);
 
-	if (viewMode === "money") {
-		return <MoneyAnalytics data={data} />;
-	}
-
-	if (viewMode === "production") {
-		return <ProductionAnalytics data={data} rawMaterialRows={rawMaterialRows} />;
-	}
-
 	return (
 		<>
-			<AnalyticsSection title="За период" meta={getPeriodLabel(data.filters.periodPreset)}>
-				<div className="analytics-summary-grid">
-					<MetricBlock
-						icon={<WalletCards aria-hidden size={18} />}
-						label="Выручка"
-						value={formatRubles(data.money.netRevenueCents)}
-						detail={formatCount(data.money.saleCount, "продажа", "продажи", "продаж")}
-					/>
-					<MetricBlock
-						icon={<Factory aria-hidden size={18} />}
-						label="Выпуск"
-						value={`${formatQuantity(data.production.summary.productReleasedUnits)} шт`}
-						detail={`Сырье: ${formatQuantity(data.production.summary.rawMaterialConsumedQuantity)} ${data.production.summary.rawMaterialConsumedUnit}`}
-					/>
-				</div>
-			</AnalyticsSection>
-
-			<AnalyticsSection title="Сейчас">
-				<div className="analytics-current-cash">
-					<MetricBlock
-						icon={<Banknote aria-hidden size={18} />}
-						label="Наличные"
-						value={formatRubles(data.money.currentCash.totalCashCents)}
-						detail="Распределитель и курьеры"
-					/>
-					<div className="analytics-ledger-list">
-						<AnalyticsValueRow
-							label="Распределитель"
-							value={formatRubles(data.money.currentCash.distributorCashCents)}
-						/>
-						<AnalyticsValueRow
-							label="Курьеры"
-							value={formatRubles(data.money.currentCash.courierCashCents)}
-						/>
-					</div>
-				</div>
-			</AnalyticsSection>
+			<MoneySummary data={data} />
+			<ProductionFlowStrip data={data} />
+			<AnalyticsTabbedPanel
+				data={data}
+				onViewModeChange={onViewModeChange}
+				rawMaterialRows={rawMaterialRows}
+				viewMode={viewMode}
+			/>
 		</>
 	);
 }
 
-function MoneyAnalytics({ data }: { data: DirectorAnalyticsResponse }) {
+function AnalyticsTabbedPanel({
+	data,
+	onViewModeChange,
+	rawMaterialRows,
+	viewMode,
+}: {
+	data: DirectorAnalyticsResponse;
+	onViewModeChange: (value: AnalyticsViewMode) => void;
+	rawMaterialRows: RawMaterialSummaryRow[];
+	viewMode: AnalyticsViewMode;
+}) {
 	return (
 		<>
-			<AnalyticsSection title="Выручка" meta={getPeriodLabel(data.filters.periodPreset)}>
-				<div className="analytics-revenue-panel">
-					<MetricBlock
-						icon={<WalletCards aria-hidden size={18} />}
-						label="Итого"
-						value={formatRubles(data.money.netRevenueCents)}
-						detail={formatCount(data.money.saleCount, "продажа", "продажи", "продаж")}
+			<section className="director-dashboard-tabbed-panel">
+				<SegmentedControl
+					ariaLabel="Раздел аналитики"
+					className="director-dashboard-tabs"
+					items={VIEW_OPTIONS}
+					onChange={onViewModeChange}
+					value={viewMode}
+				/>
+				{viewMode === "money" ? <MoneyAnalytics data={data} /> : null}
+				{viewMode === "overview" ? <OverviewAnalytics data={data} /> : null}
+				{viewMode === "production" ? <RawMaterialSummary rows={rawMaterialRows} /> : null}
+			</section>
+			{viewMode === "production" ? (
+				<section className="director-dashboard-table-card">
+					<ProductList rows={data.production.productReleased} />
+				</section>
+			) : null}
+		</>
+	);
+}
+
+function OverviewAnalytics({ data }: { data: DirectorAnalyticsResponse }) {
+	const averageCheckCents = data.money.saleCount > 0
+		? Math.round(data.money.grossRevenueCents / data.money.saleCount)
+		: 0;
+
+	return (
+		<div className="director-dashboard-overview">
+			<section className="director-dashboard-overview-section" aria-label="Показатели периода">
+				<h2>Период</h2>
+				<AnalyticsValueRow
+					label="Средний чек"
+					value={formatRubles(averageCheckCents)}
+				/>
+				<AnalyticsValueRow
+					label="Продаж"
+					value={formatQuantity(data.money.saleCount)}
+				/>
+				<AnalyticsValueRow
+					label="Отменено"
+					value={formatQuantity(data.money.cancellationCount)}
+				/>
+			</section>
+			<section className="director-dashboard-overview-section" aria-label="Сырье за период">
+				<h2>Сырье</h2>
+				<AnalyticsValueRow
+					label="Приход"
+					value={formatRawMaterialTotal(data.production.rawMaterialIntakes)}
+				/>
+				<AnalyticsValueRow
+					label="Расход"
+					value={formatRawMaterialTotal(data.production.rawMaterialConsumed)}
+				/>
+				<AnalyticsValueRow
+					label="Остаток"
+					value={formatRawMaterialTotal(data.production.currentRawMaterialBalances)}
+				/>
+			</section>
+		</div>
+	);
+}
+
+function MoneySummary({ data }: { data: DirectorAnalyticsResponse }) {
+	return (
+		<section className="director-dashboard-money-card" aria-label="Деньги">
+			<div className="director-dashboard-money-primary">
+				<MetricBlock
+					icon={<Banknote aria-hidden size={20} />}
+					label="Выручка"
+					valueCents={data.money.netRevenueCents}
+					detail={formatCount(data.money.saleCount, "продажа", "продажи", "продаж")}
+				/>
+				<div className="director-dashboard-money-breakdown director-dashboard-revenue-breakdown">
+					<AnalyticsValueRow
+						label="Наличными"
+						value={formatRubles(data.money.cashRevenueCents)}
 					/>
-					<RevenueSparkline points={data.charts.revenueByDay} />
+					<AnalyticsValueRow
+						label="Безналом"
+						value={formatRubles(data.money.cashlessRevenueCents)}
+					/>
 				</div>
-			</AnalyticsSection>
-
-			<AnalyticsSection title="Оплата за период">
-				<div className="analytics-money-split">
-					<SmallPanel label="Наличные" value={formatRubles(data.money.cashRevenueCents)} />
-					<SmallPanel label="Безнал" value={formatRubles(data.money.cashlessRevenueCents)} />
-				</div>
-			</AnalyticsSection>
-
-			<AnalyticsSection title="Сейчас">
-				<div className="analytics-ledger-list">
+			</div>
+			<div className="director-dashboard-money-secondary">
+				<MetricBlock
+					icon={<Vault aria-hidden size={20} />}
+					label="Касса"
+					valueCents={data.money.currentCash.totalCashCents}
+					detail="Наличные сейчас"
+				/>
+				<div className="director-dashboard-money-breakdown">
 					<AnalyticsValueRow
 						label="Распределитель"
 						value={formatRubles(data.money.currentCash.distributorCashCents)}
@@ -184,76 +393,49 @@ function MoneyAnalytics({ data }: { data: DirectorAnalyticsResponse }) {
 						label="Курьеры"
 						value={formatRubles(data.money.currentCash.courierCashCents)}
 					/>
-					<AnalyticsValueRow
-						label="Наличные всего"
-						value={formatRubles(data.money.currentCash.totalCashCents)}
-					/>
 				</div>
-			</AnalyticsSection>
-		</>
-	);
-}
-
-function ProductionAnalytics({
-	data,
-	rawMaterialRows,
-}: {
-	data: DirectorAnalyticsResponse;
-	rawMaterialRows: RawMaterialSummaryRow[];
-}) {
-	return (
-		<>
-			<AnalyticsSection title="За период" meta={getPeriodLabel(data.filters.periodPreset)}>
-				<div className="analytics-summary-grid">
-					<SmallPanel
-						label="Выпущено"
-						value={`${formatQuantity(data.production.summary.productReleasedUnits)} шт`}
-					/>
-					<SmallPanel
-						label="Сырье в продукт"
-						value={`${formatQuantity(data.production.summary.rawMaterialConsumedQuantity)} ${data.production.summary.rawMaterialConsumedUnit}`}
-					/>
-					<SmallPanel
-						label="На распределитель"
-						value={`${formatQuantity(data.production.productTransferredToDistributorUnits)} шт`}
-					/>
-				</div>
-			</AnalyticsSection>
-
-			<AnalyticsSection title="Сырье">
-				<RawMaterialSummary rows={rawMaterialRows} />
-			</AnalyticsSection>
-
-			<AnalyticsSection title="Продукция">
-				<ProductList rows={data.production.productReleased} />
-				<div className="analytics-ledger-list">
-					<AnalyticsValueRow
-						label="Остаток в цеху"
-						value={`${formatQuantity(data.production.currentWorkshopProductUnits)} шт`}
-					/>
-				</div>
-			</AnalyticsSection>
-		</>
-	);
-}
-
-function AnalyticsSection({
-	children,
-	meta,
-	title,
-}: {
-	children: ReactNode;
-	meta?: string;
-	title: string;
-}) {
-	return (
-		<section className="analytics-focus-panel">
-			<div className="analytics-section-head">
-				<h2>{title}</h2>
-				{meta ? <span>{meta}</span> : null}
 			</div>
-			{children}
 		</section>
+	);
+}
+
+function MoneyAnalytics({ data }: { data: DirectorAnalyticsResponse }) {
+	return (
+		<RevenueTrendChart points={data.charts.revenueByDay} />
+	);
+}
+
+function ProductionFlowStrip({ data }: { data: DirectorAnalyticsResponse }) {
+	return (
+		<div className="director-dashboard-production-strip">
+			<div className="director-dashboard-production-icon">
+				<Factory aria-hidden size={24} />
+			</div>
+			<FlowValue
+				label="Выпуск"
+				value={formatQuantity(data.production.summary.productReleasedUnits)}
+			/>
+			<FlowValue
+				label="Распределитель"
+				value={formatQuantity(data.production.productTransferredToDistributorUnits)}
+			/>
+			<FlowValue
+				label="Цех"
+				value={formatQuantity(data.production.currentWorkshopProductUnits)}
+			/>
+		</div>
+	);
+}
+
+function FlowValue({ label, unit = "шт", value }: { label: string; unit?: string; value: string }) {
+	return (
+		<div className="director-dashboard-strip-value">
+			<span>{label}</span>
+			<strong>
+				<span>{value}</span>
+				<small>{unit}</small>
+			</strong>
+		</div>
 	);
 }
 
@@ -261,55 +443,98 @@ function MetricBlock({
 	detail,
 	icon,
 	label,
-	value,
+	valueCents,
 }: {
 	detail: string;
 	icon: ReactNode;
 	label: string;
-	value: string;
+	valueCents: number;
 }) {
 	return (
-		<div className="analytics-kpi">
-			<div className="analytics-kpi-label">
+		<div className="director-dashboard-metric">
+			<div className="director-dashboard-metric-label">
 				{icon}
 				<span>{label}</span>
 			</div>
-			<strong>{value}</strong>
+			<MoneyValue cents={valueCents} />
 			<p>{detail}</p>
 		</div>
 	);
 }
 
-function SmallPanel({ label, value }: { label: string; value: string }) {
+function MoneyValue({ cents }: { cents: number }) {
+	const sign = cents < 0 ? "-" : "";
+	const value = `${sign}${formatCompactMoneyCents(Math.abs(cents))}`;
+
 	return (
-		<div className="analytics-small-panel">
-			<span>{label}</span>
-			<strong>{value}</strong>
-		</div>
+		<strong className="director-dashboard-money-value">
+			<span>{value}</span>
+			<small aria-hidden>₽</small>
+			<span className="sr-only"> рублей</span>
+		</strong>
 	);
 }
 
-function RevenueSparkline({ points }: { points: DirectorAnalyticsRevenueByDayPoint[] }) {
-	const id = useId();
-	const values = points.map((point) => point.netRevenueCents);
-	const width = 240;
-	const height = 72;
-	const path = buildSparklinePath(values, width, height);
-	const areaPath = path ? `${path} L ${width} ${height} L 0 ${height} Z` : "";
+function RevenueTrendChart({ points }: { points: DirectorAnalyticsRevenueByDayPoint[] }) {
+	const titleId = useId();
+	const gradientId = `${titleId.replace(/:/g, "")}-gradient`;
+	const width = 320;
+	const height = 150;
+	const geometry = buildRevenueChartGeometry(points, width, height);
+	const firstPoint = points[0];
+	const lastPoint = points.at(-1);
+	const showPointMarkers = points.length > 1 && points.length <= 45;
 
 	return (
-		<div className="analytics-sparkline" aria-labelledby={id}>
-			<div className="analytics-sparkline-head">
-				<span id={id}>Динамика по дням</span>
+		<div className="director-dashboard-sparkline" aria-labelledby={titleId}>
+			<div className="director-dashboard-sparkline-head">
+				<h2 id={titleId}>Выручка по дням</h2>
 				<strong>{points.length ? `${points.length} дн.` : "Нет данных"}</strong>
 			</div>
-			{path ? (
-				<svg viewBox={`0 0 ${width} ${height}`} role="img" aria-labelledby={id} preserveAspectRatio="none">
-					<path className="analytics-sparkline-area" d={areaPath} />
-					<path className="analytics-sparkline-line" d={path} />
-				</svg>
+			{geometry ? (
+				<>
+					<svg viewBox={`0 0 ${width} ${height}`} role="img" aria-labelledby={titleId} preserveAspectRatio="none">
+						<defs>
+							<linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">
+								<stop offset="0%" stopColor="var(--brand-green)" stopOpacity="0.18" />
+								<stop offset="100%" stopColor="var(--brand-green)" stopOpacity="0" />
+							</linearGradient>
+						</defs>
+						<g className="director-dashboard-chart-grid">
+							{geometry.gridLines.map((line) => (
+								<g key={line.label}>
+									<line x1={geometry.plot.left} x2={geometry.plot.right} y1={line.y} y2={line.y} />
+									<text x={geometry.plot.left - 7} y={line.y}>{line.label}</text>
+								</g>
+							))}
+						</g>
+						{geometry.areaPath ? (
+							<path className="director-dashboard-sparkline-area" d={geometry.areaPath} fill={`url(#${gradientId})`} />
+						) : null}
+						{geometry.linePath ? (
+							<path className="director-dashboard-sparkline-line" d={geometry.linePath} />
+						) : null}
+						{showPointMarkers ? geometry.points.map((point) => (
+							<circle className="director-dashboard-chart-dot" cx={point.x} cy={point.y} key={point.date} r="2.3" />
+						)) : null}
+						{geometry.lastPoint ? (
+							<circle
+								className="director-dashboard-chart-last-dot"
+								cx={geometry.lastPoint.x}
+								cy={geometry.lastPoint.y}
+								r="4"
+							/>
+						) : null}
+					</svg>
+					{firstPoint && lastPoint ? (
+						<div className="director-dashboard-chart-axis" aria-hidden>
+							<span>{formatChartDate(firstPoint.date)}</span>
+							<span>{formatChartDate(lastPoint.date)}</span>
+						</div>
+					) : null}
+				</>
 			) : (
-				<p className="analytics-empty">Недостаточно данных для графика</p>
+				<p className="director-dashboard-empty">Нет продаж за период</p>
 			)}
 		</div>
 	);
@@ -317,50 +542,49 @@ function RevenueSparkline({ points }: { points: DirectorAnalyticsRevenueByDayPoi
 
 function RawMaterialSummary({ rows }: { rows: RawMaterialSummaryRow[] }) {
 	return (
-		<div className="analytics-material-list">
+		<div className="director-dashboard-material-table">
+			<h2>Сырье</h2>
+			<div className="director-dashboard-material-head" aria-hidden>
+				<span>Наименование</span>
+				<span>Приход</span>
+				<span>Расход</span>
+				<span>Остаток</span>
+			</div>
 			{rows.length ? rows.map((row) => (
-				<div className="analytics-material-row" key={row.rawMaterialTypeId}>
-					<div>
-						<strong>{row.rawMaterialName}</strong>
-						<span>{row.unit}</span>
-					</div>
-					<div className="analytics-material-values">
-						<SmallValue label="Приход" value={formatQuantity(row.intakeQuantity)} />
-						<SmallValue label="Расход" value={formatQuantity(row.consumedQuantity)} />
-						<SmallValue label="Остаток" value={formatQuantity(row.balanceQuantity)} />
-					</div>
+				<div className="director-dashboard-material-row" key={row.rawMaterialTypeId}>
+					<strong>{row.rawMaterialName}</strong>
+					<span>{formatQuantity(row.intakeQuantity)} {row.unit}</span>
+					<span>{formatQuantity(row.consumedQuantity)} {row.unit}</span>
+					<span>{formatQuantity(row.balanceQuantity)} {row.unit}</span>
 				</div>
-			)) : <p className="analytics-empty">Нет данных по сырью</p>}
+			)) : <p className="director-dashboard-empty">Нет данных по сырью</p>}
 		</div>
 	);
 }
 
 function ProductList({ rows }: { rows: DirectorAnalyticsProductOutputRow[] }) {
 	return (
-		<div className="analytics-product-list">
+		<div className="director-dashboard-product-table">
+			<h2>Продукция</h2>
+			<div className="director-dashboard-product-head" aria-hidden>
+				<span>Наименование</span>
+				<span>Количество</span>
+				<span>Сырье на 1 шт</span>
+			</div>
 			{rows.length ? rows.map((row) => (
-				<AnalyticsValueRow
-					key={row.productName}
-					label={row.productName}
-					value={`${formatQuantity(row.quantity)} шт · сырье ${formatQuantity(row.rawMaterialConsumedQuantity)} ${row.rawMaterialUnit}`}
-				/>
-			)) : <p className="analytics-empty">Нет выпуска за период</p>}
+				<div className="director-dashboard-product-row" key={row.productName}>
+					<strong>{row.productName}</strong>
+					<strong>{formatQuantity(row.quantity)} шт</strong>
+					<span>{formatRawMaterialPerUnit(row)}</span>
+				</div>
+			)) : <p className="director-dashboard-empty">Нет выпуска за период</p>}
 		</div>
-	);
-}
-
-function SmallValue({ label, value }: { label: string; value: string }) {
-	return (
-		<span>
-			<small>{label}</small>
-			<strong>{value}</strong>
-		</span>
 	);
 }
 
 function AnalyticsValueRow({ label, value }: { label: string; value: string }) {
 	return (
-		<div className="analytics-value-row">
+		<div className="director-dashboard-value-row">
 			<span>{label}</span>
 			<strong>{value}</strong>
 		</div>
@@ -369,7 +593,7 @@ function AnalyticsValueRow({ label, value }: { label: string; value: string }) {
 
 function AnalyticsSkeleton() {
 	return (
-		<div className="analytics-skeleton" aria-label="Загрузка аналитики">
+		<div className="director-dashboard-skeleton" aria-label="Загрузка аналитики">
 			<span />
 			<span />
 			<span />
@@ -388,6 +612,21 @@ function formatQuantity(value: number): string {
 	}).format(value);
 }
 
+function formatRawMaterialTotal(rows: DirectorAnalyticsRawMaterialRow[]): string {
+	if (!rows.length) {
+		return "0";
+	}
+
+	const totalsByUnit = new Map<string, number>();
+	for (const row of rows) {
+		totalsByUnit.set(row.unit, (totalsByUnit.get(row.unit) ?? 0) + row.quantity);
+	}
+
+	return Array.from(totalsByUnit.entries())
+		.map(([unit, quantity]) => `${formatQuantity(quantity)} ${unit}`)
+		.join(" / ");
+}
+
 function formatPeriodRange(dateFrom: string, dateTo: string): string {
 	const formatter = new Intl.DateTimeFormat("ru-RU", {
 		day: "numeric",
@@ -398,25 +637,235 @@ function formatPeriodRange(dateFrom: string, dateTo: string): string {
 	return `${formatter.format(new Date(dateFrom))} - ${formatter.format(inclusiveDateTo)}`;
 }
 
-function buildSparklinePath(values: number[], width: number, height: number): string {
-	if (values.length < 2) {
+function formatBusinessDateInputValue(value: string): string {
+	const formatter = new Intl.DateTimeFormat("en-CA", {
+		day: "2-digit",
+		month: "2-digit",
+		timeZone: "Asia/Vladivostok",
+		year: "numeric",
+	});
+	const parts = Object.fromEntries(
+		formatter.formatToParts(new Date(value))
+			.map((part) => [part.type, part.value]),
+	);
+
+	return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
+function toCalendarDateRange(dateFrom: string, dateTo: string): DateRange | undefined {
+	const from = parseDateInputValue(dateFrom);
+	if (!from) {
+		return undefined;
+	}
+
+	return {
+		from,
+		to: parseDateInputValue(dateTo),
+	};
+}
+
+function parseDateInputValue(value: string): Date | undefined {
+	const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+	if (!match) {
+		return undefined;
+	}
+
+	const [, year, month, day] = match;
+	return new Date(Number(year), Number(month) - 1, Number(day));
+}
+
+function toDateInputValue(date: Date): string {
+	const year = date.getFullYear();
+	const month = String(date.getMonth() + 1).padStart(2, "0");
+	const day = String(date.getDate()).padStart(2, "0");
+	return `${year}-${month}-${day}`;
+}
+
+function validateCustomPeriod(dateFrom: string, dateTo: string): string | null {
+	if (!dateFrom || !dateTo) {
+		return "Укажите начало и конец периода.";
+	}
+
+	const from = new Date(`${dateFrom}T00:00:00.000Z`);
+	const to = new Date(`${dateTo}T00:00:00.000Z`);
+
+	if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) {
+		return "Проверьте даты периода.";
+	}
+
+	if (to.getTime() < from.getTime()) {
+		return "Дата окончания должна быть не раньше даты начала.";
+	}
+
+	const inclusiveDays = Math.floor((to.getTime() - from.getTime()) / DAY_MS) + 1;
+	if (inclusiveDays > ANALYTICS_MAX_RANGE_DAYS) {
+		return "Период не должен быть больше 366 дней.";
+	}
+
+	return null;
+}
+
+function buildRevenueChartGeometry(
+	points: DirectorAnalyticsRevenueByDayPoint[],
+	width: number,
+	height: number,
+): RevenueChartGeometry | null {
+	if (!points.length) {
+		return null;
+	}
+
+	const plot = {
+		bottom: height - 18,
+		left: 68,
+		right: width - 8,
+		top: 10,
+	};
+	const plotWidth = plot.right - plot.left;
+	const plotHeight = plot.bottom - plot.top;
+	const values = points.map((point) => point.netRevenueCents);
+	const minValue = Math.min(...values);
+	const maxValue = Math.max(...values);
+	const spread = maxValue - minValue;
+	const domainPadding = spread === 0
+		? Math.max(Math.abs(maxValue) * 0.2, 100)
+		: Math.max(spread * 0.16, 100);
+	let domainMin = minValue - domainPadding;
+	let domainMax = maxValue + domainPadding;
+
+	if (minValue >= 0) {
+		domainMin = Math.max(0, domainMin);
+	}
+	if (maxValue <= 0) {
+		domainMax = Math.min(0, domainMax);
+	}
+	if (domainMax === domainMin) {
+		domainMax += 100;
+		domainMin -= 100;
+	}
+
+	const valueToY = (value: number) => (
+		plot.top + ((domainMax - value) / (domainMax - domainMin)) * plotHeight
+	);
+	const chartPoints = points.map((point, index) => ({
+		date: point.date,
+		value: point.netRevenueCents,
+		x: points.length === 1 ? plot.left + plotWidth / 2 : plot.left + (index / (points.length - 1)) * plotWidth,
+		y: valueToY(point.netRevenueCents),
+	}));
+	const firstPoint = chartPoints[0];
+	if (!firstPoint) {
+		return null;
+	}
+
+	const lastPoint = chartPoints.at(-1) ?? firstPoint;
+	const linePath = chartPoints.length === 1
+		? buildSinglePointPath(firstPoint)
+		: buildSmoothChartPath(chartPoints);
+	const areaPath = `${linePath} L ${formatSvgNumber(lastPoint.x)} ${plot.bottom} L ${formatSvgNumber(firstPoint.x)} ${plot.bottom} Z`;
+
+	return {
+		areaPath,
+		gridLines: buildRevenueGridLines(domainMin, domainMax, valueToY),
+		lastPoint,
+		linePath,
+		plot: {
+			left: plot.left,
+			right: plot.right,
+		},
+		points: chartPoints,
+	};
+}
+
+function buildRevenueGridLines(
+	domainMin: number,
+	domainMax: number,
+	valueToY: (value: number) => number,
+): Array<{ label: string; y: number }> {
+	const values = [
+		domainMax,
+		domainMin + (domainMax - domainMin) / 2,
+		domainMin,
+	];
+
+	return values.map((value) => ({
+		label: formatChartMoneyLabel(value),
+		y: valueToY(value),
+	})).filter((line, index, lines) => (
+		lines.findIndex((candidate) => candidate.label === line.label) === index
+	));
+}
+
+function buildSinglePointPath(point: RevenueChartPoint): string {
+	const startX = point.x - 22;
+	const endX = point.x + 22;
+	return `M ${formatSvgNumber(startX)} ${formatSvgNumber(point.y)} C ${formatSvgNumber(point.x - 8)} ${formatSvgNumber(point.y)}, ${formatSvgNumber(point.x + 8)} ${formatSvgNumber(point.y)}, ${formatSvgNumber(endX)} ${formatSvgNumber(point.y)}`;
+}
+
+function buildSmoothChartPath(points: RevenueChartPoint[]): string {
+	const [firstPoint] = points;
+	if (!firstPoint) {
 		return "";
 	}
 
-	const min = Math.min(...values);
-	const max = Math.max(...values);
-	const range = max - min || 1;
-	const step = width / (values.length - 1);
+	const commands = [`M ${formatSvgNumber(firstPoint.x)} ${formatSvgNumber(firstPoint.y)}`];
 
-	return values.map((value, index) => {
-		const x = index * step;
-		const y = height - ((value - min) / range) * (height - 8) - 4;
-		return `${index === 0 ? "M" : "L"} ${formatChartNumber(x)} ${formatChartNumber(y)}`;
-	}).join(" ");
+	for (let index = 0; index < points.length - 1; index += 1) {
+		const current = points[index];
+		const next = points[index + 1];
+		if (!current || !next) {
+			continue;
+		}
+
+		const previous = points[index - 1] ?? current;
+		const afterNext = points[index + 2] ?? next;
+		const controlOne = {
+			x: current.x + (next.x - previous.x) / 6,
+			y: current.y + (next.y - previous.y) / 6,
+		};
+		const controlTwo = {
+			x: next.x - (afterNext.x - current.x) / 6,
+			y: next.y - (afterNext.y - current.y) / 6,
+		};
+
+		commands.push(
+			`C ${formatSvgNumber(controlOne.x)} ${formatSvgNumber(controlOne.y)}, ${formatSvgNumber(controlTwo.x)} ${formatSvgNumber(controlTwo.y)}, ${formatSvgNumber(next.x)} ${formatSvgNumber(next.y)}`,
+		);
+	}
+
+	return commands.join(" ");
 }
 
-function formatChartNumber(value: number): string {
+function formatChartMoneyLabel(value: number): string {
+	const roundedCents = Math.round(value);
+	const sign = roundedCents < 0 ? "-" : "";
+	const rubles = Math.abs(roundedCents) / 100;
+
+	if (rubles >= 1000) {
+		return `${sign}${new Intl.NumberFormat("ru-RU", {
+			maximumFractionDigits: 1,
+		}).format(rubles / 1000)} тыс.`;
+	}
+
+	return `${sign}${new Intl.NumberFormat("ru-RU", {
+		maximumFractionDigits: 0,
+	}).format(rubles)}`;
+}
+
+function formatChartDate(value: string): string {
+	return new Intl.DateTimeFormat("ru-RU", {
+		day: "numeric",
+		month: "short",
+		timeZone: "Asia/Vladivostok",
+	}).format(new Date(`${value}T00:00:00.000Z`));
+}
+
+function formatSvgNumber(value: number): string {
 	return Number.isInteger(value) ? String(value) : value.toFixed(2);
+}
+
+function formatRawMaterialPerUnit(row: DirectorAnalyticsProductOutputRow): string {
+	const quantityPerUnit = row.quantity > 0 ? row.rawMaterialConsumedQuantity / row.quantity : 0;
+	return `${formatQuantity(quantityPerUnit)} ${row.rawMaterialUnit}/шт`;
 }
 
 function buildRawMaterialSummaryRows(production: DirectorAnalyticsResponse["production"]): RawMaterialSummaryRow[] {
@@ -468,8 +917,4 @@ function formatCount(value: number, one: string, few: string, many: string): str
 				? few
 				: many;
 	return `${value} ${word}`;
-}
-
-function getPeriodLabel(periodPreset: DirectorAnalyticsPeriodPreset): string {
-	return PERIOD_OPTIONS.find((option) => option.value === periodPreset)?.label ?? "Период";
 }

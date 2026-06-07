@@ -49,12 +49,12 @@ const analyticsResponse = {
 			unit: "кг",
 			quantity: 4,
 		}],
-			productReleased: [{
-				productName: "Икра горбуши",
-				quantity: 12,
-				rawMaterialConsumedQuantity: 8,
-				rawMaterialUnit: "кг",
-			}],
+		productReleased: [{
+			productName: "Икра горбуши",
+			quantity: 12,
+			rawMaterialConsumedQuantity: 8,
+			rawMaterialUnit: "кг",
+		}],
 		productTransferredToDistributorUnits: 8,
 		currentWorkshopProductUnits: 4,
 		summary: {
@@ -64,12 +64,26 @@ const analyticsResponse = {
 		},
 	},
 	charts: {
-		revenueByDay: [{
-			date: "2026-06-05",
-			grossRevenueCents: 320000,
-			cancelledRevenueCents: 70000,
-			netRevenueCents: 250000,
-		}],
+		revenueByDay: [
+			{
+				date: "2026-06-03",
+				grossRevenueCents: 100000,
+				cancelledRevenueCents: 0,
+				netRevenueCents: 100000,
+			},
+			{
+				date: "2026-06-04",
+				grossRevenueCents: 90000,
+				cancelledRevenueCents: 20000,
+				netRevenueCents: 70000,
+			},
+			{
+				date: "2026-06-05",
+				grossRevenueCents: 320000,
+				cancelledRevenueCents: 70000,
+				netRevenueCents: 250000,
+			},
+		],
 		paymentSplit: {
 			cashRevenueCents: 125000,
 			cashlessRevenueCents: 125000,
@@ -122,35 +136,69 @@ describe("DirectorAnalyticsHome", () => {
 
 		expect(await screen.findByRole("heading", { name: "Аналитика" })).toBeTruthy();
 		expect(screen.queryByText("Директор")).toBeNull();
-		expect(await screen.findByText("За период")).toBeTruthy();
-		expect(screen.getByText("Сейчас")).toBeTruthy();
-		expect(screen.getByText("Выручка")).toBeTruthy();
-		expect(screen.getByText("2500 ₽")).toBeTruthy();
-		expect(screen.getByText("3 продажи")).toBeTruthy();
+		expect(await screen.findByText("Выручка")).toBeTruthy();
+		expect(screen.getByText("2500")).toBeTruthy();
+		expect(screen.getByText("Касса")).toBeTruthy();
+		expect(screen.getByText("1950")).toBeTruthy();
 		expect(screen.getByText("Выпуск")).toBeTruthy();
-		expect(screen.getByText("Сырье: 8 кг")).toBeTruthy();
-		expect(screen.getByText("Наличные")).toBeTruthy();
-		expect(screen.getByText("Распределитель")).toBeTruthy();
+		expect(screen.getByText("12")).toBeTruthy();
+		expect(screen.getByText("Наличными")).toBeTruthy();
+		expect(screen.getAllByText("Распределитель").length).toBeGreaterThan(0);
 		expect(screen.getByText("Курьеры")).toBeTruthy();
 		expect(screen.queryByText("Отмены")).toBeNull();
 		expect(screen.queryByText("1 отмена")).toBeNull();
 		expect(screen.queryByText("Движение наличных")).toBeNull();
 
+		fireEvent.click(screen.getByRole("tab", { name: "Обзор" }));
+		expect(screen.getByText("Средний чек")).toBeTruthy();
+		expect(screen.getByText("Продаж")).toBeTruthy();
+		expect(screen.getByText("Отменено")).toBeTruthy();
+		expect(screen.getByText("Приход")).toBeTruthy();
+		expect(screen.getByText("Расход")).toBeTruthy();
+		expect(screen.getByText("Остаток")).toBeTruthy();
+		expect(screen.getByText("12 кг")).toBeTruthy();
+		expect(screen.getByText("8 кг")).toBeTruthy();
+		expect(screen.getByText("4 кг")).toBeTruthy();
+		expect(screen.queryByText("На распределитель")).toBeNull();
+
 		fireEvent.click(screen.getByRole("tab", { name: "Деньги" }));
-		expect(await screen.findByText("Оплата за период")).toBeTruthy();
-		expect(screen.getByText("Динамика по дням")).toBeTruthy();
-		expect(screen.getByText("Безнал")).toBeTruthy();
+		expect(screen.getByText("Выручка по дням")).toBeTruthy();
+		expect(screen.getByText("3 дн.")).toBeTruthy();
+		expect(screen.queryByText("Безнал")).toBeNull();
 
 		fireEvent.click(screen.getByRole("tab", { name: "Производство" }));
 		expect(await screen.findByText("Сырье")).toBeTruthy();
 		expect(screen.getByText("Продукция")).toBeTruthy();
-		expect(screen.getByText("12 шт · сырье 8 кг")).toBeTruthy();
+		expect(screen.getByText("Количество")).toBeTruthy();
+		expect(screen.getByText("Сырье на 1 шт")).toBeTruthy();
+		expect(screen.getByText("0,667 кг/шт")).toBeTruthy();
 		expect(screen.getAllByText("Икра горбуши сырец")).toHaveLength(1);
 		expect(fetchMock.mock.calls.some(([input]) => String(input).includes("/analytics/director?periodPreset=30d"))).toBe(true);
 
 		fireEvent.click(screen.getByRole("button", { name: "7 дней" }));
 		await waitFor(() => {
 			expect(fetchMock.mock.calls.some(([input]) => String(input).includes("/analytics/director?periodPreset=7d"))).toBe(true);
+		});
+	});
+
+	it("applies a custom director analytics period", async () => {
+		const fetchMock = vi.fn(async (_input: RequestInfo | URL) => jsonResponse(analyticsResponse));
+		vi.stubGlobal("fetch", fetchMock);
+
+		renderAnalytics();
+
+		const periodButton = await screen.findByRole("button", { name: /мая.*июн/i });
+		fireEvent.click(periodButton);
+
+		fireEvent.change(screen.getByLabelText("С"), { target: { value: "2026-01-01" } });
+		fireEvent.change(screen.getByLabelText("По"), { target: { value: "2026-12-31" } });
+		fireEvent.click(screen.getByRole("button", { name: "Применить" }));
+
+		await waitFor(() => {
+			expect(fetchMock.mock.calls.some(([input]) => {
+				const url = String(input);
+				return url.includes("/analytics/director?dateFrom=2026-01-01&dateTo=2026-12-31");
+			})).toBe(true);
 		});
 	});
 

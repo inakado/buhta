@@ -19,8 +19,9 @@
 - `PWA` как целевое поведение frontend-приложения.
 - `@tanstack/react-query` для server-state.
 - `Radix UI primitives` для доступных составных UI controls; пакеты `@radix-ui/react-*` добавляются точечно под конкретный primitive, а не как готовая visual library.
+- `react-day-picker` для календарной сетки выбора дат; доступность и позиционирование оболочки остаются на Radix Popover, визуальная тема задается локальными CSS tokens.
 - `lucide-react` для иконок.
-- Директорская аналитика v1 строится без chart-библиотеки: сначала компактные KPI и read-only строки. Chart-зависимость добавлять только отдельным решением, если появится конкретный график, который нельзя понятно показать простым UI.
+- Директорская аналитика v1 строится без chart-библиотеки: одиночная динамика выручки реализуется локальным SVG line chart, остальные срезы остаются компактными KPI/read-only строками. Chart-зависимость добавлять только отдельным решением для multi-series interaction, tooltips или глубокого drill-down.
 - `Tailwind CSS` для стилей.
 - `@testing-library/react` и `jsdom` для component tests.
 

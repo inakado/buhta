@@ -564,10 +564,21 @@ describe("AnalyticsService real Postgres integration", () => {
 		});
 	});
 
-	it("rejects ranges wider than 90 days", async () => {
+	it("allows a one year custom range", async () => {
 		await expect(analyticsService.getDirectorAnalytics({
 			dateFrom: "2036-01-01",
-			dateTo: "2036-06-05",
+			dateTo: "2036-12-31",
+		})).resolves.toMatchObject({
+			filters: {
+				periodPreset: "30d",
+			},
+		});
+	});
+
+	it("rejects ranges wider than 366 days", async () => {
+		await expect(analyticsService.getDirectorAnalytics({
+			dateFrom: "2036-01-01",
+			dateTo: "2037-01-02",
 		})).rejects.toThrow(AppError);
 	});
 });
