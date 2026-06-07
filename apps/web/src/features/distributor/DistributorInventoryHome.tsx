@@ -174,7 +174,7 @@ export function DistributorInventoryHome({
 			return;
 		}
 		if (!parsedAmountCents.ok || amountCents <= 0) {
-			setLocalError("Укажите сумму списания.");
+			setLocalError("");
 			return;
 		}
 		if (amountCents > availableCashCents) {
@@ -312,12 +312,11 @@ export function DistributorInventoryHome({
 					>
 						<Dialog.Portal>
 							<Dialog.Overlay className="operation-dialog-overlay" />
-							<Dialog.Content className="operation-dialog">
+							<Dialog.Content aria-describedby={undefined} className="operation-dialog">
 								<form className="operation-dialog-form cash-withdrawal-panel" onSubmit={handleWithdrawSubmit}>
 									<div className="operation-dialog-heading">
 										<div>
 											<Dialog.Title>Списать наличные</Dialog.Title>
-											<Dialog.Description>Списание из текущего остатка</Dialog.Description>
 										</div>
 										<Dialog.Close
 											aria-label="Закрыть"
@@ -597,7 +596,7 @@ function getWithdrawalBlockReason(
 		return "Нет наличных для списания.";
 	}
 	if (!validAmount || amountCents <= 0) {
-		return "Укажите сумму списания.";
+		return "";
 	}
 	if (amountCents > availableCashCents) {
 		return "Сумма больше доступных наличных.";
