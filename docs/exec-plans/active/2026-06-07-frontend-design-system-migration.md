@@ -271,18 +271,23 @@
    - На home остаются только сводка и 4 действия: `Выпустить`, `Передать`, `Добавить сырье`, `Добавить тару`.
    - Сводочные строки кликабельные и открывают внутренние полноэкранные списки. На home не показывать список продукции ниже сводки.
    - Убрать старые `production-workshop-card`, lime hero-card, oversized 42px metric and large decorative action tiles from this screen.
-   - Главный visual challenge stage: расположить 4 действия так, чтобы пользователь быстро выявлял их без возврата к старой grid-card композиции. Предпочтение: один primary command для `Выпустить` и compact secondary commands для остальных действий, если owner mock не задаст другое.
+   - Решение после owner review: действия не делать вложенной карточкой и не выделять черной заливкой. Все 4 команды остаются одинаковыми по форме; `Выпустить` / `Передать` отделяются от `Добавить сырье` / `Добавить тару` только пространством и тонким разделителем.
+   - Status: implemented. Static legacy scan found no remaining old production home selectors in app code.
 
 2. **Списки из сводки.**
    - `Продукция в цеху`, `Сырье`, `Тара` остаются internal `activeScreen` detail screens с `Назад`, а не modal dialogs.
    - `Продукция в цеху` показывает выпущенную продукцию, которая еще находится в цеху; это отдельный список от экрана `На распределителе`.
    - `Сырье` и `Тара` показывают read-only ledger rows по фактическим остаткам.
    - Убрать row-card treatment and per-row decorative icons; использовать table/list rhythm with thin dividers, tabular numbers and compact empty/loading states.
+   - Реализационный стандарт: списки оформляются как директорские stock panels, с заголовком внутри белой панели, тонкими divider rows, без иконок в каждой строке. Повторяющие `Остатки` / `Остаток` убирать; оставлять `Остаток` только там, где это название числового столбца.
+   - Status: implemented. Static legacy scan found no remaining `production-balance-row`, `production-balance-list`, or `detail-list-panel` usage in app code.
 
 3. **Action screens производства.**
    - `Выпустить`, `Передать`, `Добавить сырье`, `Добавить тару` остаются полноэкранными internal action screens, не модалками.
    - Перевести `IntakeForm`, `ProductBatchForm`, `ProductTransferForm` на единый production form standard: compact white form panel, readable source/availability blocks, explicit offline/loading/empty/block reasons, stable submit area.
    - Не менять backend contracts and domain invariants; визуальная миграция не должна изменить validation semantics.
+   - Терминология action flow: entry, heading and submit label use `Передать`; старые `На распределитель` / `Переместить` не использовать в production action form.
+   - Status: implemented. Static legacy scan found no remaining old transfer copy in production form flow.
 
 4. **На распределителе.**
    - `DistributorInventoryHome` для заведующего мигрировать как read-only stock surface со сводкой по директорскому stock ledger standard.

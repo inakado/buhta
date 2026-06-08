@@ -1120,7 +1120,7 @@ describe("HomePage", () => {
 		render(<HomePage />);
 
 		expect(await screen.findByText("Цех")).toBeTruthy();
-		expect(await screen.findByRole("button", { name: "Продукция 4 шт" })).toBeTruthy();
+		expect(await screen.findByRole("button", { name: /Продукция: 4 шт, В цеху/ })).toBeTruthy();
 		expect(screen.queryByRole("navigation", { name: "Основная навигация" })?.textContent).not.toContain("Выпуск");
 		expect(screen.queryByText("Икра горбуши")).toBeNull();
 
@@ -1162,21 +1162,21 @@ describe("HomePage", () => {
 		expect(await screen.findByText("Тара добавлена")).toBeTruthy();
 		expect(screen.queryByLabelText("Вид тары")).toBeNull();
 
-		fireEvent.click(await screen.findByRole("button", { name: /Сырье.*12.5 кг.*1 видов/ }));
+		fireEvent.click(await screen.findByRole("button", { name: /Сырье: 12.5 кг, 1 вид/ }));
 		expect(await screen.findByRole("heading", { name: "Сырье" })).toBeTruthy();
 		expect(screen.getByText("12.5 кг")).toBeTruthy();
 		expect(screen.queryByText("Икра осетр")).toBeNull();
 		expect(screen.queryByLabelText("Вид сырья")).toBeNull();
 		fireEvent.click(screen.getByRole("button", { name: "Назад" }));
 
-		fireEvent.click(screen.getByRole("button", { name: /Тара.*8 шт.*1 видов/ }));
+		fireEvent.click(screen.getByRole("button", { name: /Тара: 8 шт, 1 вид/ }));
 		expect(await screen.findByRole("heading", { name: "Тара" })).toBeTruthy();
 		expect(screen.getByText("8 шт")).toBeTruthy();
 		expect(screen.queryByText("Коробка")).toBeNull();
 		expect(screen.queryByLabelText("Вид тары")).toBeNull();
 		fireEvent.click(screen.getByRole("button", { name: "Назад" }));
 
-		fireEvent.click(screen.getByRole("button", { name: "Продукция 4 шт" }));
+		fireEvent.click(screen.getByRole("button", { name: /Продукция: 4 шт, В цеху/ }));
 		expect(await screen.findByRole("heading", { name: "Продукция в цеху" })).toBeTruthy();
 		expect(screen.getByText("Икра горбуши")).toBeTruthy();
 		expect(screen.getByText("Количество")).toBeTruthy();
@@ -1191,10 +1191,7 @@ describe("HomePage", () => {
 		expect(screen.queryByRole("button", { name: "Сырье" })).toBeNull();
 		expect(screen.queryByRole("button", { name: "Тара" })).toBeNull();
 		fireEvent.change(await screen.findByLabelText("Шаблон продукции"), { target: { value: "template1" } });
-		expect(screen.getByText((_, element) =>
-			element?.className === "muted"
-			&& (element.textContent?.includes("Доступно: 12.5 кг сырья · 8 шт тары") ?? false),
-		)).toBeTruthy();
+		expect(screen.getByText("12.5 кг сырья, 8 шт тары")).toBeTruthy();
 		fireEvent.change(screen.getByLabelText("Количество продукции, шт"), { target: { value: "9" } });
 		expect(screen.getByText("Не хватает тары: нужно 9 шт, доступно 8 шт.")).toBeTruthy();
 		expect((screen.getByRole("button", { name: "Выпустить" }) as HTMLButtonElement).disabled).toBe(true);
@@ -1223,12 +1220,12 @@ describe("HomePage", () => {
 		expect(await screen.findByText("Выпуск записан")).toBeTruthy();
 		expect(screen.queryByLabelText("Шаблон продукции")).toBeNull();
 		fireEvent.click(screen.getByRole("button", { name: "Передать" }));
-		expect(await screen.findByRole("heading", { name: "На распределитель" })).toBeTruthy();
+		expect(await screen.findByRole("heading", { name: "Передать" })).toBeTruthy();
 		fireEvent.change(await screen.findByLabelText("Продукция"), { target: { value: "batch1" } });
 		fireEvent.change(screen.getByRole("combobox", { name: "Распределитель" }), { target: { value: "dist1" } });
 		fireEvent.change(screen.getByLabelText("Количество, шт"), { target: { value: "2" } });
 		fireEvent.change(screen.getByLabelText("Комментарий"), { target: { value: "На Центральный" } });
-		fireEvent.click(screen.getByRole("button", { name: "Переместить" }));
+		fireEvent.click(screen.getByRole("button", { name: "Передать" }));
 
 		await waitFor(() => {
 			expect(fetchMock).toHaveBeenCalledWith(
@@ -1245,7 +1242,7 @@ describe("HomePage", () => {
 			);
 		});
 
-		expect(await screen.findByText("Перемещено на распределитель")).toBeTruthy();
+		expect(await screen.findByText("Передано на распределитель")).toBeTruthy();
 		expect(screen.queryByLabelText("Количество, шт")).toBeNull();
 		fireEvent.click(screen.getByRole("button", { name: "Распределитель" }));
 		expect(await screen.findByRole("heading", { name: "На распределителе" })).toBeTruthy();

@@ -1,15 +1,12 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { type FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import {
 	ArrowRightLeft,
 	ArrowLeft,
 	Check,
 	Factory,
-	FishSymbol,
-	Package,
-	type LucideIcon,
 } from "lucide-react";
 import {
 	type Distributor,
@@ -218,7 +215,7 @@ function ProductionDetailScreen({
 	);
 
 	return (
-		<section className="screen-stack">
+		<section className="screen-stack production-detail-screen">
 			<div className="section-heading action-heading">
 				<button className="secondary-button production-back-button" onClick={onBack} type="button">
 					<ArrowLeft aria-hidden size={16} />
@@ -269,7 +266,6 @@ function ProductionDetailScreen({
 			{mode === "raw-stock" ? (
 				<StockListScreen
 					emptyText="Сырья пока нет. Добавьте первый приход сырья."
-					icon={FishSymbol}
 					items={rawStockItems}
 					loading={rawMaterialBalancesLoading}
 					title="Сырье"
@@ -278,7 +274,6 @@ function ProductionDetailScreen({
 			{mode === "packaging-stock" ? (
 				<StockListScreen
 					emptyText="Тары пока нет. Добавьте первый приход тары."
-					icon={Package}
 					items={packagingStockItems}
 					loading={packagingBalancesLoading}
 					title="Тара"
@@ -340,6 +335,14 @@ function IntakeForm({
 		},
 	});
 	const selectedItem = items.find((item) => item.id === typeId);
+	const intakeSubmitDisabled = !online || items.length === 0 || mutation.isPending;
+	const intakeSubmitBlockReason = !online
+		? "Нет сети: операция записи недоступна."
+		: items.length === 0
+			? emptyText
+			: mutation.isPending
+				? "Записываем приход"
+				: "";
 
 	function handleSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
@@ -354,12 +357,8 @@ function IntakeForm({
 	}
 
 	return (
-		<form className="form-panel" onSubmit={handleSubmit}>
-			<div className="section-heading compact">
-				<h2>{title}</h2>
-				<span>{selectedItem?.unit ?? ""}</span>
-			</div>
-			{items.length === 0 ? <p className="muted">{emptyText}</p> : null}
+		<form className="form-panel production-action-form" onSubmit={handleSubmit}>
+			<ProductionFormHeading title={title} meta={selectedItem?.unit} />
 			<label className="field">
 				<span>{kind === "raw" ? "Вид сырья" : "Вид тары"}</span>
 				<select onChange={(event) => setTypeId(event.target.value)} required value={typeId}>
@@ -388,10 +387,12 @@ function IntakeForm({
 			</label>
 			{localError ? <p className="form-error">{localError}</p> : null}
 			{mutation.isError ? <p className="form-error">{mutation.error.message}</p> : null}
-			<button className="primary-button" disabled={!online || items.length === 0 || mutation.isPending} type="submit">
-				<Check aria-hidden size={18} />
-				Записать приход
-			</button>
+			<ProductionSubmitBlock blockReason={intakeSubmitBlockReason}>
+				<button className="primary-button" disabled={intakeSubmitDisabled} type="submit">
+					<Check aria-hidden size={18} />
+					Записать приход
+				</button>
+			</ProductionSubmitBlock>
 		</form>
 	);
 }
@@ -476,16 +477,23 @@ function ProductBatchForm({
 		setLocalError("");
 		mutation.mutate();
 	}
+	const releaseSubmitDisabled = !online
+		|| productTemplates.length === 0
+		|| rawMaterialBalancesLoading
+		|| packagingBalancesLoading
+		|| Boolean(releaseWarning)
+		|| mutation.isPending;
+	const releaseSubmitBlockReason = !online
+		? "Нет сети: операция записи недоступна."
+		: productTemplates.length === 0
+			? "Нужен активный шаблон продукции с ценой."
+			: rawMaterialBalancesLoading || packagingBalancesLoading
+				? "Загрузка остатков"
+				: releaseWarning || (mutation.isPending ? "Записываем выпуск" : "");
 
 	return (
-		<form className="form-panel" onSubmit={handleSubmit}>
-			<div className="section-heading compact">
-				<h2>Выпуск продукции</h2>
-				<span>{selectedTemplate ? `${formatPriceRubles(selectedTemplate.priceCents)} ₽` : ""}</span>
-			</div>
-			{productTemplates.length === 0 ? (
-				<p className="muted">Нужен активный шаблон продукции с ценой.</p>
-			) : null}
+		<form className="form-panel production-action-form" onSubmit={handleSubmit}>
+			<ProductionFormHeading title="Выпуск продукции" />
 			<label className="field">
 				<span>Шаблон продукции</span>
 				<select onChange={(event) => setProductTemplateId(event.target.value)} required value={productTemplateId}>
@@ -498,11 +506,12 @@ function ProductBatchForm({
 				</select>
 			</label>
 			{selectedTemplate ? (
-				<p className="muted">
-					{selectedTemplate.rawMaterialType.name} / {selectedTemplate.packagingType.name}
-					<br />
-					{stockLine}
-				</p>
+				<ProductionInfoLedger>
+					<ProductionInfoRow label="Сырье" value={selectedTemplate.rawMaterialType.name} />
+					<ProductionInfoRow label="Тара" value={selectedTemplate.packagingType.name} />
+					<ProductionInfoRow label="Доступно" value={stockLine} />
+					<ProductionInfoRow label="Цена" value={`${formatPriceRubles(selectedTemplate.priceCents)} ₽`} />
+				</ProductionInfoLedger>
 			) : null}
 			<label className="field">
 				<span>Количество продукции, шт</span>
@@ -530,24 +539,14 @@ function ProductBatchForm({
 				<span>Комментарий</span>
 				<input onChange={(event) => setComment(event.target.value)} type="text" value={comment} />
 			</label>
-			{releaseWarning ? <p className="form-warning">{releaseWarning}</p> : null}
 			{localError ? <p className="form-error">{localError}</p> : null}
 			{mutation.isError ? <p className="form-error">{mutation.error.message}</p> : null}
-			<button
-				className="primary-button"
-				disabled={
-					!online
-					|| productTemplates.length === 0
-					|| rawMaterialBalancesLoading
-					|| packagingBalancesLoading
-					|| Boolean(releaseWarning)
-					|| mutation.isPending
-				}
-				type="submit"
-			>
-				<Factory aria-hidden size={18} />
-				Выпустить
-			</button>
+			<ProductionSubmitBlock blockReason={releaseSubmitBlockReason} tone={releaseWarning ? "warning" : "muted"}>
+				<button className="primary-button" disabled={releaseSubmitDisabled} type="submit">
+					<Factory aria-hidden size={18} />
+					Выпустить
+				</button>
+			</ProductionSubmitBlock>
 		</form>
 	);
 }
@@ -587,16 +586,20 @@ function ProductTransferForm({
 			setComment("");
 			setLocalError("");
 			await invalidateProduction(queryClient);
-			onActionSuccess("Перемещено на распределитель");
+			onActionSuccess("Передано на распределитель");
 		},
 	});
+	const parsedTransferQuantity = parseOptionalPositiveInteger(quantity);
+	const transferWarning = selectedProduct && parsedTransferQuantity !== null && parsedTransferQuantity > selectedProduct.quantity
+		? "Количество продукции: нельзя передать больше доступного остатка."
+		: "";
 
 	function handleSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
 		try {
 			const parsedQuantity = parsePositiveInteger(quantity, "Количество продукции");
 			if (selectedProduct && parsedQuantity > selectedProduct.quantity) {
-				throw new Error("Количество продукции: нельзя переместить больше доступного остатка.");
+				throw new Error("Количество продукции: нельзя передать больше доступного остатка.");
 			}
 		} catch (error) {
 			setLocalError(error instanceof Error ? error.message : "Проверьте количество.");
@@ -605,20 +608,25 @@ function ProductTransferForm({
 		setLocalError("");
 		mutation.mutate();
 	}
+	const transferSubmitDisabled = !online
+		|| loading
+		|| distributors.length === 0
+		|| workshopProductBalances.length === 0
+		|| Boolean(transferWarning)
+		|| mutation.isPending;
+	const transferSubmitBlockReason = !online
+		? "Нет сети: операция записи недоступна."
+		: loading
+			? "Загрузка продукции"
+			: workshopProductBalances.length === 0
+				? "В цеху нет готовой продукции для передачи."
+				: distributors.length === 0
+					? "Нет активного распределителя для передачи."
+					: transferWarning || (mutation.isPending ? "Передаем продукцию" : "");
 
 	return (
-		<form className="form-panel" onSubmit={handleSubmit}>
-			<div className="section-heading compact">
-				<h2>На распределитель</h2>
-				<span>{selectedDistributor?.name ?? ""}</span>
-			</div>
-			{loading ? <p className="muted">Загрузка доступной продукции</p> : null}
-			{!loading && workshopProductBalances.length === 0 ? (
-				<p className="muted">В цеху нет готовой продукции для перемещения.</p>
-			) : null}
-			{!loading && distributors.length === 0 ? (
-				<p className="muted">Нет активного распределителя для перемещения.</p>
-			) : null}
+		<form className="form-panel production-action-form" onSubmit={handleSubmit}>
+			<ProductionFormHeading title="Передать" meta={selectedDistributor?.name} />
 			<label className="field">
 				<span>Продукция</span>
 				<select onChange={(event) => setProductBatchId(event.target.value)} required value={productBatchId}>
@@ -631,10 +639,11 @@ function ProductTransferForm({
 				</select>
 			</label>
 			{selectedProduct ? (
-				<p className="muted">
-					Доступно {selectedProduct.quantity} шт · {formatPriceRubles(selectedProduct.priceCents)} ₽ · выпуск{" "}
-					{formatDateTime(selectedProduct.createdAt)}
-				</p>
+				<ProductionInfoLedger>
+					<ProductionInfoRow label="Доступно" value={`${selectedProduct.quantity} шт`} />
+					<ProductionInfoRow label="Цена" value={`${formatPriceRubles(selectedProduct.priceCents)} ₽`} />
+					<ProductionInfoRow label="Выпуск" value={formatDateTime(selectedProduct.createdAt)} />
+				</ProductionInfoLedger>
 			) : null}
 			<label className="field">
 				<span>Распределитель</span>
@@ -664,15 +673,52 @@ function ProductTransferForm({
 			</label>
 			{localError ? <p className="form-error">{localError}</p> : null}
 			{mutation.isError ? <p className="form-error">{mutation.error.message}</p> : null}
-			<button
-				className="primary-button"
-				disabled={!online || loading || distributors.length === 0 || workshopProductBalances.length === 0 || mutation.isPending}
-				type="submit"
-			>
-				<ArrowRightLeft aria-hidden size={18} />
-				Переместить
-			</button>
+			<ProductionSubmitBlock blockReason={transferSubmitBlockReason} tone={transferWarning ? "warning" : "muted"}>
+				<button className="primary-button" disabled={transferSubmitDisabled} type="submit">
+					<ArrowRightLeft aria-hidden size={18} />
+					Передать
+				</button>
+			</ProductionSubmitBlock>
 		</form>
+	);
+}
+
+function ProductionFormHeading({ meta, title }: { meta?: string | undefined; title: string }) {
+	return (
+		<div className="production-form-heading">
+			<h2>{title}</h2>
+			{meta ? <span>{meta}</span> : null}
+		</div>
+	);
+}
+
+function ProductionInfoLedger({ children }: { children: ReactNode }) {
+	return <div className="production-form-ledger">{children}</div>;
+}
+
+function ProductionInfoRow({ label, value }: { label: string; value: string }) {
+	return (
+		<div className="production-form-ledger-row">
+			<span>{label}</span>
+			<strong>{value}</strong>
+		</div>
+	);
+}
+
+function ProductionSubmitBlock({
+	blockReason,
+	children,
+	tone = "muted",
+}: {
+	blockReason: string;
+	children: ReactNode;
+	tone?: "muted" | "warning";
+}) {
+	return (
+		<div className="production-submit-block">
+			{blockReason ? <p className={`production-submit-reason ${tone}`}>{blockReason}</p> : null}
+			{children}
+		</div>
 	);
 }
 
@@ -698,28 +744,29 @@ function ProductionHistory({
 
 function StockListScreen({
 	emptyText,
-	icon,
 	items,
 	loading,
 	title,
 }: {
 	emptyText: string;
-	icon: LucideIcon;
 	items: Array<{ id: string; name: string; quantity: number; unit: string }>;
 	loading: boolean;
 	title: string;
 }) {
 	return (
-		<section className="detail-list-panel">
-			<div className="section-heading compact">
-				<h2>{title}</h2>
-				<span>Остатки</span>
-			</div>
-			{loading ? <p className="muted">Загрузка остатков</p> : null}
-			{!loading && items.length === 0 ? <p className="muted">{emptyText}</p> : null}
-			<div className="production-balance-list">
+		<section className="production-detail-list">
+			<div className="production-ledger-list" role="table" aria-label={`${title}: список`}>
+				<div className="inventory-table-title" role="row">
+					<h2>{title}</h2>
+				</div>
+				<div className="production-ledger-head" role="row">
+					<span>Наименование</span>
+					<span>Остаток</span>
+				</div>
+				{loading ? <ProductionListMessage text="Загрузка списка" /> : null}
+				{!loading && items.length === 0 ? <ProductionListMessage text={emptyText} /> : null}
 				{items.map((item) => (
-					<BalanceRow icon={icon} item={item} key={item.id} />
+					<BalanceRow item={item} key={item.id} />
 				))}
 			</div>
 		</section>
@@ -734,32 +781,33 @@ function ProductStockScreen({
 	workshopProductBalances: WorkshopProductBalanceItem[];
 }) {
 	return (
-		<section className="detail-list-panel">
-			<div className="section-heading compact">
-				<h2>Продукция в цеху</h2>
-				<span>Доступный остаток</span>
-			</div>
-			{loading ? <p className="muted">Загрузка продукции</p> : null}
-			{!loading && workshopProductBalances.length === 0 ? (
-				<p className="muted">Готовой продукции пока нет. Выпустите первую партию.</p>
-			) : null}
-			<WorkshopProductBalanceList workshopProductBalances={workshopProductBalances} />
+		<section className="production-detail-list">
+			<WorkshopProductBalanceList loading={loading} workshopProductBalances={workshopProductBalances} />
 		</section>
 	);
 }
 
 function WorkshopProductBalanceList({
+	loading,
 	workshopProductBalances,
 }: {
+	loading: boolean;
 	workshopProductBalances: WorkshopProductBalanceItem[];
 }) {
 	return (
-		<div className="inventory-table-list" role="table" aria-label="Продукция в цеху">
+		<div className="inventory-table-list production-inventory-table" role="table" aria-label="Продукция в цеху">
+			<div className="inventory-table-title" role="row">
+				<h2>Продукция в цеху</h2>
+			</div>
 			<div className="inventory-table-head" role="row">
 				<span>Продукция</span>
 				<span>Количество</span>
 				<span>Цена</span>
 			</div>
+			{loading ? <ProductionListMessage text="Загрузка продукции" /> : null}
+			{!loading && workshopProductBalances.length === 0 ? (
+				<ProductionListMessage text="Готовой продукции пока нет. Выпустите первую партию." />
+			) : null}
 			{workshopProductBalances.map((balance) => (
 				<div className="inventory-table-row" key={balance.id} role="row">
 					<div className="inventory-table-product" role="cell">
@@ -808,23 +856,25 @@ function ProductBatchList({ productBatches }: { productBatches: ProductBatch[] }
 	);
 }
 
+function ProductionListMessage({ text }: { text: string }) {
+	return (
+		<div className="production-list-message" role="row">
+			<span role="cell">{text}</span>
+		</div>
+	);
+}
+
 function BalanceRow({
-	icon: Icon,
 	item,
 }: {
-	icon: LucideIcon;
 	item: { name: string; quantity: number; unit: string };
 }) {
 	return (
-		<div className="production-balance-row">
-			<div className="production-row-icon">
-				<Icon aria-hidden size={18} />
-			</div>
-			<div>
+		<div className="production-ledger-row" role="row">
+			<div role="cell">
 				<strong>{item.name}</strong>
-				<p>Остаток</p>
 			</div>
-			<span>
+			<span role="cell">
 				{formatQuantity(item.quantity)} {item.unit}
 			</span>
 		</div>
@@ -865,10 +915,10 @@ function formatReleaseStockLine({
 	stockLoading: boolean;
 }): string {
 	if (stockLoading) {
-		return "Доступно: загрузка остатков";
+		return "Загрузка остатков";
 	}
 
-	return `Доступно: ${formatQuantity(rawAvailable)} ${rawUnit} сырья · ${formatQuantity(packagingAvailable)} ${packagingUnit} тары`;
+	return `${formatQuantity(rawAvailable)} ${rawUnit} сырья, ${formatQuantity(packagingAvailable)} ${packagingUnit} тары`;
 }
 
 function ProductionSuccessNotice({ notice }: { notice: SuccessNotice }) {

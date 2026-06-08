@@ -2,6 +2,7 @@
 
 import {
 	ArrowRightLeft,
+	ChevronRight,
 	CirclePlus,
 	Factory,
 	FishSymbol,
@@ -44,7 +45,7 @@ export function ProductionHomeOverview({
 }) {
 	return (
 		<>
-			<ProductionWorkshopCard
+			<ProductionWorkshopSummary
 				loading={loading}
 				onOpenPackaging={onOpenPackaging}
 				onOpenProducts={onOpenProducts}
@@ -56,29 +57,67 @@ export function ProductionHomeOverview({
 				readyProductUnits={readyProductUnits}
 			/>
 
-			<div className="action-grid">
-				<button className="action-tile primary-action" disabled={!online} onClick={onOpenBatchRelease} type="button">
-					<Factory aria-hidden size={22} />
-					<span>Выпустить</span>
-				</button>
-				<button className="action-tile" disabled={!online} onClick={onOpenTransfer} type="button">
-					<ArrowRightLeft aria-hidden size={22} />
-					<span>Передать</span>
-				</button>
-				<button className="action-tile" disabled={!online} onClick={onOpenRawIntake} type="button">
-					<CirclePlus aria-hidden size={22} />
-					<span>Добавить сырье</span>
-				</button>
-				<button className="action-tile" disabled={!online} onClick={onOpenPackagingIntake} type="button">
-					<PackagePlus aria-hidden size={22} />
-					<span>Добавить тару</span>
-				</button>
+			<div className="production-command-panel" aria-label="Действия производства">
+				<div className="production-command-group frequent" aria-label="Частые действия">
+					<ProductionCommandButton
+						icon={Factory}
+						label="Выпустить"
+						disabled={!online}
+						onClick={onOpenBatchRelease}
+						tone="frequent"
+					/>
+					<ProductionCommandButton
+						icon={ArrowRightLeft}
+						label="Передать"
+						disabled={!online}
+						onClick={onOpenTransfer}
+						tone="frequent"
+					/>
+				</div>
+				<div className="production-command-group supporting" aria-label="Приход в цех">
+					<ProductionCommandButton
+						icon={CirclePlus}
+						label="Добавить сырье"
+						disabled={!online}
+						onClick={onOpenRawIntake}
+						tone="supporting"
+					/>
+					<ProductionCommandButton
+						icon={PackagePlus}
+						label="Добавить тару"
+						disabled={!online}
+						onClick={onOpenPackagingIntake}
+						tone="supporting"
+					/>
+				</div>
+				{online ? null : <p className="production-command-note">Нет сети: операции записи недоступны</p>}
 			</div>
 		</>
 	);
 }
 
-function ProductionWorkshopCard({
+function ProductionCommandButton({
+	disabled,
+	icon: Icon,
+	label,
+	onClick,
+	tone,
+}: {
+	disabled: boolean;
+	icon: LucideIcon;
+	label: string;
+	onClick: () => void;
+	tone: "frequent" | "supporting";
+}) {
+	return (
+		<button className={`production-command-button ${tone}`} disabled={disabled} onClick={onClick} type="button">
+			<Icon aria-hidden size={18} />
+			<span>{label}</span>
+		</button>
+	);
+}
+
+function ProductionWorkshopSummary({
 	loading,
 	onOpenPackaging,
 	onOpenProducts,
@@ -100,69 +139,96 @@ function ProductionWorkshopCard({
 	readyProductUnits: number;
 }) {
 	return (
-		<article className="production-workshop-card" aria-label="Цех">
-			<button
-				aria-label={`Продукция ${readyProductUnits} шт`}
-				className="production-workshop-main"
-				disabled={loading}
-				onClick={onOpenProducts}
-				type="button"
-			>
-				<div>
-					<span className="production-workshop-kicker">Цех</span>
-					<strong>{loading ? "..." : `${readyProductUnits} шт`}</strong>
-					<span className="production-workshop-label">Продукция</span>
-				</div>
-				<span className="production-workshop-icon" aria-hidden>
-					<PackageCheck size={24} />
-				</span>
-			</button>
+		<section className="production-home-surface" aria-labelledby="production-home-heading">
+			<div className="production-home-heading">
+				<h2 id="production-home-heading">Цех</h2>
+				<span>Остатки</span>
+			</div>
 
-			<div className="production-resource-band">
-				<ResourceMetricButton
+			<div className="production-summary-ledger" aria-label="Сводка цеха">
+				<ProductionSummaryRow
+					icon={PackageCheck}
+					label="Продукция"
+					loading={loading}
+					meta="В цеху"
+					onClick={onOpenProducts}
+					value={`${readyProductUnits} шт`}
+				/>
+				<ProductionSummaryRow
 					icon={FishSymbol}
-					kinds={rawMaterialKinds}
 					label="Сырье"
 					loading={loading}
+					meta={`${rawMaterialKinds} ${formatKindsLabel(rawMaterialKinds)}`}
 					onClick={onOpenRawMaterials}
 					value={rawMaterialLabel}
 				/>
-				<ResourceMetricButton
+				<ProductionSummaryRow
 					icon={Package}
-					kinds={packagingKinds}
 					label="Тара"
 					loading={loading}
+					meta={`${packagingKinds} ${formatKindsLabel(packagingKinds)}`}
 					onClick={onOpenPackaging}
 					value={packagingLabel}
 				/>
 			</div>
-		</article>
+		</section>
 	);
 }
 
-function ResourceMetricButton({
+function ProductionSummaryRow({
 	icon: Icon,
-	kinds,
 	label,
 	loading,
+	meta,
 	onClick,
 	value,
 }: {
 	icon: LucideIcon;
-	kinds: number;
 	label: string;
 	loading: boolean;
+	meta: string;
 	onClick: () => void;
 	value: string;
 }) {
+	const displayValue = loading ? "..." : value;
+	const displayMeta = loading ? "Загрузка" : meta;
+
 	return (
-		<button className="production-resource-action" disabled={loading} onClick={onClick} type="button">
-			<span className="production-resource-heading">
-				<Icon aria-hidden size={16} />
-				{label}
+		<button
+			aria-label={`${label}: ${displayValue}, ${displayMeta}. Открыть список`}
+			className="production-summary-row"
+			disabled={loading}
+			onClick={onClick}
+			type="button"
+		>
+			<span className="production-summary-icon" aria-hidden>
+				<Icon size={17} />
 			</span>
-			<strong>{loading ? "..." : value}</strong>
-			<span>{loading ? "Загрузка" : `${kinds} видов`}</span>
+			<span className="production-summary-main">
+				<span>{label}</span>
+				<strong>{displayValue}</strong>
+			</span>
+			<span className="production-summary-meta">
+				<span>{displayMeta}</span>
+				<ChevronRight aria-hidden size={16} />
+			</span>
 		</button>
 	);
+}
+
+function formatKindsLabel(count: number): string {
+	const lastTwoDigits = Math.abs(count) % 100;
+	const lastDigit = Math.abs(count) % 10;
+
+	if (lastTwoDigits >= 11 && lastTwoDigits <= 14) {
+		return "видов";
+	}
+	if (lastDigit === 1) {
+		return "вид";
+	}
+	if (lastDigit >= 2 && lastDigit <= 4) {
+		return "вида";
+	}
+
+	return "видов";
 }
