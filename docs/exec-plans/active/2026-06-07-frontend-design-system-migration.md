@@ -55,10 +55,10 @@
 | Done | Главная | `home` | `DirectorAnalyticsHome` | Эталон новой системы. Деньги, выпуск, период, вкладки обзор/деньги/производство уже отполированы. |
 | Done | Остатки | `stock` | `DirectorStockHome`, `DistributorInventoryHome`, `CourierBalanceHome` | Второй эталон директорского control contour. Внутренние табы, распределитель, курьеры, списание наличных и снижение цены приведены к compact table/panel rhythm без повторов и декоративных карточек. |
 | Done | История | `operation-history` | `OperationHistoryHome` | Фильтры вынесены в модалку, верхняя область закреплена, список и details dialog приведены к директорскому compact list/dialog rhythm; технический шум скрыт через presenter, date inputs оставлены платформенными. |
-| 2 | Еще | `more` | `DirectorMoreHome` | Меню `Каталог`, `Клиенты`, `Настройки`, account/logout panel. Сейчас есть inline styles, их надо убрать в системные classes. |
-| In progress | Каталог | `catalog` из more | `CatalogHome` | Директор/admin shared management surface. Create/edit/archive переведены в modal rhythm; экран остается активным до owner visual pass и следующих правок. |
+| Done | Еще | `more` | `DirectorMoreHome` | Согласованное меню из двух ledger-блоков: навигация (`Клиенты`, `Справочники`, `Экспорт`) и аккаунт (`Сменить пароль`, `Выйти`). Inline styles убраны, future flows показаны честным non-clickable состоянием. |
+| Done | Каталог | `catalog` из more | `CatalogHome` | Директор/admin shared management surface приведен к текущему management rhythm: tabs, compact toolbar, list rows, create/edit/archive dialogs. Дальнейшие refinements считаются shared catalog/admin задачами. |
 | Done | Клиенты | `clients` из more | `ClientsHome` | Shared client surface приведен к compact heading/search/list rhythm: счетчик в heading row справа, поиск без отдельной action row, строки с ledger-разделителями и стабильными copy/edit actions. |
-| 4 | Настройки | `settings` из more | `SettingsScreen` | Не должен спорить с директорским `Еще` и общим profile standard. |
+| Deferred | Смена пароля / экспорт | `more` future entries | `DirectorMoreHome`, future auth/reports flows | Не блокирует директорский contour: self password change и export/print являются общими cross-role hardening задачами и остаются в `UX-HARDENING`. |
 
 ### 5.3 Администратор
 
@@ -74,18 +74,19 @@
 
 | Экран | Entry point | Компоненты | Варианты и особенности |
 | --- | --- | --- | --- |
-| Главная производства | `home` | `ProductionHome`, `ProductionHomeOverview` | Summary цеха, сырье, тара, action tiles. Сейчас отдельный visual language, его нужно привести к новой системе без потери operational speed. |
-| Приход сырья | internal `raw-intake` | `IntakeForm` | Write form, offline disabled, empty active types. |
-| Приход тары | internal `packaging-intake` | `IntakeForm` | Shared form variant. |
-| Выпуск партии | internal `batch-release` | `ProductBatchForm` | Сырье, тара, количество, optional writeoff, warning. Критичная форма для новой form standard. |
-| Передача на распределитель | internal `transfer` | `ProductTransferForm` | Выбор распределителя, продукции, количество, комментарий. |
-| Остатки сырья | internal `raw-stock` | `StockListScreen` | Read-only detail list. Должен перейти к table/list rhythm. |
-| Остатки тары | internal `packaging-stock` | `StockListScreen` | Read-only detail list. |
-| Продукция в цеху | internal `products` | `ProductStockScreen`, `WorkshopProductBalanceList` | Read-only product table. |
-| История выпусков | `history` | `ProductionHistory`, `ProductBatchList` | Production bottom nav tab. Сейчас `history` проходит через `ProductionHome`. |
-| На распределителе | `distributor` | `DistributorInventoryHome` | Read-only inventory variant, optional cash balance by permission. Shared stock surface. |
-| Уведомления | `notifications` | `NotificationsHome` | Notification list and actions. |
-| Профиль | `settings` | `SettingsScreen` | Общий settings pattern. |
+| Главная производства | `home` | `ProductionHome`, `ProductionHomeOverview` | Следующий stage после директорского contour. Новая IA: только сводка `Продукция / Сырье / Тара` и 4 действия. Сводочные строки открывают полноэкранные списки, а не модалки. Старую lime hero-card, oversized metric и декоративные action tiles убрать. |
+| Приход сырья | internal `raw-intake` | `IntakeForm` | Write action screen, не modal. Должен перейти к production form standard: compact form panel, explicit offline/empty/block reasons, no decorative card language. |
+| Приход тары | internal `packaging-intake` | `IntakeForm` | Shared intake form variant with the same production form standard. |
+| Выпуск партии | internal `batch-release` | `ProductBatchForm` | Write action screen, не modal. Критичная форма для нового production form standard: шаблон, проверяемый блок сырья/тары, quantity, warning, submit block reason. |
+| Передача на распределитель | internal `transfer` | `ProductTransferForm` | Write action screen, не modal. Выбор партии в цеху, распределителя, количества и комментария; source row выбранной партии должен быть читаемым ledger-блоком. |
+| Остатки сырья | internal `raw-stock` from summary click | `StockListScreen` | Полноэкранный read-only detail screen с `Назад`, не modal. Перейти к table/list rhythm без иконок в каждой строке и без row-cards. |
+| Остатки тары | internal `packaging-stock` from summary click | `StockListScreen` | Полноэкранный read-only detail screen с `Назад`, не modal. |
+| Продукция в цеху | internal `products` from summary click | `ProductStockScreen`, `WorkshopProductBalanceList` | Полноэкранный read-only detail screen с `Назад`: список выпущенной продукции, которая еще в цеху. На home список не показывать. |
+| История выпусков | future `more` entry or existing `history` during migration | `ProductionHistory`, `ProductBatchList` | В новом production contour должна переехать в `Еще` по аналогии с Директором. Сам экран мигрировать как compact ledger последних выпусков без новых фильтров, если API их не дает. |
+| На распределителе | `distributor` | `DistributorInventoryHome` | Read-only inventory variant со сводкой, по аналогии с директорскими остатками, но без cash/discount controls для заведующего при отсутствии прав. |
+| Уведомления | `notifications` | `NotificationsHome` | Задачи от коммерческого руководителя: видимый заголовок, summary `Новые / Выполнено`, task ledger, action `Выполнено`; create-form скрыт для заведующего без `notification.create`. |
+| Еще | future `more` | future production more/settings screen, `ProductionHistory`, `SettingsScreen` | Добавить по аналогии с Director More: блок `Навигация` с `История`, блок `Аккаунт`, future entry `Сменить пароль` как cross-role hardening до реализации auth flow. |
+| Профиль / аккаунт | current `settings`, future `more` account block | `SettingsScreen` | В рамках production contour профильный/аккаунтный доступ должен перейти в `Еще`; self password change остается cross-role hardening, если отдельный auth stage не открыт. |
 
 ### 5.5 Коммерческий Руководитель
 
@@ -250,48 +251,92 @@
 
 ### Stage 3. Director More And Secondary Director Screens
 
-- Убрать inline styles из `DirectorMoreHome`.
-- Сделать rows/account/logout частью будущего settings/menu standard.
+- 2026-06-08 Director More craft pass: `DirectorMoreHome` переведен на два системных ledger-блока `Навигация` и `Аккаунт`; `Клиенты` и `Справочники` ведут в реальные экраны, `Экспорт` и `Сменить пароль` оставлены как non-clickable будущие entry points до соответствующих flows.
+- Rows/account/logout вынесены из inline styles в системные CSS classes будущего settings/menu standard.
 - 2026-06-08 Clients polish pass: `ClientsHome` мигрирован как shared management surface для director read-only и manage-ролей.
 - 2026-06-08 Catalog interaction pass: `CatalogHome` получил modal create/edit/archive flow на shared `operation-dialog` vocabulary; экран не закрыт до owner visual review и следующих точечных правок.
-- 2026-06-08 Catalog polish pass: tabs приведены к текстовому director segmented rhythm, toolbar/list/dialog buttons нормализованы под `management-surface` control tokens; экран остается активным.
-- Оставшиеся задачи stage: `DirectorMoreHome` и продолжение polish `CatalogHome`.
+- 2026-06-08 Catalog polish pass: tabs приведены к текстовому director segmented rhythm, toolbar/list/dialog buttons нормализованы под `management-surface` control tokens; экран закрыт для директорского contour, дальнейшие правки относятся к shared catalog/admin cleanup.
+- 2026-06-08 App shell polish pass: постоянная верхняя role label удалена для всех ролей; роль остается в профильных/account местах и истории, а не дублируется над каждым экраном.
+- Директорский contour закрыт: `Главная`, `Остатки`, `История`, `Еще`, `Клиенты`, `Справочники`.
+- Оставшиеся future entries `Экспорт` и `Сменить пароль` вынесены в cross-role reports/auth hardening и не блокируют закрытие директорских экранов.
 
-### Stage 4. Shared Stock Surfaces Across Roles
+### Stage 4. Production Manager Contour
 
-- После директорских остатков аккуратно распространить тот же stock/list/table standard на:
+Следующий активный stage после закрытия директорского contour. Цель - пройти экраны заведующего производством целым role contour, не точечно красить отдельные элементы.
+
+Порядок изменений:
+
+1. **Главная производства.**
+   - `ProductionHomeOverview` переводится на директорский control language: белая сводка `Продукция / Сырье / Тара`, тонкие ledger-разделители, compact typography, restrained radii.
+   - На home остаются только сводка и 4 действия: `Выпустить`, `Передать`, `Добавить сырье`, `Добавить тару`.
+   - Сводочные строки кликабельные и открывают внутренние полноэкранные списки. На home не показывать список продукции ниже сводки.
+   - Убрать старые `production-workshop-card`, lime hero-card, oversized 42px metric and large decorative action tiles from this screen.
+   - Главный visual challenge stage: расположить 4 действия так, чтобы пользователь быстро выявлял их без возврата к старой grid-card композиции. Предпочтение: один primary command для `Выпустить` и compact secondary commands для остальных действий, если owner mock не задаст другое.
+
+2. **Списки из сводки.**
+   - `Продукция в цеху`, `Сырье`, `Тара` остаются internal `activeScreen` detail screens с `Назад`, а не modal dialogs.
+   - `Продукция в цеху` показывает выпущенную продукцию, которая еще находится в цеху; это отдельный список от экрана `На распределителе`.
+   - `Сырье` и `Тара` показывают read-only ledger rows по фактическим остаткам.
+   - Убрать row-card treatment and per-row decorative icons; использовать table/list rhythm with thin dividers, tabular numbers and compact empty/loading states.
+
+3. **Action screens производства.**
+   - `Выпустить`, `Передать`, `Добавить сырье`, `Добавить тару` остаются полноэкранными internal action screens, не модалками.
+   - Перевести `IntakeForm`, `ProductBatchForm`, `ProductTransferForm` на единый production form standard: compact white form panel, readable source/availability blocks, explicit offline/loading/empty/block reasons, stable submit area.
+   - Не менять backend contracts and domain invariants; визуальная миграция не должна изменить validation semantics.
+
+4. **На распределителе.**
+   - `DistributorInventoryHome` для заведующего мигрировать как read-only stock surface со сводкой по директорскому stock ledger standard.
+   - Проверить production props/permissions: no cash/discount actions unless role permissions explicitly allow them.
+
+5. **Уведомления.**
+   - `NotificationsHome` для заведующего оформить как task ledger от коммерческого руководителя: visible heading, summary `Новые / Выполнено`, rows with completion action.
+   - Create form не показывать для заведующего без `notification.create`; не оставлять пустой верхний form gap.
+   - Проверить badge count in bottom nav and polling state text.
+
+6. **Еще, история, аккаунт.**
+   - Добавить production `Еще` по аналогии с Director More: блок `Навигация` с переходом в `История`, блок `Аккаунт`, logout, future `Сменить пароль`.
+   - `История выпусков` переезжает из нижней навигации в `Еще` and migrates to compact ledger list. Не добавлять фильтры или отчеты без API/read model.
+   - `Сменить пароль` остается cross-role auth hardening entry until that stage is opened.
+
+Stage checks:
+
+- Rewrite targeted tests around new production IA: summary clicks, detail screens, action screen entry points, updated bottom nav / `Еще`, hidden notification create form for production manager.
+- Clean production CSS after usages are migrated: remove dead production hero/card selectors only after `rg` confirms no remaining consumers.
+- Update `DESIGN.md` or `docs/FRONTEND.md` only if a production-specific command/form/list pattern becomes a reusable standard.
+
+### Stage 5. Shared Stock Surfaces Across Roles
+
+- После production `На распределителе` аккуратно распространить тот же stock/list/table standard на:
   - коммерческий `Остатки`;
-  - production `На распределителе`;
   - курьерские `Балансы курьеров`;
   - own courier balance.
 - Проверить все prop variants: `embedded`, `hideHeading`, `mode`, `showCashBalance`, `canAssignDiscount`, `canWithdrawCash`.
 
-### Stage 5. Role Home Overview Screens
+### Stage 6. Remaining Role Home Overview Screens
 
-- Пересобрать `DistributorHomeOverview`, `CourierHomeOverview`, `ProductionHomeOverview`.
+- После `ProductionHomeOverview` пересобрать `DistributorHomeOverview` and `CourierHomeOverview`.
 - Убрать старый декоративный card language там, где экран должен быть рабочим control surface.
 - Стандартизировать action blocks: иконка, label, disabled/offline reason, compact spacing.
 - Не дублировать данные из нижней навигации или соседних экранов.
 
-### Stage 6. Operational Forms
+### Stage 7. Remaining Operational Forms
 
-- Привести к одному form standard:
+- После production form standard привести к нему оставшиеся operational forms:
   - `DistributorSaleHome`;
   - `CourierSaleHome`;
   - `CourierLoadHome`;
-  - `CourierUnloadHome`;
-  - production intake/release/transfer forms.
+  - `CourierUnloadHome`.
 - Сохранить быстрый ввод, block reasons и online-only behavior.
 - Payment segmented, product select and client combobox должны визуально совпадать с новым selector standard.
 
-### Stage 7. Histories, Lists And Management Surfaces
+### Stage 8. Histories, Lists And Management Surfaces
 
-- Мигрировать `SalesHistoryHome`, `RecentSalesPanel`, `OperationHistoryHome` shared states.
-- Мигрировать `AdminUsersHome`, `CatalogHome`, `ClientsHome`, `NotificationsHome`.
+- Мигрировать `SalesHistoryHome`, `RecentSalesPanel`, `OperationHistoryHome` shared states not already covered by director/production passes.
+- Мигрировать `AdminUsersHome`, remaining shared `CatalogHome`, `ClientsHome`, `NotificationsHome` states.
 - Для long lists проверить bottom spacing and row density.
 - Не делать строки карточками, если они read-only and non-drilldown.
 
-### Stage 8. Documentation And CSS Cleanup
+### Stage 9. Documentation And CSS Cleanup
 
 - После каждого устойчивого pattern обновлять `DESIGN.md` или `docs/FRONTEND.md`.
 - Удалять старые selectors только после того, как не осталось usages.
@@ -341,9 +386,9 @@ Rollback:
 
 ## 12. Открытые Вопросы
 
-- Когда именно выделять shared `ActionBlock`/`CommandStrip`: после директорских остатков или после первых operational forms.
+- Когда именно выделять shared `ActionBlock`/`CommandStrip`: после production home and production action screens, если pattern подтвердится на 2-3 экранах.
 - Нужна ли отдельная tablet/desktop initiative сразу после history/control cleanup, или сначала завершить mobile visual migration.
-- Какие management screens владелец продукта считает приоритетными после директорского контура: admin users, catalog, clients or production operations.
+- Нужен ли production-specific `More` component или достаточно расширить общий settings/menu vocabulary после Director More.
 
 ## 13. Definition Of Done Для Инициативы
 

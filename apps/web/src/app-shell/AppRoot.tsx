@@ -12,7 +12,6 @@ import {
 import { Bell, Box, Check, ClipboardList, Factory, Gauge, History, MoreHorizontal, PackageCheck, ReceiptText, Settings, Truck, Users, type LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { LoginForm } from "../auth/LoginForm";
-import { ROLE_LABELS } from "../lib/role-labels";
 import { getCurrentActor, isUnauthorizedError, listNotifications, signOut, type CurrentActor } from "../lib/api-client";
 import { RoleHomeRouter } from "./RoleHomeRouter";
 import { useOnlineStatus } from "./useOnlineStatus";
@@ -127,12 +126,6 @@ function AppShell({ actor }: { actor: CurrentActor }) {
 	return (
 		<main className="app-page">
 			<div className="mobile-shell">
-				<header className="header-bar">
-					<div>
-						<p className="eyebrow">{ROLE_LABELS[actor.role]}</p>
-					</div>
-				</header>
-
 				{online ? null : (
 					<div className="connection-status offline">
 						<span />

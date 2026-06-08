@@ -2515,7 +2515,9 @@ describe("HomePage", () => {
 
 		fireEvent.click(screen.getByRole("button", { name: "Еще" }));
 		expect(await screen.findByRole("heading", { name: "Еще" })).toBeTruthy();
-		fireEvent.click(screen.getByRole("button", { name: "Каталог" }));
+		expect(screen.getByRole("button", { name: "Экспорт" })).toHaveProperty("disabled", true);
+		expect(screen.getByRole("button", { name: "Сменить пароль" })).toHaveProperty("disabled", true);
+		fireEvent.click(screen.getByRole("button", { name: "Справочники" }));
 		expect(await screen.findByRole("heading", { name: "Справочники" })).toBeTruthy();
 		expect(screen.getByRole("button", { name: "Добавить" })).toBeTruthy();
 
@@ -2944,7 +2946,7 @@ describe("HomePage", () => {
 		vi.stubGlobal("fetch", productionFetch);
 		render(<HomePage />);
 
-		expect(await screen.findByText("Заведующий производством")).toBeTruthy();
+		expect(await screen.findByRole("button", { name: "Главная" })).toBeTruthy();
 		expect(screen.queryByRole("button", { name: "Клиенты" })).toBeNull();
 	});
 

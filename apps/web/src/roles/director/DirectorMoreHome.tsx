@@ -1,6 +1,14 @@
 "use client";
 
-import { ClipboardList, LogOut, Users, type LucideIcon } from "lucide-react";
+import {
+	BookOpenText,
+	ChevronRight,
+	Download,
+	KeyRound,
+	LogOut,
+	Users,
+	type LucideIcon,
+} from "lucide-react";
 import { ROLE_LABELS } from "../../lib/role-labels";
 import type { CurrentActor } from "../../lib/api-client";
 
@@ -11,127 +19,134 @@ type DirectorMoreHomeProps = {
 	onTabChange: (tab: string) => void;
 };
 
+type MenuRow = {
+	detail: string;
+	disabled?: boolean;
+	icon: LucideIcon;
+	id: string;
+	label: string;
+	onSelect?: () => void;
+	tone?: "default" | "danger";
+	trailing?: string;
+};
+
 export function DirectorMoreHome({
 	actor,
 	logout,
 	logoutPending,
 	onTabChange,
 }: DirectorMoreHomeProps) {
-	const rows: Array<{ id: string; label: string; detail: string; icon: LucideIcon }> = [];
-
-	if (actor.permissions.includes("catalog.manage")) {
-		rows.push({
-			id: "catalog",
-			label: "Каталог",
-			detail: "Продукция, упаковка, распределители",
-			icon: ClipboardList,
-		});
-	}
+	const navigationRows: MenuRow[] = [];
 
 	if (actor.permissions.includes("client.read")) {
-		rows.push({
+		navigationRows.push({
 			id: "clients",
 			label: "Клиенты",
-			detail: "База клиентов без операционного шума",
+			detail: "База клиентов",
 			icon: Users,
+			onSelect: () => onTabChange("clients"),
 		});
 	}
+
+	if (actor.permissions.includes("catalog.manage")) {
+		navigationRows.push({
+			id: "catalog",
+			label: "Справочники",
+			detail: "Продукция, тара, распределители",
+			icon: BookOpenText,
+			onSelect: () => onTabChange("catalog"),
+		});
+	}
+
+	navigationRows.push({
+		id: "export",
+		label: "Экспорт",
+		detail: "История, выгрузки, печать",
+		disabled: true,
+		icon: Download,
+		trailing: "Позже",
+	});
+
+	const accountRows: MenuRow[] = [
+		{
+			id: "change-password",
+			label: "Сменить пароль",
+			detail: "Безопасность входа",
+			disabled: true,
+			icon: KeyRound,
+			trailing: "Позже",
+		},
+		{
+			id: "logout",
+			label: logoutPending ? "Выходим" : "Выйти",
+			detail: "Завершить текущую сессию",
+			disabled: logoutPending,
+			icon: LogOut,
+			onSelect: logout,
+			tone: "danger",
+		},
+	];
 
 	return (
 		<section className="screen-stack director-more-home">
 			<h2 className="sr-only">Еще</h2>
 
-			{rows.length > 0 ? (
-				<div className="director-more-list">
-					{rows.map((row) => (
-						<button
-							key={row.id}
-							type="button"
-							aria-label={row.label}
-							className="director-more-row"
-							onClick={() => onTabChange(row.id)}
-						>
-							<row.icon aria-hidden size={19} />
-							<span>
-								<strong>{row.label}</strong>
-								<small>{row.detail}</small>
-							</span>
-						</button>
-					))}
-				</div>
+			{navigationRows.length > 0 ? (
+				<DirectorMoreSection label="Навигация" rows={navigationRows} />
 			) : null}
 
-			<div
-				className="director-account-panel"
-				style={{
-					alignItems: "center",
-					background: "var(--surface-muted)",
-					borderRadius: 12,
-					columnGap: 12,
-					display: "grid",
-					gridTemplateColumns: "minmax(0, 1fr) auto",
-					marginTop: 20,
-					padding: "10px 10px 10px 12px",
-				}}
-			>
-				<div
-					className="director-account-head"
-					style={{ minWidth: 0 }}
-				>
-					<strong
-						style={{
-							color: "var(--base-black)",
-							display: "block",
-							fontSize: 14,
-							fontWeight: "var(--font-weight-emphasis)",
-							lineHeight: 1.15,
-							overflowWrap: "anywhere",
-						}}
-					>
+			<section className="director-more-section" aria-labelledby="director-more-account">
+				<h3 className="director-more-section-label" id="director-more-account">Аккаунт</h3>
+				<div className="director-more-account-identity">
+					<strong>
 						{actor.displayName}
 					</strong>
-					<span
-						style={{
-							color: "var(--text-muted)",
-							display: "block",
-							fontSize: 11,
-							lineHeight: 1.2,
-							marginTop: 3,
-							overflowWrap: "anywhere",
-						}}
-					>
+					<span>
 						{ROLE_LABELS[actor.role]} · @{actor.login}
 					</span>
 				</div>
-				<button
-					className="director-logout-button"
-					aria-label="Выйти из профиля"
-					disabled={logoutPending}
-					onClick={logout}
-					style={{
-						alignItems: "center",
-						background: "transparent",
-						border: 0,
-						color: "var(--text-muted)",
-						cursor: logoutPending ? "not-allowed" : "pointer",
-						display: "inline-flex",
-						font: "inherit",
-						fontSize: 13,
-						fontWeight: "var(--font-weight-label)",
-						gap: 6,
-						justifyContent: "flex-end",
-						minHeight: 44,
-						opacity: logoutPending ? 0.55 : 1,
-						padding: "0 4px",
-						whiteSpace: "nowrap",
-						width: "fit-content",
-					}}
-					type="button"
-				>
-					<LogOut aria-hidden size={15} />
-					{logoutPending ? "Выходим" : "Выйти"}
-				</button>
+				<div className="director-more-section-list">
+					{accountRows.map((row) => (
+						<DirectorMoreRow key={row.id} row={row} />
+					))}
+				</div>
+			</section>
+		</section>
+	);
+}
+
+function DirectorMoreSection({ label, rows }: { label: string; rows: MenuRow[] }) {
+	return (
+		<section className="director-more-section" aria-labelledby={`director-more-${label}`}>
+			<h3 className="director-more-section-label" id={`director-more-${label}`}>{label}</h3>
+			<div className="director-more-section-list">
+				{rows.map((row) => (
+					<DirectorMoreRow key={row.id} row={row} />
+				))}
 			</div>
 		</section>
+	);
+}
+
+function DirectorMoreRow({ row }: { row: MenuRow }) {
+	const Icon = row.icon;
+
+	return (
+		<button
+			type="button"
+			aria-label={row.label}
+			className={row.tone === "danger" ? "director-more-menu-row danger" : "director-more-menu-row"}
+			disabled={row.disabled}
+			onClick={row.onSelect}
+		>
+			<span className="director-more-menu-icon">
+				<Icon aria-hidden size={17} />
+			</span>
+			<span className="director-more-menu-copy">
+				<strong>{row.label}</strong>
+				<small>{row.detail}</small>
+			</span>
+			{row.trailing ? <span className="director-more-menu-status">{row.trailing}</span> : <ChevronRight aria-hidden className="director-more-menu-chevron" size={17} />}
+		</button>
 	);
 }
