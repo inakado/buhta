@@ -22,6 +22,7 @@ import { CourierHome } from "../roles/courier/CourierHome";
 import { DirectorMoreHome } from "../roles/director/DirectorMoreHome";
 import { DirectorStockHome } from "../roles/director/DirectorStockHome";
 import { DistributorWorkerHome } from "../roles/distributor-worker/DistributorWorkerHome";
+import { ProductionMoreHome } from "../roles/production-manager/ProductionMoreHome";
 
 type RoleHomeRouterProps = {
 	actor: CurrentActor;
@@ -45,6 +46,17 @@ export function RoleHomeRouter({
 	if (actor.role === "director" && activeTab === "more") {
 		return (
 			<DirectorMoreHome
+				actor={actor}
+				logout={logout}
+				logoutPending={logoutPending}
+				onTabChange={onTabChange}
+			/>
+		);
+	}
+
+	if (actor.role === "production_manager" && activeTab === "more") {
+		return (
+			<ProductionMoreHome
 				actor={actor}
 				logout={logout}
 				logoutPending={logoutPending}
@@ -101,8 +113,8 @@ export function RoleHomeRouter({
 		if (activeTab === "distributor") {
 			return (
 				<DistributorInventoryHome
-					showCashBalance={actor.permissions.includes("distributor.cash.read")}
 					title="На распределителе"
+					variant="stock-ledger"
 				/>
 			);
 		}

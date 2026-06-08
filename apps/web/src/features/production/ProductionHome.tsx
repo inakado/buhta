@@ -730,14 +730,18 @@ function ProductionHistory({
 	productBatches: ProductBatch[];
 }) {
 	return (
-		<section className="screen-stack">
-			<div className="section-heading">
-				<h2>История</h2>
-				<span>Последние выпуски</span>
+		<section className="screen-stack operation-history-home">
+			<div className="operation-history-topbar">
+				<div className="section-heading compact">
+					<h2>История</h2>
+					{loading ? <span>Обновление</span> : null}
+				</div>
 			</div>
-			{loading ? <p className="muted">Загрузка истории</p> : null}
-			{!loading && productBatches.length === 0 ? <p className="muted">Выпусков пока нет</p> : null}
-			<ProductBatchList productBatches={productBatches} />
+			<div className="operation-history-body">
+				{loading ? <p className="muted">Загрузка истории</p> : null}
+				{!loading && productBatches.length === 0 ? <p className="muted">Выпусков пока нет.</p> : null}
+				<ProductBatchList productBatches={productBatches} />
+			</div>
 		</section>
 	);
 }
@@ -795,7 +799,7 @@ function WorkshopProductBalanceList({
 	workshopProductBalances: WorkshopProductBalanceItem[];
 }) {
 	return (
-		<div className="inventory-table-list production-inventory-table" role="table" aria-label="Продукция в цеху">
+		<div className="inventory-table-list" role="table" aria-label="Продукция в цеху">
 			<div className="inventory-table-title" role="row">
 				<h2>Продукция в цеху</h2>
 			</div>
@@ -829,26 +833,22 @@ function WorkshopProductBalanceList({
 
 function ProductBatchList({ productBatches }: { productBatches: ProductBatch[] }) {
 	return (
-		<div className="inventory-table-list" role="table" aria-label="Последние выпуски">
-			<div className="inventory-table-head" role="row">
-				<span>Продукция</span>
-				<span>Выпуск</span>
-				<span>Сырье</span>
-			</div>
+		<div className="operation-history-list production-history-list" aria-label="Последние выпуски" role="list">
 			{productBatches.map((batch) => (
-				<div className="inventory-table-row" key={batch.id} role="row">
-					<div className="inventory-table-product" role="cell">
+				<div className="operation-history-row production-history-row" key={batch.id} role="listitem">
+					<div className="operation-history-row-main">
 						<strong>{batch.productName}</strong>
-						<span>{formatDateTime(batch.createdAt)}</span>
+						<p>
+							{formatDateTime(batch.createdAt)}
+							{" · "}
+							{batch.rawMaterialTypeName}: {formatQuantity(batch.consumedRawMaterialQuantity)} {batch.rawMaterialUnit}
+							{" · "}
+							{batch.packagingTypeName}: {formatQuantity(batch.consumedPackagingQuantity)} {batch.packagingUnit}
+						</p>
 					</div>
-					<div className="inventory-table-quantity" role="cell">
+					<div className="operation-history-row-side">
 						<strong>{batch.quantity} шт</strong>
 						<span>{formatPriceRubles(batch.priceCents)}&nbsp;₽/шт</span>
-					</div>
-					<div className="inventory-table-total" role="cell">
-						<strong>
-							{formatQuantity(batch.consumedRawMaterialQuantity)} {batch.rawMaterialUnit}
-						</strong>
 					</div>
 				</div>
 			))}

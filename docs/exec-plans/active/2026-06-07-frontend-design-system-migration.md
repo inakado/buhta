@@ -82,11 +82,13 @@
 | Остатки сырья | internal `raw-stock` from summary click | `StockListScreen` | Полноэкранный read-only detail screen с `Назад`, не modal. Перейти к table/list rhythm без иконок в каждой строке и без row-cards. |
 | Остатки тары | internal `packaging-stock` from summary click | `StockListScreen` | Полноэкранный read-only detail screen с `Назад`, не modal. |
 | Продукция в цеху | internal `products` from summary click | `ProductStockScreen`, `WorkshopProductBalanceList` | Полноэкранный read-only detail screen с `Назад`: список выпущенной продукции, которая еще в цеху. На home список не показывать. |
-| История выпусков | future `more` entry or existing `history` during migration | `ProductionHistory`, `ProductBatchList` | В новом production contour должна переехать в `Еще` по аналогии с Директором. Сам экран мигрировать как compact ledger последних выпусков без новых фильтров, если API их не дает. |
+| История выпусков | `more` -> `history` | `ProductionHistory`, `ProductBatchList` | Переехала в `Еще` по аналогии с Директором. Сам экран мигрирован как compact ledger последних выпусков без новых фильтров, если API их не дает. |
 | На распределителе | `distributor` | `DistributorInventoryHome` | Read-only inventory variant со сводкой, по аналогии с директорскими остатками, но без cash/discount controls для заведующего при отсутствии прав. |
-| Уведомления | `notifications` | `NotificationsHome` | Задачи от коммерческого руководителя: видимый заголовок, summary `Новые / Выполнено`, task ledger, action `Выполнено`; create-form скрыт для заведующего без `notification.create`. |
-| Еще | future `more` | future production more/settings screen, `ProductionHistory`, `SettingsScreen` | Добавить по аналогии с Director More: блок `Навигация` с `История`, блок `Аккаунт`, future entry `Сменить пароль` как cross-role hardening до реализации auth flow. |
-| Профиль / аккаунт | current `settings`, future `more` account block | `SettingsScreen` | В рамках production contour профильный/аккаунтный доступ должен перейти в `Еще`; self password change остается cross-role hardening, если отдельный auth stage не открыт. |
+| Уведомления | `notifications` | `NotificationsHome` | Задачи от коммерческого руководителя: видимый заголовок, default queue `Новые`, вкладка `Выполненные`, task ledger, checkbox completion control; create-form скрыт для заведующего без `notification.create`. |
+| Еще | `more` | `ProductionMoreHome`, `ProductionHistory` | Добавлен по аналогии с Director More: блок `Навигация` с `История`, блок `Аккаунт`, logout, future entry `Сменить пароль` как cross-role hardening до реализации auth flow. |
+| Профиль / аккаунт | `more` account block | `ProductionMoreHome` | Профильная зона заведующего теперь находится в `Еще`; отдельная нижняя вкладка `Профиль` снята. Self password change остается cross-role hardening, если отдельный auth stage не открыт. |
+
+Status 2026-06-09: role contour complete. Финальный static cleanup не нашел legacy production home/list hooks (`production-workshop-card`, `production-balance-row`, `production-balance-list`, `detail-list-panel`) in app code. Удалены невостребованные local class hooks from migrated screens: `production-notification-screen`, `notification-summary-line`, `notification-row`, `notification-heading`, `production-more-home`, `production-history-home`, `production-inventory-table`. Product marker icon standardized to `BadgeCheck`; remaining `PackageCheck` usage is only courier unload submit icon, not a product marker.
 
 ### 5.5 Коммерческий Руководитель
 
@@ -292,22 +294,27 @@
 4. **На распределителе.**
    - `DistributorInventoryHome` для заведующего мигрировать как read-only stock surface со сводкой по директорскому stock ledger standard.
    - Проверить production props/permissions: no cash/discount actions unless role permissions explicitly allow them.
+   - Реализационный стандарт: production-вариант использует `stock-ledger` surface, белую сводку `Количество / Продукция`, таблицу `Продукция / Количество / Итого` и grouping rows вместо отдельных aggregate cards. Количество позиций показывается в meta шапки таблицы, но не дублируется в верхнем heading.
+   - Status: implemented for production manager. Cash/discount controls are not passed into the production route; distributor aggregate cards are hidden in the `stock-ledger` variant.
 
 5. **Уведомления.**
    - `NotificationsHome` для заведующего оформить как task ledger от коммерческого руководителя: visible heading, summary `Новые / Выполнено`, rows with completion action.
    - Create form не показывать для заведующего без `notification.create`; не оставлять пустой верхний form gap.
    - Проверить badge count in bottom nav and polling state text.
+   - Реализационный стандарт: видимый heading `Задачи производству`, default filter `Новые`, completed tasks hidden from the main queue and available through `Выполненные`, white task ledger rows with thin dividers, status badge in meta and checkbox completion control. Старый `flat-balance-row` treatment для задач не использовать.
+   - Status: implemented. Production manager sees read/complete task ledger only; commercial manager keeps create form by permission.
 
 6. **Еще, история, аккаунт.**
-   - Добавить production `Еще` по аналогии с Director More: блок `Навигация` с переходом в `История`, блок `Аккаунт`, logout, future `Сменить пароль`.
-   - `История выпусков` переезжает из нижней навигации в `Еще` and migrates to compact ledger list. Не добавлять фильтры или отчеты без API/read model.
-   - `Сменить пароль` остается cross-role auth hardening entry until that stage is opened.
+	- Добавить production `Еще` по аналогии с Director More: блок `Навигация` с переходом в `История`, блок `Аккаунт`, logout, future `Сменить пароль`.
+	- `История выпусков` переезжает из нижней навигации в `Еще` and migrates to compact ledger list. Не добавлять фильтры или отчеты без API/read model.
+	- `Сменить пароль` остается cross-role auth hardening entry until that stage is opened.
+	- Status: implemented. Production `Еще` uses Director More menu vocabulary with `Навигация` -> `История`, `Аккаунт`, disabled `Сменить пароль`, and logout. `История выпусков` removed from bottom navigation, stays reachable through `Еще`, and keeps director `OperationHistoryHome` visual rhythm: compact topbar, `operation-history-body`, ledger rows, no filters and no details modal.
 
 Stage checks:
 
-- Rewrite targeted tests around new production IA: summary clicks, detail screens, action screen entry points, updated bottom nav / `Еще`, hidden notification create form for production manager.
-- Clean production CSS after usages are migrated: remove dead production hero/card selectors only after `rg` confirms no remaining consumers.
-- Update `DESIGN.md` or `docs/FRONTEND.md` only if a production-specific command/form/list pattern becomes a reusable standard.
+- Done: targeted tests cover new production IA: summary clicks, detail screens, action screen entry points, updated bottom nav / `Еще`, hidden notification create form for production manager, completed notification queue and production history via `Еще`.
+- Done: production CSS/code cleanup after migration; static `rg` confirms no remaining old production hero/list hooks in app code and no stale notification hooks.
+- Done: `docs/FRONTEND.md` updated with the completed production contour, notification checkbox flow, `Еще` account/history model, `BadgeCheck` product marker and production `stock-ledger` distributor variant.
 
 ### Stage 5. Shared Stock Surfaces Across Roles
 

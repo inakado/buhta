@@ -1248,9 +1248,28 @@ describe("HomePage", () => {
 		expect(await screen.findByRole("heading", { name: "На распределителе" })).toBeTruthy();
 		expect(screen.queryByText("Товар на распределителе")).toBeNull();
 		expect(screen.queryByText((_, element) => element?.textContent === "Товарный баланс 2500.00 ₽")).toBeNull();
+		expect(screen.queryByRole("button", { name: "Списать наличные" })).toBeNull();
+		expect(screen.queryByRole("button", { name: "Снизить цену" })).toBeNull();
 		expect(screen.getAllByText("Продукция").length).toBeGreaterThan(0);
 		expect(await screen.findByText("Икра горбуши")).toBeTruthy();
+		expect(screen.getByText("1 позиция")).toBeTruthy();
+		expect(screen.getByText("Распределитель Центральный")).toBeTruthy();
 		expect(screen.getAllByText("2 шт").length).toBeGreaterThan(0);
+		expect(screen.queryByRole("button", { name: "История" })).toBeNull();
+		expect(screen.queryByRole("button", { name: "Профиль" })).toBeNull();
+		fireEvent.click(screen.getByRole("button", { name: "Еще" }));
+		expect(await screen.findByRole("heading", { name: "Еще" })).toBeTruthy();
+		expect(screen.getByText("Последние выпуски")).toBeTruthy();
+		expect(screen.getByRole("button", { name: "Сменить пароль" })).toHaveProperty("disabled", true);
+		fireEvent.click(screen.getByRole("button", { name: "История" }));
+		expect(await screen.findByRole("heading", { name: "История" })).toBeTruthy();
+		expect(screen.getByRole("button", { name: "Еще" }).getAttribute("aria-current")).toBe("page");
+		expect(document.querySelector(".operation-history-home .operation-history-list")).toBeTruthy();
+		expect(document.querySelector(".operation-history-home .inventory-table-list")).toBeNull();
+		expect(await screen.findByText("Икра горбуши")).toBeTruthy();
+		expect(screen.getByText(/Горбуша: 6\.25 кг/)).toBeTruthy();
+		expect(screen.getByText("4 шт")).toBeTruthy();
+		expect(screen.queryByRole("button", { name: /Икра горбуши/ })).toBeNull();
 	}, 10_000);
 
 	it("keeps production backend errors inline without success notice", async () => {
@@ -1384,6 +1403,7 @@ describe("HomePage", () => {
 	});
 
 	it("lets production manager complete production notification", async () => {
+		let completedNotification = false;
 		const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
 			const url = String(input);
 			const method = init?.method ?? "GET";
@@ -1431,6 +1451,7 @@ describe("HomePage", () => {
 			}
 
 			if (url.endsWith("/notifications/notification1/complete") && method === "PATCH") {
+				completedNotification = true;
 				return jsonResponse({
 					notification: {
 						...notificationsResponse.items[0],
@@ -1441,6 +1462,37 @@ describe("HomePage", () => {
 							displayName: "Production Manager",
 						},
 						completedAt: new Date(1).toISOString(),
+					},
+				});
+			}
+
+			if (url.includes("/notifications?status=new")) {
+				return jsonResponse(completedNotification
+					? {
+						items: [],
+						summary: {
+							newCount: 0,
+							completedCount: 1,
+						},
+					}
+					: notificationsResponse);
+			}
+
+			if (url.includes("/notifications?status=completed")) {
+				return jsonResponse({
+					items: [{
+						...notificationsResponse.items[0],
+						status: "completed",
+						completedBy: {
+							userId: "seed-production-manager",
+							login: "production-manager",
+							displayName: "Production Manager",
+						},
+						completedAt: new Date(1).toISOString(),
+					}],
+					summary: {
+						newCount: 0,
+						completedCount: 1,
 					},
 				});
 			}
@@ -1463,8 +1515,12 @@ describe("HomePage", () => {
 		expect(screen.queryByLabelText("Что передать производству")).toBeNull();
 		expect(await screen.findByText("Сделать партию икры")).toBeTruthy();
 		expect(document.querySelector(".compact-balance-overview")).toBeNull();
-		expect(document.querySelector(".notification-summary-line")?.textContent).toContain("Новые: 1");
-		fireEvent.click(screen.getByRole("button", { name: "Выполнено" }));
+		expect(document.querySelector(".notification-ledger")).toBeTruthy();
+		expect(document.querySelector(".notification-ledger .flat-balance-row")).toBeNull();
+		expect(screen.getByRole("tab", { name: /Новые/ }).getAttribute("aria-selected")).toBe("true");
+		expect(document.querySelector(".notification-summary-panel")?.textContent).toContain("Новые1");
+		expect(fetchMock.mock.calls.some(([request]) => String(request).includes("/notifications?status=new"))).toBe(true);
+		fireEvent.click(screen.getByRole("checkbox", { name: "Отметить задачу выполненной" }));
 
 		await waitFor(() => {
 			expect(fetchMock).toHaveBeenCalledWith(
@@ -1476,6 +1532,10 @@ describe("HomePage", () => {
 			);
 		});
 		expect(await screen.findByText("Задача выполнена")).toBeTruthy();
+		expect(await screen.findByText("Новых задач для производства нет.")).toBeTruthy();
+		fireEvent.click(screen.getByRole("tab", { name: /Выполненные/ }));
+		expect(await screen.findByText("Сделать партию икры")).toBeTruthy();
+		expect(screen.getByRole("checkbox", { name: "Задача выполнена" })).toHaveProperty("checked", true);
 	});
 
 	it("renders commercial manager home and navigates through sale action and bottom nav", async () => {
@@ -1587,7 +1647,8 @@ describe("HomePage", () => {
 		expect(await screen.findByRole("heading", { name: "Задачи производству" })).toBeTruthy();
 		expect(await screen.findByText("Сделать партию икры")).toBeTruthy();
 		expect(document.querySelector(".compact-balance-overview")).toBeNull();
-		expect(document.querySelector(".notification-summary-line")?.textContent).toContain("Выполнено: 0");
+		expect(document.querySelector(".notification-summary-panel")).toBeTruthy();
+		expect(document.querySelector(".notification-summary-panel")?.textContent).toContain("Выполненные0");
 		fireEvent.change(screen.getByLabelText("Что передать производству"), {
 			target: { value: "Проверить остатки банки" },
 		});
@@ -2944,7 +3005,14 @@ describe("HomePage", () => {
 		render(<HomePage />);
 
 		expect(await screen.findByRole("button", { name: "Главная" })).toBeTruthy();
+		expect(screen.getByRole("button", { name: "Еще" })).toBeTruthy();
+		expect(screen.queryByRole("button", { name: "История" })).toBeNull();
+		expect(screen.queryByRole("button", { name: "Профиль" })).toBeNull();
 		expect(screen.queryByRole("button", { name: "Клиенты" })).toBeNull();
+		fireEvent.click(screen.getByRole("button", { name: "Еще" }));
+		expect(await screen.findByRole("heading", { name: "Еще" })).toBeTruthy();
+		expect(screen.getByRole("button", { name: "История" })).toBeTruthy();
+		expect(screen.getByRole("button", { name: "Сменить пароль" })).toHaveProperty("disabled", true);
 	});
 
 	it("keeps client backend errors inline and disables writes offline", async () => {

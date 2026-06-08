@@ -19,6 +19,8 @@ import {
 import { formatCompactRubles } from "../../lib/money-format";
 import { DistributorStockList } from "./DistributorStockList";
 
+type DistributorInventoryVariant = "default" | "stock-ledger";
+
 export function DistributorInventoryHome({
 	canAssignDiscount = false,
 	canWithdrawCash = false,
@@ -28,6 +30,7 @@ export function DistributorInventoryHome({
 	online = true,
 	showCashBalance = false,
 	title = "Остатки",
+	variant = "default",
 }: {
 	canAssignDiscount?: boolean;
 	canWithdrawCash?: boolean;
@@ -37,6 +40,7 @@ export function DistributorInventoryHome({
 	online?: boolean;
 	showCashBalance?: boolean;
 	title?: string;
+	variant?: DistributorInventoryVariant;
 }) {
 	const queryClient = useQueryClient();
 	const [withdrawalOpen, setWithdrawalOpen] = useState(false);
@@ -69,6 +73,11 @@ export function DistributorInventoryHome({
 	const singleDistributorName = distributorCount === 1 ? data?.distributorSummaries[0]?.distributorName : undefined;
 	const stockTableTitle = singleDistributorName ?? (distributorCount > 1 ? formatDistributorCount(distributorCount) : "Продукция");
 	const stockTableMeta = stockItemCount > 0 ? formatPositionCount(stockItemCount) : undefined;
+	const useStockLedger = variant === "stock-ledger";
+	const frameClassName = [
+		embedded ? "embedded-screen-stack" : "screen-stack",
+		useStockLedger ? "stock-ledger-surface" : "",
+	].filter(Boolean).join(" ");
 	const activeCashItems = useMemo(
 		() => (cashData?.items ?? []).filter((item) => item.active),
 		[cashData?.items],
@@ -252,11 +261,11 @@ export function DistributorInventoryHome({
 	}
 
 	return (
-		<Frame className={embedded ? "embedded-screen-stack" : "screen-stack"}>
+		<Frame className={frameClassName}>
 			{hideHeading ? null : (
 				<div className="section-heading">
 					<h2>{title}</h2>
-					<span>{stockItemCount} позиций</span>
+					{useStockLedger ? null : <span>{inventory.isLoading ? "Загрузка" : formatPositionCount(stockItemCount)}</span>}
 				</div>
 			)}
 
@@ -517,7 +526,7 @@ export function DistributorInventoryHome({
 				<p className="muted">На распределителе пока нет продукции.</p>
 			) : null}
 
-			{data && data.distributorSummaries.length > 1 ? (
+			{!useStockLedger && data && data.distributorSummaries.length > 1 ? (
 				<div className="production-stock-stack">
 					{data.distributorSummaries.map((summary) => (
 						<div className="stock-aggregate-card" key={summary.distributorId}>
@@ -542,8 +551,8 @@ export function DistributorInventoryHome({
 					groupByDistributor={distributorCount > 1}
 					items={data?.items ?? []}
 					{...(canAssignDiscount ? { onAssignDiscount: openDiscountForm } : {})}
-					showDistributorName={!hideHeading}
-					{...(hideHeading
+					showDistributorName={!useStockLedger && !hideHeading}
+					{...(hideHeading || useStockLedger
 						? {
 							tableTitle: stockTableTitle,
 							...(stockTableMeta ? { tableMeta: stockTableMeta } : {}),

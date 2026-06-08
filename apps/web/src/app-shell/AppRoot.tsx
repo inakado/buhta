@@ -9,7 +9,7 @@ import {
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
-import { Bell, Box, Check, ClipboardList, Factory, Gauge, History, MoreHorizontal, PackageCheck, ReceiptText, Settings, Truck, Users, type LucideIcon } from "lucide-react";
+import { BadgeCheck, Bell, Box, Check, ClipboardList, Factory, Gauge, History, MoreHorizontal, ReceiptText, Settings, Truck, Users, type LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { LoginForm } from "../auth/LoginForm";
 import { getCurrentActor, isUnauthorizedError, listNotifications, signOut, type CurrentActor } from "../lib/api-client";
@@ -202,7 +202,7 @@ function BottomNav({
 		? [{ id: "operation-history", label: "История", icon: ReceiptText }]
 		: [];
 	const courierItems: BottomNavItem[] = [
-		{ id: "home", label: "Баланс", icon: PackageCheck },
+		{ id: "home", label: "Баланс", icon: BadgeCheck },
 		...salesHistoryItem,
 		{ id: "settings", label: "Профиль", icon: Settings },
 	];
@@ -210,8 +210,7 @@ function BottomNav({
 		{ id: "home", label: "Главная", icon: Factory },
 		{ id: "distributor", label: "Распределитель", icon: Box },
 		{ id: "notifications", label: "Уведомления", icon: Bell, badgeCount: newProductionNotifications },
-		{ id: "history", label: "История", icon: ReceiptText },
-		{ id: "settings", label: "Профиль", icon: Settings },
+		{ id: "more", label: "Еще", icon: MoreHorizontal },
 	];
 	const items = actor.role === "admin"
 		? [
@@ -250,6 +249,10 @@ function BottomNav({
 					actor.role === "director"
 					&& item.id === "more"
 					&& (activeTab === "catalog" || activeTab === "clients" || activeTab === "settings")
+				) || (
+					actor.role === "production_manager"
+					&& item.id === "more"
+					&& activeTab === "history"
 				);
 
 				return (

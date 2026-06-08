@@ -21,17 +21,20 @@ type SuccessNotice = {
 	message: string;
 };
 
+type NotificationStatusView = "new" | "completed";
+
 export function NotificationsHome({ actor, online }: NotificationsHomeProps) {
 	const queryClient = useQueryClient();
 	const [message, setMessage] = useState("");
+	const [statusView, setStatusView] = useState<NotificationStatusView>("new");
 	const [localError, setLocalError] = useState("");
 	const [successNotice, setSuccessNotice] = useState<SuccessNotice | null>(null);
 	const successNoticeId = useRef(0);
 	const canCreate = actor.permissions.includes("notification.create");
 	const canComplete = actor.permissions.includes("notification.complete");
 	const notifications = useQuery({
-		queryKey: ["notifications", "all"],
-		queryFn: () => listNotifications("all"),
+		queryKey: ["notifications", statusView],
+		queryFn: () => listNotifications(statusView),
 		refetchInterval: 30_000,
 	});
 	const createMutation = useMutation({
@@ -55,6 +58,10 @@ export function NotificationsHome({ actor, online }: NotificationsHomeProps) {
 		|| createMutation.isPending
 		|| trimmedMessage.length === 0
 		|| trimmedMessage.length > 1000;
+	const showRefreshState = notifications.isFetching && !notifications.isLoading;
+	const emptyMessage = statusView === "new"
+		? "Новых задач для производства нет."
+		: "Выполненных задач пока нет.";
 
 	useEffect(() => {
 		if (!successNotice) {
@@ -97,12 +104,14 @@ export function NotificationsHome({ actor, online }: NotificationsHomeProps) {
 	}
 
 	return (
-		<section className="screen-stack">
-			<h2 className="sr-only">Задачи производству</h2>
-			{notifications.isFetching ? <p className="muted">Обновление</p> : null}
+		<section className="screen-stack notification-screen">
+			<div className="section-heading">
+				<h2>Задачи производству</h2>
+				{showRefreshState ? <span>Обновление</span> : null}
+			</div>
 
 			{canCreate ? (
-				<form className="form-panel" onSubmit={handleSubmit}>
+				<form className="form-panel notification-create-panel" onSubmit={handleSubmit}>
 					<label className="field">
 						<span className="sr-only">Что передать производству</span>
 						<textarea
@@ -121,17 +130,35 @@ export function NotificationsHome({ actor, online }: NotificationsHomeProps) {
 				</form>
 			) : null}
 
-			<p className="notification-summary-line" aria-label="Статистика задач">
-				<span>Новые: <strong>{notifications.data?.summary.newCount ?? 0}</strong></span>
-				<span>Выполнено: <strong>{notifications.data?.summary.completedCount ?? 0}</strong></span>
-			</p>
+			<div className="notification-summary-panel" aria-label="Статистика задач" role="tablist">
+				<button
+					aria-selected={statusView === "new"}
+					className={statusView === "new" ? "active" : ""}
+					onClick={() => setStatusView("new")}
+					role="tab"
+					type="button"
+				>
+					<span>Новые</span>
+					<strong>{notifications.data?.summary.newCount ?? 0}</strong>
+				</button>
+				<button
+					aria-selected={statusView === "completed"}
+					className={statusView === "completed" ? "active" : ""}
+					onClick={() => setStatusView("completed")}
+					role="tab"
+					type="button"
+				>
+					<span>Выполненные</span>
+					<strong>{notifications.data?.summary.completedCount ?? 0}</strong>
+				</button>
+			</div>
 
 			{notifications.isLoading ? <p className="muted">Загрузка задач</p> : null}
 			{notifications.isError ? <p className="form-error">{notifications.error.message}</p> : null}
 			{!notifications.isLoading && !notifications.isError && (notifications.data?.items.length ?? 0) === 0 ? (
-				<p className="muted">Задач для производства пока нет.</p>
+				<p className="muted">{emptyMessage}</p>
 			) : null}
-			<div className="list-stack">
+			<div className="notification-ledger" role="list">
 				{notifications.data?.items.map((item) => (
 					<NotificationRow
 						canComplete={canComplete}
@@ -167,27 +194,44 @@ function NotificationRow({
 	const completed = item.status === "completed";
 
 	return (
-		<div className="flat-balance-row notification-row">
+		<div className="notification-ledger-row" role="listitem">
 			<div>
 				<strong>{item.message}</strong>
-				<p>
-					{completed ? "Выполнено" : "Новое"}
-					{" · "}
-					{formatDate(item.createdAt)}
-					{" · "}
-					{item.createdBy.displayName}
-				</p>
+				<div className="notification-meta-row">
+					<span className={completed ? "notification-state completed" : "notification-state new"}>
+						{completed ? "Выполнено" : "Новое"}
+					</span>
+					<span>{formatDate(item.createdAt)}</span>
+					<span>{item.createdBy.displayName}</span>
+				</div>
 				{completed && item.completedBy ? (
 					<p>Закрыл: {item.completedBy.displayName}{item.completedAt ? ` · ${formatDate(item.completedAt)}` : ""}</p>
 				) : null}
 			</div>
 			{canComplete && !completed ? (
-				<button className="secondary-button" disabled={completeDisabled} onClick={onComplete} type="button">
-					<Check aria-hidden size={16} />
-					Выполнено
-				</button>
+				<input
+					aria-label="Отметить задачу выполненной"
+					checked={false}
+					className="notification-complete-checkbox"
+					disabled={completeDisabled}
+					onChange={onComplete}
+					type="checkbox"
+				/>
 			) : (
-				<strong>{completed ? "Готово" : "Новая"}</strong>
+				<>
+					{completed && canComplete ? (
+						<input
+							aria-label="Задача выполнена"
+							checked
+							className="notification-complete-checkbox"
+							disabled
+							readOnly
+							type="checkbox"
+						/>
+					) : (
+						<strong className="notification-status">{completed ? "Готово" : "Новая"}</strong>
+					)}
+				</>
 			)}
 		</div>
 	);

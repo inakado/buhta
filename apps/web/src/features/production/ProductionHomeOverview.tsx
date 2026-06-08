@@ -2,12 +2,12 @@
 
 import {
 	ArrowRightLeft,
+	BadgeCheck,
 	ChevronRight,
 	CirclePlus,
 	Factory,
 	FishSymbol,
 	Package,
-	PackageCheck,
 	PackagePlus,
 	type LucideIcon,
 } from "lucide-react";
@@ -147,7 +147,7 @@ function ProductionWorkshopSummary({
 
 			<div className="production-summary-ledger" aria-label="Сводка цеха">
 				<ProductionSummaryRow
-					icon={PackageCheck}
+					icon={BadgeCheck}
 					label="Продукция"
 					loading={loading}
 					meta="В цеху"

@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { PackageCheck, ReceiptText, Send } from "lucide-react";
+import { BadgeCheck, ReceiptText, Send } from "lucide-react";
 import { getDistributorCashBalances, getDistributorInventory } from "../../lib/api-client";
 import { formatCompactRubles } from "../../lib/money-format";
 import { DistributorStockList } from "./DistributorStockList";
@@ -61,7 +61,7 @@ export function DistributorHomeOverview({
 							<p className="summary-note">На распределителе</p>
 						</div>
 						<span className="commercial-overview-icon">
-							<PackageCheck aria-hidden size={22} />
+							<BadgeCheck aria-hidden size={22} />
 						</span>
 					</div>
 					<dl className="commercial-overview-metrics">
