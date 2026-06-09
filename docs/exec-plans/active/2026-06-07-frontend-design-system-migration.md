@@ -389,12 +389,12 @@ Owner-confirmed shape:
 
 1. **Главная распределителя.**
    - Replace the old `compact-balance-overview` / `action-tile` home with a white ledger summary matching commercial/production surfaces.
-   - Show compact horizontal `Продукция`, `Стоимость` and optional `Наличные`, without a repeated inner summary heading.
-   - Keep one clear command action: `Продать`.
+   - Show compact centered horizontal `Продукция`, `Стоимость` and optional `Наличные`, without a repeated inner summary heading or helper meta labels.
+   - Keep one clear primary command action: `Продать`.
    - Keep the product list visible below the action block, because this role needs stock visibility on the first screen.
    - Rewrite targeted tests that currently assert the old `action-tile` behavior.
    - Commit after implementation, tests, cleanup and docs update.
-   - Status: implemented. Worker home now uses the compact horizontal white ledger summary and `production-command-button` sale action while keeping the product list visible on the main screen.
+   - Status: implemented. Worker home now uses the compact centered horizontal white ledger summary and primary `production-command-button` sale action while keeping the product list visible on the main screen.
 
 2. **Продукция на главной.**
    - Polish the inline product list that remains on the worker home.

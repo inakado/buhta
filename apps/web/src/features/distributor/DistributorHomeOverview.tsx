@@ -12,8 +12,10 @@ type DistributorHomeOverviewProps = {
 	onStockOpen?: () => void;
 	notifyDisabled?: boolean;
 	saleDisabled?: boolean;
+	saleCommandTone?: "neutral" | "primary";
 	showCashBalance?: boolean;
 	showStockList?: boolean;
+	showSummaryMeta?: boolean;
 	showSummaryHeading?: boolean;
 	summaryMeta?: string;
 	summaryTitle?: string;
@@ -30,8 +32,10 @@ export function DistributorHomeOverview({
 	onStockOpen,
 	notifyDisabled = false,
 	saleDisabled = false,
+	saleCommandTone = "neutral",
 	showCashBalance = false,
 	showStockList = true,
+	showSummaryMeta = true,
 	showSummaryHeading = true,
 	summaryMeta = "Сводка",
 	summaryTitle = "Распределитель",
@@ -82,6 +86,7 @@ export function DistributorHomeOverview({
 							label={stockSummaryLabel}
 							loading={inventory.isLoading}
 							meta={formatPositionCount(stockItemCount)}
+							showMeta={showSummaryMeta}
 							value={`${stockUnits} шт`}
 							{...(onStockOpen ? { onClick: onStockOpen } : {})}
 						/>
@@ -90,6 +95,7 @@ export function DistributorHomeOverview({
 							label={stockValueLabel}
 							loading={inventory.isLoading}
 							meta="По текущей цене"
+							showMeta={showSummaryMeta}
 							value={formatCompactRubles(stockValueCents)}
 						/>
 						{showCashBalance ? (
@@ -98,6 +104,7 @@ export function DistributorHomeOverview({
 								label="Наличные"
 								loading={cashBalances.isLoading}
 								meta="В кассе"
+								showMeta={showSummaryMeta}
 								value={formatCompactRubles(cashAmountCents)}
 							/>
 						) : null}
@@ -131,6 +138,7 @@ export function DistributorHomeOverview({
 							icon={ReceiptText}
 							label="Продать"
 							onClick={onSale}
+							tone={saleCommandTone}
 						/>
 						{onNotify ? (
 							<CommercialCommandButton
@@ -194,6 +202,7 @@ function CommercialSummaryRow({
 	loading,
 	meta,
 	onClick,
+	showMeta = true,
 	value,
 }: {
 	icon: LucideIcon;
@@ -201,6 +210,7 @@ function CommercialSummaryRow({
 	loading: boolean;
 	meta: string;
 	onClick?: () => void;
+	showMeta?: boolean;
 	value: string;
 }) {
 	const displayValue = loading ? "..." : value;
@@ -214,10 +224,12 @@ function CommercialSummaryRow({
 				<span>{label}</span>
 				<strong>{displayValue}</strong>
 			</span>
-			<span className="production-summary-meta">
-				<span>{displayMeta}</span>
-				{onClick ? <ChevronRight aria-hidden size={16} /> : null}
-			</span>
+			{showMeta || onClick ? (
+				<span className="production-summary-meta">
+					{showMeta ? <span>{displayMeta}</span> : null}
+					{onClick ? <ChevronRight aria-hidden size={16} /> : null}
+				</span>
+			) : null}
 		</>
 	);
 
@@ -243,14 +255,16 @@ function CommercialCommandButton({
 	icon: Icon,
 	label,
 	onClick,
+	tone = "neutral",
 }: {
 	disabled: boolean;
 	icon: LucideIcon;
 	label: string;
 	onClick: () => void;
+	tone?: "neutral" | "primary";
 }) {
 	return (
-		<button className="production-command-button frequent" disabled={disabled} onClick={onClick} type="button">
+		<button className={`production-command-button frequent ${tone}`} disabled={disabled} onClick={onClick} type="button">
 			<Icon aria-hidden size={18} />
 			<span>{label}</span>
 		</button>

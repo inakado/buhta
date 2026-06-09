@@ -239,7 +239,7 @@ App icon использует Pearl Cove знак в `apps/web/app/icon.svg`. Au
 
 - роль собирается в `apps/web/src/roles/distributor-worker/DistributorWorkerHome.tsx` через `RoleHomeRouter`;
 - home использует общий доменный `features/distributor/DistributorHomeOverview.tsx`, потому что commercial manager и distributor worker показывают один distributor inventory/cash контур;
-- home имеет заголовок `Распределитель`, горизонтальную white ledger сводку `Продукция` / `Стоимость` / optional `Наличные` без внутреннего heading, command action `Продать` и inline table/list `Продукция`;
+- home имеет заголовок `Распределитель`, горизонтальную white ledger сводку `Продукция` / `Стоимость` / optional `Наличные` без внутреннего heading и без вспомогательных meta-подписей, primary black command action `Продать` и inline table/list `Продукция`;
 - в отличие от commercial manager, работник распределителя видит продукцию прямо на главной, потому что это его основной рабочий остаток;
 - `Продажа` не показывается в нижней навигации: переход в продажу выполняет только command action `Продать`;
 - `История` показывается отдельной нижней вкладкой, а не плиткой рядом с `Продать`;

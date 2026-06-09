@@ -1832,9 +1832,12 @@ describe("HomePage", () => {
 		expect(screen.queryByText("Стоимость продукции")).toBeNull();
 		expect(await screen.findByText("Наличные")).toBeTruthy();
 		expect(screen.queryByText("Товар")).toBeNull();
-		expect(screen.getByText("1 позиция")).toBeTruthy();
+		expect(screen.queryByText("1 позиция")).toBeNull();
+		expect(screen.queryByText("По текущей цене")).toBeNull();
+		expect(screen.queryByText("В кассе")).toBeNull();
 		const saleAction = screen.getByRole("button", { name: "Продать" });
 		expect(saleAction.className).toContain("production-command-button");
+		expect(saleAction.className).toContain("primary");
 		expect(document.querySelector(".compact-balance-overview")).toBeNull();
 		expect(screen.queryByRole("heading", { name: "Действия" })).toBeNull();
 		expect(screen.queryByRole("button", { name: "Показать остатки" })).toBeNull();

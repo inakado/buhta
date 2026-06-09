@@ -16,8 +16,10 @@ export function DistributorWorkerHome({
 	return (
 		<DistributorHomeOverview
 			onSale={() => onTabChange("sale")}
+			saleCommandTone="primary"
 			saleDisabled={!online}
 			showCashBalance={showCashBalance}
+			showSummaryMeta={false}
 			showSummaryHeading={false}
 			summaryLayout="commercial"
 			summaryVariant="horizontal"
