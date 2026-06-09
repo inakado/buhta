@@ -14,6 +14,8 @@ type DistributorHomeOverviewProps = {
 	saleDisabled?: boolean;
 	showCashBalance?: boolean;
 	showStockList?: boolean;
+	summaryMeta?: string;
+	summaryTitle?: string;
 	summaryLayout?: "default" | "commercial";
 	stockSummaryLabel: string;
 	title: string;
@@ -27,6 +29,8 @@ export function DistributorHomeOverview({
 	saleDisabled = false,
 	showCashBalance = false,
 	showStockList = true,
+	summaryMeta = "Сводка",
+	summaryTitle = "Распределитель",
 	summaryLayout = "default",
 	stockSummaryLabel,
 	title,
@@ -57,8 +61,8 @@ export function DistributorHomeOverview({
 			{summaryLayout === "commercial" ? (
 				<section className="production-home-surface commercial-home-surface" aria-labelledby="commercial-home-summary">
 					<div className="production-home-heading">
-						<h2 id="commercial-home-summary">Распределитель</h2>
-						<span>Сводка</span>
+						<h2 id="commercial-home-summary">{summaryTitle}</h2>
+						<span>{summaryMeta}</span>
 					</div>
 					<div className="production-summary-ledger" aria-label="Сводка распределителя">
 						<CommercialSummaryRow

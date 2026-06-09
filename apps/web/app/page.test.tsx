@@ -1825,12 +1825,16 @@ describe("HomePage", () => {
 		render(<HomePage />);
 
 		expect(await screen.findByRole("heading", { name: "Распределитель" })).toBeTruthy();
+		expect(screen.getByRole("heading", { name: "Сводка" })).toBeTruthy();
+		expect(screen.getAllByRole("heading", { name: "Распределитель" })).toHaveLength(1);
 		expect(screen.getAllByText("Продукция").length).toBeGreaterThan(0);
+		expect(screen.getByText("Стоимость продукции")).toBeTruthy();
 		expect(await screen.findByText("Наличные")).toBeTruthy();
 		expect(screen.queryByText("Товар")).toBeNull();
-		expect(screen.queryByText("Позиций")).toBeNull();
-		const saleAction = screen.getByRole("button", { name: "Открыть продажу" });
-		expect(saleAction.className).toContain("action-tile");
+		expect(screen.getByText("1 позиция")).toBeTruthy();
+		const saleAction = screen.getByRole("button", { name: "Продать" });
+		expect(saleAction.className).toContain("production-command-button");
+		expect(document.querySelector(".compact-balance-overview")).toBeNull();
 		expect(screen.queryByRole("heading", { name: "Действия" })).toBeNull();
 		expect(screen.queryByRole("button", { name: "Показать остатки" })).toBeNull();
 		expect(screen.queryByRole("button", { name: "Открыть клиентов" })).toBeNull();

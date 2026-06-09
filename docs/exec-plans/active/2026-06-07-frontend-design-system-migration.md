@@ -108,8 +108,8 @@ Status 2026-06-09: role contour complete. Финальный static cleanup не
 
 | Экран | Entry point | Компоненты | Варианты и особенности |
 | --- | --- | --- | --- |
-| Главная распределителя | `home` | `DistributorWorkerHome`, `DistributorHomeOverview` | Needs migration to the commercial/production white ledger summary: product/cash rows, one `Продать` command, no inline product list. |
-| Продукция на распределителе | summary row drilldown from `home` | `DistributorHomeOverview`, `DistributorStockList` | New internal full-screen drilldown from the `Продукция` summary row, same pattern as commercial home product drilldown. |
+| Главная распределителя | `home` | `DistributorWorkerHome`, `DistributorHomeOverview` | Needs migration to the commercial/production white ledger summary: product/cash rows, one `Продать` command, product list remains visible on home. |
+| Продукция на главной | lower section on `home` | `DistributorHomeOverview`, `DistributorStockList` | Worker-specific decision: do not hide product stock behind drilldown; polish the inline list for the new ledger system. |
 | Продажа | action sets `sale` | `DistributorSaleHome` | Already redesigned through commercial manager sale flow; keep shared form, role-specific permissions and tests. |
 | История продаж | `sales-history` | `SalesHistoryHome`, `RecentSalesPanel` | Already redesigned shared compact sales history; keep as bottom-nav item for operational access. |
 | Клиенты | `clients` if allowed | `ClientsHome` | Already redesigned shared clients surface. |
@@ -383,22 +383,23 @@ Owner-confirmed shape:
 - Migrate by analogy with the completed commercial and production-manager standards.
 - Keep `История` as a direct bottom-nav item for operational access.
 - Move account/logout from bottom-nav `Профиль` to `Еще`.
-- Use full-screen drilldown from the home `Продукция` summary row instead of a modal.
+- Keep product stock visible on the worker home; do not hide it behind the commercial drilldown pattern.
 - Do not add fake sales metrics, decorative statistics or data without an existing read model.
 - Commit after every stage below.
 
 1. **Главная распределителя.**
    - Replace the old `compact-balance-overview` / `action-tile` home with a white ledger summary matching commercial/production surfaces.
-   - Show `Продукция` and optional `Наличные`; make `Продукция` the drilldown entry.
+   - Show `Продукция`, `Стоимость продукции` and optional `Наличные`.
    - Keep one clear command action: `Продать`.
-   - Remove the inline product table from home.
+   - Keep the product list visible below the action block, because this role needs stock visibility on the first screen.
    - Rewrite targeted tests that currently assert the old `action-tile` behavior.
    - Commit after implementation, tests, cleanup and docs update.
+   - Status: implemented. Worker home now uses the white ledger summary and `production-command-button` sale action while keeping the product list visible on the main screen.
 
-2. **Продукция на распределителе.**
-   - Add the full-screen product list opened from the home summary row.
-   - Reuse the existing distributor stock ledger/table language and the commercial drilldown pattern: heading, `Назад`, table meta, visible columns on narrow screens.
-   - Avoid repeating summary totals inside the detail screen when the table already carries the data.
+2. **Продукция на главной.**
+   - Polish the inline product list that remains on the worker home.
+   - Reuse the existing distributor stock ledger/table language: clear heading, table meta and visible columns on narrow screens.
+   - Reduce repeated words where possible without removing necessary table headers.
    - Commit after implementation, tests, cleanup and docs update.
 
 3. **Продажа.**
