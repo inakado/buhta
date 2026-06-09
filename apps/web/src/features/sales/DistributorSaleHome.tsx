@@ -1,8 +1,8 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FormEvent, useState } from "react";
-import { ReceiptText, UserPlus } from "lucide-react";
+import { FormEvent, type ReactNode, useState } from "react";
+import { ArrowLeft, ReceiptText, UserPlus } from "lucide-react";
 import type { DistributorSaleStockItem, PaymentMethod } from "@buhta/shared";
 import {
 	createClient,
@@ -17,9 +17,11 @@ import { OperationProductSelect } from "../operations/OperationProductSelect";
 import { getSaleSubmitBlockReason } from "../operations/operation-submit-reasons";
 
 export function DistributorSaleHome({
+	onBack,
 	onSaleSuccess,
 	online,
 }: {
+	onBack?: () => void;
 	onSaleSuccess: () => void;
 	online: boolean;
 }) {
@@ -30,7 +32,8 @@ export function DistributorSaleHome({
 	const [quantity, setQuantity] = useState("");
 	const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
 	const [comment, setComment] = useState("");
-	const [localError, setLocalError] = useState("");
+	const [clientError, setClientError] = useState("");
+	const [saleError, setSaleError] = useState("");
 	const [showNewClientForm, setShowNewClientForm] = useState(false);
 	const [newClientName, setNewClientName] = useState("");
 	const [newClientPhone, setNewClientPhone] = useState("");
@@ -51,6 +54,9 @@ export function DistributorSaleHome({
 	const saleTotalCents = selectedStock && Number.isInteger(parsedQuantity) && parsedQuantity > 0
 		? selectedStock.unitPriceCents * parsedQuantity
 		: 0;
+	const summaryQuantity = Number.isInteger(parsedQuantity) && parsedQuantity > 0
+		? `${parsedQuantity} шт`
+		: "Количество не задано";
 	const createClientMutation = useMutation({
 		mutationFn: () => createClient({
 			name: newClientName,
@@ -62,6 +68,7 @@ export function DistributorSaleHome({
 			setNewClientName("");
 			setNewClientPhone("");
 			setNewClientDescription("");
+			setClientError("");
 			setShowNewClientForm(false);
 			await queryClient.invalidateQueries({ queryKey: ["clients"] });
 		},
@@ -80,7 +87,7 @@ export function DistributorSaleHome({
 			setQuantity("");
 			setPaymentMethod("cash");
 			setComment("");
-			setLocalError("");
+			setSaleError("");
 			await Promise.all([
 				queryClient.invalidateQueries({ queryKey: ["distributor", "inventory"] }),
 				queryClient.invalidateQueries({ queryKey: ["distributor", "sale-options"] }),
@@ -104,14 +111,14 @@ export function DistributorSaleHome({
 
 	function handleCreateClient(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
-		setLocalError("");
+		setClientError("");
 
 		if (!newClientName.trim()) {
-			setLocalError("Введите имя нового клиента.");
+			setClientError("Введите имя нового клиента.");
 			return;
 		}
 		if (!newClientPhone.trim()) {
-			setLocalError("Введите телефон нового клиента.");
+			setClientError("Введите телефон нового клиента.");
 			return;
 		}
 
@@ -127,18 +134,18 @@ export function DistributorSaleHome({
 
 	function handleSaleSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
-		setLocalError("");
+		setSaleError("");
 
 		if (!selectedClientId) {
-			setLocalError("Выберите клиента.");
+			setSaleError("Выберите клиента.");
 			return;
 		}
 		if (!selectedStock) {
-			setLocalError("Выберите продукцию.");
+			setSaleError("Выберите продукцию.");
 			return;
 		}
 		if (!isValidQuantity(parsedQuantity, selectedStock)) {
-			setLocalError("Количество должно быть целым числом не больше доступного количества.");
+			setSaleError("Количество должно быть целым числом не больше доступного количества.");
 			return;
 		}
 
@@ -146,15 +153,21 @@ export function DistributorSaleHome({
 	}
 
 	return (
-		<section className="screen-stack">
+		<section className="screen-stack production-detail-screen">
+			{onBack ? (
+				<div className="section-heading action-heading">
+					<button className="secondary-button production-back-button" onClick={onBack} type="button">
+						<ArrowLeft aria-hidden size={16} />
+						<span>Назад</span>
+					</button>
+				</div>
+			) : null}
 			<div className="section-heading compact">
 				<h2>Продажа</h2>
 			</div>
 
-			<div className="form-panel">
-				<div className="section-heading compact">
-					<h2>Клиент</h2>
-				</div>
+			<div className="form-panel production-action-form">
+				<SaleFormHeading title="Клиент" meta={selectedClient?.name} />
 				<ClientCombobox
 					clients={clients.data?.clients ?? []}
 					loading={clients.isLoading}
@@ -208,6 +221,7 @@ export function DistributorSaleHome({
 						{createClientMutation.isError ? (
 							<p className="form-error">{createClientMutation.error.message}</p>
 						) : null}
+						{clientError ? <p className="form-error">{clientError}</p> : null}
 						<button className="secondary-button" disabled={!online || createClientMutation.isPending} type="submit">
 							Создать клиента
 						</button>
@@ -215,10 +229,8 @@ export function DistributorSaleHome({
 				) : null}
 			</div>
 
-			<form className="form-panel" onSubmit={handleSaleSubmit}>
-				<div className="section-heading compact">
-					<h2>Детали продажи</h2>
-				</div>
+			<form className="form-panel production-action-form" onSubmit={handleSaleSubmit}>
+				<SaleFormHeading title="Детали продажи" meta={selectedStock?.distributorName} />
 				<OperationProductSelect
 					label="Продукция"
 					onValueChange={setSelectedBalanceId}
@@ -237,7 +249,7 @@ export function DistributorSaleHome({
 					<p className="muted">Нет продукции для продажи.</p>
 				) : null}
 
-				{selectedStock ? <SelectedStockInfo stock={selectedStock} quantity={parsedQuantity} /> : null}
+				{selectedStock ? <SelectedStockInfo stock={selectedStock} /> : null}
 
 				<label className="field">
 					<span>Количество, шт</span>
@@ -258,39 +270,72 @@ export function DistributorSaleHome({
 					<span>Комментарий</span>
 					<textarea onChange={(event) => setComment(event.target.value)} rows={2} value={comment} />
 				</label>
-				<div className="operation-total">
-					<div>
-						<span>Итого</span>
-						<strong>{formatRubles(saleTotalCents)} ₽</strong>
-					</div>
-					<p>{paymentMethod === "cash" ? "Наличные" : "Безнал"}</p>
-				</div>
-				{localError ? <p className="form-error">{localError}</p> : null}
+				<SaleInfoLedger>
+					<SaleInfoRow label="Клиент" value={selectedClient?.name ?? (selectedClientId ? "Клиент выбран" : "Не выбран")} />
+					<SaleInfoRow label="Количество" value={summaryQuantity} />
+					<SaleInfoRow label="Оплата" value={paymentMethod === "cash" ? "Наличные" : "Безнал"} />
+					<SaleInfoRow label="Итого" value={`${formatRubles(saleTotalCents)} ₽`} />
+				</SaleInfoLedger>
+				{saleError ? <p className="form-error">{saleError}</p> : null}
 				{saleMutation.isError ? <p className="form-error">{saleMutation.error.message}</p> : null}
-				{submitBlockReason ? <p className="muted">{submitBlockReason}</p> : null}
-				<button className="primary-button" disabled={submitDisabled} type="submit">
-					<ReceiptText aria-hidden size={18} />
-					Записать продажу
-				</button>
+				<SaleSubmitBlock blockReason={submitBlockReason}>
+					<button className="primary-button" disabled={submitDisabled} type="submit">
+						<ReceiptText aria-hidden size={18} />
+						Записать продажу
+					</button>
+				</SaleSubmitBlock>
 			</form>
 		</section>
 	);
 }
 
+function SaleFormHeading({ meta, title }: { meta?: string | undefined; title: string }) {
+	return (
+		<div className="production-form-heading">
+			<h2>{title}</h2>
+			{meta ? <span>{meta}</span> : null}
+		</div>
+	);
+}
+
+function SaleInfoLedger({ children }: { children: ReactNode }) {
+	return <div className="production-form-ledger">{children}</div>;
+}
+
+function SaleInfoRow({ label, value }: { label: string; value: string }) {
+	return (
+		<div className="production-form-ledger-row">
+			<span>{label}</span>
+			<strong>{value}</strong>
+		</div>
+	);
+}
+
+function SaleSubmitBlock({
+	blockReason,
+	children,
+}: {
+	blockReason: string;
+	children: ReactNode;
+}) {
+	return (
+		<div className="production-submit-block">
+			{blockReason ? <p className="production-submit-reason">{blockReason}</p> : null}
+			{children}
+		</div>
+	);
+}
+
 function SelectedStockInfo({
-	quantity,
 	stock,
 }: {
-	quantity: number;
 	stock: DistributorSaleStockItem;
 }) {
-	const totalCents = Number.isInteger(quantity) && quantity > 0 ? quantity * stock.unitPriceCents : 0;
-
 	return (
-		<p className="muted">
-			Доступно: {stock.availableQuantity} шт · {formatRubles(stock.unitPriceCents)} ₽/шт
-			{totalCents > 0 ? ` · ${formatRubles(totalCents)} ₽` : ""}
-		</p>
+		<SaleInfoLedger>
+			<SaleInfoRow label="Доступно" value={`${stock.availableQuantity} шт`} />
+			<SaleInfoRow label="Цена" value={`${formatRubles(stock.unitPriceCents)} ₽/шт`} />
+		</SaleInfoLedger>
 	);
 }
 

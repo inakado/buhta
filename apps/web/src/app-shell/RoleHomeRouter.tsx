@@ -142,11 +142,13 @@ export function RoleHomeRouter({
 		&& actor.permissions.includes("distributor.stock.read")
 	) {
 		return (
-				<DistributorInventoryHome
-					canAssignDiscount={actor.permissions.includes("discount.assign")}
-					online={online}
-					showCashBalance={actor.permissions.includes("distributor.cash.read")}
-				title="Остатки"
+			<DistributorInventoryHome
+				canAssignDiscount={actor.permissions.includes("discount.assign")}
+				hideOverview
+				onBack={() => onTabChange("home")}
+				online={online}
+				title="Продукция"
+				variant="stock-ledger"
 			/>
 		);
 	}
@@ -173,6 +175,7 @@ export function RoleHomeRouter({
 		if (activeTab === "sale" && actor.permissions.includes("distributor.sale.create")) {
 			return (
 				<DistributorSaleHome
+					onBack={() => onTabChange("home")}
 					onSaleSuccess={() => onActionSuccess("Продажа записана")}
 					online={online}
 				/>

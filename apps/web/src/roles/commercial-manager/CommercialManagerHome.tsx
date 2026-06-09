@@ -19,6 +19,7 @@ export function CommercialManagerHome({
 		<DistributorHomeOverview
 			{...(canNotifyProduction ? { onNotify: () => onTabChange("notifications") } : {})}
 			onSale={() => onTabChange("sale")}
+			onStockOpen={() => onTabChange("distributor")}
 			notifyDisabled={!online}
 			saleDisabled={!online}
 			showCashBalance={showCashBalance}

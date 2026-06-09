@@ -363,6 +363,14 @@ button:disabled {
 	color: #4f5a55;
 }
 
+.commercial-summary-row.static {
+	cursor: default;
+}
+
+.commercial-summary-row.static:hover {
+	background: transparent;
+}
+
 .production-command-panel {
 	display: flex;
 	flex: 0 0 auto;
@@ -486,98 +494,6 @@ button:disabled {
 .placeholder-panel svg {
 	flex: 0 0 auto;
 	color: var(--text-muted);
-}
-
-.summary-note {
-	margin: 7px 0 0;
-	color: rgb(0 0 0 / 62%);
-	font-size: 12px;
-	font-weight: var(--font-weight-label);
-}
-
-.commercial-overview-card {
-	display: flex;
-	flex-direction: column;
-	gap: 12px;
-	border: 0;
-	border-radius: 24px;
-	background: linear-gradient(135deg, var(--brand-lime), #eefbdf 72%);
-	box-shadow: none;
-	padding: 14px;
-	color: var(--base-black);
-}
-
-.commercial-overview-main {
-	display: flex;
-	align-items: flex-start;
-	justify-content: space-between;
-	gap: 14px;
-}
-
-.commercial-overview-main strong {
-	display: block;
-	margin: 10px 0 5px;
-	overflow-wrap: anywhere;
-	font-size: 42px;
-	font-weight: var(--font-weight-emphasis);
-	font-variant-numeric: tabular-nums;
-	letter-spacing: 0;
-	line-height: .9;
-}
-
-.commercial-overview-icon {
-	display: grid;
-	flex: 0 0 auto;
-	width: 44px;
-	height: 44px;
-	place-items: center;
-	color: #25772d;
-}
-
-.commercial-overview-metrics {
-	display: grid;
-	grid-template-columns: repeat(3, minmax(0, 1fr));
-	gap: 0;
-	margin: 0;
-	border-top: 1px solid rgb(37 119 45 / 8%);
-	padding-top: 14px;
-}
-
-.commercial-overview-metrics > div {
-	min-width: 0;
-	padding: 0 10px;
-}
-
-.commercial-overview-metrics > div:first-child {
-	padding-left: 0;
-}
-
-.commercial-overview-metrics > div + div {
-	border-left: 1px solid rgb(37 119 45 / 8%);
-}
-
-.commercial-overview-metrics dt {
-	margin: 0 0 7px;
-	color: rgb(0 0 0 / 60%);
-	font-size: 12px;
-	font-weight: var(--font-weight-label);
-	line-height: 1.15;
-}
-
-.commercial-overview-metrics dd {
-	margin: 0;
-	overflow-wrap: anywhere;
-	font-size: 17px;
-	font-weight: var(--font-weight-emphasis);
-	font-variant-numeric: tabular-nums;
-	line-height: 1.05;
-	white-space: nowrap;
-}
-
-@media (max-width: 380px) {
-	.commercial-overview-metrics {
-		grid-template-columns: repeat(2, minmax(0, 1fr));
-	}
 }
 
 .compact-balance-overview {
@@ -3862,11 +3778,62 @@ input[type="search"]::-webkit-search-decoration {
 }
 
 .production-action-form .field input,
-.production-action-form .field select {
+.production-action-form .field select,
+.production-action-form .field textarea {
 	min-height: 40px;
 	border-radius: 9px;
 	background: var(--base-white);
 	font-size: 13px;
+}
+
+.production-action-form .field textarea {
+	min-height: 64px;
+	resize: vertical;
+}
+
+.production-action-form > .client-combobox {
+	border-bottom: 1px solid var(--line);
+	padding: 10px 12px;
+}
+
+.production-action-form > .payment-segmented {
+	border-bottom: 1px solid var(--line);
+	padding: 10px 12px;
+}
+
+.production-action-form > .secondary-button {
+	min-height: 40px;
+	margin: 10px 12px 12px;
+	border-radius: 9px;
+	font-size: 12px;
+}
+
+.production-action-form > .muted {
+	margin: 10px 12px 0;
+	font-size: 12px;
+	line-height: 1.2;
+}
+
+.production-action-form .nested-form {
+	margin: 10px 12px 0;
+	padding: 10px 0 12px;
+}
+
+.production-action-form .nested-form .field {
+	border-bottom: 0;
+	padding: 0;
+}
+
+.production-action-form .nested-form .secondary-button {
+	min-height: 40px;
+	border-radius: 9px;
+	font-size: 12px;
+}
+
+.production-action-form .nested-form .form-error {
+	margin: 0;
+	font-size: 12px;
+	line-height: 1.2;
 }
 
 .production-form-ledger {

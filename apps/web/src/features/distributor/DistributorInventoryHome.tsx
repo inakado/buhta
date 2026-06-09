@@ -2,7 +2,7 @@
 
 import * as Dialog from "@radix-ui/react-dialog";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { BadgePercent, Banknote, Box, X } from "lucide-react";
+import { ArrowLeft, BadgePercent, Banknote, Box, X } from "lucide-react";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
 	formatMoneyCents,
@@ -27,6 +27,8 @@ export function DistributorInventoryHome({
 	discountActionLabel = "Снизить цену",
 	embedded = false,
 	hideHeading = false,
+	hideOverview = false,
+	onBack,
 	online = true,
 	showCashBalance = false,
 	title = "Остатки",
@@ -37,6 +39,8 @@ export function DistributorInventoryHome({
 	discountActionLabel?: string;
 	embedded?: boolean;
 	hideHeading?: boolean;
+	hideOverview?: boolean;
+	onBack?: () => void;
 	online?: boolean;
 	showCashBalance?: boolean;
 	title?: string;
@@ -77,6 +81,7 @@ export function DistributorInventoryHome({
 	const frameClassName = [
 		embedded ? "embedded-screen-stack" : "screen-stack",
 		useStockLedger ? "stock-ledger-surface" : "",
+		hideOverview ? "production-detail-screen" : "",
 	].filter(Boolean).join(" ");
 	const activeCashItems = useMemo(
 		() => (cashData?.items ?? []).filter((item) => item.active),
@@ -262,6 +267,12 @@ export function DistributorInventoryHome({
 
 	return (
 		<Frame className={frameClassName}>
+			{onBack ? (
+				<button className="secondary-button production-back-button" onClick={onBack} type="button">
+					<ArrowLeft aria-hidden size={16} />
+					Назад
+				</button>
+			) : null}
 			{hideHeading ? null : (
 				<div className="section-heading">
 					<h2>{title}</h2>
@@ -269,22 +280,24 @@ export function DistributorInventoryHome({
 				</div>
 			)}
 
-			<div className="inventory-overview-strip">
-				<div>
-					<span>Количество</span>
-					<strong>{inventory.isLoading ? "Загрузка" : `${totalUnits} шт`}</strong>
-				</div>
-				<div>
-					<span>Продукция</span>
-					<MoneyValue compact valueCents={totalStockValueCents} />
-				</div>
-				{showCashBalance ? (
+			{hideOverview ? null : (
+				<div className="inventory-overview-strip">
 					<div>
-						<span>Наличные</span>
-						{cashBalances.isLoading ? <strong>Загрузка</strong> : <MoneyValue compact valueCents={totalCashCents} />}
+						<span>Количество</span>
+						<strong>{inventory.isLoading ? "Загрузка" : `${totalUnits} шт`}</strong>
 					</div>
-				) : null}
-			</div>
+					<div>
+						<span>Продукция</span>
+						<MoneyValue compact valueCents={totalStockValueCents} />
+					</div>
+					{showCashBalance ? (
+						<div>
+							<span>Наличные</span>
+							{cashBalances.isLoading ? <strong>Загрузка</strong> : <MoneyValue compact valueCents={totalCashCents} />}
+						</div>
+					) : null}
+				</div>
+			)}
 
 			{showWithdrawalAction ? (
 				<div className="cash-withdrawal-actions">

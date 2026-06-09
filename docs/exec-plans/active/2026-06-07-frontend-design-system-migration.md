@@ -321,22 +321,23 @@ Stage checks:
 Owner-confirmed direction for commercial manager:
 
 1. **Главная `Продажи`.**
-   - Start implementation here after this plan commit.
    - Use the production manager home pattern as the reference: white summary surface, thin ledger separators, compact screen heading, restrained radii, same action spacing.
    - Summary keeps only data the current screen already owns. Distributor product total is the primary drilldown to the product list.
    - Action block follows production action layout. `Продать` is the main frequent action, production notify is secondary but still visible and easy to find.
-   - Image mock required before implementation because this screen defines the role-specific IA and bottom nav update.
+   - Status: implemented. Commercial home now uses a white `Распределитель` ledger summary, production-style command buttons, no lime commercial hero card, and no `Остатки` bottom-nav item.
 
 2. **Продукция на распределителе from summary click.**
    - Remove `Остатки` as a standalone bottom nav screen for commercial manager.
    - Clicking the product summary on home opens a full-screen product list, not a modal. This follows the production manager inventory detail pattern and keeps long stock tables readable on 390px+ widths.
    - Use director/production stock ledger rules: visible column headers, product name remains primary, price and quantity do not collapse into ambiguous text.
    - No separate image mock needed if the implementation reuses the established stock/list rhythm.
+   - Status: implemented. Route opens from home summary with `Назад`, `stock-ledger` table, no duplicated overview strip, and the same narrow-width table rules as production detail screens.
 
 3. **Продажа.**
    - Migrate `DistributorSaleHome` to the standard operational form language already set by production action forms.
    - Preserve existing business fields and validation. Do not invent new sale data or reporting.
    - Payment controls, product select, client combobox and submit action must match the shared selector/form standard.
+   - Status: implemented. Distributor sale now uses production-style detail screen, white action form panels, ledger rows for selected stock and sale summary, scoped form spacing for client combobox/payment/nested client creation, and keeps the same validation/API contract.
 
 4. **Клиенты.**
    - Keep the existing clients workflow and permissions.
