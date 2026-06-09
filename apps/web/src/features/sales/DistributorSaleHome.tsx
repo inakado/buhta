@@ -1,8 +1,9 @@
 "use client";
 
+import * as Dialog from "@radix-ui/react-dialog";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FormEvent, type ReactNode, useState } from "react";
-import { ArrowLeft, ReceiptText, UserPlus } from "lucide-react";
+import { ArrowLeft, ReceiptText, UserPlus, X } from "lucide-react";
 import type { DistributorSaleStockItem, PaymentMethod } from "@buhta/shared";
 import {
 	createClient,
@@ -128,8 +129,27 @@ export function DistributorSaleHome({
 	function handleClientChange(clientId: string) {
 		setSelectedClientId(clientId);
 		if (clientId) {
-			setShowNewClientForm(false);
+			closeNewClientDialog();
 		}
+	}
+
+	function openNewClientDialog() {
+		createClientMutation.reset();
+		setClientError("");
+		setShowNewClientForm(true);
+	}
+
+	function closeNewClientDialog() {
+		if (createClientMutation.isPending) {
+			return;
+		}
+
+		setShowNewClientForm(false);
+		setNewClientName("");
+		setNewClientPhone("");
+		setNewClientDescription("");
+		setClientError("");
+		createClientMutation.reset();
 	}
 
 	function handleSaleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -184,50 +204,88 @@ export function DistributorSaleHome({
 					<button
 						className="secondary-button compact-button"
 						disabled={!online}
-						onClick={() => setShowNewClientForm((current) => !current)}
+						onClick={openNewClientDialog}
 						type="button"
 					>
 						<UserPlus aria-hidden size={16} />
 						Новый клиент
 					</button>
 				)}
-
-				{showNewClientForm && !selectedClientId ? (
-					<form className="nested-form" onSubmit={handleCreateClient}>
-						<label className="field">
-							<span>Имя нового клиента</span>
-							<input
-								onChange={(event) => setNewClientName(event.target.value)}
-								type="text"
-								value={newClientName}
-							/>
-						</label>
-						<label className="field">
-							<span>Телефон нового клиента</span>
-							<input
-								onChange={(event) => setNewClientPhone(event.target.value)}
-								type="tel"
-								value={newClientPhone}
-							/>
-						</label>
-						<label className="field">
-							<span>Описание нового клиента</span>
-							<textarea
-								onChange={(event) => setNewClientDescription(event.target.value)}
-								rows={2}
-								value={newClientDescription}
-							/>
-						</label>
-						{createClientMutation.isError ? (
-							<p className="form-error">{createClientMutation.error.message}</p>
-						) : null}
-						{clientError ? <p className="form-error">{clientError}</p> : null}
-						<button className="secondary-button" disabled={!online || createClientMutation.isPending} type="submit">
-							Создать клиента
-						</button>
-					</form>
-				) : null}
 			</div>
+
+			<Dialog.Root
+				open={showNewClientForm && !selectedClientId}
+				onOpenChange={(open) => {
+					if (open) {
+						openNewClientDialog();
+						return;
+					}
+
+					closeNewClientDialog();
+				}}
+			>
+				<Dialog.Portal>
+					<Dialog.Overlay className="operation-dialog-overlay" />
+					<Dialog.Content aria-describedby={undefined} className="operation-dialog">
+						<form className="operation-dialog-form" onSubmit={handleCreateClient}>
+							<div className="operation-dialog-heading">
+								<div>
+									<Dialog.Title>Новый клиент</Dialog.Title>
+								</div>
+								<Dialog.Close
+									aria-label="Закрыть"
+									className="icon-button"
+									disabled={createClientMutation.isPending}
+									type="button"
+								>
+									<X aria-hidden size={18} />
+								</Dialog.Close>
+							</div>
+							<label className="field">
+								<span>Имя нового клиента</span>
+								<input
+									onChange={(event) => setNewClientName(event.target.value)}
+									type="text"
+									value={newClientName}
+								/>
+							</label>
+							<label className="field">
+								<span>Телефон нового клиента</span>
+								<input
+									onChange={(event) => setNewClientPhone(event.target.value)}
+									type="tel"
+									value={newClientPhone}
+								/>
+							</label>
+							<label className="field">
+								<span>Описание нового клиента</span>
+								<textarea
+									onChange={(event) => setNewClientDescription(event.target.value)}
+									rows={2}
+									value={newClientDescription}
+								/>
+							</label>
+							{createClientMutation.isError ? (
+								<p className="form-error">{createClientMutation.error.message}</p>
+							) : null}
+							{clientError ? <p className="form-error">{clientError}</p> : null}
+							<div className="form-actions">
+								<button
+									className="secondary-button"
+									disabled={createClientMutation.isPending}
+									onClick={closeNewClientDialog}
+									type="button"
+								>
+									Отмена
+								</button>
+								<button className="primary-button" disabled={!online || createClientMutation.isPending} type="submit">
+									Создать клиента
+								</button>
+							</div>
+						</form>
+					</Dialog.Content>
+				</Dialog.Portal>
+			</Dialog.Root>
 
 			<form className="form-panel production-action-form" onSubmit={handleSaleSubmit}>
 				<SaleFormHeading title="Детали продажи" meta={selectedStock?.distributorName} />

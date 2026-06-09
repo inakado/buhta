@@ -85,7 +85,8 @@ body {
 
 button,
 input,
-select {
+select,
+textarea {
 	font: inherit;
 }
 
@@ -822,23 +823,6 @@ input[type="search"]::-webkit-search-decoration {
 
 .client-search .input-shell {
 	min-height: var(--control-height);
-	border-radius: var(--control-radius);
-}
-
-.client-form {
-	gap: 10px;
-}
-
-.client-form .section-heading {
-	margin-bottom: 1px;
-}
-
-.client-form .primary-button {
-	width: 100%;
-}
-
-.clients-detail-screen .production-back-button {
-	min-height: var(--control-height-compact);
 	border-radius: var(--control-radius);
 }
 
@@ -3733,7 +3717,7 @@ input[type="search"]::-webkit-search-decoration {
 
 .production-action-form {
 	gap: 0;
-	overflow: hidden;
+	overflow: visible;
 	border-radius: 12px;
 	padding: 0;
 }
@@ -3787,13 +3771,19 @@ input[type="search"]::-webkit-search-decoration {
 }
 
 .production-action-form .field textarea {
-	min-height: 64px;
+	min-height: 76px;
 	resize: vertical;
+	line-height: 1.35;
 }
 
 .production-action-form > .client-combobox {
 	border-bottom: 1px solid var(--line);
 	padding: 10px 12px;
+}
+
+.production-action-form > .client-combobox:last-child {
+	border-bottom: 0;
+	padding-bottom: 14px;
 }
 
 .production-action-form > .payment-segmented {
@@ -3810,28 +3800,6 @@ input[type="search"]::-webkit-search-decoration {
 
 .production-action-form > .muted {
 	margin: 10px 12px 0;
-	font-size: 12px;
-	line-height: 1.2;
-}
-
-.production-action-form .nested-form {
-	margin: 10px 12px 0;
-	padding: 10px 0 12px;
-}
-
-.production-action-form .nested-form .field {
-	border-bottom: 0;
-	padding: 0;
-}
-
-.production-action-form .nested-form .secondary-button {
-	min-height: 40px;
-	border-radius: 9px;
-	font-size: 12px;
-}
-
-.production-action-form .nested-form .form-error {
-	margin: 0;
 	font-size: 12px;
 	line-height: 1.2;
 }
@@ -4086,18 +4054,19 @@ input[type="search"]::-webkit-search-decoration {
 }
 
 .notification-create-panel {
-	gap: 10px;
+	gap: 0;
 	border-radius: 12px;
-	padding: 12px;
+	padding: 0;
 }
 
 .notification-summary-panel {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 6px;
-	border: 0;
-	border-radius: 0;
-	background: transparent;
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 3px;
+	border: 1px solid var(--line);
+	border-radius: 12px;
+	background: var(--base-white);
+	padding: 3px;
 }
 
 .notification-summary-panel > button {
@@ -4105,10 +4074,10 @@ input[type="search"]::-webkit-search-decoration {
 	align-items: center;
 	justify-content: center;
 	min-width: 0;
-	min-height: 30px;
-	border: 1px solid var(--line);
-	border-radius: 999px;
-	background: var(--base-white);
+	min-height: 36px;
+	border: 0;
+	border-radius: 9px;
+	background: transparent;
 	color: var(--text-muted);
 	font-size: 12px;
 	font-weight: var(--font-weight-label);
@@ -4119,8 +4088,8 @@ input[type="search"]::-webkit-search-decoration {
 }
 
 .notification-summary-panel > button.active {
-	border-color: var(--base-black);
-	color: var(--base-black);
+	background: var(--base-black);
+	color: var(--base-white);
 }
 
 .notification-summary-panel > button:focus-visible {
@@ -4131,7 +4100,7 @@ input[type="search"]::-webkit-search-decoration {
 .notification-summary-panel strong {
 	display: inline;
 	margin: 0;
-	color: var(--base-black);
+	color: currentColor;
 	font-size: 13px;
 	font-weight: var(--font-weight-emphasis);
 	font-variant-numeric: tabular-nums;

@@ -342,6 +342,7 @@ Owner-confirmed direction for commercial manager:
 4. **Клиенты.**
    - Keep the existing clients workflow and permissions.
    - Apply the established management/list visual standard only where current UI still uses old cards, weak buttons or inconsistent spacing.
+   - Status: implemented. Commercial and director now share the compact clients list/search surface; commercial-only create/edit actions open `operation-dialog` over the list, preserve search context, keep copy/edit row actions, and retain inline backend errors.
 
 5. **Курьеры.**
    - Keep `Курьеры` in bottom navigation.
@@ -355,6 +356,7 @@ Owner-confirmed direction for commercial manager:
 7. **Задачи производству.**
    - Reuse the production notification task ledger standard.
    - Commercial keeps the create form where permission allows it; completed/new states should remain consistent with the production screen.
+   - Status: implemented. Commercial create form now uses the operational form standard with visible `Новая задача`, explicit `Что передать производству`, character count, `Отправить задачу`, and a segmented `Новые / Выполненные` queue switch shared with the production task ledger.
 
 8. **Еще / аккаунт.**
    - Replace the old profile/settings entry with `Еще`, following Director/Production More.

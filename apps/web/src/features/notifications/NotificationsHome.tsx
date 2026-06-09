@@ -111,26 +111,35 @@ export function NotificationsHome({ actor, online }: NotificationsHomeProps) {
 			</div>
 
 			{canCreate ? (
-				<form className="form-panel notification-create-panel" onSubmit={handleSubmit}>
+				<form className="form-panel production-action-form notification-create-panel" onSubmit={handleSubmit}>
+					<div className="production-form-heading">
+						<h2>Новая задача</h2>
+						<span>{trimmedMessage.length}/1000</span>
+					</div>
 					<label className="field">
-						<span className="sr-only">Что передать производству</span>
+						<span>Что передать производству</span>
 						<textarea
 							onChange={(event) => setMessage(event.target.value)}
+							placeholder="Например: выпустить 3 тонны икры"
 							rows={3}
 							value={message}
 						/>
 					</label>
 					{localError ? <p className="form-error">{localError}</p> : null}
 					{createMutation.isError ? <p className="form-error">{createMutation.error.message}</p> : null}
-					{createDisabled ? <p className="muted">{getCreateBlockReason(online, trimmedMessage, createMutation.isPending)}</p> : null}
-					<button className="primary-button" disabled={createDisabled} type="submit">
-						<Send aria-hidden size={18} />
-						Записать
-					</button>
+					<div className="production-submit-block">
+						{createDisabled ? (
+							<p className="production-submit-reason">{getCreateBlockReason(online, trimmedMessage, createMutation.isPending)}</p>
+						) : null}
+						<button className="primary-button" disabled={createDisabled} type="submit">
+							<Send aria-hidden size={18} />
+							Отправить задачу
+						</button>
+					</div>
 				</form>
 			) : null}
 
-			<div className="notification-summary-panel" aria-label="Статистика задач" role="tablist">
+			<div className="notification-summary-panel" aria-label="Очередь задач" role="tablist">
 				<button
 					aria-selected={statusView === "new"}
 					className={statusView === "new" ? "active" : ""}

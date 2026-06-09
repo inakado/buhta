@@ -1656,10 +1656,11 @@ describe("HomePage", () => {
 		expect(document.querySelector(".compact-balance-overview")).toBeNull();
 		expect(document.querySelector(".notification-summary-panel")).toBeTruthy();
 		expect(document.querySelector(".notification-summary-panel")?.textContent).toContain("Выполненные0");
+		expect(screen.getByRole("heading", { name: "Новая задача" })).toBeTruthy();
 		fireEvent.change(screen.getByLabelText("Что передать производству"), {
 			target: { value: "Проверить остатки банки" },
 		});
-		fireEvent.click(screen.getByRole("button", { name: "Записать" }));
+		fireEvent.click(screen.getByRole("button", { name: "Отправить задачу" }));
 		await waitFor(() => {
 			expect(fetchMock).toHaveBeenCalledWith(
 				expect.stringContaining("/notifications"),
@@ -2743,6 +2744,10 @@ describe("HomePage", () => {
 		fireEvent.click(await screen.findByRole("button", { name: "Продать" }));
 		expect(await screen.findByRole("heading", { name: "Продажа" })).toBeTruthy();
 		fireEvent.click(screen.getByRole("button", { name: "Новый клиент" }));
+		expect(await screen.findByRole("dialog")).toBeTruthy();
+		expect(await screen.findByRole("heading", { name: "Новый клиент" })).toBeTruthy();
+		expect(document.querySelector(".operation-dialog-overlay")).toBeTruthy();
+		expect(document.querySelector(".production-action-form .nested-form")).toBeNull();
 		fireEvent.change(await screen.findByLabelText("Имя нового клиента"), { target: { value: "Анна" } });
 		fireEvent.change(screen.getByLabelText("Телефон нового клиента"), { target: { value: "+7 (999) 888-77-66" } });
 		fireEvent.click(screen.getByRole("button", { name: "Создать клиента" }));
@@ -2881,6 +2886,10 @@ describe("HomePage", () => {
 			expect(writeText).toHaveBeenCalledWith("+7 (999) 123-45-67");
 		});
 		fireEvent.click(screen.getByRole("button", { name: "Добавить клиента" }));
+		expect(await screen.findByRole("dialog")).toBeTruthy();
+		expect(await screen.findByRole("heading", { name: "Добавить клиента" })).toBeTruthy();
+		expect(document.querySelector(".operation-dialog-overlay")).toBeTruthy();
+		expect(screen.getByText("Иван Петров")).toBeTruthy();
 		fireEvent.change(await screen.findByLabelText("Имя"), { target: { value: "Анна" } });
 		fireEvent.change(screen.getByLabelText("Телефон"), { target: { value: "+7 (999) 888-77-66" } });
 		fireEvent.change(screen.getByLabelText("Описание"), { target: { value: "Новый клиент" } });
@@ -2903,6 +2912,8 @@ describe("HomePage", () => {
 		expect(screen.queryByLabelText("Имя")).toBeNull();
 
 		fireEvent.click(screen.getByRole("button", { name: "Редактировать Иван Петров" }));
+		expect(await screen.findByRole("dialog")).toBeTruthy();
+		expect(await screen.findByRole("heading", { name: "Редактировать клиента" })).toBeTruthy();
 		fireEvent.change(await screen.findByLabelText("Имя"), { target: { value: "Иван Новый" } });
 		fireEvent.change(screen.getByLabelText("Телефон"), { target: { value: "+7 (999) 111-22-33" } });
 		fireEvent.change(screen.getByLabelText("Описание"), { target: { value: "" } });

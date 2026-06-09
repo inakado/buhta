@@ -1,9 +1,9 @@
 "use client";
 
+import * as Dialog from "@radix-ui/react-dialog";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FormEvent, useEffect, useRef, useState } from "react";
-import type { ReactNode } from "react";
-import { ArrowLeft, Check, Copy, Edit3, Plus, Search, UserPlus, X } from "lucide-react";
+import { Check, Copy, Edit3, Plus, Search, UserPlus, X } from "lucide-react";
 import type { Client } from "@buhta/shared";
 import {
 	createClient,
@@ -69,28 +69,8 @@ export function ClientsHome({
 		});
 	}
 
-	if (mode === "create" && canManage) {
-		return (
-			<ClientDetailScreen title="Добавить клиента" onBack={() => setMode("list")}>
-				<ClientForm
-					onSuccess={() => showSuccess("Клиент добавлен")}
-					online={online}
-				/>
-			</ClientDetailScreen>
-		);
-	}
-
-	if (mode === "edit" && canManage && editingClient) {
-		return (
-			<ClientDetailScreen title="Редактировать клиента" onBack={() => setMode("list")}>
-				<ClientForm
-					client={editingClient}
-					onSuccess={() => showSuccess("Клиент обновлен")}
-					online={online}
-				/>
-			</ClientDetailScreen>
-		);
-	}
+	const formOpen = canManage && (mode === "create" || (mode === "edit" && editingClient !== null));
+	const formTitle = mode === "edit" ? "Редактировать клиента" : "Добавить клиента";
 
 	return (
 		<section className="screen-stack clients-home management-surface">
@@ -154,27 +134,38 @@ export function ClientsHome({
 				}}
 			/>
 
-			{successNotice ? <ClientsSuccessNotice notice={successNotice} /> : null}
-		</section>
-	);
-}
+			{canManage ? (
+				<Dialog.Root
+					open={formOpen}
+					onOpenChange={(open) => {
+						if (!open) {
+							setMode("list");
+							setEditingClient(null);
+						}
+					}}
+				>
+					<Dialog.Portal>
+						<Dialog.Overlay className="operation-dialog-overlay" />
+						<Dialog.Content aria-describedby={undefined} className="operation-dialog">
+							<div className="operation-dialog-heading">
+								<div>
+									<Dialog.Title>{formTitle}</Dialog.Title>
+								</div>
+								<Dialog.Close aria-label="Закрыть" className="icon-button" type="button">
+									<X aria-hidden size={18} />
+								</Dialog.Close>
+							</div>
+							<ClientForm
+								{...(mode === "edit" && editingClient ? { client: editingClient } : {})}
+								onSuccess={() => showSuccess(mode === "edit" ? "Клиент обновлен" : "Клиент добавлен")}
+								online={online}
+							/>
+						</Dialog.Content>
+					</Dialog.Portal>
+				</Dialog.Root>
+			) : null}
 
-function ClientDetailScreen({
-	children,
-	onBack,
-	title,
-}: {
-	children: ReactNode;
-	onBack: () => void;
-	title: string;
-}) {
-	return (
-		<section className="screen-stack clients-detail-screen management-surface" aria-label={title}>
-			<button className="secondary-button production-back-button" onClick={onBack} type="button">
-				<ArrowLeft aria-hidden size={20} />
-				Назад
-			</button>
-			{children}
+			{successNotice ? <ClientsSuccessNotice notice={successNotice} /> : null}
 		</section>
 	);
 }
@@ -225,10 +216,7 @@ function ClientForm({
 	}
 
 	return (
-		<form className="form-panel client-form" onSubmit={handleSubmit}>
-			<div className="section-heading compact">
-				<h2>{client ? "Редактировать клиента" : "Добавить клиента"}</h2>
-			</div>
+		<form className="operation-dialog-form" onSubmit={handleSubmit}>
 			<label className="field">
 				<span>Имя</span>
 				<input onChange={(event) => setName(event.target.value)} required type="text" value={name} />
@@ -243,10 +231,15 @@ function ClientForm({
 			</label>
 			{localError ? <p className="form-error">{localError}</p> : null}
 			{mutation.isError ? <p className="form-error">{mutation.error.message}</p> : null}
-			<button className="primary-button" disabled={!online || mutation.isPending} type="submit">
-				<Plus aria-hidden size={18} />
-				{client ? "Сохранить" : "Добавить"}
-			</button>
+			<div className="form-actions">
+				<Dialog.Close className="secondary-button" disabled={mutation.isPending} type="button">
+					Отмена
+				</Dialog.Close>
+				<button className="primary-button" disabled={!online || mutation.isPending} type="submit">
+					{client ? <Check aria-hidden size={18} /> : <Plus aria-hidden size={18} />}
+					{client ? "Сохранить" : "Добавить"}
+				</button>
+			</div>
 		</form>
 	);
 }
