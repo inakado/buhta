@@ -354,7 +354,7 @@ Owner-confirmed direction for commercial manager:
 6. **История продаж.**
    - Use the director history visual rhythm: compact heading, ledger rows, quiet meta, no decorative cards.
    - Commercial has less detail than director history, so do not add filters, drilldowns or analytics without existing data/API support.
-   - Status: implemented. `SalesHistoryHome` now uses a `sales-history-home` compact ledger surface, `RecentSalesPanel` renders rows with thin ledger separators instead of decorative cards, and commercial opens it from `Еще → История`.
+   - Status: implemented. `SalesHistoryHome` now uses a `sales-history-home` compact ledger surface, `RecentSalesPanel` renders rows with thin ledger separators instead of decorative cards, cancellation opens in the shared `operation-dialog` modal pattern, and commercial opens history from `Еще → История`.
 
 7. **Задачи производству.**
    - Reuse the production notification task ledger standard.
@@ -415,7 +415,7 @@ Owner-confirmed shape:
    - Keep it in bottom nav rather than moving it into `Еще`.
    - Fix only worker-specific copy, navigation state or tests if needed.
    - Commit after targeted tests and any necessary cleanup/docs update.
-   - Status: implemented. Worker keeps direct bottom-nav `История` and routes to the already migrated shared `SalesHistoryHome` / `RecentSalesPanel` compact ledger; targeted coverage now verifies the worker-specific navigation state and return path back to the home sale action.
+   - Status: implemented. Worker keeps direct bottom-nav `История` and routes to the already migrated shared `SalesHistoryHome` / `RecentSalesPanel` compact ledger with modal cancellation; targeted coverage now verifies the worker-specific navigation state and return path back to the home sale action.
 
 5. **Клиенты.**
    - Confirm the worker uses the already migrated `ClientsHome` standard.

@@ -1773,6 +1773,10 @@ describe("HomePage", () => {
 		expect(await screen.findByText("Икра горбуши")).toBeTruthy();
 		expect(document.querySelector(".recent-sales-list")).toBeTruthy();
 		fireEvent.click(screen.getByRole("button", { name: "Отменить" }));
+		expect(await screen.findByRole("dialog")).toBeTruthy();
+		expect(await screen.findByRole("heading", { name: "Отмена продажи" })).toBeTruthy();
+		expect(document.querySelector(".operation-dialog-overlay")).toBeTruthy();
+		expect(document.querySelector(".recent-sale-cancel-form")).toBeNull();
 		fireEvent.change(await screen.findByLabelText("Причина отмены"), { target: { value: "Ошибка клиента" } });
 		fireEvent.click(screen.getByRole("button", { name: "Отменить продажу" }));
 
@@ -1786,6 +1790,7 @@ describe("HomePage", () => {
 			);
 		});
 		expect(await screen.findByText("Продажа отменена")).toBeTruthy();
+		expect(screen.queryByRole("dialog")).toBeNull();
 		expect(await screen.findByText(/Отменено/)).toBeTruthy();
 	});
 

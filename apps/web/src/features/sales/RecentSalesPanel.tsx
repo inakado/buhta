@@ -1,5 +1,6 @@
 "use client";
 
+import * as Dialog from "@radix-ui/react-dialog";
 import { BadgePercent, CheckCircle2, RotateCcw, X } from "lucide-react";
 import { FormEvent } from "react";
 import {
@@ -38,6 +39,9 @@ export function RecentSalesPanel({
 	onCancelReasonChange,
 	onCancelSubmit,
 }: RecentSalesPanelProps) {
+	const selectedSale = items.find((item) => item.id === selectedSaleId);
+	const canSubmit = !!selectedSale && online && !pending && cancelReason.trim().length >= 3;
+
 	return (
 		<section className="recent-sales-panel" aria-label="Список продаж">
 			{loading ? <p className="muted">Загрузка продаж</p> : null}
@@ -45,9 +49,6 @@ export function RecentSalesPanel({
 			{items.length > 0 ? (
 				<div className="recent-sales-list">
 					{items.map((item) => {
-						const selected = selectedSaleId === item.id;
-						const canSubmit = online && !pending && cancelReason.trim().length >= 3;
-
 						return (
 							<article className={item.cancelled ? "recent-sale-card cancelled" : "recent-sale-card"} key={item.id}>
 								<div className="recent-sale-main">
@@ -86,40 +87,77 @@ export function RecentSalesPanel({
 										</button>
 									)}
 								</div>
-								{selected && !item.cancelled ? (
-									<form
-										className="recent-sale-cancel-form"
-										onSubmit={(event: FormEvent<HTMLFormElement>) => {
-											event.preventDefault();
-											onCancelSubmit(item.id, cancelReason);
-										}}
-									>
-										<label className="field">
-											<span>Причина отмены</span>
-											<textarea
-												onChange={(event) => onCancelReasonChange(event.target.value)}
-												rows={2}
-												value={cancelReason}
-											/>
-										</label>
-										{cancelError ? <p className="form-error">{cancelError}</p> : null}
-										<div className="recent-sale-cancel-actions">
-											<button className="secondary-button compact-button" onClick={onCancelClose} type="button">
-												<X aria-hidden size={15} />
-												Закрыть
-											</button>
-											<button className="primary-button compact-button" disabled={!canSubmit} type="submit">
-												<RotateCcw aria-hidden size={15} />
-												Отменить продажу
-											</button>
-										</div>
-									</form>
-								) : null}
 							</article>
 						);
 					})}
 				</div>
 			) : null}
+			<Dialog.Root
+				open={!!selectedSale && !selectedSale.cancelled}
+				onOpenChange={(open) => {
+					if (!open) {
+						onCancelClose();
+					}
+				}}
+			>
+				<Dialog.Portal>
+					<Dialog.Overlay className="operation-dialog-overlay" />
+					<Dialog.Content aria-describedby={undefined} className="operation-dialog sale-cancel-dialog">
+						<form
+							className="operation-dialog-form"
+							onSubmit={(event: FormEvent<HTMLFormElement>) => {
+								event.preventDefault();
+								if (selectedSale) {
+									onCancelSubmit(selectedSale.id, cancelReason);
+								}
+							}}
+						>
+							<div className="operation-dialog-heading">
+								<div>
+									<Dialog.Title>Отмена продажи</Dialog.Title>
+								</div>
+								<Dialog.Close
+									aria-label="Закрыть"
+									className="icon-button"
+									disabled={pending}
+									type="button"
+								>
+									<X aria-hidden size={18} />
+								</Dialog.Close>
+							</div>
+							{selectedSale ? (
+								<div className="recent-sale-cancel-summary">
+									<strong>{selectedSale.productName}</strong>
+									<span>
+										{selectedSale.clientName} · {selectedSale.quantity} шт ·{" "}
+										{formatRubles(selectedSale.totalCents)} ₽
+									</span>
+								</div>
+							) : null}
+							<label className="field">
+								<span>Причина отмены</span>
+								<textarea
+									onChange={(event) => onCancelReasonChange(event.target.value)}
+									rows={3}
+									value={cancelReason}
+								/>
+							</label>
+							{cancelError ? <p className="form-error">{cancelError}</p> : null}
+							<div className="form-actions">
+								<Dialog.Close asChild>
+									<button className="secondary-button" disabled={pending} type="button">
+										Закрыть
+									</button>
+								</Dialog.Close>
+								<button className="primary-button" disabled={!canSubmit} type="submit">
+									<RotateCcw aria-hidden size={16} />
+									Отменить продажу
+								</button>
+							</div>
+						</form>
+					</Dialog.Content>
+				</Dialog.Portal>
+			</Dialog.Root>
 		</section>
 	);
 }
