@@ -368,10 +368,12 @@ Owner-confirmed direction for commercial manager:
 
 Stage checks:
 
-- Update bottom nav tests for commercial: `Остатки` removed, `Курьеры` remains, `Еще` present.
-- Add/adjust tests for home summary drilldown to product list.
-- Keep existing sale/client/courier/history behavior covered while migrating visuals.
-- Run targeted web checks and `pnpm docs:check`; browser visual check only when requested by owner.
+- Done: bottom nav tests cover the commercial contour with `Остатки` removed, `Курьеры` retained and `Еще` present.
+- Done: home summary drilldown, sale flow, clients, courier balances, production tasks and sales history via `Еще` stay covered in targeted web tests.
+- Done: commercial CSS/code cleanup after migration; static scan found no remaining old commercial hero/card hooks (`commercial-hero*`, `commercial-card*`, `summary-card`, `unavailable-action`, `notice-card`, `edit-card`, `catalog-form-group`, `form-warning`) in app code. Remaining apparent unused `rdp-*` selectors are DayPicker runtime classes and are intentionally kept.
+- Done: `docs/FRONTEND.md` updated with the current commercial sales-history/More IA and the management form pattern after removing stale `edit-card` wording.
+
+Status 2026-06-09: commercial manager contour complete. The active commercial surface is `Главная`, `Продукция` drilldown, `Продажа`, `Клиенты`, `Курьеры`, `Задачи производству`, `История продаж` through `Еще`, and account/logout through `Еще`; no separate commercial `Остатки`, bottom-nav `История`, or bottom-nav `Профиль` remains.
 
 ### Stage 6. Shared Stock Surfaces Across Roles
 
