@@ -39,9 +39,13 @@ export function CourierBalanceHome({
 	const totalCashCents = cashData?.totalAmountCents ?? 0;
 	const stockItemCount = data?.summary.stockItemCount ?? 0;
 	const Frame = embedded ? "div" : "section";
+	const frameClassName = [
+		embedded ? "embedded-screen-stack" : "screen-stack",
+		variant === "director-stock" ? "courier-ledger-surface" : "",
+	].filter(Boolean).join(" ");
 
 	return (
-		<Frame className={embedded ? "embedded-screen-stack" : "screen-stack"}>
+		<Frame className={frameClassName}>
 			{hideHeading ? null : (
 				<div className="section-heading">
 					<h2>{title}</h2>

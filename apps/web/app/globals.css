@@ -1361,7 +1361,8 @@ input[type="search"]::-webkit-search-decoration {
 	padding-bottom: 0;
 }
 
-.director-stock-home .inventory-overview-strip {
+.director-stock-home .inventory-overview-strip,
+.courier-ledger-surface .inventory-overview-strip {
 	overflow: hidden;
 	border: 1px solid var(--ds-border);
 	border-radius: var(--ds-radius);
@@ -1369,7 +1370,8 @@ input[type="search"]::-webkit-search-decoration {
 	padding: 0;
 }
 
-.director-stock-home .inventory-overview-strip > div {
+.director-stock-home .inventory-overview-strip > div,
+.courier-ledger-surface .inventory-overview-strip > div {
 	display: grid;
 	align-content: center;
 	justify-items: center;
@@ -1378,18 +1380,21 @@ input[type="search"]::-webkit-search-decoration {
 	text-align: center;
 }
 
-.director-stock-home .inventory-overview-strip > div + div {
+.director-stock-home .inventory-overview-strip > div + div,
+.courier-ledger-surface .inventory-overview-strip > div + div {
 	border-left: 1px solid var(--ds-border);
 }
 
-.director-stock-home .inventory-overview-strip > div > span {
+.director-stock-home .inventory-overview-strip > div > span,
+.courier-ledger-surface .inventory-overview-strip > div > span {
 	margin-bottom: 5px;
 	color: var(--ds-muted);
 	font-size: 11px;
 	line-height: 1.1;
 }
 
-.director-stock-home .inventory-overview-strip strong {
+.director-stock-home .inventory-overview-strip strong,
+.courier-ledger-surface .inventory-overview-strip strong {
 	font-size: 16px;
 	font-weight: var(--font-weight-emphasis);
 	line-height: 1;
@@ -1437,7 +1442,8 @@ input[type="search"]::-webkit-search-decoration {
 }
 
 .director-stock-home .inventory-table-list,
-.director-stock-home .courier-balance-list {
+.director-stock-home .courier-balance-list,
+.courier-ledger-surface .courier-balance-list {
 	overflow: hidden;
 	margin-inline: 0;
 	border: 1px solid var(--ds-border);
@@ -1576,11 +1582,13 @@ input[type="search"]::-webkit-search-decoration {
 	line-height: 1.15;
 }
 
-.director-stock-home .courier-balance-list {
+.director-stock-home .courier-balance-list,
+.courier-ledger-surface .courier-balance-list {
 	padding: 0;
 }
 
-.director-stock-home .courier-balance-card {
+.director-stock-home .courier-balance-card,
+.courier-ledger-surface .courier-balance-card {
 	gap: 0;
 	padding: 0;
 }
@@ -1711,11 +1719,13 @@ input[type="search"]::-webkit-search-decoration {
 	line-height: 1.12;
 }
 
-.director-stock-home .courier-balance-head strong {
+.director-stock-home .courier-balance-head strong,
+.courier-ledger-surface .courier-balance-head strong {
 	font-size: 13px;
 }
 
-.director-stock-home .courier-balance-head {
+.director-stock-home .courier-balance-head,
+.courier-ledger-surface .courier-balance-head {
 	align-items: center;
 	grid-template-columns: minmax(0, 1.08fr) minmax(62px, .58fr) minmax(62px, .58fr);
 	border-bottom: 1px solid var(--ds-border);
@@ -1724,11 +1734,13 @@ input[type="search"]::-webkit-search-decoration {
 	column-gap: 8px;
 }
 
-.director-stock-home .courier-balance-card + .courier-balance-card {
+.director-stock-home .courier-balance-card + .courier-balance-card,
+.courier-ledger-surface .courier-balance-card + .courier-balance-card {
 	border-top: 6px solid var(--ds-panel-muted);
 }
 
-.director-stock-home .courier-balance-metrics {
+.director-stock-home .courier-balance-metrics,
+.courier-ledger-surface .courier-balance-metrics {
 	display: grid;
 	grid-column: 2 / 4;
 	grid-template-columns: repeat(2, minmax(62px, 1fr));
@@ -1736,7 +1748,8 @@ input[type="search"]::-webkit-search-decoration {
 	text-align: right;
 }
 
-.director-stock-home .courier-balance-metrics strong {
+.director-stock-home .courier-balance-metrics strong,
+.courier-ledger-surface .courier-balance-metrics strong {
 	display: block;
 	color: var(--base-black);
 	font-size: 12px;
@@ -1746,19 +1759,23 @@ input[type="search"]::-webkit-search-decoration {
 	white-space: nowrap;
 }
 
-.director-stock-home .courier-product-table {
+.director-stock-home .courier-product-table,
+.courier-ledger-surface .courier-product-table {
 	border-top: 0;
 	padding-top: 0;
 }
 
 .director-stock-home .director-courier-table-head,
-.director-stock-home .courier-product-row {
+.director-stock-home .courier-product-row,
+.courier-ledger-surface .director-courier-table-head,
+.courier-ledger-surface .courier-product-row {
 	grid-template-columns: minmax(0, 1.08fr) minmax(62px, .58fr) minmax(62px, .58fr);
 	padding-inline: 12px;
 	column-gap: 8px;
 }
 
-.director-stock-home .director-courier-table-head {
+.director-stock-home .director-courier-table-head,
+.courier-ledger-surface .director-courier-table-head {
 	display: grid;
 	align-items: center;
 	min-height: 36px;
@@ -1772,11 +1789,14 @@ input[type="search"]::-webkit-search-decoration {
 }
 
 .director-stock-home .director-courier-table-head span:nth-child(2),
-.director-stock-home .director-courier-table-head span:nth-child(3) {
+.director-stock-home .director-courier-table-head span:nth-child(3),
+.courier-ledger-surface .director-courier-table-head span:nth-child(2),
+.courier-ledger-surface .director-courier-table-head span:nth-child(3) {
 	text-align: right;
 }
 
-.director-stock-home .courier-product-row {
+.director-stock-home .courier-product-row,
+.courier-ledger-surface .courier-product-row {
 	min-height: 46px;
 	border-top: 0;
 	border-bottom: 1px solid var(--ds-border);
@@ -1784,34 +1804,54 @@ input[type="search"]::-webkit-search-decoration {
 	padding-block: 8px;
 }
 
-.director-stock-home .courier-product-row strong {
+.director-stock-home .courier-product-row strong,
+.courier-ledger-surface .courier-product-row strong {
 	font-size: 12px;
 }
 
-.director-stock-home .courier-product-row span {
+.director-stock-home .courier-product-row span,
+.courier-ledger-surface .courier-product-row span {
 	font-size: 10px;
 	line-height: 1.12;
 	white-space: nowrap;
 }
 
-.director-stock-home .courier-product-row:last-child {
+.director-stock-home .courier-product-row:last-child,
+.courier-ledger-surface .courier-product-row:last-child {
 	border-bottom: 0;
 }
 
 .director-stock-home .courier-product-row > div:nth-child(2),
-.director-stock-home .courier-product-row > div:last-child {
+.director-stock-home .courier-product-row > div:last-child,
+.courier-ledger-surface .courier-product-row > div:nth-child(2),
+.courier-ledger-surface .courier-product-row > div:last-child {
 	text-align: right;
 }
 
-.director-stock-home .courier-product-empty {
+.director-stock-home .courier-product-empty,
+.courier-ledger-surface .courier-product-empty {
 	border-bottom: 0;
 	padding: 12px;
 }
 
-.director-stock-home .courier-product-empty span {
+.director-stock-home .courier-product-empty span,
+.courier-ledger-surface .courier-product-empty span {
 	color: var(--ds-muted);
 	font-size: 12px;
 	line-height: 1.2;
+}
+
+.courier-ledger-surface {
+	--ds-radius: 12px;
+	--ds-radius-inner: 9px;
+	--ds-border: var(--line);
+	--ds-panel-muted: #f7f8f7;
+	--ds-muted: var(--text-muted);
+	gap: 12px;
+}
+
+.courier-ledger-surface .section-heading {
+	margin-top: 0;
 }
 
 .director-more-home {
@@ -5083,13 +5123,15 @@ input[type="search"]::-webkit-search-decoration {
 		justify-content: flex-end;
 	}
 
-	.director-stock-home .director-courier-table-head {
+	.director-stock-home .director-courier-table-head,
+	.courier-ledger-surface .director-courier-table-head {
 		display: grid;
 		grid-template-columns: minmax(0, 1.08fr) minmax(62px, .58fr) minmax(62px, .58fr);
 		column-gap: 8px;
 	}
 
-	.director-stock-home .courier-product-row {
+	.director-stock-home .courier-product-row,
+	.courier-ledger-surface .courier-product-row {
 		display: grid;
 		grid-template-areas: none;
 		grid-template-columns: minmax(0, 1.08fr) minmax(62px, .58fr) minmax(62px, .58fr);
@@ -5102,12 +5144,17 @@ input[type="search"]::-webkit-search-decoration {
 
 	.director-stock-home .courier-product-row > div:first-child,
 	.director-stock-home .courier-product-row > div:nth-child(2),
-	.director-stock-home .courier-product-row > div:last-child {
+	.director-stock-home .courier-product-row > div:last-child,
+	.courier-ledger-surface .courier-product-row > div:first-child,
+	.courier-ledger-surface .courier-product-row > div:nth-child(2),
+	.courier-ledger-surface .courier-product-row > div:last-child {
 		grid-area: auto;
 	}
 
 	.director-stock-home .courier-product-row > div:nth-child(2),
-	.director-stock-home .courier-product-row > div:last-child {
+	.director-stock-home .courier-product-row > div:last-child,
+	.courier-ledger-surface .courier-product-row > div:nth-child(2),
+	.courier-ledger-surface .courier-product-row > div:last-child {
 		text-align: right;
 	}
 }

@@ -348,6 +348,7 @@ Owner-confirmed direction for commercial manager:
    - Keep `Курьеры` in bottom navigation.
    - Align list and balance rows to the director stock/courier ledger language.
    - Preserve current data model and avoid decorative summaries that duplicate table data.
+   - Status: implemented. Commercial `Курьеры` now uses the shared `courier-ledger-surface`/`director-stock` owner-detail ledger variant: white summary, global `Курьер / Остаток / Наличные` head, no per-courier `Всего продукции` footer, and the same narrow-screen column rules as Director stock couriers.
 
 6. **История продаж.**
    - Use the director history visual rhythm: compact heading, ledger rows, quiet meta, no decorative cards.
