@@ -108,12 +108,13 @@ Status 2026-06-09: role contour complete. Финальный static cleanup не
 
 | Экран | Entry point | Компоненты | Варианты и особенности |
 | --- | --- | --- | --- |
-| Главная распределителя | `home` | `DistributorWorkerHome`, `DistributorHomeOverview` | Default summary, product/cash overview, action `Продать`, optional product list. |
-| Продажа | action sets `sale` | `DistributorSaleHome` | Same sale flow as commercial manager, but role permissions differ. |
-| История продаж | `sales-history` | `SalesHistoryHome`, `RecentSalesPanel` | Shared sales history. |
-| Клиенты | `clients` if allowed | `ClientsHome` | Permission-dependent. |
-| Каталог | `catalog` if allowed | `CatalogHome` | Permission-dependent. |
-| Профиль | `settings` | `SettingsScreen` | Общий settings pattern. |
+| Главная распределителя | `home` | `DistributorWorkerHome`, `DistributorHomeOverview` | Needs migration to the commercial/production white ledger summary: product/cash rows, one `Продать` command, no inline product list. |
+| Продукция на распределителе | summary row drilldown from `home` | `DistributorHomeOverview`, `DistributorStockList` | New internal full-screen drilldown from the `Продукция` summary row, same pattern as commercial home product drilldown. |
+| Продажа | action sets `sale` | `DistributorSaleHome` | Already redesigned through commercial manager sale flow; keep shared form, role-specific permissions and tests. |
+| История продаж | `sales-history` | `SalesHistoryHome`, `RecentSalesPanel` | Already redesigned shared compact sales history; keep as bottom-nav item for operational access. |
+| Клиенты | `clients` if allowed | `ClientsHome` | Already redesigned shared clients surface. |
+| Каталог | `catalog` if allowed | `CatalogHome` | Permission-dependent; do not introduce a worker-specific redesign unless permissions expose it. |
+| Еще / аккаунт | `more` | new worker More screen or shared More pattern | Replace bottom-nav `Профиль` / `SettingsScreen` with the Director/Production/Commercial `Еще` account pattern. |
 
 ### 5.7 Курьер
 
@@ -375,7 +376,61 @@ Stage checks:
 
 Status 2026-06-09: commercial manager contour complete. The active commercial surface is `Главная`, `Продукция` drilldown, `Продажа`, `Клиенты`, `Курьеры`, `Задачи производству`, `История продаж` through `Еще`, and account/logout through `Еще`; no separate commercial `Остатки`, bottom-nav `История`, or bottom-nav `Профиль` remains.
 
-### Stage 6. Shared Stock Surfaces Across Roles
+### Stage 6. Работник Распределителя
+
+Owner-confirmed shape:
+
+- Migrate by analogy with the completed commercial and production-manager standards.
+- Keep `История` as a direct bottom-nav item for operational access.
+- Move account/logout from bottom-nav `Профиль` to `Еще`.
+- Use full-screen drilldown from the home `Продукция` summary row instead of a modal.
+- Do not add fake sales metrics, decorative statistics or data without an existing read model.
+- Commit after every stage below.
+
+1. **Главная распределителя.**
+   - Replace the old `compact-balance-overview` / `action-tile` home with a white ledger summary matching commercial/production surfaces.
+   - Show `Продукция` and optional `Наличные`; make `Продукция` the drilldown entry.
+   - Keep one clear command action: `Продать`.
+   - Remove the inline product table from home.
+   - Rewrite targeted tests that currently assert the old `action-tile` behavior.
+   - Commit after implementation, tests, cleanup and docs update.
+
+2. **Продукция на распределителе.**
+   - Add the full-screen product list opened from the home summary row.
+   - Reuse the existing distributor stock ledger/table language and the commercial drilldown pattern: heading, `Назад`, table meta, visible columns on narrow screens.
+   - Avoid repeating summary totals inside the detail screen when the table already carries the data.
+   - Commit after implementation, tests, cleanup and docs update.
+
+3. **Продажа.**
+   - Audit the worker entry into shared `DistributorSaleHome`.
+   - Keep the commercial sale form standard and only adjust worker-specific navigation or permission expectations if needed.
+   - Do not redesign the form unless the audit finds worker-only regressions.
+   - Commit after targeted tests and any necessary cleanup/docs update.
+
+4. **История продаж.**
+   - Confirm the worker uses the already migrated `SalesHistoryHome` / `RecentSalesPanel` compact ledger.
+   - Keep it in bottom nav rather than moving it into `Еще`.
+   - Fix only worker-specific copy, navigation state or tests if needed.
+   - Commit after targeted tests and any necessary cleanup/docs update.
+
+5. **Клиенты.**
+   - Confirm the worker uses the already migrated `ClientsHome` standard.
+   - Keep additional client actions permission-driven; do not add a worker-specific variant without a permission/API reason.
+   - Commit after targeted tests and any necessary cleanup/docs update.
+
+6. **Еще / аккаунт.**
+   - Replace bottom-nav `Профиль` and generic `SettingsScreen` for this role with `Еще`.
+   - Follow Director/Production/Commercial More: account identity, disabled `Сменить пароль` as cross-role hardening, quiet logout row.
+   - Do not duplicate `История` inside `Еще` while it remains a direct bottom-nav item.
+   - Commit after implementation, tests, cleanup and docs update.
+
+7. **Final worker cleanup.**
+   - Search for stale distributor-worker uses of old card/action/settings classes after the staged work.
+   - Remove unused CSS/code that becomes unreachable.
+   - Update `docs/FRONTEND.md` and this plan with the final worker contour.
+   - Commit the final cleanup separately.
+
+### Stage 7. Shared Stock Surfaces Across Roles
 
 - После production `На распределителе` аккуратно распространить тот же stock/list/table standard на:
   - коммерческий product drilldown from home summary;
@@ -383,7 +438,7 @@ Status 2026-06-09: commercial manager contour complete. The active commercial su
   - own courier balance.
 - Проверить все prop variants: `embedded`, `hideHeading`, `mode`, `showCashBalance`, `canAssignDiscount`, `canWithdrawCash`.
 
-### Stage 7. Remaining Role Home Overview Screens
+### Stage 8. Remaining Role Home Overview Screens
 
 - После `ProductionHomeOverview` пересобрать `DistributorHomeOverview` and `CourierHomeOverview`.
 - Убрать старый декоративный card language там, где экран должен быть рабочим control surface.
