@@ -3661,8 +3661,41 @@ input[type="search"]::-webkit-search-decoration {
 	padding-inline: 12px;
 }
 
+.distributor-worker-stock-surface .inventory-table-head {
+	min-height: 34px;
+	padding-block: 8px;
+}
+
+.distributor-worker-stock-surface .inventory-table-row {
+	min-height: 58px;
+	padding-block: 8px;
+}
+
 .distributor-worker-stock-surface .inventory-table-row:last-child {
 	border-bottom: 0;
+}
+
+.distributor-worker-stock-surface .inventory-table-product strong,
+.distributor-worker-stock-surface .inventory-table-quantity strong,
+.distributor-worker-stock-surface .inventory-table-total strong {
+	font-size: 13px;
+	line-height: 1.12;
+}
+
+.distributor-worker-stock-surface .inventory-table-product span,
+.distributor-worker-stock-surface .inventory-table-quantity span {
+	margin-top: 3px;
+	font-size: 10px;
+	line-height: 1.12;
+}
+
+.distributor-worker-stock-surface .inventory-product-title {
+	gap: 4px;
+}
+
+.distributor-worker-stock-surface .inventory-discount-icon {
+	width: 13px;
+	height: 13px;
 }
 
 .unload-list {
@@ -5067,7 +5100,7 @@ input[type="search"]::-webkit-search-decoration {
 		display: grid;
 		grid-template-columns: minmax(0, 1fr) minmax(58px, .48fr) minmax(64px, .52fr);
 		column-gap: 8px;
-		padding: 8px 10px;
+		padding: 7px 10px;
 	}
 
 	.distributor-worker-stock-surface .inventory-table-row {
@@ -5076,7 +5109,8 @@ input[type="search"]::-webkit-search-decoration {
 		grid-template-columns: minmax(0, 1fr) minmax(58px, .48fr) minmax(64px, .52fr);
 		align-items: center;
 		column-gap: 8px;
-		padding: 10px;
+		min-height: 56px;
+		padding: 8px 10px;
 	}
 
 	.distributor-worker-stock-surface .inventory-table-product,
