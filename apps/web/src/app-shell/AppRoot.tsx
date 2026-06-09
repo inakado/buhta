@@ -290,10 +290,9 @@ function BottomNav({
 
 function LoadingScreen() {
 	return (
-		<main className="app-page">
-			<div className="mobile-shell centered-shell">
-				<div className="loading-dot" />
-				<p className="muted">Загрузка Бухты</p>
+		<main className="app-page loading-page">
+			<div className="mobile-shell centered-shell loading-shell">
+				<img className="loading-logo" src="/loader-pearl-cove.svg" alt="" aria-hidden />
 			</div>
 		</main>
 	);

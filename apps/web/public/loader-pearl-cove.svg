@@ -1,0 +1,52 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Buhta CRM animated loader - Pearl Cove</title>
+  <desc id="desc">Animated loader based on the Pearl Cove logo concept.</desc>
+  <style>
+    .outer {
+      stroke-dasharray: 154;
+      stroke-dashoffset: 0;
+      animation: outer-draw 2.8s ease-in-out infinite;
+    }
+
+    .inner {
+      transform-origin: 50px 50px;
+      animation: inner-turn 2.8s cubic-bezier(.42, 0, .22, 1) infinite;
+    }
+
+    .pearl {
+      transform-origin: 50px 50px;
+      animation: pearl-breathe 2.8s ease-in-out infinite;
+    }
+
+    @keyframes outer-draw {
+      0% { stroke-dashoffset: 154; opacity: .42; }
+      35% { stroke-dashoffset: 0; opacity: 1; }
+      72% { stroke-dashoffset: 0; opacity: 1; }
+      100% { stroke-dashoffset: -154; opacity: .42; }
+    }
+
+    @keyframes inner-turn {
+      0% { transform: rotate(0deg); opacity: .46; }
+      35% { opacity: .95; }
+      100% { transform: rotate(360deg); opacity: .46; }
+    }
+
+    @keyframes pearl-breathe {
+      0%, 100% { transform: scale(.88); opacity: .68; }
+      35%, 70% { transform: scale(1); opacity: 1; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .outer,
+      .inner,
+      .pearl {
+        animation: none;
+      }
+    }
+  </style>
+  <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+    <path class="outer" d="M50 18 A32 32 0 1 1 28 73" stroke-width="5"/>
+    <path class="inner" d="M65 29 A20 20 0 1 1 36 68" stroke-width="3"/>
+  </g>
+  <circle class="pearl" cx="50" cy="50" r="8" fill="currentColor"/>
+</svg>

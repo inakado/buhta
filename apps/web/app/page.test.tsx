@@ -475,7 +475,9 @@ describe("HomePage", () => {
 
 	it("renders the CRM app entry", () => {
 		render(<HomePage />);
-		expect(screen.getByText("Загрузка Бухты")).toBeTruthy();
+		const loader = document.querySelector<HTMLImageElement>(".loading-logo");
+		expect(loader).toBeTruthy();
+		expect(loader?.getAttribute("src")).toBe("/loader-pearl-cove.svg");
 	});
 
 	it("moves an authenticated admin to the login form after logout", async () => {
