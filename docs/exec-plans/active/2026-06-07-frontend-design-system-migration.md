@@ -415,6 +415,7 @@ Owner-confirmed shape:
    - Keep it in bottom nav rather than moving it into `Еще`.
    - Fix only worker-specific copy, navigation state or tests if needed.
    - Commit after targeted tests and any necessary cleanup/docs update.
+   - Status: implemented. Worker keeps direct bottom-nav `История` and routes to the already migrated shared `SalesHistoryHome` / `RecentSalesPanel` compact ledger; targeted coverage now verifies the worker-specific navigation state and return path back to the home sale action.
 
 5. **Клиенты.**
    - Confirm the worker uses the already migrated `ClientsHome` standard.

@@ -1851,7 +1851,18 @@ describe("HomePage", () => {
 		expect(screen.queryByText("Распределитель Центральный")).toBeNull();
 		expect(document.querySelector(".distributor-worker-stock-surface")).toBeTruthy();
 
-		fireEvent.click(saleAction);
+		fireEvent.click(screen.getByRole("button", { name: "История" }));
+		expect(screen.getByRole("button", { name: "История" }).getAttribute("aria-current")).toBe("page");
+		expect(await screen.findByRole("heading", { name: "История продаж" })).toBeTruthy();
+		expect(document.querySelector(".sales-history-home")).toBeTruthy();
+		expect(screen.queryByRole("heading", { name: "Последние продажи" })).toBeNull();
+		expect(await screen.findByText("Продаж пока нет.")).toBeTruthy();
+		expect(document.querySelector(".recent-sales-panel")).toBeTruthy();
+
+		fireEvent.click(screen.getByRole("button", { name: "Главная" }));
+		expect(await screen.findByRole("heading", { name: "Распределитель" })).toBeTruthy();
+		const saleActionAfterHistory = screen.getByRole("button", { name: "Продать" });
+		fireEvent.click(saleActionAfterHistory);
 		expect(await screen.findByRole("heading", { name: "Продажа" })).toBeTruthy();
 		expect(screen.queryByText("Балансы курьеров")).toBeNull();
 	});
