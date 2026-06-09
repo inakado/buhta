@@ -108,11 +108,11 @@ Status 2026-06-09: role contour complete. Финальный static cleanup не
 
 | Экран | Entry point | Компоненты | Варианты и особенности |
 | --- | --- | --- | --- |
-| Главная распределителя | `home` | `DistributorWorkerHome`, `DistributorHomeOverview` | Needs migration to the commercial/production white ledger summary: product/cash rows, one `Продать` command, product list remains visible on home. |
-| Продукция на главной | lower section on `home` | `DistributorHomeOverview`, `DistributorStockList` | Worker-specific decision: do not hide product stock behind drilldown; polish the inline list for the new ledger system. |
-| Продажа | action sets `sale` | `DistributorSaleHome` | Already redesigned through commercial manager sale flow; keep shared form, role-specific permissions and tests. |
-| История продаж | `sales-history` | `SalesHistoryHome`, `RecentSalesPanel` | Already redesigned shared compact sales history; keep as bottom-nav item for operational access. |
-| Клиенты | `clients` if allowed | `ClientsHome` | Already redesigned shared clients surface. |
+| Главная распределителя | `home` | `DistributorWorkerHome`, `DistributorHomeOverview` | Migrated to the compact white ledger summary with one primary `Продать` command and visible product list on home. |
+| Продукция на главной | lower section on `home` | `DistributorHomeOverview`, `DistributorStockList` | Worker-specific stock list remains visible on home and uses the new ledger/table language. |
+| Продажа | action sets `sale` | `DistributorSaleHome` | Shared migrated distributor sale flow with role-specific permissions and tests. |
+| История продаж | `sales-history` | `SalesHistoryHome`, `RecentSalesPanel` | Shared compact sales history with modal cancellation; kept as a bottom-nav item for operational access. |
+| Клиенты | `clients` if allowed | `ClientsHome` | Shared migrated clients surface with permission-driven manage actions. |
 | Каталог | `catalog` if allowed | `CatalogHome` | Permission-dependent; do not introduce a worker-specific redesign unless permissions expose it. |
 | Еще / аккаунт | `more` | `DistributorWorkerMoreHome` | Replaces bottom-nav `Профиль` / `SettingsScreen` with the Director/Production/Commercial `Еще` account pattern; no duplicate `История` entry because history stays in bottom nav. |
 
@@ -435,6 +435,7 @@ Owner-confirmed shape:
    - Remove unused CSS/code that becomes unreachable.
    - Update `docs/FRONTEND.md` and this plan with the final worker contour.
    - Commit the final cleanup separately.
+   - Status: complete. Search confirmed worker no longer routes to bottom-nav `Профиль` / `SettingsScreen` and no worker-specific old card/action code remains reachable. Shared `action-tile`, `compact-balance-overview` and `SettingsScreen` CSS/code are still used by other roles and were intentionally kept. `docs/FRONTEND.md` and this plan now describe the final worker contour.
 
 ### Stage 7. Shared Stock Surfaces Across Roles
 
