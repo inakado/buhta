@@ -1856,6 +1856,17 @@ describe("HomePage", () => {
 		expect(screen.queryByText("Распределитель Центральный")).toBeNull();
 		expect(document.querySelector(".distributor-worker-stock-surface")).toBeTruthy();
 
+		fireEvent.click(screen.getByRole("button", { name: "Клиенты" }));
+		expect(screen.getByRole("button", { name: "Клиенты" }).getAttribute("aria-current")).toBe("page");
+		expect(await screen.findByRole("heading", { name: "Клиенты" })).toBeTruthy();
+		expect(await screen.findByText("1 клиентов")).toBeTruthy();
+		expect(await screen.findByText("Иван Петров")).toBeTruthy();
+		expect(screen.getByRole("button", { name: "Добавить клиента" })).toBeTruthy();
+		expect(document.querySelector(".client-list-table")).toBeTruthy();
+
+		fireEvent.click(screen.getByRole("button", { name: "Главная" }));
+		expect(await screen.findByRole("heading", { name: "Распределитель" })).toBeTruthy();
+
 		fireEvent.click(screen.getByRole("button", { name: "История" }));
 		expect(screen.getByRole("button", { name: "История" }).getAttribute("aria-current")).toBe("page");
 		expect(await screen.findByRole("heading", { name: "История продаж" })).toBeTruthy();

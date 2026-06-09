@@ -421,6 +421,7 @@ Owner-confirmed shape:
    - Confirm the worker uses the already migrated `ClientsHome` standard.
    - Keep additional client actions permission-driven; do not add a worker-specific variant without a permission/API reason.
    - Commit after targeted tests and any necessary cleanup/docs update.
+   - Status: implemented. Worker opens the shared migrated `ClientsHome` from the bottom nav; the surface keeps the same compact heading, live search, ledger list and `operation-dialog` create/edit flow, with manage actions shown only through existing `client.manage` permission.
 
 6. **Еще / аккаунт.**
    - Replace bottom-nav `Профиль` and generic `SettingsScreen` for this role with `Еще`.
