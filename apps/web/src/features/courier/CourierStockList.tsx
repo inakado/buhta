@@ -11,7 +11,7 @@ export function CourierStockList({
 	return (
 		<div className="inventory-table-list" role="table" aria-label="Продукция курьера">
 			<div className="inventory-table-head" role="row">
-				<span>Продукция</span>
+				<span>Наименование</span>
 				<span>Количество</span>
 				<span>Итого</span>
 			</div>

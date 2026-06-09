@@ -804,7 +804,7 @@ function WorkshopProductBalanceList({
 				<h2>Продукция в цеху</h2>
 			</div>
 			<div className="inventory-table-head" role="row">
-				<span>Продукция</span>
+				<span>Наименование</span>
 				<span>Количество</span>
 				<span>Цена</span>
 			</div>

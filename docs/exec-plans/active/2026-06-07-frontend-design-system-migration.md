@@ -239,7 +239,7 @@ Status 2026-06-09: role contour complete. Финальный static cleanup не
 ### Stage 1. Director Stock, completed 2026-06-07
 
 - `DirectorStockHome` переведен на тот же fixed topbar + embedded segmented treatment, что и главная Директора: заголовок и внутренние табы не исчезают при прокрутке body.
-- `Распределитель` использует white ledger panel: верхняя strip-сводка, full-width `Списать наличные`, таблица с материнской строкой распределителя, отдельными колонками `Продукция / Количество / Итого` и inline action `Снизить`.
+- `Распределитель` использует white ledger panel: верхняя strip-сводка, full-width `Списать наличные`, таблица с материнской строкой распределителя, отдельными колонками `Наименование / Количество / Итого` и inline action `Снизить`.
 - Снижение цены открывается в modal dialog с overlay, click outside отменяет действие; форма и кнопки приведены к compact director style.
 - `Курьеры` использует один read-only courier ledger: глобальная шапка `Курьер / Остаток / Наличные`, материнские строки курьеров и облегченные товарные detail rows без повторных labels.
 - Убраны визуальные повторы, декоративные summary cards, лишние local class hooks и director-only table-head selectors, которые больше не используются.
@@ -295,7 +295,7 @@ Status 2026-06-09: role contour complete. Финальный static cleanup не
 4. **На распределителе.**
    - `DistributorInventoryHome` для заведующего мигрировать как read-only stock surface со сводкой по директорскому stock ledger standard.
    - Проверить production props/permissions: no cash/discount actions unless role permissions explicitly allow them.
-   - Реализационный стандарт: production-вариант использует `stock-ledger` surface, белую сводку `Количество / Продукция`, таблицу `Продукция / Количество / Итого` и grouping rows вместо отдельных aggregate cards. Количество позиций показывается в meta шапки таблицы, но не дублируется в верхнем heading.
+   - Реализационный стандарт: production-вариант использует `stock-ledger` surface, белую сводку `Количество / Продукция`, таблицу `Наименование / Количество / Итого` и grouping rows вместо отдельных aggregate cards. Количество позиций показывается в meta шапки таблицы, но не дублируется в верхнем heading.
    - Status: implemented for production manager. Cash/discount controls are not passed into the production route; distributor aggregate cards are hidden in the `stock-ledger` variant.
 
 5. **Уведомления.**

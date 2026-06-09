@@ -177,13 +177,13 @@ function CourierPeopleList({
 						<div className="courier-product-table" role="table" aria-label={`Продукция курьера ${summary.courierDisplayName}`}>
 							{variant === "director-stock" ? (
 								<div className="sr-only" role="row">
-									<span role="columnheader">Товар</span>
+									<span role="columnheader">Наименование</span>
 									<span role="columnheader">Количество</span>
 									<span role="columnheader">Итого</span>
 								</div>
 							) : (
 								<div className="courier-product-table-head" role="row">
-									<span role="columnheader">Продукция</span>
+									<span role="columnheader">Наименование</span>
 									<span role="columnheader">Количество</span>
 									<span role="columnheader">Итого</span>
 								</div>
