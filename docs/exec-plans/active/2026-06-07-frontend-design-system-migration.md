@@ -114,7 +114,7 @@ Status 2026-06-09: role contour complete. Финальный static cleanup не
 | История продаж | `sales-history` | `SalesHistoryHome`, `RecentSalesPanel` | Already redesigned shared compact sales history; keep as bottom-nav item for operational access. |
 | Клиенты | `clients` if allowed | `ClientsHome` | Already redesigned shared clients surface. |
 | Каталог | `catalog` if allowed | `CatalogHome` | Permission-dependent; do not introduce a worker-specific redesign unless permissions expose it. |
-| Еще / аккаунт | `more` | new worker More screen or shared More pattern | Replace bottom-nav `Профиль` / `SettingsScreen` with the Director/Production/Commercial `Еще` account pattern. |
+| Еще / аккаунт | `more` | `DistributorWorkerMoreHome` | Replaces bottom-nav `Профиль` / `SettingsScreen` with the Director/Production/Commercial `Еще` account pattern; no duplicate `История` entry because history stays in bottom nav. |
 
 ### 5.7 Курьер
 
@@ -428,6 +428,7 @@ Owner-confirmed shape:
    - Follow Director/Production/Commercial More: account identity, disabled `Сменить пароль` as cross-role hardening, quiet logout row.
    - Do not duplicate `История` inside `Еще` while it remains a direct bottom-nav item.
    - Commit after implementation, tests, cleanup and docs update.
+   - Status: implemented. Distributor worker bottom nav now uses `Главная`, `Клиенты`, `История`, `Еще`; `DistributorWorkerMoreHome` keeps an account-only More screen with identity, disabled `Сменить пароль` and quiet logout, while `История` and `Клиенты` remain direct bottom-nav entries.
 
 7. **Final worker cleanup.**
    - Search for stale distributor-worker uses of old card/action/settings classes after the staged work.

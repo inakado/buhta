@@ -240,7 +240,15 @@ function BottomNav({
 			...courierBalancesItem,
 			...commercialMoreItem,
 		]
-				: [
+						: actor.role === "distributor_worker"
+							? [
+			{ id: "home", label: "Главная", icon: Gauge },
+			...catalogItem,
+			...clientsItem,
+			...salesHistoryItem,
+			{ id: "more", label: "Еще", icon: MoreHorizontal },
+		]
+							: [
 			{ id: "home", label: "Главная", icon: Gauge },
 			...catalogItem,
 			...clientsItem,

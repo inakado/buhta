@@ -1849,12 +1849,27 @@ describe("HomePage", () => {
 		expect(screen.queryByRole("button", { name: "Открыть клиентов" })).toBeNull();
 		expect(screen.queryByRole("button", { name: "Курьеры" })).toBeNull();
 		expect(screen.queryByRole("button", { name: "Продажа" })).toBeNull();
+		expect(screen.queryByRole("button", { name: "Профиль" })).toBeNull();
+		expect(screen.getByRole("button", { name: "Еще" })).toBeTruthy();
 		expect(screen.queryByText("Балансы курьеров")).toBeNull();
 		expect(screen.getByRole("heading", { name: "Продукция" })).toBeTruthy();
 		expect(screen.getByText("Количество")).toBeTruthy();
 		expect(screen.getByText("Икра горбуши")).toBeTruthy();
 		expect(screen.queryByText("Распределитель Центральный")).toBeNull();
 		expect(document.querySelector(".distributor-worker-stock-surface")).toBeTruthy();
+
+		fireEvent.click(screen.getByRole("button", { name: "Еще" }));
+		expect(screen.getByRole("button", { name: "Еще" }).getAttribute("aria-current")).toBe("page");
+		expect(await screen.findByRole("heading", { name: "Еще" })).toBeTruthy();
+		expect(screen.getByText("Distributor Worker")).toBeTruthy();
+		expect(screen.getByText("Работник распределителя · @distributor-worker")).toBeTruthy();
+		expect(screen.getByRole("button", { name: "Сменить пароль" })).toHaveProperty("disabled", true);
+		expect(screen.getByRole("button", { name: "Выйти" })).toBeTruthy();
+		expect(screen.getAllByRole("button", { name: "История" })).toHaveLength(1);
+		expect(screen.getAllByRole("button", { name: "Клиенты" })).toHaveLength(1);
+
+		fireEvent.click(screen.getByRole("button", { name: "Главная" }));
+		expect(await screen.findByRole("heading", { name: "Распределитель" })).toBeTruthy();
 
 		fireEvent.click(screen.getByRole("button", { name: "Клиенты" }));
 		expect(screen.getByRole("button", { name: "Клиенты" }).getAttribute("aria-current")).toBe("page");
