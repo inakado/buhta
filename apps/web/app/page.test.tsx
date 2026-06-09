@@ -1848,7 +1848,8 @@ describe("HomePage", () => {
 		expect(screen.getByRole("heading", { name: "Продукция" })).toBeTruthy();
 		expect(screen.getByText("Количество")).toBeTruthy();
 		expect(screen.getByText("Икра горбуши")).toBeTruthy();
-		expect(screen.getByText("Распределитель Центральный")).toBeTruthy();
+		expect(screen.queryByText("Распределитель Центральный")).toBeNull();
+		expect(document.querySelector(".distributor-worker-stock-surface")).toBeTruthy();
 
 		fireEvent.click(saleAction);
 		expect(await screen.findByRole("heading", { name: "Продажа" })).toBeTruthy();

@@ -401,6 +401,7 @@ Owner-confirmed shape:
    - Reuse the existing distributor stock ledger/table language: clear heading, table meta and visible columns on narrow screens.
    - Reduce repeated words where possible without removing necessary table headers.
    - Commit after implementation, tests, cleanup and docs update.
+   - Status: implemented. The inline product list now uses a worker-home white ledger surface, keeps table columns visible on narrow screens and hides repeated distributor names inside rows.
 
 3. **Продажа.**
    - Audit the worker entry into shared `DistributorSaleHome`.

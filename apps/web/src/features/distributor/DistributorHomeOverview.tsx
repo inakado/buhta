@@ -15,8 +15,10 @@ type DistributorHomeOverviewProps = {
 	saleCommandTone?: "neutral" | "primary";
 	showCashBalance?: boolean;
 	showStockList?: boolean;
+	showStockDistributorName?: boolean;
 	showSummaryMeta?: boolean;
 	showSummaryHeading?: boolean;
+	stockListSurface?: "default" | "worker-home";
 	summaryMeta?: string;
 	summaryTitle?: string;
 	summaryVariant?: "stacked" | "horizontal";
@@ -35,8 +37,10 @@ export function DistributorHomeOverview({
 	saleCommandTone = "neutral",
 	showCashBalance = false,
 	showStockList = true,
+	showStockDistributorName = true,
 	showSummaryMeta = true,
 	showSummaryHeading = true,
+	stockListSurface = "default",
 	summaryMeta = "Сводка",
 	summaryTitle = "Распределитель",
 	summaryVariant = "stacked",
@@ -189,7 +193,9 @@ export function DistributorHomeOverview({
 					{!inventory.isLoading && !inventory.isError && data?.items.length === 0 ? (
 						<p className="muted">На распределителе пока нет продукции.</p>
 					) : null}
-					<DistributorStockList items={data?.items ?? []} />
+					<div className={stockListSurface === "worker-home" ? "distributor-worker-stock-surface" : undefined}>
+						<DistributorStockList items={data?.items ?? []} showDistributorName={showStockDistributorName} />
+					</div>
 				</>
 			) : null}
 		</section>

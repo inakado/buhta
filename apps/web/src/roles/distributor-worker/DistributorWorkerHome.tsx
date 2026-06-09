@@ -19,8 +19,10 @@ export function DistributorWorkerHome({
 			saleCommandTone="primary"
 			saleDisabled={!online}
 			showCashBalance={showCashBalance}
+			showStockDistributorName={false}
 			showSummaryMeta={false}
 			showSummaryHeading={false}
+			stockListSurface="worker-home"
 			summaryLayout="commercial"
 			summaryVariant="horizontal"
 			stockSummaryLabel="Продукция"
