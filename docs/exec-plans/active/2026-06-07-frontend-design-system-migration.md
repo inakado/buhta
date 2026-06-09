@@ -94,15 +94,15 @@ Status 2026-06-09: role contour complete. Финальный static cleanup не
 
 | Экран | Entry point | Компоненты | Варианты и особенности |
 | --- | --- | --- | --- |
-| Главная продаж | `home` | `CommercialManagerHome`, `DistributorHomeOverview` | `summaryLayout="commercial"`, action `Продать`, optional production notify, cash balance by permission. |
-| Продажа | action sets `sale` | `DistributorSaleHome` | Shared distributor sale flow. Не показывается в bottom nav, открывается с home action. |
-| Остатки распределителя | `distributor` | `DistributorInventoryHome` | Can assign discount by permission, optional cash balance. Shared with director stock but standalone heading. |
-| Курьеры | `couriers` | `CourierBalanceHome mode="all"` | Shared with director stock/couriers. |
+| Главная продаж | `home` | `CommercialManagerHome`, `DistributorHomeOverview` | Owner-confirmed direction: сводка и действия повторяют production manager home rhythm. Summary shows distributor product total as clickable drilldown; actions include `Продать` and production notify with the same spatial grouping as production actions. |
+| Продукция на распределителе | internal drilldown from home summary | `DistributorInventoryHome` / commercial product detail variant | Replaces standalone bottom-nav `Остатки` for commercial manager. Full-screen detail with back navigation, ledger/table rhythm from director and production stock screens, discount affordance by permission, no separate bottom nav item. |
+| Продажа | action sets `sale` | `DistributorSaleHome` | Shared distributor sale flow. Не показывается в bottom nav, открывается с home action. Bring to the existing operational form standard after home. |
+| Курьеры | `couriers` | `CourierBalanceHome mode="all"` | Остается в bottom nav by owner decision. Uses director/stock ledger language and commercial permissions. |
 | История продаж | `sales-history` | `SalesHistoryHome`, `RecentSalesPanel` | Recent sales, cancellation affordance by permissions. Требует history/list cleanup separately from operation history. |
-| Задачи производству | `notifications` when available | `NotificationsHome` | Notify production and list states. |
-| Клиенты | `clients` | `ClientsHome` | Likely manage/read variant by permissions. |
+| Задачи производству | action/internal entry from home or `more` if needed | `NotificationsHome` | Commercial keeps create form by permission and uses the migrated task ledger standard from production notifications. |
+| Клиенты | `clients` | `ClientsHome` | Uses the already established clients management standard, without a fresh redesign. |
 | Каталог | `catalog` if allowed | `CatalogHome` | Permission-dependent management surface. |
-| Профиль | `settings` | `SettingsScreen` | Общий settings pattern. |
+| Еще / аккаунт | `more` | future commercial more/account screen | Same Director/Production More model: account block, logout, future `Сменить пароль` as cross-role hardening. |
 
 ### 5.6 Работник Распределителя
 
@@ -316,22 +316,73 @@ Stage checks:
 - Done: production CSS/code cleanup after migration; static `rg` confirms no remaining old production hero/list hooks in app code and no stale notification hooks.
 - Done: `docs/FRONTEND.md` updated with the completed production contour, notification checkbox flow, `Еще` account/history model, `BadgeCheck` product marker and production `stock-ledger` distributor variant.
 
-### Stage 5. Shared Stock Surfaces Across Roles
+### Stage 5. Commercial Manager Contour
+
+Owner-confirmed direction for commercial manager:
+
+1. **Главная `Продажи`.**
+   - Start implementation here after this plan commit.
+   - Use the production manager home pattern as the reference: white summary surface, thin ledger separators, compact screen heading, restrained radii, same action spacing.
+   - Summary keeps only data the current screen already owns. Distributor product total is the primary drilldown to the product list.
+   - Action block follows production action layout. `Продать` is the main frequent action, production notify is secondary but still visible and easy to find.
+   - Image mock required before implementation because this screen defines the role-specific IA and bottom nav update.
+
+2. **Продукция на распределителе from summary click.**
+   - Remove `Остатки` as a standalone bottom nav screen for commercial manager.
+   - Clicking the product summary on home opens a full-screen product list, not a modal. This follows the production manager inventory detail pattern and keeps long stock tables readable on 390px+ widths.
+   - Use director/production stock ledger rules: visible column headers, product name remains primary, price and quantity do not collapse into ambiguous text.
+   - No separate image mock needed if the implementation reuses the established stock/list rhythm.
+
+3. **Продажа.**
+   - Migrate `DistributorSaleHome` to the standard operational form language already set by production action forms.
+   - Preserve existing business fields and validation. Do not invent new sale data or reporting.
+   - Payment controls, product select, client combobox and submit action must match the shared selector/form standard.
+
+4. **Клиенты.**
+   - Keep the existing clients workflow and permissions.
+   - Apply the established management/list visual standard only where current UI still uses old cards, weak buttons or inconsistent spacing.
+
+5. **Курьеры.**
+   - Keep `Курьеры` in bottom navigation.
+   - Align list and balance rows to the director stock/courier ledger language.
+   - Preserve current data model and avoid decorative summaries that duplicate table data.
+
+6. **История продаж.**
+   - Use the director history visual rhythm: compact heading, ledger rows, quiet meta, no decorative cards.
+   - Commercial has less detail than director history, so do not add filters, drilldowns or analytics without existing data/API support.
+
+7. **Задачи производству.**
+   - Reuse the production notification task ledger standard.
+   - Commercial keeps the create form where permission allows it; completed/new states should remain consistent with the production screen.
+
+8. **Еще / аккаунт.**
+   - Replace the old profile/settings entry with `Еще`, following Director/Production More.
+   - Account block, logout and future `Сменить пароль` stay cross-role consistent.
+   - Secondary links should not duplicate bottom nav items. Since `Курьеры` stays in nav, `Еще` is account-focused unless a non-primary commercial entry needs a home.
+
+Stage checks:
+
+- Update bottom nav tests for commercial: `Остатки` removed, `Курьеры` remains, `Еще` present.
+- Add/adjust tests for home summary drilldown to product list.
+- Keep existing sale/client/courier/history behavior covered while migrating visuals.
+- Run targeted web checks and `pnpm docs:check`; browser visual check only when requested by owner.
+
+### Stage 6. Shared Stock Surfaces Across Roles
 
 - После production `На распределителе` аккуратно распространить тот же stock/list/table standard на:
-  - коммерческий `Остатки`;
+  - коммерческий product drilldown from home summary;
   - курьерские `Балансы курьеров`;
   - own courier balance.
 - Проверить все prop variants: `embedded`, `hideHeading`, `mode`, `showCashBalance`, `canAssignDiscount`, `canWithdrawCash`.
 
-### Stage 6. Remaining Role Home Overview Screens
+### Stage 7. Remaining Role Home Overview Screens
 
 - После `ProductionHomeOverview` пересобрать `DistributorHomeOverview` and `CourierHomeOverview`.
 - Убрать старый декоративный card language там, где экран должен быть рабочим control surface.
 - Стандартизировать action blocks: иконка, label, disabled/offline reason, compact spacing.
 - Не дублировать данные из нижней навигации или соседних экранов.
 
-### Stage 7. Remaining Operational Forms
+### Stage 8. Remaining Operational Forms
 
 - После production form standard привести к нему оставшиеся operational forms:
   - `DistributorSaleHome`;
@@ -341,14 +392,14 @@ Stage checks:
 - Сохранить быстрый ввод, block reasons и online-only behavior.
 - Payment segmented, product select and client combobox должны визуально совпадать с новым selector standard.
 
-### Stage 8. Histories, Lists And Management Surfaces
+### Stage 9. Histories, Lists And Management Surfaces
 
 - Мигрировать `SalesHistoryHome`, `RecentSalesPanel`, `OperationHistoryHome` shared states not already covered by director/production passes.
 - Мигрировать `AdminUsersHome`, remaining shared `CatalogHome`, `ClientsHome`, `NotificationsHome` states.
 - Для long lists проверить bottom spacing and row density.
 - Не делать строки карточками, если они read-only and non-drilldown.
 
-### Stage 9. Documentation And CSS Cleanup
+### Stage 10. Documentation And CSS Cleanup
 
 - После каждого устойчивого pattern обновлять `DESIGN.md` или `docs/FRONTEND.md`.
 - Удалять старые selectors только после того, как не осталось usages.
