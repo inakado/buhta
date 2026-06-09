@@ -184,7 +184,7 @@ function BottomNav({
 		&& (actor.role === "director" || actor.role === "commercial_manager")
 		? [{ id: "couriers", label: "Курьеры", icon: Truck }]
 		: [];
-	const salesHistoryItem: BottomNavItem[] = (actor.role === "commercial_manager" || actor.role === "distributor_worker" || actor.role === "courier")
+	const salesHistoryItem: BottomNavItem[] = (actor.role === "distributor_worker" || actor.role === "courier")
 		&& (actor.permissions.includes("distributor.sale.create") || actor.permissions.includes("courier.sale.create"))
 		? [{ id: "sales-history", label: "История", icon: History }]
 		: [];
@@ -193,6 +193,9 @@ function BottomNav({
 		? [{ id: "stock", label: "Остатки", icon: Box }]
 		: [];
 	const directorMoreItem: BottomNavItem[] = actor.role === "director"
+		? [{ id: "more", label: "Еще", icon: MoreHorizontal }]
+		: [];
+	const commercialMoreItem: BottomNavItem[] = actor.role === "commercial_manager"
 		? [{ id: "more", label: "Еще", icon: MoreHorizontal }]
 		: [];
 	const operationHistoryItem: BottomNavItem[] = actor.permissions.includes("operation.history.read")
@@ -229,6 +232,14 @@ function BottomNav({
 			...operationHistoryItem,
 			...directorMoreItem,
 		]
+					: actor.role === "commercial_manager"
+						? [
+			{ id: "home", label: "Главная", icon: Gauge },
+			...catalogItem,
+			...clientsItem,
+			...courierBalancesItem,
+			...commercialMoreItem,
+		]
 				: [
 			{ id: "home", label: "Главная", icon: Gauge },
 			...catalogItem,
@@ -249,6 +260,10 @@ function BottomNav({
 					actor.role === "production_manager"
 					&& item.id === "more"
 					&& activeTab === "history"
+				) || (
+					actor.role === "commercial_manager"
+					&& item.id === "more"
+					&& activeTab === "sales-history"
 				);
 
 				return (

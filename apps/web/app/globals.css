@@ -1157,16 +1157,23 @@ input[type="search"]::-webkit-search-decoration {
 	line-height: 1.25;
 }
 
+.sales-history-home {
+	gap: 10px;
+}
+
 .recent-sales-panel {
 	display: flex;
 	flex-direction: column;
 	gap: 10px;
+	min-height: 0;
 }
 
 .recent-sales-list {
 	display: flex;
 	flex-direction: column;
-	gap: 8px;
+	overflow: hidden;
+	border-top: 1px solid var(--line);
+	border-bottom: 1px solid var(--line);
 }
 
 .recent-sale-card {
@@ -1174,8 +1181,12 @@ input[type="search"]::-webkit-search-decoration {
 	grid-template-columns: minmax(0, 1fr) minmax(118px, auto);
 	align-items: start;
 	gap: 12px;
-	border-top: 1px solid var(--line);
+	border-bottom: 1px solid var(--line);
 	padding: 12px 0;
+}
+
+.recent-sale-card:last-child {
+	border-bottom: 0;
 }
 
 .recent-sale-card.cancelled {
@@ -1200,7 +1211,7 @@ input[type="search"]::-webkit-search-decoration {
 	color: var(--base-black);
 	font-size: 15px;
 	font-weight: var(--font-weight-emphasis);
-	line-height: 1.2;
+	line-height: 1.15;
 	overflow-wrap: anywhere;
 }
 
@@ -1214,7 +1225,7 @@ input[type="search"]::-webkit-search-decoration {
 
 .recent-sale-side strong {
 	color: var(--base-black);
-	font-size: 16px;
+	font-size: 15px;
 	font-weight: var(--font-weight-emphasis);
 	font-variant-numeric: tabular-nums;
 	line-height: 1.15;
@@ -1225,7 +1236,7 @@ input[type="search"]::-webkit-search-decoration {
 	margin: 4px 0 0;
 	color: var(--text-muted);
 	font-size: 12px;
-	line-height: 1.25;
+	line-height: 1.2;
 }
 
 .recent-sale-discount-icon {
@@ -1239,12 +1250,12 @@ input[type="search"]::-webkit-search-decoration {
 	align-items: center;
 	justify-content: center;
 	gap: 6px;
-	min-height: 32px;
+	min-height: 28px;
 	border: 1px solid var(--line);
-	border-radius: 999px;
+	border-radius: 8px;
 	background: var(--base-white);
 	color: var(--base-black);
-	padding: 0 10px;
+	padding: 0 9px;
 	font-size: 12px;
 	font-weight: var(--font-weight-emphasis);
 	line-height: 1;
@@ -1261,9 +1272,9 @@ input[type="search"]::-webkit-search-decoration {
 	display: flex;
 	flex-direction: column;
 	gap: 10px;
-	border-radius: 10px;
-	background: #f7f9f6;
-	padding: 10px;
+	border-top: 1px solid var(--line);
+	background: #fbfbfa;
+	padding: 10px 0 0;
 }
 
 .recent-sale-cancel-actions {

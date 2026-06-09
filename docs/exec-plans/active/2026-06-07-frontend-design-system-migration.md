@@ -98,11 +98,11 @@ Status 2026-06-09: role contour complete. Финальный static cleanup не
 | Продукция на распределителе | internal drilldown from home summary | `DistributorInventoryHome` / commercial product detail variant | Replaces standalone bottom-nav `Остатки` for commercial manager. Full-screen detail with back navigation, ledger/table rhythm from director and production stock screens, discount affordance by permission, no separate bottom nav item. |
 | Продажа | action sets `sale` | `DistributorSaleHome` | Shared distributor sale flow. Не показывается в bottom nav, открывается с home action. Bring to the existing operational form standard after home. |
 | Курьеры | `couriers` | `CourierBalanceHome mode="all"` | Остается в bottom nav by owner decision. Uses director/stock ledger language and commercial permissions. |
-| История продаж | `sales-history` | `SalesHistoryHome`, `RecentSalesPanel` | Recent sales, cancellation affordance by permissions. Требует history/list cleanup separately from operation history. |
+| История продаж | `more` -> `sales-history` | `SalesHistoryHome`, `RecentSalesPanel` | Recent sales, cancellation affordance by permissions. Commercial entry moved into `Еще`; list migrated to compact ledger rhythm. |
 | Задачи производству | action/internal entry from home or `more` if needed | `NotificationsHome` | Commercial keeps create form by permission and uses the migrated task ledger standard from production notifications. |
 | Клиенты | `clients` | `ClientsHome` | Uses the already established clients management standard, without a fresh redesign. |
 | Каталог | `catalog` if allowed | `CatalogHome` | Permission-dependent management surface. |
-| Еще / аккаунт | `more` | future commercial more/account screen | Same Director/Production More model: account block, logout, future `Сменить пароль` as cross-role hardening. |
+| Еще / аккаунт | `more` | `CommercialMoreHome` | Same Director/Production More model: navigation (`История`), account block, logout, future `Сменить пароль` as cross-role hardening. |
 
 ### 5.6 Работник Распределителя
 
@@ -353,6 +353,7 @@ Owner-confirmed direction for commercial manager:
 6. **История продаж.**
    - Use the director history visual rhythm: compact heading, ledger rows, quiet meta, no decorative cards.
    - Commercial has less detail than director history, so do not add filters, drilldowns or analytics without existing data/API support.
+   - Status: implemented. `SalesHistoryHome` now uses a `sales-history-home` compact ledger surface, `RecentSalesPanel` renders rows with thin ledger separators instead of decorative cards, and commercial opens it from `Еще → История`.
 
 7. **Задачи производству.**
    - Reuse the production notification task ledger standard.
@@ -363,6 +364,7 @@ Owner-confirmed direction for commercial manager:
    - Replace the old profile/settings entry with `Еще`, following Director/Production More.
    - Account block, logout and future `Сменить пароль` stay cross-role consistent.
    - Secondary links should not duplicate bottom nav items. Since `Курьеры` stays in nav, `Еще` is account-focused unless a non-primary commercial entry needs a home.
+   - Status: implemented. Commercial bottom nav now uses `Главная`, `Клиенты`, `Курьеры`, `Еще`; `CommercialMoreHome` follows the shared Director/Production menu pattern with `Навигация → История`, account identity, disabled `Сменить пароль`, and logout.
 
 Stage checks:
 

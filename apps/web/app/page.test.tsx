@@ -1622,6 +1622,9 @@ describe("HomePage", () => {
 		expect(screen.queryByRole("button", { name: "Продажа" })).toBeNull();
 		expect(screen.queryByRole("button", { name: "Задачи" })).toBeNull();
 		expect(screen.queryByRole("button", { name: "Остатки" })).toBeNull();
+		expect(screen.queryByRole("button", { name: "История" })).toBeNull();
+		expect(screen.queryByRole("button", { name: "Профиль" })).toBeNull();
+		expect(screen.getByRole("button", { name: "Еще" })).toBeTruthy();
 		expect(screen.queryByText("Икра горбуши")).toBeNull();
 		expect(screen.queryByText("Распределитель Центральный")).toBeNull();
 
@@ -1673,7 +1676,7 @@ describe("HomePage", () => {
 		expect(await screen.findByText("Задача записана")).toBeTruthy();
 	});
 
-	it("lets a commercial manager cancel distributor sale from the History tab", async () => {
+	it("lets a commercial manager cancel distributor sale from More history", async () => {
 		let cancelled = false;
 		const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
 			const url = String(input);
@@ -1755,10 +1758,18 @@ describe("HomePage", () => {
 
 		render(<HomePage />);
 
-		fireEvent.click(await screen.findByRole("button", { name: "История" }));
+		fireEvent.click(await screen.findByRole("button", { name: "Еще" }));
+		expect(await screen.findByRole("heading", { name: "Еще" })).toBeTruthy();
+		expect(screen.getByText("Commercial Manager")).toBeTruthy();
+		expect(screen.getByText("Коммерческий руководитель · @commercial-manager")).toBeTruthy();
+		expect(screen.getByRole("button", { name: "Сменить пароль" })).toHaveProperty("disabled", true);
+		fireEvent.click(screen.getByRole("button", { name: "История" }));
+		expect(screen.getByRole("button", { name: "Еще" }).getAttribute("aria-current")).toBe("page");
 		expect(await screen.findByRole("heading", { name: "История продаж" })).toBeTruthy();
+		expect(document.querySelector(".sales-history-home")).toBeTruthy();
 		expect(screen.queryByRole("heading", { name: "Последние продажи" })).toBeNull();
 		expect(await screen.findByText("Икра горбуши")).toBeTruthy();
+		expect(document.querySelector(".recent-sales-list")).toBeTruthy();
 		fireEvent.click(screen.getByRole("button", { name: "Отменить" }));
 		fireEvent.change(await screen.findByLabelText("Причина отмены"), { target: { value: "Ошибка клиента" } });
 		fireEvent.click(screen.getByRole("button", { name: "Отменить продажу" }));

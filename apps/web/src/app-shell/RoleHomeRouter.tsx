@@ -17,6 +17,7 @@ import { SalesHistoryHome } from "../features/sales/SalesHistoryHome";
 import { ROLE_LABELS } from "../lib/role-labels";
 import type { CurrentActor } from "../lib/api-client";
 import { AdminHome } from "../roles/admin/AdminHome";
+import { CommercialMoreHome } from "../roles/commercial-manager/CommercialMoreHome";
 import { CommercialManagerHome } from "../roles/commercial-manager/CommercialManagerHome";
 import { CourierHome } from "../roles/courier/CourierHome";
 import { DirectorMoreHome } from "../roles/director/DirectorMoreHome";
@@ -57,6 +58,17 @@ export function RoleHomeRouter({
 	if (actor.role === "production_manager" && activeTab === "more") {
 		return (
 			<ProductionMoreHome
+				actor={actor}
+				logout={logout}
+				logoutPending={logoutPending}
+				onTabChange={onTabChange}
+			/>
+		);
+	}
+
+	if (actor.role === "commercial_manager" && activeTab === "more") {
+		return (
+			<CommercialMoreHome
 				actor={actor}
 				logout={logout}
 				logoutPending={logoutPending}

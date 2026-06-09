@@ -88,7 +88,7 @@ export function SalesHistoryHome({ actor, online }: SalesHistoryHomeProps) {
 	}
 
 	return (
-		<section className="screen-stack">
+		<section className="screen-stack sales-history-home">
 			<div className="section-heading compact">
 				<h2>История продаж</h2>
 				{recentSales.isFetching ? <span>Обновление</span> : null}
