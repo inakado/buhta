@@ -408,6 +408,7 @@ Owner-confirmed shape:
    - Keep the commercial sale form standard and only adjust worker-specific navigation or permission expectations if needed.
    - Do not redesign the form unless the audit finds worker-only regressions.
    - Commit after targeted tests and any necessary cleanup/docs update.
+   - Status: audited. Worker enters the already migrated shared `DistributorSaleHome` through the home `Продать` action; no worker-only visual, navigation or permission regressions found. Existing targeted web coverage verifies the worker sale entry and the shared distributor sale flow with client modal, product select, payment and submit behavior.
 
 4. **История продаж.**
    - Confirm the worker uses the already migrated `SalesHistoryHome` / `RecentSalesPanel` compact ledger.
