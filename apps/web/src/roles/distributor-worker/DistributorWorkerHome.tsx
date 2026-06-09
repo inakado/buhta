@@ -18,10 +18,11 @@ export function DistributorWorkerHome({
 			onSale={() => onTabChange("sale")}
 			saleDisabled={!online}
 			showCashBalance={showCashBalance}
+			showSummaryHeading={false}
 			summaryLayout="commercial"
-			summaryMeta="Распределитель"
-			summaryTitle="Сводка"
+			summaryVariant="horizontal"
 			stockSummaryLabel="Продукция"
+			stockValueLabel="Стоимость"
 			title="Распределитель"
 		/>
 	);

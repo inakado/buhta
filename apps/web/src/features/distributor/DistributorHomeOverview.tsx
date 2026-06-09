@@ -14,10 +14,13 @@ type DistributorHomeOverviewProps = {
 	saleDisabled?: boolean;
 	showCashBalance?: boolean;
 	showStockList?: boolean;
+	showSummaryHeading?: boolean;
 	summaryMeta?: string;
 	summaryTitle?: string;
+	summaryVariant?: "stacked" | "horizontal";
 	summaryLayout?: "default" | "commercial";
 	stockSummaryLabel: string;
+	stockValueLabel?: string;
 	title: string;
 };
 
@@ -29,10 +32,13 @@ export function DistributorHomeOverview({
 	saleDisabled = false,
 	showCashBalance = false,
 	showStockList = true,
+	showSummaryHeading = true,
 	summaryMeta = "Сводка",
 	summaryTitle = "Распределитель",
+	summaryVariant = "stacked",
 	summaryLayout = "default",
 	stockSummaryLabel,
+	stockValueLabel = "Стоимость продукции",
 	title,
 }: DistributorHomeOverviewProps) {
 	const inventory = useQuery({
@@ -59,12 +65,18 @@ export function DistributorHomeOverview({
 			</div>
 
 			{summaryLayout === "commercial" ? (
-				<section className="production-home-surface commercial-home-surface" aria-labelledby="commercial-home-summary">
-					<div className="production-home-heading">
-						<h2 id="commercial-home-summary">{summaryTitle}</h2>
-						<span>{summaryMeta}</span>
-					</div>
-					<div className="production-summary-ledger" aria-label="Сводка распределителя">
+				<section
+					aria-label={showSummaryHeading ? undefined : "Сводка распределителя"}
+					aria-labelledby={showSummaryHeading ? "commercial-home-summary" : undefined}
+					className={`production-home-surface commercial-home-surface summary-${summaryVariant}`}
+				>
+					{showSummaryHeading ? (
+						<div className="production-home-heading">
+							<h2 id="commercial-home-summary">{summaryTitle}</h2>
+							<span>{summaryMeta}</span>
+						</div>
+					) : null}
+					<div className={`production-summary-ledger summary-${summaryVariant}`} aria-label="Сводка распределителя">
 						<CommercialSummaryRow
 							icon={BadgeCheck}
 							label={stockSummaryLabel}
@@ -75,7 +87,7 @@ export function DistributorHomeOverview({
 						/>
 						<CommercialSummaryRow
 							icon={ClipboardList}
-							label="Стоимость продукции"
+							label={stockValueLabel}
 							loading={inventory.isLoading}
 							meta="По текущей цене"
 							value={formatCompactRubles(stockValueCents)}

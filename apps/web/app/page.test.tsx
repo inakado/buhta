@@ -1825,10 +1825,11 @@ describe("HomePage", () => {
 		render(<HomePage />);
 
 		expect(await screen.findByRole("heading", { name: "Распределитель" })).toBeTruthy();
-		expect(screen.getByRole("heading", { name: "Сводка" })).toBeTruthy();
+		expect(screen.queryByRole("heading", { name: "Сводка" })).toBeNull();
 		expect(screen.getAllByRole("heading", { name: "Распределитель" })).toHaveLength(1);
 		expect(screen.getAllByText("Продукция").length).toBeGreaterThan(0);
-		expect(screen.getByText("Стоимость продукции")).toBeTruthy();
+		expect(screen.getByText("Стоимость")).toBeTruthy();
+		expect(screen.queryByText("Стоимость продукции")).toBeNull();
 		expect(await screen.findByText("Наличные")).toBeTruthy();
 		expect(screen.queryByText("Товар")).toBeNull();
 		expect(screen.getByText("1 позиция")).toBeTruthy();
