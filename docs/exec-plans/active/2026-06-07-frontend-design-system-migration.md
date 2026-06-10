@@ -523,6 +523,7 @@ Implementation stages:
    - Make disabled submit reasons readable without adding extra data.
    - Update targeted tests, cleanup stale unload row styles and docs.
    - Commit after implementation.
+   - Status: implemented. Courier unload now uses separate `production-action-form` panels for destination, products, cash and totals; old `unload-row` / `operation-total` UI is gone while default full return, product/cash-only payloads, validation and query invalidation stay unchanged.
 
 5. **История продаж.**
    - Confirm courier still uses the migrated shared history and cancel modal.

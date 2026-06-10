@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, type ReactNode, useEffect, useMemo, useState } from "react";
 import { PackageCheck } from "lucide-react";
 import {
 	formatMoneyCents,
@@ -151,97 +151,134 @@ export function CourierUnloadHome({
 	}
 
 	return (
-		<section className="screen-stack">
+		<section className="screen-stack production-detail-screen">
 			<div className="section-heading compact">
 				<h2>Возврат</h2>
 			</div>
 
-			<form className="form-panel" onSubmit={handleSubmit}>
-				<div className="section-heading compact">
-					<h2>Куда вернуть</h2>
-				</div>
-				<div className="field">
-					<select
-						aria-label="Куда вернуть"
-						onChange={(event) => setSelectedDistributorId(event.target.value)}
-						value={selectedDistributorId}
-					>
-						<option value="">Выберите место</option>
-						{distributors.map((distributor) => (
-							<option key={distributor.distributorId} value={distributor.distributorId}>
-								{distributor.distributorName}
-							</option>
-						))}
-					</select>
-				</div>
-				{unloadOptions.isLoading ? <p className="muted">Загрузка баланса</p> : null}
-				{unloadOptions.isError ? <p className="form-error">{unloadOptions.error.message}</p> : null}
-				{!unloadOptions.isLoading && !unloadOptions.isError && distributors.length === 0 ? (
-					<p className="form-error">Нет активного места для возврата.</p>
-				) : null}
-
-				<div className="section-heading compact">
-					<h2>Товар</h2>
-					<span>{productItems.length} позиций</span>
-				</div>
-				{productItems.length > 0 ? (
-					<div className="unload-list">
-						{productItems.map((item) => (
-							<UnloadProductRow
-								item={item}
-								key={item.courierProductBalanceId}
-								onQuantityChange={handleQuantityChange}
-								value={quantityByBalanceId[item.courierProductBalanceId] ?? ""}
-							/>
-						))}
+			<form className="screen-stack courier-unload-form" onSubmit={handleSubmit}>
+				<div className="form-panel production-action-form">
+					<UnloadFormHeading title="Куда вернуть" meta={selectedDistributor?.distributorName} />
+					<div className="field">
+						<select
+							aria-label="Куда вернуть"
+							onChange={(event) => setSelectedDistributorId(event.target.value)}
+							value={selectedDistributorId}
+						>
+							<option value="">Выберите место</option>
+							{distributors.map((distributor) => (
+								<option key={distributor.distributorId} value={distributor.distributorId}>
+									{distributor.distributorName}
+								</option>
+							))}
+						</select>
 					</div>
-				) : (
-					<p className="muted">Товара у курьера нет.</p>
-				)}
-
-				<div className="section-heading compact">
-					<h2>Наличные</h2>
+					{unloadOptions.isLoading ? <p className="muted">Загрузка баланса</p> : null}
+					{unloadOptions.isError ? <p className="form-error">{unloadOptions.error.message}</p> : null}
+					{!unloadOptions.isLoading && !unloadOptions.isError && distributors.length === 0 ? (
+						<p className="form-error">Нет активного места для возврата.</p>
+					) : null}
 				</div>
-				<label className="field">
-					<span>Сумма, ₽</span>
-					<input
-						inputMode="decimal"
-						min="0"
-						onChange={(event) => setCashRubles(event.target.value)}
-						type="number"
-						value={cashRubles}
-					/>
-				</label>
-				<p className="muted">Доступно: {formatRubles(cashAvailableCents)}</p>
-				<label className="field">
-					<span>Комментарий</span>
-					<textarea onChange={(event) => setComment(event.target.value)} rows={2} value={comment} />
-				</label>
 
-				<div className="operation-total">
-					<div>
-						<span>Итого</span>
-						<strong>{formatRubles(totalStockValueCents + (cashAmountCents ?? 0))}</strong>
-					</div>
-					<p>
-						{selectedDistributor?.distributorName ?? "Место не выбрано"}
-						{" · "}
-						{parsedItems.length} позиций
-						{" · "}
-						{totalUnits} шт
-						{" · "}
-						{formatRubles(cashAmountCents ?? 0)} наличными
-					</p>
+				<div className="form-panel production-action-form">
+					<UnloadFormHeading title="Товар" meta={formatPositionCount(productItems.length)} />
+					{productItems.length > 0 ? (
+						<div className="courier-unload-product-list">
+							<div className="courier-unload-product-head" aria-hidden>
+								<span>Наименование</span>
+								<span>Вернуть</span>
+							</div>
+							{productItems.map((item) => (
+								<UnloadProductRow
+									item={item}
+									key={item.courierProductBalanceId}
+									onQuantityChange={handleQuantityChange}
+									value={quantityByBalanceId[item.courierProductBalanceId] ?? ""}
+								/>
+							))}
+						</div>
+					) : (
+						<p className="muted">Товара у курьера нет.</p>
+					)}
 				</div>
-				{localError ? <p className="form-error">{localError}</p> : null}
-				{unloadMutation.isError ? <p className="form-error">{unloadMutation.error.message}</p> : null}
-				{submitBlockReason ? <p className="muted">{submitBlockReason}</p> : null}
-				<button className="primary-button" disabled={submitDisabled} type="submit">
-					<PackageCheck aria-hidden size={18} />
-					Записать
-				</button>
+
+				<div className="form-panel production-action-form">
+					<UnloadFormHeading title="Наличные" meta={formatRubles(cashAvailableCents)} />
+					<label className="field">
+						<span>Сумма, ₽</span>
+						<input
+							inputMode="decimal"
+							min="0"
+							onChange={(event) => setCashRubles(event.target.value)}
+							type="number"
+							value={cashRubles}
+						/>
+					</label>
+					<UnloadInfoLedger>
+						<UnloadInfoRow label="Доступно" value={formatRubles(cashAvailableCents)} />
+					</UnloadInfoLedger>
+					<label className="field">
+						<span>Комментарий</span>
+						<textarea onChange={(event) => setComment(event.target.value)} rows={2} value={comment} />
+					</label>
+				</div>
+
+				<div className="form-panel production-action-form">
+					<UnloadFormHeading title="Итого" meta={selectedDistributor?.distributorName} />
+					<UnloadInfoLedger>
+						<UnloadInfoRow label="Место" value={selectedDistributor?.distributorName ?? "Не выбрано"} />
+						<UnloadInfoRow label="Товар" value={`${formatPositionCount(parsedItems.length)} · ${totalUnits} шт`} />
+						<UnloadInfoRow label="Наличные" value={formatRubles(cashAmountCents ?? 0)} />
+						<UnloadInfoRow label="Итого" value={formatRubles(totalStockValueCents + (cashAmountCents ?? 0))} />
+					</UnloadInfoLedger>
+					{localError ? <p className="form-error">{localError}</p> : null}
+					{unloadMutation.isError ? <p className="form-error">{unloadMutation.error.message}</p> : null}
+					<UnloadSubmitBlock blockReason={submitBlockReason}>
+						<button className="primary-button" disabled={submitDisabled} type="submit">
+							<PackageCheck aria-hidden size={18} />
+							Записать
+						</button>
+					</UnloadSubmitBlock>
+				</div>
 			</form>
 		</section>
+	);
+}
+
+function UnloadFormHeading({ meta, title }: { meta?: string | undefined; title: string }) {
+	return (
+		<div className="production-form-heading">
+			<h2>{title}</h2>
+			{meta ? <span>{meta}</span> : null}
+		</div>
+	);
+}
+
+function UnloadInfoLedger({ children }: { children: ReactNode }) {
+	return <div className="production-form-ledger">{children}</div>;
+}
+
+function UnloadInfoRow({ label, value }: { label: string; value: string }) {
+	return (
+		<div className="production-form-ledger-row">
+			<span>{label}</span>
+			<strong>{value}</strong>
+		</div>
+	);
+}
+
+function UnloadSubmitBlock({
+	blockReason,
+	children,
+}: {
+	blockReason: string;
+	children: ReactNode;
+}) {
+	return (
+		<div className="production-submit-block">
+			{blockReason ? <p className="production-submit-reason">{blockReason}</p> : null}
+			{children}
+		</div>
 	);
 }
 
@@ -255,12 +292,12 @@ function UnloadProductRow({
 	value: string;
 }) {
 	return (
-		<div className="unload-row">
+		<div className="courier-unload-product-row">
 			<div>
 				<strong>{item.productName}</strong>
 				<span>{item.availableQuantity} шт · {formatRubles(item.unitPriceCents)}/шт</span>
 			</div>
-			<label>
+			<label className="courier-unload-quantity">
 				<span>Вернуть</span>
 				<input
 					inputMode="numeric"
@@ -292,6 +329,20 @@ function parseCashAmountCents(value: string): number | null {
 
 function formatRubles(priceCents: number): string {
 	return formatCompactRubles(priceCents);
+}
+
+function formatPositionCount(count: number): string {
+	const lastTwoDigits = Math.abs(count) % 100;
+	const lastDigit = Math.abs(count) % 10;
+	const word = lastTwoDigits >= 11 && lastTwoDigits <= 14
+		? "позиций"
+		: lastDigit === 1
+			? "позиция"
+			: lastDigit >= 2 && lastDigit <= 4
+				? "позиции"
+				: "позиций";
+
+	return `${count} ${word}`;
 }
 
 function getSubmitBlockReason({

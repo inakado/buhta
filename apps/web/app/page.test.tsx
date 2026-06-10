@@ -2147,6 +2147,13 @@ describe("HomePage", () => {
 		fireEvent.click(await screen.findByRole("button", { name: "Вернуть" }));
 		expect(await screen.findByRole("heading", { name: "Возврат" })).toBeTruthy();
 		expect((await screen.findByLabelText("Куда вернуть") as HTMLSelectElement).value).toBe("dist1");
+		expect(screen.getByRole("heading", { name: "Товар" })).toBeTruthy();
+		expect(screen.getByText("Наименование")).toBeTruthy();
+		expect(screen.getByRole("heading", { name: "Наличные" })).toBeTruthy();
+		expect(screen.getByRole("heading", { name: "Итого" })).toBeTruthy();
+		expect(screen.getByText("Место")).toBeTruthy();
+		expect(document.querySelector(".operation-total")).toBeNull();
+		expect(document.querySelector(".unload-list")).toBeNull();
 		expect((screen.getByLabelText("Сумма, ₽") as HTMLInputElement).value).toBe("700.00");
 		fireEvent.change(screen.getByLabelText("Сумма, ₽"), { target: { value: "0" } });
 		expect((screen.getByRole("button", { name: "Записать" }) as HTMLButtonElement).disabled).toBe(false);
