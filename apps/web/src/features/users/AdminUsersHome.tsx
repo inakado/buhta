@@ -1,5 +1,6 @@
 "use client";
 
+import * as Dialog from "@radix-ui/react-dialog";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Copy, KeyRound, Plus, RotateCcw, X } from "lucide-react";
 import { FormEvent, useState } from "react";
@@ -7,17 +8,27 @@ import { ROLES, type Role, type UserSummary } from "@buhta/shared";
 import { createUser, listUsers, resetUserPassword, updateUserRole, type CurrentActor } from "../../lib/api-client";
 import { ROLE_LABELS } from "../../lib/role-labels";
 
-export function AdminUsersHome({ actor }: { actor: CurrentActor }) {
+export function AdminUsersHome({ actor, online }: { actor: CurrentActor; online: boolean }) {
+	const queryClient = useQueryClient();
 	const [createOpen, setCreateOpen] = useState(false);
+	const [resetTarget, setResetTarget] = useState<UserSummary | null>(null);
 	const [temporaryPassword, setTemporaryPassword] = useState<string | null>(null);
 	const users = useQuery({
 		queryKey: ["users"],
 		queryFn: listUsers,
 	});
 	const visibleUsers = users.data?.users.filter((user) => user.id !== actor.userId) ?? [];
+	const resetPassword = useMutation({
+		mutationFn: (user: UserSummary) => resetUserPassword(user.id),
+		onSuccess: async (data) => {
+			setResetTarget(null);
+			setTemporaryPassword(data.temporaryPassword);
+			await queryClient.invalidateQueries({ queryKey: ["users"] });
+		},
+	});
 
 	return (
-		<section className="screen-stack admin-users-home">
+		<section className="screen-stack admin-users-home management-surface">
 			<div className="section-heading admin-users-heading">
 				<div>
 					<h2>Пользователи</h2>
@@ -25,20 +36,22 @@ export function AdminUsersHome({ actor }: { actor: CurrentActor }) {
 				</div>
 				<button
 					className="secondary-button compact-button admin-create-button"
-					onClick={() => setCreateOpen((current) => !current)}
+					disabled={!online}
+					onClick={() => setCreateOpen(true)}
+					title={online ? undefined : "Нет сети: создание недоступно"}
 					type="button"
 				>
-					{createOpen ? <X aria-hidden size={16} /> : <Plus aria-hidden size={16} />}
-					{createOpen ? "Закрыть" : "Новый"}
+					<Plus aria-hidden size={16} />
+					Новый
 				</button>
 			</div>
 
-			{createOpen ? (
-				<CreateUserPanel
-					onCreated={() => setCreateOpen(false)}
-					onTemporaryPassword={setTemporaryPassword}
-				/>
-			) : null}
+			<CreateUserDialog
+				onOpenChange={setCreateOpen}
+				onTemporaryPassword={setTemporaryPassword}
+				online={online}
+				open={createOpen}
+			/>
 
 			{temporaryPassword ? (
 				<TemporaryPasswordNotice
@@ -49,20 +62,43 @@ export function AdminUsersHome({ actor }: { actor: CurrentActor }) {
 
 			<UserAccessList
 				loading={users.isLoading}
-				onTemporaryPassword={setTemporaryPassword}
+				onResetPassword={setResetTarget}
+				online={online}
 				users={visibleUsers}
 				error={users.isError ? users.error.message : ""}
+			/>
+
+			<ResetPasswordDialog
+				error={resetPassword.isError ? resetPassword.error.message : null}
+				onConfirm={() => {
+					if (resetTarget) {
+						resetPassword.mutate(resetTarget);
+					}
+				}}
+				onOpenChange={(open) => {
+					if (!open) {
+						setResetTarget(null);
+						resetPassword.reset();
+					}
+				}}
+				online={online}
+				pending={resetPassword.isPending}
+				user={resetTarget}
 			/>
 		</section>
 	);
 }
 
-function CreateUserPanel({
-	onCreated,
+function CreateUserDialog({
+	onOpenChange,
 	onTemporaryPassword,
+	online,
+	open,
 }: {
-	onCreated: () => void;
+	onOpenChange: (open: boolean) => void;
 	onTemporaryPassword: (password: string) => void;
+	online: boolean;
+	open: boolean;
 }) {
 	const queryClient = useQueryClient();
 	const [name, setName] = useState("");
@@ -75,7 +111,7 @@ function CreateUserPanel({
 			setName("");
 			setLogin("");
 			setRole("courier");
-			onCreated();
+			onOpenChange(false);
 			await queryClient.invalidateQueries({ queryKey: ["users"] });
 		},
 	});
@@ -89,40 +125,71 @@ function CreateUserPanel({
 		});
 	}
 
+	function resetForm() {
+		setName("");
+		setLogin("");
+		setRole("courier");
+	}
+
 	return (
-		<form className="form-panel admin-create-panel" onSubmit={handleSubmit}>
-			<div className="section-heading compact">
-				<h2>Новый сотрудник</h2>
-			</div>
-			<label className="field">
-				<span>Имя</span>
-				<input onChange={(event) => setName(event.target.value)} required type="text" value={name} />
-			</label>
-			<label className="field">
-				<span>Логин</span>
-				<input
-					onChange={(event) => setLogin(event.target.value)}
-					placeholder="можно оставить пустым"
-					type="text"
-					value={login}
-				/>
-			</label>
-			<label className="field">
-				<span>Роль</span>
-				<select onChange={(event) => setRole(event.target.value as Role)} value={role}>
-					{ROLES.map((roleValue) => (
-						<option key={roleValue} value={roleValue}>
-							{ROLE_LABELS[roleValue]}
-						</option>
-					))}
-				</select>
-			</label>
-			{mutation.isError ? <p className="form-error">{mutation.error.message}</p> : null}
-			<button className="primary-button" disabled={mutation.isPending} type="submit">
-				<Plus aria-hidden size={18} />
-				Создать
-			</button>
-		</form>
+		<Dialog.Root
+			open={open}
+			onOpenChange={(nextOpen) => {
+				onOpenChange(nextOpen);
+				if (!nextOpen) {
+					mutation.reset();
+					resetForm();
+				}
+			}}
+		>
+			<Dialog.Portal>
+				<Dialog.Overlay className="operation-dialog-overlay" />
+				<Dialog.Content aria-describedby={undefined} className="operation-dialog admin-user-dialog">
+					<div className="operation-dialog-heading">
+						<Dialog.Title>Новый сотрудник</Dialog.Title>
+						<Dialog.Close aria-label="Закрыть" className="icon-button" type="button">
+							<X aria-hidden size={18} />
+						</Dialog.Close>
+					</div>
+					<form className="operation-dialog-form" onSubmit={handleSubmit}>
+						<label className="field">
+							<span>Имя</span>
+							<input onChange={(event) => setName(event.target.value)} required type="text" value={name} />
+						</label>
+						<label className="field">
+							<span>Логин</span>
+							<input
+								onChange={(event) => setLogin(event.target.value)}
+								placeholder="можно оставить пустым"
+								type="text"
+								value={login}
+							/>
+						</label>
+						<label className="field">
+							<span>Роль</span>
+							<select onChange={(event) => setRole(event.target.value as Role)} value={role}>
+								{ROLES.map((roleValue) => (
+									<option key={roleValue} value={roleValue}>
+										{ROLE_LABELS[roleValue]}
+									</option>
+								))}
+							</select>
+						</label>
+						{!online ? <p className="muted">Нет сети: создание недоступно.</p> : null}
+						{mutation.isError ? <p className="form-error">{mutation.error.message}</p> : null}
+						<div className="form-actions">
+							<Dialog.Close className="secondary-button" disabled={mutation.isPending} type="button">
+								Отмена
+							</Dialog.Close>
+							<button className="primary-button" disabled={!online || mutation.isPending} type="submit">
+								<Plus aria-hidden size={18} />
+								Создать
+							</button>
+						</div>
+					</form>
+				</Dialog.Content>
+			</Dialog.Portal>
+		</Dialog.Root>
 	);
 }
 
@@ -166,12 +233,14 @@ function TemporaryPasswordNotice({
 function UserAccessList({
 	error,
 	loading,
-	onTemporaryPassword,
+	onResetPassword,
+	online,
 	users,
 }: {
 	error: string;
 	loading: boolean;
-	onTemporaryPassword: (password: string) => void;
+	onResetPassword: (user: UserSummary) => void;
+	online: boolean;
 	users: UserSummary[];
 }) {
 	if (loading) {
@@ -195,7 +264,8 @@ function UserAccessList({
 			{users.map((user) => (
 				<UserAccessRow
 					key={user.id}
-					onTemporaryPassword={onTemporaryPassword}
+					onResetPassword={onResetPassword}
+					online={online}
 					user={user}
 				/>
 			))}
@@ -205,24 +275,17 @@ function UserAccessList({
 
 function UserAccessRow({
 	user,
-	onTemporaryPassword,
+	onResetPassword,
+	online,
 }: {
 	user: UserSummary;
-	onTemporaryPassword: (password: string) => void;
+	onResetPassword: (user: UserSummary) => void;
+	online: boolean;
 }) {
 	const queryClient = useQueryClient();
-	const [confirmReset, setConfirmReset] = useState(false);
 	const updateRole = useMutation({
 		mutationFn: (role: Role) => updateUserRole(user.id, role),
 		onSuccess: async () => {
-			await queryClient.invalidateQueries({ queryKey: ["users"] });
-		},
-	});
-	const resetPassword = useMutation({
-		mutationFn: () => resetUserPassword(user.id),
-		onSuccess: async (data) => {
-			setConfirmReset(false);
-			onTemporaryPassword(data.temporaryPassword);
 			await queryClient.invalidateQueries({ queryKey: ["users"] });
 		},
 	});
@@ -236,7 +299,7 @@ function UserAccessRow({
 			<div className="admin-user-controls">
 				<select
 					aria-label={`Роль ${user.name}`}
-					disabled={updateRole.isPending}
+					disabled={!online || updateRole.isPending}
 					onChange={(event) => updateRole.mutate(event.target.value as Role)}
 					value={user.role}
 				>
@@ -249,27 +312,65 @@ function UserAccessRow({
 				<button
 					aria-label={`Сбросить пароль ${user.name}`}
 					className="secondary-icon-button"
-					disabled={resetPassword.isPending}
-					onClick={() => setConfirmReset((current) => !current)}
-					title="Сбросить пароль"
+					disabled={!online}
+					onClick={() => onResetPassword(user)}
+					title={online ? "Сбросить пароль" : "Нет сети: сброс недоступен"}
 					type="button"
 				>
 					<RotateCcw aria-hidden size={18} />
 				</button>
 			</div>
-			{confirmReset ? (
-				<div className="admin-reset-confirm">
-					<span>Сбросить пароль?</span>
-					<button
-						className="secondary-button compact-button"
-						disabled={resetPassword.isPending}
-						onClick={() => resetPassword.mutate()}
-						type="button"
-					>
-						Подтвердить
-					</button>
-				</div>
-			) : null}
+			{updateRole.isError ? <p className="form-error admin-row-error">{updateRole.error.message}</p> : null}
 		</div>
+	);
+}
+
+function ResetPasswordDialog({
+	error,
+	onConfirm,
+	onOpenChange,
+	online,
+	pending,
+	user,
+}: {
+	error: string | null;
+	onConfirm: () => void;
+	onOpenChange: (open: boolean) => void;
+	online: boolean;
+	pending: boolean;
+	user: UserSummary | null;
+}) {
+	return (
+		<Dialog.Root open={Boolean(user)} onOpenChange={onOpenChange}>
+			<Dialog.Portal>
+				<Dialog.Overlay className="operation-dialog-overlay" />
+				<Dialog.Content className="operation-dialog admin-user-dialog">
+					<div className="operation-dialog-heading">
+						<div>
+							<Dialog.Title>Сбросить пароль</Dialog.Title>
+							{user ? (
+								<Dialog.Description>
+									{user.name} · @{user.login}
+								</Dialog.Description>
+							) : null}
+						</div>
+						<Dialog.Close aria-label="Закрыть" className="icon-button" type="button">
+							<X aria-hidden size={18} />
+						</Dialog.Close>
+					</div>
+					{!online ? <p className="muted">Нет сети: сброс недоступен.</p> : null}
+					{error ? <p className="form-error">{error}</p> : null}
+					<div className="form-actions">
+						<Dialog.Close className="secondary-button" disabled={pending} type="button">
+							Отмена
+						</Dialog.Close>
+						<button className="primary-button" disabled={!online || pending || !user} onClick={onConfirm} type="button">
+							<RotateCcw aria-hidden size={18} />
+							Сбросить
+						</button>
+					</div>
+				</Dialog.Content>
+			</Dialog.Portal>
+		</Dialog.Root>
 	);
 }

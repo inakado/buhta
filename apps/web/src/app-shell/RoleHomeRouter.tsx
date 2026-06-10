@@ -168,7 +168,7 @@ export function RoleHomeRouter({
 			return <PlaceholderScreen title="История" text="Раздел недоступен для текущей роли." icon={Settings} />;
 		}
 
-		return <AdminHome actor={actor} />;
+		return <AdminHome actor={actor} online={online} />;
 	}
 
 	if (

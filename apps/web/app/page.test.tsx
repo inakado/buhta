@@ -581,6 +581,7 @@ describe("HomePage", () => {
 		expect(await screen.findByText("Courier Browser")).toBeTruthy();
 
 		fireEvent.click(screen.getByRole("button", { name: "Новый" }));
+		expect(await screen.findByRole("dialog")).toBeTruthy();
 		fireEvent.change(await screen.findByLabelText("Имя"), { target: { value: "Новый сотрудник" } });
 		fireEvent.change(screen.getByLabelText("Логин"), { target: { value: "new-user" } });
 		fireEvent.click(screen.getByRole("button", { name: "Создать" }));
@@ -597,7 +598,8 @@ describe("HomePage", () => {
 		});
 
 		fireEvent.click(screen.getByRole("button", { name: "Сбросить пароль Courier Browser" }));
-		fireEvent.click(screen.getByRole("button", { name: "Подтвердить" }));
+		expect(await screen.findByRole("dialog")).toBeTruthy();
+		fireEvent.click(screen.getByRole("button", { name: "Сбросить" }));
 
 		expect(await screen.findByText("Reset123!")).toBeTruthy();
 		await waitFor(() => {

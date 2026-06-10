@@ -64,11 +64,49 @@
 
 | Экран | Entry point | Компоненты | Варианты и особенности |
 | --- | --- | --- | --- |
-| Пользователи | `people` | `AdminHome`, `AdminUsersHome` | User list, create user, role select, reset password confirm, access list. Требует management surface cleanup и будущего стандарта admin rows. |
-| Каталог | `catalog` при `catalog.manage` | `CatalogHome` | Shared with director. Мигрировать один раз как общий справочник. |
-| Клиенты | `clients` при `client.read` | `ClientsHome` | Shared with director/commercial contexts. |
-| История операций | `operation-history` | `OperationHistoryHome` | Shared with director, но role context admin. |
-| Настройки | `settings` | `SettingsScreen` | Общий profile/settings pattern. |
+| Пользователи | `people` | `AdminHome`, `AdminUsersHome` | Единственный уникальный admin screen. Смысл: увидеть сотрудников, создать сотрудника, сменить роль, сбросить пароль. Нужна миграция к management ledger/dialog standard: create user в modal dialog, reset password в confirm dialog, compact rows, mobile 390+ без сжатия role select/actions. |
+| Каталог | `catalog` при `catalog.manage` | `CatalogHome` | Shared with director. Уже мигрирован как compact management surface; admin stage должен только проверить роль/permission context и не делать отдельный дизайн. |
+| Клиенты | `clients` при `client.read` | `ClientsHome` | Shared with director/commercial/distributor contexts. Уже мигрирован к clients management standard; admin stage должен оставить общий экран без fork. |
+| История операций | `operation-history` | `OperationHistoryHome` | Shared with director. Уже мигрирован: filters dialog, readable details, no raw JSON/technical ids. Для admin нужен только smoke/тестовый контроль входа через nav. |
+| Еще / аккаунт | `more` | future `AdminMoreHome`, shared account/logout vocabulary | Заменить старую нижнюю вкладку `Настройки` и `SettingsScreen` на established `Еще` pattern: account block, logout row, future `Сменить пароль` как cross-role hardening. |
+
+Impeccable audit 2026-06-10:
+
+| Dimension | Score | Finding |
+| --- | --- | --- |
+| Accessibility | 3/4 | Form labels and button names mostly present, but inline reset confirmation and settings/logout pattern are weaker than the migrated dialog/account vocabulary. |
+| Performance | 4/4 | Users screen is query/form based, no heavy assets or layout effects. |
+| Theming | 3/4 | Pre-stage finding: mostly tokenized, but `settings-panel`, old inline create panel and admin-only row classes carried local surface decisions. |
+| Responsive Design | 2/4 | Current two-column access rows, role select and inline reset confirmation are vulnerable on 390px widths and long names/logins. |
+| Anti-Patterns | 2/4 | No decorative hero/cards, but inline form reveal, inline confirm panel and old settings card break the new management/dialog rhythm. |
+| Total | 14/20 | Good enough functionally, but admin remains the last visible role not fully migrated to the new design system. |
+
+Impeccable shape:
+
+- Админский contour is management UI, not operational dashboard. It should feel closer to `Каталог` and `Клиенты`: white ledger panels, compact headings, thin dividers, restrained radii, no summary cards and no fake metrics.
+- Unique admin work is `Пользователи`. The user must quickly answer: who has access, what role they have, and what account action is needed.
+- Create user should not consume the list surface. Use the already established modal dialog pattern from catalog/client/new-client flows. Keep only existing data: name, optional login, role, temporary password.
+- Reset password is a destructive/account action, so use a confirm dialog rather than expanding a second panel inside the row. The temporary password notice stays short, copyable and dismissible.
+- Role changes stay visible in the row, but the implementation must handle long role names and narrow width. If a confirmation is added later, it must be a behavior change backed by tests, not just visual polish.
+- `Каталог`, `Клиенты` and `История` are already redesigned shared surfaces. Admin must reuse them instead of introducing admin-specific copies.
+- Image mock: not required by default. The visual lane is already fixed by existing management surfaces. Optional mock only if the owner wants to choose between row/action layouts for `Пользователи` before implementation.
+
+Admin implementation order:
+
+1. **Пользователи.**
+   - Migrate `AdminUsersHome` to the management ledger/dialog standard.
+   - Move create user into `operation-dialog` style modal over the users list.
+   - Move reset password confirmation into modal dialog; preserve temporary password notice and copy action.
+   - Preserve existing backend contracts and user data; do not invent permissions matrix or extra admin analytics.
+   - Rewrite targeted admin users tests and remove stale admin-only CSS/classes after usages are gone.
+   - Commit after this stage.
+   - Status 2026-06-10: complete. `AdminUsersHome` now uses modal create/reset flows, white management access list, temporary password notice and offline blocks for create, role change and reset password. Removed stale inline create/reset CSS hooks.
+2. **Shared screens, navigation and account.**
+   - Keep `CatalogHome`, `ClientsHome` and `OperationHistoryHome` shared; only update tests/docs if admin navigation or labels change.
+   - Replace admin bottom nav `Настройки` with `Еще`.
+   - Add admin account surface using the same More/account vocabulary as Director, Production, Commercial, Distributor Worker and Courier.
+   - Remove or shrink `SettingsScreen`/settings CSS only after no role route still uses it.
+   - Run focused tests plus docs check, update documentation, then commit.
 
 ### 5.4 Заведующий Производством
 
@@ -132,8 +170,8 @@ Status 2026-06-09: role contour complete. Финальный static cleanup не
 Эти компоненты повторяются между ролями и должны мигрировать осторожно, через variant matrix, чтобы не сломать чужой контекст:
 
 - `DistributorInventoryHome`: standalone vs embedded, heading vs hideHeading, cash balance, cash withdrawal, discount assignment, director/commercial/production contexts.
-- `CourierBalanceHome`: own vs all couriers, standalone vs embedded, cash panel, grouped courier cards, product tables.
-- `DistributorHomeOverview`: distributor worker home and commercial manager home, different summary layout, optional cash, optional production notify, optional stock list.
+- `CourierBalanceHome`: read-only all-couriers ledger for Director and Commercial; own courier stock is owned by `CourierHomeOverview` / `CourierStockList`.
+- `DistributorHomeOverview`: distributor worker home and commercial manager home, shared ledger/command rendering path, optional cash, optional production notify, optional stock list.
 - `SalesHistoryHome` and `RecentSalesPanel`: shared sales history and cancellation flow for distributor/courier/commercial contexts.
 - `OperationHistoryHome`: director/admin history, filters, pagination, modal details.
 - `CatalogHome`, `ClientsHome`, `AdminUsersHome`: management surfaces with lists, forms, actions, dialogs and confirmations.
@@ -581,7 +619,7 @@ Implementation stages:
 - Мигрировать `AdminUsersHome`, remaining shared `CatalogHome`, `ClientsHome`, `NotificationsHome` states.
 - Для long lists проверить bottom spacing and row density.
 - Не делать строки карточками, если они read-only and non-drilldown.
-- Status 2026-06-10: complete for Director, Production, Commercial, Distributor Worker and Courier surfaces. Admin remains the explicit not-yet-migrated role.
+- Status 2026-06-10: complete for Director, Production, Commercial, Distributor Worker and Courier surfaces. Admin users are migrated; admin `Еще`/account and shared-route cleanup remain in section 5.3.
 
 ### Stage 12. Documentation And CSS Cleanup
 
@@ -589,7 +627,7 @@ Implementation stages:
 - Удалять старые selectors только после того, как не осталось usages.
 - Запретить новые локальные tokens без причины: radius, font size, shadow, gradient, card treatment.
 - Финально пройти `globals.css` на legacy classes, duplicates and dead design rules.
-- Status 2026-06-10: main-role cleanup complete. Removed unreachable compact-balance, action grid, action-card, flat balance row and inline nested form CSS/code paths; docs now describe command actions, ledger summaries and the simplified read-only courier balance split.
+- Status 2026-06-10: main-role cleanup complete. Removed unreachable compact-balance, action grid, action-card, flat balance row and inline nested form CSS/code paths; docs now describe command actions, ledger summaries and the simplified read-only courier balance split. Final cleanup still needs the admin users/settings pass.
 
 ## 9. Implementation Protocol Для Каждого Stage
 
