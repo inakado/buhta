@@ -480,6 +480,22 @@ button:disabled {
 	line-height: 1.2;
 }
 
+.courier-home-surface .production-summary-ledger.summary-horizontal {
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.courier-home-surface .production-summary-row {
+	cursor: default;
+}
+
+.courier-home-surface .production-summary-row:hover {
+	background: transparent;
+}
+
+.courier-command-panel .production-command-group:first-child .production-command-button {
+	min-height: 46px;
+}
+
 @media (max-width: 390px) {
 	.production-home-heading {
 		padding: 11px;
@@ -3652,45 +3668,57 @@ input[type="search"]::-webkit-search-decoration {
 	color: var(--text-muted);
 }
 
-.distributor-worker-stock-surface {
+.distributor-worker-stock-surface,
+.courier-home-stock-surface {
 	overflow: hidden;
 	border: 1px solid var(--line);
 	border-radius: 12px;
 	background: var(--base-white);
 }
 
-.distributor-worker-stock-surface .inventory-table-list {
+.distributor-worker-stock-surface .inventory-table-list,
+.courier-home-stock-surface .inventory-table-list {
 	margin-inline: 0;
 }
 
 .distributor-worker-stock-surface .inventory-table-head,
-.distributor-worker-stock-surface .inventory-table-row {
+.distributor-worker-stock-surface .inventory-table-row,
+.courier-home-stock-surface .inventory-table-head,
+.courier-home-stock-surface .inventory-table-row {
 	padding-inline: 12px;
 }
 
-.distributor-worker-stock-surface .inventory-table-head {
+.distributor-worker-stock-surface .inventory-table-head,
+.courier-home-stock-surface .inventory-table-head {
 	min-height: 34px;
 	padding-block: 8px;
 }
 
-.distributor-worker-stock-surface .inventory-table-row {
+.distributor-worker-stock-surface .inventory-table-row,
+.courier-home-stock-surface .inventory-table-row {
 	min-height: 58px;
 	padding-block: 8px;
 }
 
-.distributor-worker-stock-surface .inventory-table-row:last-child {
+.distributor-worker-stock-surface .inventory-table-row:last-child,
+.courier-home-stock-surface .inventory-table-row:last-child {
 	border-bottom: 0;
 }
 
 .distributor-worker-stock-surface .inventory-table-product strong,
 .distributor-worker-stock-surface .inventory-table-quantity strong,
-.distributor-worker-stock-surface .inventory-table-total strong {
+.distributor-worker-stock-surface .inventory-table-total strong,
+.courier-home-stock-surface .inventory-table-product strong,
+.courier-home-stock-surface .inventory-table-quantity strong,
+.courier-home-stock-surface .inventory-table-total strong {
 	font-size: 13px;
 	line-height: 1.12;
 }
 
 .distributor-worker-stock-surface .inventory-table-product span,
-.distributor-worker-stock-surface .inventory-table-quantity span {
+.distributor-worker-stock-surface .inventory-table-quantity span,
+.courier-home-stock-surface .inventory-table-product span,
+.courier-home-stock-surface .inventory-table-quantity span {
 	margin-top: 3px;
 	font-size: 10px;
 	line-height: 1.12;
@@ -5103,14 +5131,16 @@ input[type="search"]::-webkit-search-decoration {
 		justify-content: flex-start;
 	}
 
-	.distributor-worker-stock-surface .inventory-table-head {
+	.distributor-worker-stock-surface .inventory-table-head,
+	.courier-home-stock-surface .inventory-table-head {
 		display: grid;
 		grid-template-columns: minmax(0, 1fr) minmax(58px, .48fr) minmax(64px, .52fr);
 		column-gap: 8px;
 		padding: 7px 10px;
 	}
 
-	.distributor-worker-stock-surface .inventory-table-row {
+	.distributor-worker-stock-surface .inventory-table-row,
+	.courier-home-stock-surface .inventory-table-row {
 		display: grid;
 		grid-template-areas: none;
 		grid-template-columns: minmax(0, 1fr) minmax(58px, .48fr) minmax(64px, .52fr);
@@ -5122,18 +5152,25 @@ input[type="search"]::-webkit-search-decoration {
 
 	.distributor-worker-stock-surface .inventory-table-product,
 	.distributor-worker-stock-surface .inventory-table-quantity,
-	.distributor-worker-stock-surface .inventory-table-total {
+	.distributor-worker-stock-surface .inventory-table-total,
+	.courier-home-stock-surface .inventory-table-product,
+	.courier-home-stock-surface .inventory-table-quantity,
+	.courier-home-stock-surface .inventory-table-total {
 		grid-area: auto;
 	}
 
 	.distributor-worker-stock-surface .inventory-table-quantity,
-	.distributor-worker-stock-surface .inventory-table-total {
+	.distributor-worker-stock-surface .inventory-table-total,
+	.courier-home-stock-surface .inventory-table-quantity,
+	.courier-home-stock-surface .inventory-table-total {
 		min-width: 0;
 		text-align: right;
 	}
 
 	.distributor-worker-stock-surface .inventory-table-quantity .inventory-price-line,
-	.distributor-worker-stock-surface .inventory-table-quantity .inventory-price-before {
+	.distributor-worker-stock-surface .inventory-table-quantity .inventory-price-before,
+	.courier-home-stock-surface .inventory-table-quantity .inventory-price-line,
+	.courier-home-stock-surface .inventory-table-quantity .inventory-price-before {
 		justify-content: flex-end;
 	}
 

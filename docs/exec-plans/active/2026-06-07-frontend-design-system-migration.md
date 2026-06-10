@@ -120,12 +120,12 @@ Status 2026-06-09: role contour complete. Финальный static cleanup не
 
 | Экран | Entry point | Компоненты | Варианты и особенности |
 | --- | --- | --- | --- |
-| Баланс курьера | `home` | `CourierHome`, `CourierHomeOverview` | Product/cash overview, action tiles `Продать`, `Загрузить`, `Вернуть`, own product list. |
-| Продажа | action sets `sale` | `CourierSaleHome` | Client combobox, product select from courier balance, payment segmented, operation total. |
-| Загрузка | action sets `load` | `CourierLoadHome` | Load from distributor to courier. Shared product select/list patterns. |
-| Возврат | action sets `unload` | `CourierUnloadHome` | Return products/cash to distributor, default full quantities, submit block reason. |
-| История продаж | `sales-history` | `SalesHistoryHome`, `RecentSalesPanel` | Shared sales history, courier variant. |
-| Профиль | `settings` | `SettingsScreen` | Общий settings pattern. |
+| Баланс курьера | `home` | `CourierHome`, `CourierHomeOverview`, `CourierStockList` | Needs migration from old `compact-balance-overview` / `action-tile` to compact white ledger summary and command actions. Own product list stays visible on the home screen. |
+| Продажа | action sets `sale` | `CourierSaleHome` | Same sale form standard as distributor/commercial: client combobox, product select from courier balance, payment segmented, operation total, new client in modal instead of inline nested form. |
+| Загрузка | action sets `load` | `CourierLoadHome` | Load from distributor to courier. Align product selection and selected-stock details with the operational form standard. |
+| Возврат | action sets `unload` | `CourierUnloadHome` | Return products/cash to distributor. Dense form requiring a cleaner ledger grouping for destination, products, cash and operation total. |
+| История продаж | `sales-history` | `SalesHistoryHome`, `RecentSalesPanel` | Already migrated shared sales history with courier cancel variant; keep direct bottom-nav access. |
+| Еще / аккаунт | `more` | New courier More screen, shared account/logout vocabulary | Replace bottom-nav `Профиль` / `SettingsScreen` with the established More/account pattern. |
 
 ## 6. Общие Компонентные Кластеры
 
@@ -437,7 +437,110 @@ Owner-confirmed shape:
    - Commit the final cleanup separately.
    - Status: complete. Search confirmed worker no longer routes to bottom-nav `Профиль` / `SettingsScreen` and no worker-specific old card/action code remains reachable. Shared `action-tile`, `compact-balance-overview` and `SettingsScreen` CSS/code are still used by other roles and were intentionally kept. `docs/FRONTEND.md` and this plan now describe the final worker contour.
 
-### Stage 7. Shared Stock Surfaces Across Roles
+### Stage 7. Курьер
+
+Impeccable audit summary:
+
+- Score: 13/20. The courier contour is functionally complete and mostly uses shared data/form primitives, but the home and return flow still carry old visual language.
+- Accessibility: 3/4. Forms have explicit labels and actions are buttons, but old action tiles and dense return rows make hierarchy and state reading weaker than the migrated screens.
+- Performance: 4/4. No heavy assets or unnecessary visual effects were found; the role uses existing query hooks and shared read models.
+- Theming: 2/4. `compact-balance-overview`, old action tiles and muted sentence-style stock details do not match the new white ledger system.
+- Responsive: 2/4. The shared stock list is already close to the new standard, but the home action group and `CourierUnloadHome` need a 390px-first layout pass.
+- Anti-patterns: 2/4. Remaining issues are old card-like action surfaces, inline new-client expansion inside the sale form and overly dense return form composition.
+
+Impeccable shape:
+
+- Courier home is an operational balance screen, not an analytics dashboard. The user must immediately see what is physically with them, how much cash they have, and which action to take.
+- Unlike commercial/production drilldowns, courier product stock must remain visible on the home screen because it is the courier's current working inventory.
+- The visual language should follow the completed distributor worker/commercial/production standards: white panels, thin ledger separators, compact typography, restrained radii, no decorative metrics and no data invented for symmetry.
+- Actions should use the established command-button vocabulary. `Продать` is the primary action; `Загрузить` and `Вернуть` are secondary operational actions separated by spacing and order, not by aggressive color.
+- Operational forms should converge on one standard: sectioned form panel, combobox/select primitives, segmented payment where relevant, quiet selected-stock rows and one clear submit area.
+- Do not start code implementation until the owner confirms the shape and requested mocks.
+
+Screens, variations and meaning:
+
+| Screen | Meaning | Main variations |
+| --- | --- | --- |
+| Баланс курьера | Understand current courier stock and cash; start sale, load or return. | Loading, empty stock, non-empty stock, disabled actions while offline, long product names, large money values. |
+| Продажа | Record a courier sale from own stock. | Existing/new client, no client, product selected/not selected, cash/cashless, insufficient quantity, offline/backend error, success. |
+| Загрузка | Accept products from distributor into courier balance. | Product selected/not selected, discounted product marker, unavailable quantity, offline/backend error, success. |
+| Возврат | Return products and/or cash to distributor. | One/multiple distributor options, default full return, product-only return, cash-only return, invalid quantity/cash, no active distributor, no payload, success/error. |
+| История продаж | Review courier sales and cancel permitted sales. | Empty/list, cancelled sale, cancel modal, disabled cancel reason, shared courier variant. |
+| Еще / аккаунт | Account identity, logout and future password change entry. | Account-only More screen; no duplicate `История` while history stays in bottom nav. |
+
+Problems to remove:
+
+- Old home shell: `compact-balance-overview`, old rounded action tiles and card-like action grid are inconsistent with completed role screens.
+- Product summary wording can be confusing because the home currently mixes product value, cash and product list without the same ledger hierarchy as newer screens.
+- `CourierSaleHome` still opens the new-client form inline; it should use the existing `operation-dialog` modal pattern from distributor sale and clients.
+- `CourierLoadHome` and `CourierSaleHome` use muted helper sentences for selected stock; migrated forms should show selected facts as compact ledger rows.
+- `CourierUnloadHome` is the densest old surface: destination, product quantities, cash return and submit reason need clearer grouping and spacing.
+- Bottom-nav `Профиль` / generic `SettingsScreen` is now legacy for migrated roles; courier should move to `Еще`.
+
+Already migrated overlaps:
+
+- `CourierStockList` already uses the shared stock-table direction with `Наименование`, `Количество`, `Итого`.
+- `SalesHistoryHome` and `RecentSalesPanel` already carry the new compact history/cancel-modal standard.
+- `ClientCombobox`, `OperationProductSelect` and `PaymentMethodSegmentedControl` are shared with migrated sale flows.
+- Read-only `CourierBalanceHome` variants for director/commercial are already migrated; use them as a reference, not as the courier home replacement because courier needs own stock visible on the first screen.
+- `ClientsHome` and More/account vocabulary are already established by director, production, commercial and distributor-worker contours.
+
+Image mock requirements:
+
+- Required before implementation unless owner confirms direct reuse of the established worker/commercial pattern: **Баланс курьера**. The home needs confirmation for the action hierarchy (`Продать`, `Загрузить`, `Вернуть`) while keeping the product list visible.
+- Required before implementation: **Возврат**. The return form has the most layout risk because it combines destination, product quantities and cash in one operation.
+- Not required by default: **Продажа**, **Загрузка**, **История продаж**, **Еще**. These should copy already approved patterns unless owner feedback changes the composition.
+
+Implementation stages:
+
+1. **Баланс курьера.**
+   - Replace old summary/actions with a compact white ledger home.
+   - Keep the product list visible below the command actions.
+   - Make `Продать` primary and keep `Загрузить` / `Вернуть` visually discoverable without colored cards.
+   - Update targeted tests, cleanup stale home CSS and docs.
+   - Commit after implementation.
+   - Status: implemented. Courier home now uses the same compact white ledger and command-button vocabulary as the migrated worker/commercial screens: `Продукция`, `Стоимость`, `Наличные`, primary `Продать`, secondary `Загрузить` / `Вернуть`, and a visible product ledger surface on the first screen.
+
+2. **Продажа.**
+   - Align `CourierSaleHome` with the migrated distributor/commercial sale form.
+   - Move new-client creation into `operation-dialog` with backdrop.
+   - Keep existing data, validations and invalidation behavior.
+   - Update targeted tests, cleanup stale inline nested form code and docs.
+   - Commit after implementation.
+
+3. **Загрузка.**
+   - Align `CourierLoadHome` with the operational form standard.
+   - Replace sentence-style selected-stock details with compact ledger facts.
+   - Preserve product options, quantity rules and success behavior.
+   - Update targeted tests, cleanup stale form styles and docs.
+   - Commit after implementation.
+
+4. **Возврат.**
+   - Use the approved mock to rebuild `CourierUnloadHome` around destination, products, cash and operation total.
+   - Keep default full quantities/cash behavior and validation rules.
+   - Make disabled submit reasons readable without adding extra data.
+   - Update targeted tests, cleanup stale unload row styles and docs.
+   - Commit after implementation.
+
+5. **История продаж.**
+   - Confirm courier still uses the migrated shared history and cancel modal.
+   - Fix only courier-specific copy, nav state or tests if audit finds drift.
+   - Commit after targeted verification and docs update if anything changes.
+
+6. **Еще / аккаунт.**
+   - Replace bottom-nav `Профиль` with `Еще`.
+   - Follow the shared account screen: identity, disabled `Сменить пароль`, quiet logout.
+   - Keep `История` direct in bottom nav and do not duplicate it in `Еще`.
+   - Update navigation tests, cleanup settings usage and docs.
+   - Commit after implementation.
+
+7. **Final courier cleanup.**
+   - Search for stale courier uses of old card/action/settings classes.
+   - Remove unreachable CSS/code only after usages are gone.
+   - Update `docs/FRONTEND.md` and this plan with the final courier contour.
+   - Commit final cleanup separately.
+
+### Stage 8. Shared Stock Surfaces Across Roles
 
 - После production `На распределителе` аккуратно распространить тот же stock/list/table standard на:
   - коммерческий product drilldown from home summary;
@@ -445,14 +548,14 @@ Owner-confirmed shape:
   - own courier balance.
 - Проверить все prop variants: `embedded`, `hideHeading`, `mode`, `showCashBalance`, `canAssignDiscount`, `canWithdrawCash`.
 
-### Stage 8. Remaining Role Home Overview Screens
+### Stage 9. Remaining Role Home Overview Screens
 
 - После `ProductionHomeOverview` пересобрать `DistributorHomeOverview` and `CourierHomeOverview`.
 - Убрать старый декоративный card language там, где экран должен быть рабочим control surface.
 - Стандартизировать action blocks: иконка, label, disabled/offline reason, compact spacing.
 - Не дублировать данные из нижней навигации или соседних экранов.
 
-### Stage 8. Remaining Operational Forms
+### Stage 10. Remaining Operational Forms
 
 - После production form standard привести к нему оставшиеся operational forms:
   - `DistributorSaleHome`;
@@ -462,14 +565,14 @@ Owner-confirmed shape:
 - Сохранить быстрый ввод, block reasons и online-only behavior.
 - Payment segmented, product select and client combobox должны визуально совпадать с новым selector standard.
 
-### Stage 9. Histories, Lists And Management Surfaces
+### Stage 11. Histories, Lists And Management Surfaces
 
 - Мигрировать `SalesHistoryHome`, `RecentSalesPanel`, `OperationHistoryHome` shared states not already covered by director/production passes.
 - Мигрировать `AdminUsersHome`, remaining shared `CatalogHome`, `ClientsHome`, `NotificationsHome` states.
 - Для long lists проверить bottom spacing and row density.
 - Не делать строки карточками, если они read-only and non-drilldown.
 
-### Stage 10. Documentation And CSS Cleanup
+### Stage 12. Documentation And CSS Cleanup
 
 - После каждого устойчивого pattern обновлять `DESIGN.md` или `docs/FRONTEND.md`.
 - Удалять старые selectors только после того, как не осталось usages.

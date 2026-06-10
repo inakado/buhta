@@ -251,10 +251,11 @@ App icon использует Pearl Cove знак в `apps/web/app/icon.svg`. Au
 
 - роль собирается в `apps/web/src/roles/courier/CourierHome.tsx` через `RoleHomeRouter`;
 - home использует доменный `features/courier/CourierHomeOverview.tsx`;
-- home имеет заголовок `Мой баланс`, один компактный рабочий блок `Продукция` и `Наличные`, action tiles `Продать` и `Загрузить`, inline table/list `Продукция`;
-- home имеет action tiles `Продать`, `Загрузить` и `Вернуть`;
-- `Продажа`, `Загрузка` и `Возврат` не показываются в нижней навигации: переходы выполняют только плитки действий на home;
-- disabled/placeholder action tiles не используются: плитка `Вернуть` появилась только после backend flow.
+- home имеет заголовок `Мой баланс`, горизонтальную white ledger сводку `Продукция` / `Стоимость` / `Наличные`, primary black command action `Продать`, secondary command actions `Загрузить` и `Вернуть`, inline table/list `Продукция`;
+- в отличие от commercial drilldown, курьер видит продукцию прямо на главной, потому что это его текущий рабочий остаток;
+- inline list `Продукция` на главной оформлен как white ledger surface, сохраняет колонки `Наименование / Количество / Итого` на 390+;
+- `Продажа`, `Загрузка` и `Возврат` не показываются в нижней навигации: переходы выполняют только command actions на home;
+- disabled/placeholder action tiles не используются: при offline command actions отключаются и показывают общую причину блокировки.
 
 Фактический courier unload flow:
 
