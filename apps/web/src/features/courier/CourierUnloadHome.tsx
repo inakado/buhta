@@ -224,7 +224,7 @@ export function CourierUnloadHome({
 				</div>
 
 				<div className="form-panel production-action-form">
-					<UnloadFormHeading title="Итого" meta={selectedDistributor?.distributorName} />
+					<UnloadFormHeading title="Итого" />
 					<UnloadInfoLedger>
 						<UnloadInfoRow label="Место" value={selectedDistributor?.distributorName ?? "Не выбрано"} />
 						<UnloadInfoRow label="Товар" value={`${formatPositionCount(parsedItems.length)} · ${totalUnits} шт`} />
