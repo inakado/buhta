@@ -272,3 +272,21 @@ export const DistributorRecentSalesResponseSchema = z.object({
 });
 
 export type DistributorRecentSalesResponse = z.infer<typeof DistributorRecentSalesResponseSchema>;
+
+export const SaleHistoryStatusSchema = z.enum(["all", "active", "cancelled"]);
+
+export const DistributorSalesHistoryQuerySchema = z.object({
+	cursor: z.string().optional(),
+	limit: PositiveIntegerSchema.optional(),
+	search: z.string().optional(),
+	status: SaleHistoryStatusSchema.optional(),
+});
+
+export type DistributorSalesHistoryQuery = z.infer<typeof DistributorSalesHistoryQuerySchema>;
+
+export const DistributorSalesHistoryResponseSchema = z.object({
+	items: z.array(DistributorRecentSaleItemSchema),
+	nextCursor: z.string().nullable(),
+});
+
+export type DistributorSalesHistoryResponse = z.infer<typeof DistributorSalesHistoryResponseSchema>;

@@ -278,6 +278,22 @@ export const CourierRecentSalesResponseSchema = z.object({
 
 export type CourierRecentSalesResponse = z.infer<typeof CourierRecentSalesResponseSchema>;
 
+export const CourierSalesHistoryQuerySchema = z.object({
+	cursor: z.string().optional(),
+	limit: PositiveIntegerSchema.optional(),
+	search: z.string().optional(),
+	status: z.enum(["all", "active", "cancelled"]).optional(),
+});
+
+export type CourierSalesHistoryQuery = z.infer<typeof CourierSalesHistoryQuerySchema>;
+
+export const CourierSalesHistoryResponseSchema = z.object({
+	items: z.array(CourierRecentSaleItemSchema),
+	nextCursor: z.string().nullable(),
+});
+
+export type CourierSalesHistoryResponse = z.infer<typeof CourierSalesHistoryResponseSchema>;
+
 export const CourierUnloadDistributorOptionSchema = z.object({
 	distributorId: z.string(),
 	distributorName: z.string(),

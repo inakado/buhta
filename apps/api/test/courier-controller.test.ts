@@ -234,8 +234,9 @@ describe("CourierController", () => {
 		).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
 	});
 
-	it("returns recent courier sales and validates cancellation through service", async () => {
+	it("returns courier sales history and validates cancellation through service", async () => {
 		const recentSales = { items: [] };
+		const history = { items: [], nextCursor: null };
 		const cancelResponse = {
 			cancellation: {
 				id: "cancel1",
@@ -281,12 +282,31 @@ describe("CourierController", () => {
 		};
 		const courierService = {
 			getRecentSales: vi.fn().mockResolvedValue(recentSales),
+			getSalesHistory: vi.fn().mockResolvedValue(history),
 			cancelCourierSale: vi.fn().mockResolvedValue(cancelResponse),
 		} as unknown as CourierService;
 		const controller = new CourierController(courierService);
 
 		await expect(controller.recentSales(actor, "3")).resolves.toEqual(recentSales);
 		expect(courierService.getRecentSales).toHaveBeenCalledWith(actor, 3);
+		await expect(
+			controller.salesHistory(actor, {
+				cursor: "cursor1",
+				limit: "20",
+				search: "Икра",
+				status: "cancelled",
+			}),
+		).resolves.toEqual(history);
+		expect(courierService.getSalesHistory).toHaveBeenCalledWith(actor, {
+			cursor: "cursor1",
+			limit: 20,
+			search: "Икра",
+			status: "cancelled",
+		});
+		await expect(controller.salesHistory(actor, { status: "unknown" }))
+			.rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+		await expect(controller.salesHistory(undefined, {}))
+			.rejects.toMatchObject({ code: "UNAUTHENTICATED" });
 		await expect(
 			controller.cancelSale(actor, "sale1", { reason: " Ошибка клиента " }),
 		).resolves.toEqual(cancelResponse);

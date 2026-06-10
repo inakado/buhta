@@ -155,8 +155,9 @@ describe("DistributorController", () => {
 		).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
 	});
 
-	it("returns recent distributor sales and validates cancellation through service", async () => {
+	it("returns distributor sales history and validates cancellation through service", async () => {
 		const recentSales = { items: [] };
+		const history = { items: [], nextCursor: null };
 		const cancelResponse = {
 			cancellation: {
 				id: "cancel1",
@@ -202,12 +203,29 @@ describe("DistributorController", () => {
 		};
 		const distributorService = {
 			getRecentSales: vi.fn().mockResolvedValue(recentSales),
+			getSalesHistory: vi.fn().mockResolvedValue(history),
 			cancelDistributorSale: vi.fn().mockResolvedValue(cancelResponse),
 		} as unknown as DistributorService;
 		const controller = new DistributorController(distributorService);
 
 		await expect(controller.recentSales("3")).resolves.toEqual(recentSales);
 		expect(distributorService.getRecentSales).toHaveBeenCalledWith(3);
+		await expect(
+			controller.salesHistory({
+				cursor: "cursor1",
+				limit: "20",
+				search: "Икра",
+				status: "active",
+			}),
+		).resolves.toEqual(history);
+		expect(distributorService.getSalesHistory).toHaveBeenCalledWith({
+			cursor: "cursor1",
+			limit: 20,
+			search: "Икра",
+			status: "active",
+		});
+		await expect(controller.salesHistory({ status: "unknown" }))
+			.rejects.toMatchObject({ code: "VALIDATION_ERROR" });
 		await expect(
 			controller.cancelSale(actor, "sale1", { reason: " Ошибка клиента " }),
 		).resolves.toEqual(cancelResponse);

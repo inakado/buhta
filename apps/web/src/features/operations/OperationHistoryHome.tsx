@@ -1,10 +1,10 @@
 "use client";
 
 import * as Dialog from "@radix-ui/react-dialog";
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { ChevronRight, Filter, X } from "lucide-react";
-import { useMemo, useState } from "react";
-import type { OperationHistoryItem, OperationHistoryQuery } from "@buhta/shared";
+import { useEffect, useMemo, useState } from "react";
+import { isRole, type OperationHistoryItem, type OperationHistoryQuery } from "@buhta/shared";
 import { getOperationHistory, getOperationHistoryOptions } from "../../lib/api-client";
 import { ROLE_LABELS } from "../../lib/role-labels";
 import {
@@ -18,30 +18,46 @@ import {
 const DEFAULT_LIMIT = 30;
 const DEFAULT_RANGE_DAYS = 7;
 const DAY_MS = 24 * 60 * 60 * 1000;
+const FILTER_STORAGE_KEY = "buhta.operationHistory.filters";
 
 export function OperationHistoryHome() {
 	const defaultFilters = useMemo(() => getDefaultFilters(), []);
 	const [filters, setFilters] = useState(defaultFilters);
+	const [filtersHydrated, setFiltersHydrated] = useState(false);
 	const [filtersOpen, setFiltersOpen] = useState(false);
-	const [cursor, setCursor] = useState<string | undefined>();
 	const [selectedItem, setSelectedItem] = useState<OperationHistoryItem | null>(null);
 	const activeFilterCount = getAdvancedFilterCount(filters);
 	const options = useQuery({
 		queryKey: ["operations", "history", "options"],
 		queryFn: getOperationHistoryOptions,
 	});
-	const query: OperationHistoryQuery = {
-		...filters,
-		cursor,
-		limit: DEFAULT_LIMIT,
-	};
-	const history = useQuery({
-		queryKey: ["operations", "history", query],
-		queryFn: () => getOperationHistory(query),
+	const history = useInfiniteQuery({
+		queryKey: ["operations", "history", filters],
+		initialPageParam: undefined as string | undefined,
+		queryFn: ({ pageParam }) => getOperationHistory({
+			...filters,
+			cursor: typeof pageParam === "string" ? pageParam : undefined,
+			limit: DEFAULT_LIMIT,
+		}),
+		getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
 	});
+	const historyItems = history.data?.pages.flatMap((page) => page.items) ?? [];
+
+	useEffect(() => {
+		const storedFilters = readStoredFilters(defaultFilters);
+		if (storedFilters) {
+			setFilters(storedFilters);
+		}
+		setFiltersHydrated(true);
+	}, [defaultFilters]);
+
+	useEffect(() => {
+		if (filtersHydrated) {
+			window.localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(filters));
+		}
+	}, [filters, filtersHydrated]);
 
 	function updateFilter(key: keyof typeof filters, value: string) {
-		setCursor(undefined);
 		setFilters((current) => ({
 			...current,
 			[key]: value || undefined,
@@ -49,7 +65,6 @@ export function OperationHistoryHome() {
 	}
 
 	function resetFilters() {
-		setCursor(undefined);
 		setFilters(defaultFilters);
 		setFiltersOpen(false);
 	}
@@ -96,13 +111,13 @@ export function OperationHistoryHome() {
 			<div className="operation-history-body">
 				{history.isError ? <p className="form-error">{history.error.message}</p> : null}
 				{options.isError ? <p className="form-error">{options.error.message}</p> : null}
-				{history.isLoading ? <p className="muted">Загрузка истории</p> : null}
-				{!history.isLoading && !history.isError && (history.data?.items.length ?? 0) === 0 ? (
+				{history.isPending ? <p className="muted">Загрузка истории</p> : null}
+				{!history.isPending && !history.isError && historyItems.length === 0 ? (
 					<p className="muted">Операций за выбранный период нет.</p>
 				) : null}
 
 				<div className="operation-history-list">
-					{history.data?.items.map((item) => (
+					{historyItems.map((item) => (
 						<OperationHistoryRow
 							item={item}
 							key={item.id}
@@ -111,14 +126,14 @@ export function OperationHistoryHome() {
 					))}
 				</div>
 
-				{history.data?.nextCursor ? (
+				{history.hasNextPage ? (
 					<button
 						className="secondary-button operation-history-more"
-						disabled={history.isFetching}
-						onClick={() => setCursor(history.data?.nextCursor ?? undefined)}
+						disabled={history.isFetchingNextPage}
+						onClick={() => void history.fetchNextPage()}
 						type="button"
 					>
-						Показать еще
+						{history.isFetchingNextPage ? "Загрузка" : "Показать еще"}
 					</button>
 				) : null}
 			</div>
@@ -366,6 +381,32 @@ function getDefaultFilters(): OperationHistoryQuery {
 		dateFrom: toDateInputValue(dateFrom),
 		dateTo: toDateInputValue(dateTo),
 	};
+}
+
+function readStoredFilters(defaultFilters: OperationHistoryQuery): OperationHistoryQuery | null {
+	if (typeof window === "undefined") {
+		return null;
+	}
+
+	const rawValue = window.localStorage.getItem(FILTER_STORAGE_KEY);
+	if (!rawValue) {
+		return null;
+	}
+
+	try {
+		const parsed = JSON.parse(rawValue) as Partial<Record<keyof OperationHistoryQuery, unknown>>;
+		return {
+			...defaultFilters,
+			actorRole: typeof parsed.actorRole === "string" && isRole(parsed.actorRole) ? parsed.actorRole : undefined,
+			actorUserId: typeof parsed.actorUserId === "string" ? parsed.actorUserId : undefined,
+			dateFrom: typeof parsed.dateFrom === "string" ? parsed.dateFrom : defaultFilters.dateFrom,
+			dateTo: typeof parsed.dateTo === "string" ? parsed.dateTo : defaultFilters.dateTo,
+			entityType: typeof parsed.entityType === "string" ? parsed.entityType : undefined,
+			operationType: typeof parsed.operationType === "string" ? parsed.operationType : undefined,
+		};
+	} catch {
+		return null;
+	}
 }
 
 function getAdvancedFilterCount(filters: OperationHistoryQuery): number {

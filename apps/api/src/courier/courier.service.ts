@@ -7,6 +7,8 @@ import type {
 	CourierLoadResponse,
 	CourierProductBalancesResponse,
 	CourierRecentSalesResponse,
+	CourierSalesHistoryQuery,
+	CourierSalesHistoryResponse,
 	CourierSaleOptionsResponse,
 	CourierSaleResponse,
 	CourierUnloadOptionsResponse,
@@ -142,6 +144,45 @@ export class CourierService {
 
 		return {
 			items: sales.map(mapCourierRecentSale),
+		};
+	}
+
+	async getSalesHistory(actor: Actor, query: CourierSalesHistoryQuery): Promise<CourierSalesHistoryResponse> {
+		if (!canCreateCourierSale(actor.role)) {
+			throw new AppError("FORBIDDEN", "Courier sales history is not available for this role");
+		}
+
+		const normalized = normalizeSalesHistoryQuery(query);
+		const where = buildCourierSalesHistoryWhere(actor, normalized);
+		const sales = await prisma.courierSale.findMany({
+			where,
+			take: normalized.limit + 1,
+			include: {
+				productBatch: true,
+				client: true,
+				operation: {
+					include: { actor: true },
+				},
+				cancellation: {
+					include: { actor: true },
+				},
+			},
+			orderBy: [
+				{ createdAt: "desc" },
+				{ id: "desc" },
+			],
+		});
+		const visibleSales = sales.slice(0, normalized.limit);
+		const lastVisibleSale = sales.length > normalized.limit
+			? visibleSales[visibleSales.length - 1]
+			: null;
+
+		return {
+			items: visibleSales.map(mapCourierRecentSale),
+			nextCursor: lastVisibleSale ? encodeSalesCursor({
+				createdAt: lastVisibleSale.createdAt,
+				id: lastVisibleSale.id,
+			}) : null,
 		};
 	}
 
@@ -937,6 +978,132 @@ function clampRecentSalesLimit(limit: number): number {
 	}
 
 	return Math.min(Math.floor(limit), 50);
+}
+
+type SalesHistoryCursor = {
+	createdAt: Date;
+	id: string;
+};
+
+type NormalizedCourierSalesHistoryQuery = {
+	cursor?: SalesHistoryCursor;
+	limit: number;
+	search?: string;
+	status: "all" | "active" | "cancelled";
+};
+
+function normalizeSalesHistoryQuery(query: CourierSalesHistoryQuery): NormalizedCourierSalesHistoryQuery {
+	const normalized: NormalizedCourierSalesHistoryQuery = {
+		limit: clampSalesHistoryLimit(query.limit),
+		status: query.status ?? "all",
+	};
+	const cursor = query.cursor ? decodeSalesCursor(query.cursor) : undefined;
+	const search = normalizeSearch(query.search);
+
+	if (cursor) {
+		normalized.cursor = cursor;
+	}
+
+	if (search) {
+		normalized.search = search;
+	}
+
+	return normalized;
+}
+
+function buildCourierSalesHistoryWhere(
+	actor: Actor,
+	query: NormalizedCourierSalesHistoryQuery,
+): Prisma.CourierSaleWhereInput {
+	const and: Prisma.CourierSaleWhereInput[] = [];
+
+	if (actor.role === "courier") {
+		and.push({ courierUserId: actor.userId });
+	}
+
+	if (query.cursor) {
+		and.push({
+			OR: [
+				{ createdAt: { lt: query.cursor.createdAt } },
+				{
+					createdAt: query.cursor.createdAt,
+					id: { lt: query.cursor.id },
+				},
+			],
+		});
+	}
+
+	if (query.status === "active") {
+		and.push({ cancellation: null });
+	}
+
+	if (query.status === "cancelled") {
+		and.push({ cancellation: { isNot: null } });
+	}
+
+	if (query.search) {
+		const search = query.search;
+		const digits = search.replace(/\D/g, "");
+		const or: Prisma.CourierSaleWhereInput[] = [
+			{ client: { is: { name: { contains: search, mode: "insensitive" } } } },
+			{ productBatch: { is: { productName: { contains: search, mode: "insensitive" } } } },
+		];
+
+		if (digits.length > 0) {
+			or.push({ client: { is: { phoneNormalized: { contains: digits } } } });
+		}
+
+		and.push({ OR: or });
+	}
+
+	return and.length ? { AND: and } : {};
+}
+
+function clampSalesHistoryLimit(limit: number | undefined): number {
+	if (!Number.isFinite(limit) || !limit || limit <= 0) {
+		return 20;
+	}
+
+	return Math.min(Math.floor(limit), 50);
+}
+
+function normalizeSearch(value: string | undefined): string | undefined {
+	const trimmed = value?.trim();
+	return trimmed ? trimmed : undefined;
+}
+
+function encodeSalesCursor(cursor: SalesHistoryCursor): string {
+	return Buffer.from(JSON.stringify({
+		createdAt: cursor.createdAt.toISOString(),
+		id: cursor.id,
+	}), "utf8").toString("base64url");
+}
+
+function decodeSalesCursor(value: string): SalesHistoryCursor {
+	try {
+		const parsed = JSON.parse(Buffer.from(value, "base64url").toString("utf8")) as {
+			createdAt?: unknown;
+			id?: unknown;
+		};
+
+		if (typeof parsed.id !== "string" || typeof parsed.createdAt !== "string") {
+			throw new Error("Invalid cursor");
+		}
+
+		const createdAt = new Date(parsed.createdAt);
+		if (Number.isNaN(createdAt.getTime())) {
+			throw new Error("Invalid cursor date");
+		}
+
+		return {
+			createdAt,
+			id: parsed.id,
+		};
+	} catch {
+		throw new AppError("VALIDATION_ERROR", "Invalid sales history cursor", {
+			cursor: value,
+		});
+	}
 }
 
 function isPrismaErrorCode(error: unknown, code: string): boolean {

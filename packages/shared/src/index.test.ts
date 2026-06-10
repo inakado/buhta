@@ -31,6 +31,8 @@ import {
 	CourierLoadOptionsResponseSchema,
 	CourierProductBalancesResponseSchema,
 	CourierRecentSalesResponseSchema,
+	CourierSalesHistoryQuerySchema,
+	CourierSalesHistoryResponseSchema,
 	CourierSaleOptionsResponseSchema,
 	CourierSaleResponseSchema,
 	CourierUnloadOptionsResponseSchema,
@@ -42,6 +44,8 @@ import {
 	DistributorCashWithdrawalResponseSchema,
 	DistributorInventoryResponseSchema,
 	DistributorRecentSalesResponseSchema,
+	DistributorSalesHistoryQuerySchema,
+	DistributorSalesHistoryResponseSchema,
 	DistributorSaleOptionsResponseSchema,
 	DirectorAnalyticsQuerySchema,
 	DirectorAnalyticsResponseSchema,
@@ -726,6 +730,47 @@ describe("shared contracts", () => {
 				}],
 			}).success,
 		).toBe(true);
+		expect(
+			DistributorSalesHistoryResponseSchema.safeParse({
+				items: [{
+					id: "sale-1",
+					sourceType: "distributor",
+					productName: "Икра горбуши",
+					clientId: "client-1",
+					clientName: "Иван",
+					clientPhone: "+7",
+					quantity: 2,
+					baseUnitPriceCents: 125000,
+					unitPriceCents: 100000,
+					discountCentsPerUnit: 25000,
+					discountTotalCents: 50000,
+					totalCents: 200000,
+					paymentMethod: "cash",
+					comment: null,
+					saleActorUserId: "worker-1",
+					saleActorDisplayName: "Работник",
+					createdAt: new Date(0).toISOString(),
+					cancelled: true,
+					cancellationId: "cancel-1",
+					cancellationReason: "Ошибка в количестве",
+					cancelledByActorUserId: "worker-1",
+					cancelledByActorDisplayName: "Работник",
+					cancelledAt: new Date(1).toISOString(),
+				}],
+				nextCursor: "cursor-1",
+			}).success,
+		).toBe(true);
+		expect(
+			DistributorSalesHistoryQuerySchema.parse({
+				limit: 20,
+				search: "Иван",
+				status: "active",
+			}),
+		).toEqual({
+			limit: 20,
+			search: "Иван",
+			status: "active",
+		});
 			expect(
 				AssignDistributorDiscountRequestSchema.parse({
 					distributorProductBalanceId: "balance-1",
@@ -1097,6 +1142,49 @@ describe("shared contracts", () => {
 				}],
 			}).success,
 		).toBe(true);
+		expect(
+			CourierSalesHistoryResponseSchema.safeParse({
+				items: [{
+					id: "sale-1",
+					sourceType: "courier",
+					productName: "Икра горбуши",
+					clientId: "client-1",
+					clientName: "Иван",
+					clientPhone: "+7",
+					quantity: 2,
+					baseUnitPriceCents: 125000,
+					unitPriceCents: 125000,
+					discountCentsPerUnit: 0,
+					discountTotalCents: 0,
+					totalCents: 250000,
+					paymentMethod: "cash",
+					comment: null,
+					saleActorUserId: "courier-1",
+					saleActorDisplayName: "Курьер",
+					createdAt: new Date(0).toISOString(),
+					cancelled: false,
+					cancellationId: null,
+					cancellationReason: null,
+					cancelledByActorUserId: null,
+					cancelledByActorDisplayName: null,
+					cancelledAt: null,
+				}],
+				nextCursor: null,
+			}).success,
+		).toBe(true);
+		expect(
+			CourierSalesHistoryQuerySchema.parse({
+				cursor: "cursor-1",
+				limit: 20,
+				search: "+7",
+				status: "cancelled",
+			}),
+		).toEqual({
+			cursor: "cursor-1",
+			limit: 20,
+			search: "+7",
+			status: "cancelled",
+		});
 	});
 
 	it("validates courier unload contracts", () => {

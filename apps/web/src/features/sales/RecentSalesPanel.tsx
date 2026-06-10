@@ -15,8 +15,11 @@ type RecentSaleItem = CourierRecentSaleItem | DistributorRecentSaleItem;
 type RecentSalesPanelProps = {
 	cancelError: string | undefined;
 	cancelReason: string;
+	emptyText?: string;
+	hasMore: boolean;
 	items: RecentSaleItem[];
 	loading: boolean;
+	loadingMore: boolean;
 	online: boolean;
 	pending: boolean;
 	selectedSaleId: string;
@@ -24,13 +27,17 @@ type RecentSalesPanelProps = {
 	onCancelOpen: (saleId: string) => void;
 	onCancelReasonChange: (reason: string) => void;
 	onCancelSubmit: (saleId: string, reason: string) => void;
+	onLoadMore: () => void;
 };
 
 export function RecentSalesPanel({
 	cancelError,
 	cancelReason,
+	emptyText = "Продаж пока нет.",
+	hasMore,
 	items,
 	loading,
+	loadingMore,
 	online,
 	pending,
 	selectedSaleId,
@@ -38,6 +45,7 @@ export function RecentSalesPanel({
 	onCancelOpen,
 	onCancelReasonChange,
 	onCancelSubmit,
+	onLoadMore,
 }: RecentSalesPanelProps) {
 	const selectedSale = items.find((item) => item.id === selectedSaleId);
 	const canSubmit = !!selectedSale && online && !pending && cancelReason.trim().length >= 3;
@@ -45,7 +53,7 @@ export function RecentSalesPanel({
 	return (
 		<section className="recent-sales-panel" aria-label="Список продаж">
 			{loading ? <p className="muted">Загрузка продаж</p> : null}
-			{!loading && items.length === 0 ? <p className="muted">Продаж пока нет.</p> : null}
+			{!loading && items.length === 0 ? <p className="muted">{emptyText}</p> : null}
 			{items.length > 0 ? (
 				<div className="recent-sales-list">
 					{items.map((item) => {
@@ -91,6 +99,16 @@ export function RecentSalesPanel({
 						);
 					})}
 				</div>
+			) : null}
+			{hasMore ? (
+				<button
+					className="secondary-button operation-history-more"
+					disabled={loadingMore}
+					onClick={onLoadMore}
+					type="button"
+				>
+					{loadingMore ? "Загрузка" : "Показать еще"}
+				</button>
 			) : null}
 			<Dialog.Root
 				open={!!selectedSale && !selectedSale.cancelled}

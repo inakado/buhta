@@ -4,6 +4,7 @@ import {
 	CancelDistributorSaleRequestSchema,
 	CreateDistributorCashWithdrawalRequestSchema,
 	CreateDistributorSaleRequestSchema,
+	DistributorSalesHistoryQuerySchema,
 } from "@buhta/shared";
 import type { z } from "zod";
 import { CurrentActor } from "../auth/actor.decorator";
@@ -34,6 +35,12 @@ export class DistributorController {
 	@RequirePermission("distributor.sale.create")
 	async recentSales(@Query("limit") limit?: string) {
 		return this.distributorService.getRecentSales(parseLimit(limit));
+	}
+
+	@Get("sales/history")
+	@RequirePermission("distributor.sale.create")
+	async salesHistory(@Query() query: Record<string, string | undefined>) {
+		return this.distributorService.getSalesHistory(parseSalesHistoryQuery(query));
 	}
 
 	@Get("cash-balances")
@@ -109,4 +116,23 @@ function parseLimit(value: string | undefined): number | undefined {
 
 	const parsed = Number(value);
 	return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function parseSalesHistoryQuery(query: Record<string, string | undefined>) {
+	const parsedQuery = DistributorSalesHistoryQuerySchema.safeParse({
+		cursor: emptyToUndefined(query.cursor),
+		limit: parseLimit(query.limit),
+		search: emptyToUndefined(query.search),
+		status: emptyToUndefined(query.status),
+	});
+
+	if (!parsedQuery.success) {
+		throw new AppError("VALIDATION_ERROR", "Invalid distributor sales history query", parsedQuery.error.flatten());
+	}
+
+	return parsedQuery.data;
+}
+
+function emptyToUndefined(value: string | undefined): string | undefined {
+	return value === "" ? undefined : value;
 }

@@ -1563,7 +1563,7 @@ describe("HomePage", () => {
 				return jsonResponse(distributorSaleOptionsResponse);
 			}
 
-			if (url.includes("/distributor/sales/recent")) {
+			if (url.includes("/distributor/sales/history")) {
 				return jsonResponse(distributorRecentSalesResponse);
 			}
 
@@ -1697,7 +1697,7 @@ describe("HomePage", () => {
 				return jsonResponse(distributorCashBalancesResponse);
 			}
 
-			if (url.includes("/distributor/sales/recent")) {
+			if (url.includes("/distributor/sales/history")) {
 				return jsonResponse({
 					items: [{
 						id: "sale1",
@@ -1815,7 +1815,7 @@ describe("HomePage", () => {
 				return jsonResponse(distributorSaleOptionsResponse);
 			}
 
-			if (url.includes("/distributor/sales/recent")) {
+			if (url.includes("/distributor/sales/history")) {
 				return jsonResponse(distributorRecentSalesResponse);
 			}
 
@@ -1919,7 +1919,7 @@ describe("HomePage", () => {
 				return jsonResponse(courierLoadOptionsResponse);
 			}
 
-			if (url.includes("/courier/sales/recent")) {
+			if (url.includes("/courier/sales/history")) {
 				return jsonResponse(courierRecentSalesResponse);
 			}
 
@@ -2137,7 +2137,7 @@ describe("HomePage", () => {
 				return jsonResponse(courierSaleOptionsResponse);
 			}
 
-			if (url.includes("/courier/sales/recent")) {
+			if (url.includes("/courier/sales/history")) {
 				return jsonResponse(courierRecentSalesResponse);
 			}
 
@@ -2222,7 +2222,7 @@ describe("HomePage", () => {
 				return jsonResponse(courierSaleOptionsResponse);
 			}
 
-			if (url.includes("/courier/sales/recent")) {
+			if (url.includes("/courier/sales/history")) {
 				return jsonResponse(courierRecentSalesResponse);
 			}
 
@@ -2355,7 +2355,7 @@ describe("HomePage", () => {
 				return jsonResponse(courierSaleOptionsResponse);
 			}
 
-			if (url.includes("/courier/sales/recent")) {
+			if (url.includes("/courier/sales/history")) {
 				return jsonResponse(courierRecentSalesResponse);
 			}
 
@@ -2783,7 +2783,7 @@ describe("HomePage", () => {
 				return jsonResponse(distributorSaleOptionsResponse);
 			}
 
-			if (url.includes("/distributor/sales/recent")) {
+			if (url.includes("/distributor/sales/history")) {
 				return jsonResponse(distributorRecentSalesResponse);
 			}
 

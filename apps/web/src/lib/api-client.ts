@@ -31,6 +31,8 @@ import type {
 	CourierLoadResponse,
 	CourierProductBalancesResponse,
 	CourierRecentSalesResponse,
+	CourierSalesHistoryQuery,
+	CourierSalesHistoryResponse,
 	CourierSaleOptionsResponse,
 	CourierSaleResponse,
 	CourierUnloadOptionsResponse,
@@ -39,6 +41,8 @@ import type {
 	DistributorCashWithdrawalResponse,
 	DistributorInventoryResponse,
 	DistributorRecentSalesResponse,
+	DistributorSalesHistoryQuery,
+	DistributorSalesHistoryResponse,
 	DistributorSaleOptionsResponse,
 	DistributorSaleResponse,
 	DistributorResponse,
@@ -434,6 +438,13 @@ export async function getCourierRecentSales(limit = 5): Promise<CourierRecentSal
 	return fetchJson<CourierRecentSalesResponse>(`/courier/sales/recent?limit=${limit}`);
 }
 
+export async function getCourierSalesHistory(
+	query: CourierSalesHistoryQuery = {},
+): Promise<CourierSalesHistoryResponse> {
+	const queryString = buildQueryString(query);
+	return fetchJson<CourierSalesHistoryResponse>(`/courier/sales/history${queryString}`);
+}
+
 export async function createCourierSale(input: CreateCourierSaleRequest): Promise<CourierSaleResponse> {
 	return fetchJson<CourierSaleResponse>("/courier/sales", {
 		method: "POST",
@@ -468,6 +479,13 @@ export async function getDistributorSaleOptions(): Promise<DistributorSaleOption
 
 export async function getDistributorRecentSales(limit = 5): Promise<DistributorRecentSalesResponse> {
 	return fetchJson<DistributorRecentSalesResponse>(`/distributor/sales/recent?limit=${limit}`);
+}
+
+export async function getDistributorSalesHistory(
+	query: DistributorSalesHistoryQuery = {},
+): Promise<DistributorSalesHistoryResponse> {
+	const queryString = buildQueryString(query);
+	return fetchJson<DistributorSalesHistoryResponse>(`/distributor/sales/history${queryString}`);
 }
 
 export async function getDistributorCashBalances(): Promise<DistributorCashBalancesResponse> {
@@ -526,6 +544,19 @@ async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
 	}
 
 	return (await readResponseJson(response)) as T;
+}
+
+function buildQueryString(query: Record<string, unknown>): string {
+	const params = new URLSearchParams();
+
+	for (const [key, value] of Object.entries(query)) {
+		if (value !== undefined && value !== "") {
+			params.set(key, String(value));
+		}
+	}
+
+	const queryString = params.toString();
+	return queryString ? `?${queryString}` : "";
 }
 
 async function readErrorMessage(response: Response): Promise<string> {

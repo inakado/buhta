@@ -25,6 +25,7 @@
 - `docs/exec-plans/deferred-roadmap.md` — отложенные идеи, которые не являются активной задачей.
 - `docs/exec-plans/tech-debt-tracker.md` — признанный техдолг после появления кода или harness.
 - `docs/exec-plans/active/2026-05-27-v1-roadmap.md` — долгоживущая roadmap/meta-plan полной v1.
+- `docs/exec-plans/completed/2026-06-10-history-and-sale-cancellation-hardening.md` — завершенный UX hardening для append pagination истории операций и paginated истории продаж с поиском, статусами и отменой старых продаж без quick presets/export.
 - `docs/exec-plans/completed/2026-06-07-frontend-design-system-migration.md` — завершенный план перехода frontend на новую Impeccable design system: все основные роли и администратор мигрированы к white ledger/control language, operational forms, management rows, modal create/confirm flows and role-specific `Еще` account surfaces.
 - `docs/exec-plans/completed/2026-06-05-director-money-production-analytics.md` — завершенный этап Director Money And Production Analytics: отдельный узкий экран аналитики для Директора по деньгам, сырью и выпуску продукции без перегруженных графиков и повторяющих блоков.
 - `docs/exec-plans/completed/2026-06-05-operation-history-details.md` — завершенный mini-этап Operation History Details: читаемые управленческие details без technical ids в модалке истории.

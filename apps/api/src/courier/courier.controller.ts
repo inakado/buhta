@@ -4,6 +4,7 @@ import {
 	CreateCourierLoadRequestSchema,
 	CreateCourierSaleRequestSchema,
 	CreateCourierUnloadRequestSchema,
+	CourierSalesHistoryQuerySchema,
 } from "@buhta/shared";
 import type { z } from "zod";
 import { CurrentActor } from "../auth/actor.decorator";
@@ -40,6 +41,15 @@ export class CourierController {
 	@RequirePermission("courier.sale.create")
 	async recentSales(@CurrentActor() actor: Actor | undefined, @Query("limit") limit?: string) {
 		return this.courierService.getRecentSales(requireActor(actor), parseLimit(limit));
+	}
+
+	@Get("sales/history")
+	@RequirePermission("courier.sale.create")
+	async salesHistory(
+		@CurrentActor() actor: Actor | undefined,
+		@Query() query: Record<string, string | undefined>,
+	) {
+		return this.courierService.getSalesHistory(requireActor(actor), parseSalesHistoryQuery(query));
 	}
 
 	@Get("cash-balances")
@@ -121,4 +131,23 @@ function parseLimit(value: string | undefined): number | undefined {
 
 	const parsed = Number(value);
 	return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function parseSalesHistoryQuery(query: Record<string, string | undefined>) {
+	const parsedQuery = CourierSalesHistoryQuerySchema.safeParse({
+		cursor: emptyToUndefined(query.cursor),
+		limit: parseLimit(query.limit),
+		search: emptyToUndefined(query.search),
+		status: emptyToUndefined(query.status),
+	});
+
+	if (!parsedQuery.success) {
+		throw new AppError("VALIDATION_ERROR", "Invalid courier sales history query", parsedQuery.error.flatten());
+	}
+
+	return parsedQuery.data;
+}
+
+function emptyToUndefined(value: string | undefined): string | undefined {
+	return value === "" ? undefined : value;
 }

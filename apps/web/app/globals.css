@@ -1092,6 +1092,23 @@ input[type="search"]::-webkit-search-decoration {
 	gap: 10px;
 }
 
+.sales-history-filters {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	align-items: end;
+	gap: 8px;
+}
+
+.sales-history-filter-actions {
+	display: inline-flex;
+	align-items: center;
+	gap: 7px;
+}
+
+.sales-history-status {
+	--segmented-control-columns: repeat(3, minmax(0, 1fr));
+}
+
 .recent-sales-panel {
 	display: flex;
 	flex-direction: column;
@@ -1223,6 +1240,15 @@ input[type="search"]::-webkit-search-decoration {
 }
 
 @media (max-width: 430px) {
+	.sales-history-filters {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.sales-history-filter-actions {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
 	.recent-sale-card {
 		grid-template-columns: minmax(0, 1fr);
 	}
