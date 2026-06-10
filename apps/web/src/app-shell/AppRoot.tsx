@@ -9,7 +9,7 @@ import {
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
-import { BadgeCheck, Bell, Box, Check, ClipboardList, Factory, Gauge, History, MoreHorizontal, ReceiptText, Settings, Truck, Users, type LucideIcon } from "lucide-react";
+import { Bell, Box, Check, ClipboardList, Factory, Gauge, History, LayoutDashboard, MoreHorizontal, ReceiptText, Settings, Truck, Users, type LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { LoginForm } from "../auth/LoginForm";
 import { getCurrentActor, isUnauthorizedError, listNotifications, signOut, type CurrentActor } from "../lib/api-client";
@@ -202,7 +202,7 @@ function BottomNav({
 		? [{ id: "operation-history", label: "История", icon: ReceiptText }]
 		: [];
 	const courierItems: BottomNavItem[] = [
-		{ id: "home", label: "Баланс", icon: BadgeCheck },
+		{ id: "home", label: "Баланс", icon: LayoutDashboard },
 		...salesHistoryItem,
 		{ id: "settings", label: "Профиль", icon: Settings },
 	];
