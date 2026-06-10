@@ -29,21 +29,21 @@ export function AdminUsersHome({ actor, online }: { actor: CurrentActor; online:
 
 	return (
 		<section className="screen-stack admin-users-home management-surface">
-			<div className="section-heading admin-users-heading">
-				<div>
-					<h2>Пользователи</h2>
+			<div className="section-heading compact admin-users-heading">
+				<h2>Пользователи</h2>
+				<div className="admin-users-heading-side">
 					<span>{users.isFetching ? "Обновление" : `${visibleUsers.length} сотрудников`}</span>
+					<button
+						className="secondary-button compact-button admin-create-button"
+						disabled={!online}
+						onClick={() => setCreateOpen(true)}
+						title={online ? undefined : "Нет сети: создание недоступно"}
+						type="button"
+					>
+						<Plus aria-hidden size={16} />
+						Новый
+					</button>
 				</div>
-				<button
-					className="secondary-button compact-button admin-create-button"
-					disabled={!online}
-					onClick={() => setCreateOpen(true)}
-					title={online ? undefined : "Нет сети: создание недоступно"}
-					type="button"
-				>
-					<Plus aria-hidden size={16} />
-					Новый
-				</button>
 			</div>
 
 			<CreateUserDialog
