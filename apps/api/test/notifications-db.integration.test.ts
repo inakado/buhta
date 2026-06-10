@@ -3,6 +3,7 @@ import { AppError } from "../src/common/errors/app-error";
 import { NotificationsService } from "../src/notifications/notifications.service";
 import type { Actor } from "../src/policy/actor";
 import { prisma } from "../src/prisma/client";
+import { deleteAuditLogsForTest } from "./helpers/audit-log-cleanup";
 
 const notificationsService = new NotificationsService();
 
@@ -85,7 +86,7 @@ async function cleanup() {
 	const operationIds = operations.map((operation) => operation.id);
 
 	await prisma.productionNotification.deleteMany();
-	await prisma.auditLog.deleteMany({
+	await deleteAuditLogsForTest({
 		where: {
 			OR: [
 				{ actorUserId: { in: userIds } },

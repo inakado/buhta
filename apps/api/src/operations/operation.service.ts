@@ -105,40 +105,44 @@ export class OperationService {
 
 	async createAuditOperation(input: CreateAuditOperationInput) {
 		return prisma.$transaction(async (tx) => {
-			const operationData: Prisma.OperationUncheckedCreateInput = {
-				type: input.type,
-				status: OPERATION_STATUS.succeeded,
-				actorUserId: input.actor.userId,
-			};
-
-			if (input.metadata !== undefined) {
-				operationData.metadata = input.metadata;
-			}
-
-			const operation = await tx.operation.create({
-				data: operationData,
-			});
-
-			const auditData: Prisma.AuditLogUncheckedCreateInput = {
-				operationId: operation.id,
-				actorUserId: input.actor.userId,
-				action: input.type,
-				entityType: input.entityType,
-			};
-
-			if (input.entityId !== undefined) {
-				auditData.entityId = input.entityId;
-			}
-
-			if (input.details !== undefined) {
-				auditData.details = input.details;
-			}
-
-			await tx.auditLog.create({
-				data: auditData,
-			});
-
-			return operation;
+			return this.createAuditOperationInTransaction(tx, input);
 		});
+	}
+
+	async createAuditOperationInTransaction(tx: Prisma.TransactionClient, input: CreateAuditOperationInput) {
+		const operationData: Prisma.OperationUncheckedCreateInput = {
+			type: input.type,
+			status: OPERATION_STATUS.succeeded,
+			actorUserId: input.actor.userId,
+		};
+
+		if (input.metadata !== undefined) {
+			operationData.metadata = input.metadata;
+		}
+
+		const operation = await tx.operation.create({
+			data: operationData,
+		});
+
+		const auditData: Prisma.AuditLogUncheckedCreateInput = {
+			operationId: operation.id,
+			actorUserId: input.actor.userId,
+			action: input.type,
+			entityType: input.entityType,
+		};
+
+		if (input.entityId !== undefined) {
+			auditData.entityId = input.entityId;
+		}
+
+		if (input.details !== undefined) {
+			auditData.details = input.details;
+		}
+
+		await tx.auditLog.create({
+			data: auditData,
+		});
+
+		return operation;
 	}
 }

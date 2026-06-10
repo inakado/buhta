@@ -46,6 +46,8 @@ Security notes проекта «Бухта».
 - Критичные POST-команды, которые меняют деньги, товарные остатки или выпуск продукции, требуют `Idempotency-Key`. Key фиксируется в `operation` внутри той же transaction; повтор того же key для того же actor не должен создавать вторую доменную операцию.
 - Dev seed может использовать `admin / Pass123!` только на локальной dev-БД. Production или non-local seed обязан получить явный non-default `SEED_ADMIN_PASSWORD`.
 - `BETTER_AUTH_SECRET` обязан быть не короче 32 символов; production runtime дополнительно отклоняет локальный placeholder `replace-with-at-least-32-random-characters`.
+- Production runtime отклоняет `DATABASE_URL` с локальными дефолтными credentials `buhta/buhta`.
+- `audit_log` append-only защищен database trigger-ом от обычных runtime `UPDATE` и `DELETE`; тестовый cleanup использует явный session flag.
 
 ## 4. Policy Layer Direction
 

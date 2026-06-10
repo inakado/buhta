@@ -48,18 +48,21 @@ export class CatalogService {
 
 	async createRawMaterialType(actor: Actor, input: CreateRawMaterialTypeRequest): Promise<RawMaterialType> {
 		try {
-			const record = await prisma.rawMaterialType.create({
-				data: input,
-			});
-			await this.audit({
-				actor,
-				type: "catalog.raw_material_type.create",
-				entityType: "raw_material_type",
-				entityId: record.id,
-				details: {
-					name: record.name,
-					unit: record.unit,
-				},
+			const record = await prisma.$transaction(async (tx) => {
+				const created = await tx.rawMaterialType.create({
+					data: input,
+				});
+				await this.audit(tx, {
+					actor,
+					type: "catalog.raw_material_type.create",
+					entityType: "raw_material_type",
+					entityId: created.id,
+					details: {
+						name: created.name,
+						unit: created.unit,
+					},
+				});
+				return created;
 			});
 			return mapRawMaterialType(record);
 		} catch (error) {
@@ -76,18 +79,21 @@ export class CatalogService {
 		await this.ensureRawMaterialTypeExists(id);
 
 		try {
-			const record = await prisma.rawMaterialType.update({
-				where: { id },
-				data: buildRawMaterialTypeUpdateData(input),
-			});
-			await this.audit({
-				actor,
-				type: "catalog.raw_material_type.update",
-				entityType: "raw_material_type",
-				entityId: record.id,
-				details: {
-					changes: input,
-				},
+			const record = await prisma.$transaction(async (tx) => {
+				const updated = await tx.rawMaterialType.update({
+					where: { id },
+					data: buildRawMaterialTypeUpdateData(input),
+				});
+				await this.audit(tx, {
+					actor,
+					type: "catalog.raw_material_type.update",
+					entityType: "raw_material_type",
+					entityId: updated.id,
+					details: {
+						changes: input,
+					},
+				});
+				return updated;
 			});
 			return mapRawMaterialType(record);
 		} catch (error) {
@@ -97,18 +103,21 @@ export class CatalogService {
 
 	async archiveRawMaterialType(actor: Actor, id: string): Promise<RawMaterialType> {
 		await this.ensureRawMaterialTypeExists(id);
-		const record = await prisma.rawMaterialType.update({
-			where: { id },
-			data: { active: false },
-		});
-		await this.audit({
-			actor,
-			type: "catalog.raw_material_type.archive",
-			entityType: "raw_material_type",
-			entityId: record.id,
-			details: {
-				active: false,
-			},
+		const record = await prisma.$transaction(async (tx) => {
+			const updated = await tx.rawMaterialType.update({
+				where: { id },
+				data: { active: false },
+			});
+			await this.audit(tx, {
+				actor,
+				type: "catalog.raw_material_type.archive",
+				entityType: "raw_material_type",
+				entityId: updated.id,
+				details: {
+					active: false,
+				},
+			});
+			return updated;
 		});
 		return mapRawMaterialType(record);
 	}
@@ -123,18 +132,21 @@ export class CatalogService {
 
 	async createPackagingType(actor: Actor, input: CreatePackagingTypeRequest): Promise<PackagingType> {
 		try {
-			const record = await prisma.packagingType.create({
-				data: input,
-			});
-			await this.audit({
-				actor,
-				type: "catalog.packaging_type.create",
-				entityType: "packaging_type",
-				entityId: record.id,
-				details: {
-					name: record.name,
-					unit: record.unit,
-				},
+			const record = await prisma.$transaction(async (tx) => {
+				const created = await tx.packagingType.create({
+					data: input,
+				});
+				await this.audit(tx, {
+					actor,
+					type: "catalog.packaging_type.create",
+					entityType: "packaging_type",
+					entityId: created.id,
+					details: {
+						name: created.name,
+						unit: created.unit,
+					},
+				});
+				return created;
 			});
 			return mapPackagingType(record);
 		} catch (error) {
@@ -147,18 +159,21 @@ export class CatalogService {
 		await this.ensurePackagingTypeExists(id);
 
 		try {
-			const record = await prisma.packagingType.update({
-				where: { id },
-				data: buildPackagingTypeUpdateData(input),
-			});
-			await this.audit({
-				actor,
-				type: "catalog.packaging_type.update",
-				entityType: "packaging_type",
-				entityId: record.id,
-				details: {
-					changes: input,
-				},
+			const record = await prisma.$transaction(async (tx) => {
+				const updated = await tx.packagingType.update({
+					where: { id },
+					data: buildPackagingTypeUpdateData(input),
+				});
+				await this.audit(tx, {
+					actor,
+					type: "catalog.packaging_type.update",
+					entityType: "packaging_type",
+					entityId: updated.id,
+					details: {
+						changes: input,
+					},
+				});
+				return updated;
 			});
 			return mapPackagingType(record);
 		} catch (error) {
@@ -168,18 +183,21 @@ export class CatalogService {
 
 	async archivePackagingType(actor: Actor, id: string): Promise<PackagingType> {
 		await this.ensurePackagingTypeExists(id);
-		const record = await prisma.packagingType.update({
-			where: { id },
-			data: { active: false },
-		});
-		await this.audit({
-			actor,
-			type: "catalog.packaging_type.archive",
-			entityType: "packaging_type",
-			entityId: record.id,
-			details: {
-				active: false,
-			},
+		const record = await prisma.$transaction(async (tx) => {
+			const updated = await tx.packagingType.update({
+				where: { id },
+				data: { active: false },
+			});
+			await this.audit(tx, {
+				actor,
+				type: "catalog.packaging_type.archive",
+				entityType: "packaging_type",
+				entityId: updated.id,
+				details: {
+					active: false,
+				},
+			});
+			return updated;
 		});
 		return mapPackagingType(record);
 	}
@@ -194,17 +212,20 @@ export class CatalogService {
 
 	async createDistributor(actor: Actor, input: CreateDistributorRequest): Promise<Distributor> {
 		try {
-			const record = await prisma.distributor.create({
-				data: input,
-			});
-			await this.audit({
-				actor,
-				type: "catalog.distributor.create",
-				entityType: "distributor",
-				entityId: record.id,
-				details: {
-					name: record.name,
-				},
+			const record = await prisma.$transaction(async (tx) => {
+				const created = await tx.distributor.create({
+					data: input,
+				});
+				await this.audit(tx, {
+					actor,
+					type: "catalog.distributor.create",
+					entityType: "distributor",
+					entityId: created.id,
+					details: {
+						name: created.name,
+					},
+				});
+				return created;
 			});
 			return mapDistributor(record);
 		} catch (error) {
@@ -217,18 +238,21 @@ export class CatalogService {
 		await this.ensureDistributorExists(id);
 
 		try {
-			const record = await prisma.distributor.update({
-				where: { id },
-				data: buildDistributorUpdateData(input),
-			});
-			await this.audit({
-				actor,
-				type: "catalog.distributor.update",
-				entityType: "distributor",
-				entityId: record.id,
-				details: {
-					changes: input,
-				},
+			const record = await prisma.$transaction(async (tx) => {
+				const updated = await tx.distributor.update({
+					where: { id },
+					data: buildDistributorUpdateData(input),
+				});
+				await this.audit(tx, {
+					actor,
+					type: "catalog.distributor.update",
+					entityType: "distributor",
+					entityId: updated.id,
+					details: {
+						changes: input,
+					},
+				});
+				return updated;
 			});
 			return mapDistributor(record);
 		} catch (error) {
@@ -238,18 +262,21 @@ export class CatalogService {
 
 	async archiveDistributor(actor: Actor, id: string): Promise<Distributor> {
 		await this.ensureDistributorExists(id);
-		const record = await prisma.distributor.update({
-			where: { id },
-			data: { active: false },
-		});
-		await this.audit({
-			actor,
-			type: "catalog.distributor.archive",
-			entityType: "distributor",
-			entityId: record.id,
-			details: {
-				active: false,
-			},
+		const record = await prisma.$transaction(async (tx) => {
+			const updated = await tx.distributor.update({
+				where: { id },
+				data: { active: false },
+			});
+			await this.audit(tx, {
+				actor,
+				type: "catalog.distributor.archive",
+				entityType: "distributor",
+				entityId: updated.id,
+				details: {
+					active: false,
+				},
+			});
+			return updated;
 		});
 		return mapDistributor(record);
 	}
@@ -271,29 +298,32 @@ export class CatalogService {
 		await this.ensureActivePackagingType(input.packagingTypeId);
 
 		try {
-			const record = await prisma.productTemplate.create({
-				data: {
-					name: input.name,
-					rawMaterialTypeId: input.rawMaterialTypeId,
-					packagingTypeId: input.packagingTypeId,
-					priceCents: input.priceCents,
-				},
-				include: {
-					rawMaterialType: true,
-					packagingType: true,
-				},
-			});
-			await this.audit({
-				actor,
-				type: "catalog.product_template.create",
-				entityType: "product_template",
-				entityId: record.id,
-				details: {
-					name: record.name,
-					rawMaterialTypeId: record.rawMaterialTypeId,
-					packagingTypeId: record.packagingTypeId,
-					priceCents: record.priceCents,
-				},
+			const record = await prisma.$transaction(async (tx) => {
+				const created = await tx.productTemplate.create({
+					data: {
+						name: input.name,
+						rawMaterialTypeId: input.rawMaterialTypeId,
+						packagingTypeId: input.packagingTypeId,
+						priceCents: input.priceCents,
+					},
+					include: {
+						rawMaterialType: true,
+						packagingType: true,
+					},
+				});
+				await this.audit(tx, {
+					actor,
+					type: "catalog.product_template.create",
+					entityType: "product_template",
+					entityId: created.id,
+					details: {
+						name: created.name,
+						rawMaterialTypeId: created.rawMaterialTypeId,
+						packagingTypeId: created.packagingTypeId,
+						priceCents: created.priceCents,
+					},
+				});
+				return created;
 			});
 			return mapProductTemplate(record);
 		} catch (error) {
@@ -318,22 +348,25 @@ export class CatalogService {
 		}
 
 		try {
-			const record = await prisma.productTemplate.update({
-				where: { id },
-				data: buildProductTemplateUpdateData(input),
-				include: {
-					rawMaterialType: true,
-					packagingType: true,
-				},
-			});
-			await this.audit({
-				actor,
-				type: "catalog.product_template.update",
-				entityType: "product_template",
-				entityId: record.id,
-				details: {
-					changes: input,
-				},
+			const record = await prisma.$transaction(async (tx) => {
+				const updated = await tx.productTemplate.update({
+					where: { id },
+					data: buildProductTemplateUpdateData(input),
+					include: {
+						rawMaterialType: true,
+						packagingType: true,
+					},
+				});
+				await this.audit(tx, {
+					actor,
+					type: "catalog.product_template.update",
+					entityType: "product_template",
+					entityId: updated.id,
+					details: {
+						changes: input,
+					},
+				});
+				return updated;
 			});
 			return mapProductTemplate(record);
 		} catch (error) {
@@ -343,28 +376,31 @@ export class CatalogService {
 
 	async archiveProductTemplate(actor: Actor, id: string): Promise<ProductTemplate> {
 		await this.ensureProductTemplateExists(id);
-		const record = await prisma.productTemplate.update({
-			where: { id },
-			data: { active: false },
-			include: {
-				rawMaterialType: true,
-				packagingType: true,
-			},
-		});
-		await this.audit({
-			actor,
-			type: "catalog.product_template.archive",
-			entityType: "product_template",
-			entityId: record.id,
-			details: {
-				active: false,
-			},
+		const record = await prisma.$transaction(async (tx) => {
+			const updated = await tx.productTemplate.update({
+				where: { id },
+				data: { active: false },
+				include: {
+					rawMaterialType: true,
+					packagingType: true,
+				},
+			});
+			await this.audit(tx, {
+				actor,
+				type: "catalog.product_template.archive",
+				entityType: "product_template",
+				entityId: updated.id,
+				details: {
+					active: false,
+				},
+			});
+			return updated;
 		});
 		return mapProductTemplate(record);
 	}
 
-	private async audit(input: AuditInput): Promise<void> {
-		await this.operationService.createAuditOperation(input);
+	private async audit(tx: Prisma.TransactionClient, input: AuditInput): Promise<void> {
+		await this.operationService.createAuditOperationInTransaction(tx, input);
 	}
 
 	private assertHasChanges(input: object): void {

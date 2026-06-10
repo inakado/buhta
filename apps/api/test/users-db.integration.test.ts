@@ -4,6 +4,7 @@ import { IdempotencyService } from "../src/operations/idempotency.service";
 import { OperationService } from "../src/operations/operation.service";
 import type { Actor } from "../src/policy/actor";
 import { prisma } from "../src/prisma/client";
+import { deleteAuditLogsForTest } from "./helpers/audit-log-cleanup";
 import { UsersService } from "../src/users/users.service";
 
 const usersService = new UsersService(new OperationService(new IdempotencyService()));
@@ -76,7 +77,7 @@ async function cleanup() {
 	await prisma.idempotencyRecord.deleteMany({
 		where: { actorUserId: { in: userIds } },
 	});
-	await prisma.auditLog.deleteMany({
+	await deleteAuditLogsForTest({
 		where: {
 			OR: [{ actorUserId: { in: userIds } }, { entityId: { in: userIds } }],
 		},

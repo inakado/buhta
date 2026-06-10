@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { AppError } from "../src/common/errors/app-error";
 import type { Actor } from "../src/policy/actor";
 import { prisma } from "../src/prisma/client";
+import { deleteAuditLogsForTest } from "./helpers/audit-log-cleanup";
 import { ProductionService } from "../src/production/production.service";
 
 const productionService = new ProductionService();
@@ -118,7 +119,7 @@ async function cleanup() {
 			OR: [{ actorUserId: actor.userId }, { packagingTypeId: { in: packagingTypeIds } }],
 		},
 	});
-	await prisma.auditLog.deleteMany({
+	await deleteAuditLogsForTest({
 		where: { actorUserId: actor.userId },
 	});
 	await prisma.idempotencyRecord.deleteMany({

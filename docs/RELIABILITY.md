@@ -42,3 +42,9 @@ Reliability notes проекта «Бухта».
 - прямые service-level тесты могут вызывать сервисы без key, но HTTP controllers для критичных write endpoints требуют key.
 
 Таблица `idempotency_record` остается baseline-заготовкой для будущего full replay flow с request hash и response snapshot. Текущий runtime-fix закрывает повторное выполнение fail-closed: повтор не возвращает сохраненный response, а не дает создать вторую доменную операцию.
+
+## 5. Audit append-only guard
+
+`audit_log` защищен database trigger-ом `audit_log_append_only_guard`: обычный runtime `UPDATE` и `DELETE` запрещены. Для миграций и тестового cleanup допускается явный session flag `buhta.allow_audit_log_mutation = 'on'`.
+
+Production release/transfer больше не обновляет audit row после создания: id партии или перемещения генерируется до audit insert и сразу пишется как `entityId`. Catalog mutations пишут справочник и audit operation в одной Prisma transaction.

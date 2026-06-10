@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { Injectable } from "@nestjs/common";
 import type {
 	CreateProductTransferRequest,
@@ -282,8 +283,9 @@ export class ProductionService {
 
 		const consumedPackagingQuantity = input.quantity;
 
-		const batch = await prisma.$transaction(async (tx) => {
-			const rawDecrement = await tx.rawMaterialBalance.updateMany({
+			const batch = await prisma.$transaction(async (tx) => {
+				const productBatchId = randomUUID();
+				const rawDecrement = await tx.rawMaterialBalance.updateMany({
 				where: {
 					rawMaterialTypeId: template.rawMaterialTypeId,
 					quantity: { gte: input.consumedRawMaterialQuantity },
@@ -313,14 +315,15 @@ export class ProductionService {
 				});
 			}
 
-			const operation = await this.createOperation(tx, {
-				actor,
+				const operation = await this.createOperation(tx, {
+					actor,
 					type: "production.product_batch.create",
 					entityType: "product_batch",
+					entityId: productBatchId,
 					idempotencyKey,
 					details: {
-					productTemplateId: template.id,
-					productName: template.name,
+						productTemplateId: template.id,
+						productName: template.name,
 					rawMaterialTypeId: template.rawMaterialTypeId,
 					rawMaterialTypeName: template.rawMaterialType.name,
 					rawMaterialUnit: template.rawMaterialType.unit,
@@ -335,9 +338,10 @@ export class ProductionService {
 				},
 			});
 
-			const createdBatch = await tx.productBatch.create({
-				data: {
-					productTemplateId: template.id,
+				const createdBatch = await tx.productBatch.create({
+					data: {
+						id: productBatchId,
+						productTemplateId: template.id,
 					productName: template.name,
 					rawMaterialTypeId: template.rawMaterialTypeId,
 					rawMaterialTypeName: template.rawMaterialType.name,
@@ -361,13 +365,8 @@ export class ProductionService {
 				},
 			});
 
-			await tx.auditLog.updateMany({
-				where: { operationId: operation.id },
-				data: { entityId: createdBatch.id },
+				return createdBatch;
 			});
-
-			return createdBatch;
-		});
 
 		return mapProductBatch(batch);
 	}
@@ -383,8 +382,9 @@ export class ProductionService {
 			throw new AppError("NOT_FOUND", "Product batch not found", { id: input.productBatchId });
 		}
 
-		const result = await prisma.$transaction(async (tx) => {
-			const distributor = await tx.distributor.findUnique({ where: { id: input.distributorId } });
+			const result = await prisma.$transaction(async (tx) => {
+				const productTransferId = randomUUID();
+				const distributor = await tx.distributor.findUnique({ where: { id: input.distributorId } });
 			if (!distributor) {
 				throw new AppError("NOT_FOUND", "Distributor not found", { id: input.distributorId });
 			}
@@ -453,13 +453,14 @@ export class ProductionService {
 				include: { distributor: true, productBatch: true },
 			});
 
-			const operation = await this.createOperation(tx, {
-				actor,
+				const operation = await this.createOperation(tx, {
+					actor,
 					type: "production.product_transfer.create",
 					entityType: "product_transfer",
+					entityId: productTransferId,
 					idempotencyKey,
 					details: {
-					productBatchId: input.productBatchId,
+						productBatchId: input.productBatchId,
 					productName: productBatch.productName,
 					baseUnitPriceCents: productBatch.priceCents,
 					unitPriceCents: productBatch.priceCents,
@@ -476,8 +477,9 @@ export class ProductionService {
 				},
 			});
 
-			const transferData: Prisma.ProductTransferUncheckedCreateInput = {
-				productBatchId: input.productBatchId,
+				const transferData: Prisma.ProductTransferUncheckedCreateInput = {
+					id: productTransferId,
+					productBatchId: input.productBatchId,
 				distributorId: input.distributorId,
 				quantity: input.quantity,
 				baseUnitPriceCents: productBatch.priceCents,
@@ -495,13 +497,8 @@ export class ProductionService {
 				data: transferData,
 			});
 
-			await tx.auditLog.updateMany({
-				where: { operationId: operation.id },
-				data: { entityId: transfer.id },
-			});
-
-			return {
-				transfer,
+				return {
+					transfer,
 				workshopProductBalance: workshopBalanceAfter,
 				distributorProductBalance,
 			};
@@ -538,9 +535,9 @@ export class ProductionService {
 		return record;
 	}
 
-	private async createOperation(tx: Prisma.TransactionClient, input: ProductionOperationInput) {
-		const operation = await tx.operation.create({
-			data: {
+		private async createOperation(tx: Prisma.TransactionClient, input: ProductionOperationInput) {
+			const operation = await tx.operation.create({
+				data: {
 					type: input.type,
 					status: OPERATION_STATUS.succeeded,
 					actorUserId: input.actor.userId,

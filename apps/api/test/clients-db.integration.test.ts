@@ -3,6 +3,7 @@ import { AppError } from "../src/common/errors/app-error";
 import { ClientsService } from "../src/clients/clients.service";
 import type { Actor } from "../src/policy/actor";
 import { prisma } from "../src/prisma/client";
+import { deleteAuditLogsForTest } from "./helpers/audit-log-cleanup";
 
 const clientsService = new ClientsService();
 const managerActor: Actor = {
@@ -53,7 +54,7 @@ async function cleanup() {
 	await prisma.client.deleteMany({
 		where: { createdByUserId: { in: userIds } },
 	});
-	await prisma.auditLog.deleteMany({
+	await deleteAuditLogsForTest({
 		where: { actorUserId: { in: userIds } },
 	});
 	await prisma.operation.deleteMany({

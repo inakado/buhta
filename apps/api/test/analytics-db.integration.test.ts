@@ -5,6 +5,7 @@ import {
 	normalizeDirectorAnalyticsQuery,
 } from "../src/analytics/analytics.service";
 import { prisma } from "../src/prisma/client";
+import { deleteAuditLogsForTest } from "./helpers/audit-log-cleanup";
 
 const analyticsService = new AnalyticsService();
 
@@ -76,7 +77,7 @@ async function cleanup() {
 		select: { id: true },
 	});
 	const operationIds = operations.map((operation) => operation.id);
-	await prisma.auditLog.deleteMany({ where: { operationId: { in: operationIds } } });
+	await deleteAuditLogsForTest({ where: { operationId: { in: operationIds } } });
 	await prisma.idempotencyRecord.deleteMany({ where: { operationId: { in: operationIds } } });
 	await prisma.operation.deleteMany({ where: { id: { in: operationIds } } });
 	await prisma.session.deleteMany({ where: { userId: { in: Object.values(actorIds) } } });

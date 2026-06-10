@@ -7,6 +7,7 @@ import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { AppModule } from "../src/app.module";
 import { prisma } from "../src/prisma/client";
+import { deleteAuditLogsForTest } from "./helpers/audit-log-cleanup";
 
 const email = "auth-http-integration@buhta.local";
 const username = "auth-http-admin";
@@ -291,7 +292,7 @@ async function cleanupUser() {
 	await prisma.idempotencyRecord.deleteMany({
 		where: { actorUserId: { in: userIds } },
 	});
-	await prisma.auditLog.deleteMany({
+	await deleteAuditLogsForTest({
 		where: {
 			OR: [{ actorUserId: { in: userIds } }, { entityId: { in: userIds } }],
 		},

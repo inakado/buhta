@@ -4,6 +4,7 @@ import { AppError } from "../src/common/errors/app-error";
 import { IdempotencyService } from "../src/operations/idempotency.service";
 import { OperationService } from "../src/operations/operation.service";
 import { prisma } from "../src/prisma/client";
+import { deleteAuditLogsForTest } from "./helpers/audit-log-cleanup";
 
 const testUserId = "operation-integration-user";
 const actorEmail = "operation-integration@internal.buhta.local";
@@ -47,7 +48,7 @@ async function cleanup() {
 	await prisma.idempotencyRecord.deleteMany({
 		where: { actorUserId: actor.userId },
 	});
-	await prisma.auditLog.deleteMany({
+	await deleteAuditLogsForTest({
 		where: { actorUserId: actor.userId },
 	});
 	await prisma.operation.deleteMany({
@@ -132,5 +133,25 @@ describe("OperationService real Postgres integration", () => {
 		});
 
 		await expect(conflict).rejects.toThrow(AppError);
+	});
+
+	it("blocks direct audit log update and delete without explicit test override", async () => {
+		await ensureUser();
+
+		await operationService.createAuditOperation({
+			actor,
+			type: "foundation.baseline",
+			entityType: "operation",
+			entityId: "append-only-test",
+			details: { source: "operation-db.integration.test" },
+		});
+
+		await expect(prisma.auditLog.updateMany({
+			where: { actorUserId: actor.userId },
+			data: { entityId: "mutated" },
+		})).rejects.toThrow();
+		await expect(prisma.auditLog.deleteMany({
+			where: { actorUserId: actor.userId },
+		})).rejects.toThrow();
 	});
 });

@@ -90,6 +90,8 @@ Mobile/PWA foundation реализуется рано, а не в конце: ap
 - `operation(actorUserId, idempotencyKey)` — runtime replay guard для критичных HTTP write-команд;
 - `idempotency_record` — baseline-заготовка для будущего full replay flow с request hash и response snapshot.
 
+`audit_log` защищен database trigger-ом от runtime `UPDATE` и `DELETE`. Исключения должны быть явными и ограниченными: миграции или тестовый cleanup выставляют session flag `buhta.allow_audit_log_mutation = 'on'`. Доменные сервисы не должны исправлять audit rows после создания; если нужен `entityId`, id доменного факта генерируется до audit insert.
+
 Admin user management уже пишет audit operations:
 
 - `user.create`;
@@ -180,6 +182,7 @@ Director analytics — read-only query service в модуле `analytics`. `GET
 - `Operation`/audit envelope фиксирует общий факт: id, тип операции, actor, время, idempotency key, источник и статус;
 - typed operation details фиксируют доменные поля конкретного действия;
 - balance projections обновляются в той же transaction, что и operation/details/audit records;
+- catalog mutations и audit records для них создаются в одной transaction;
 - read models/query services читают надежные projections или факты операций, а не UI-state.
 
 Typed details нужны минимум для:

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { CourierService } from "../src/courier/courier.service";
 import type { Actor } from "../src/policy/actor";
 import { prisma } from "../src/prisma/client";
+import { deleteAuditLogsForTest } from "./helpers/audit-log-cleanup";
 
 const courierService = new CourierService();
 
@@ -288,7 +289,7 @@ async function cleanup() {
 	await prisma.client.deleteMany({
 		where: { createdByUserId: { in: actorIds } },
 	});
-	await prisma.auditLog.deleteMany({
+	await deleteAuditLogsForTest({
 		where: { actorUserId: { in: actorIds } },
 	});
 	await prisma.idempotencyRecord.deleteMany({

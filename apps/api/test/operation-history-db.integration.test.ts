@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { AppError } from "../src/common/errors/app-error";
 import { OperationsService } from "../src/operations/operations.service";
 import { prisma } from "../src/prisma/client";
+import { deleteAuditLogsForTest } from "./helpers/audit-log-cleanup";
 
 const operationsService = new OperationsService();
 const now = new Date("2036-06-05T00:00:00.000Z");
@@ -123,7 +124,7 @@ async function cleanup() {
 	});
 	const operationIds = operations.map((operation) => operation.id);
 
-	await prisma.auditLog.deleteMany({
+	await deleteAuditLogsForTest({
 		where: {
 			OR: [
 				{ actorUserId: { in: userIds } },

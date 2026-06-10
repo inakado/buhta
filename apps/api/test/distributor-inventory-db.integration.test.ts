@@ -4,6 +4,7 @@ import { DistributorService } from "../src/distributor/distributor.service";
 import { summarizeDistributorInventory } from "../src/distributor/distributor.mapper";
 import { ProductionService } from "../src/production/production.service";
 import { prisma } from "../src/prisma/client";
+import { deleteAuditLogsForTest } from "./helpers/audit-log-cleanup";
 
 const distributorService = new DistributorService();
 const productionService = new ProductionService();
@@ -147,7 +148,7 @@ async function cleanup() {
 			OR: [{ actorUserId: actor.userId }, { packagingTypeId: { in: packagingTypeIds } }],
 		},
 	});
-	await prisma.auditLog.deleteMany({
+	await deleteAuditLogsForTest({
 		where: { actorUserId: actor.userId },
 	});
 	await prisma.idempotencyRecord.deleteMany({
