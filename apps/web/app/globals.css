@@ -3698,7 +3698,6 @@ input[type="search"]::-webkit-search-decoration {
 .courier-unload-product-list {
 	display: flex;
 	flex-direction: column;
-	border-bottom: 1px solid var(--line);
 	background: #fbfbfa;
 }
 
@@ -3866,6 +3865,10 @@ input[type="search"]::-webkit-search-decoration {
 	gap: 6px;
 	font-size: 12px;
 	line-height: 1.15;
+}
+
+.production-action-form > .field:last-child {
+	border-bottom: 0;
 }
 
 .production-action-form .field input,
