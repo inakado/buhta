@@ -1,6 +1,6 @@
 "use client";
 
-import { LogOut, Settings, type LucideIcon } from "lucide-react";
+import { Settings, type LucideIcon } from "lucide-react";
 import { CatalogHome } from "../features/catalog/CatalogHome";
 import { DirectorAnalyticsHome } from "../features/analytics/DirectorAnalyticsHome";
 import { ClientsHome } from "../features/clients/ClientsHome";
@@ -14,9 +14,9 @@ import { OperationHistoryHome } from "../features/operations/OperationHistoryHom
 import { ProductionHome } from "../features/production/ProductionHome";
 import { DistributorSaleHome } from "../features/sales/DistributorSaleHome";
 import { SalesHistoryHome } from "../features/sales/SalesHistoryHome";
-import { ROLE_LABELS } from "../lib/role-labels";
 import type { CurrentActor } from "../lib/api-client";
 import { AdminHome } from "../roles/admin/AdminHome";
+import { AdminMoreHome } from "../roles/admin/AdminMoreHome";
 import { CommercialMoreHome } from "../roles/commercial-manager/CommercialMoreHome";
 import { CommercialManagerHome } from "../roles/commercial-manager/CommercialManagerHome";
 import { CourierHome } from "../roles/courier/CourierHome";
@@ -100,8 +100,14 @@ export function RoleHomeRouter({
 		);
 	}
 
-	if (activeTab === "settings") {
-		return <SettingsScreen actor={actor} logout={logout} logoutPending={logoutPending} />;
+	if (actor.role === "admin" && activeTab === "more") {
+		return (
+			<AdminMoreHome
+				actor={actor}
+				logout={logout}
+				logoutPending={logoutPending}
+			/>
+		);
 	}
 
 	if (activeTab === "catalog" && actor.permissions.includes("catalog.manage")) {
@@ -165,7 +171,7 @@ export function RoleHomeRouter({
 
 	if (actor.role === "admin") {
 		if (activeTab !== "people") {
-			return <PlaceholderScreen title="История" text="Раздел недоступен для текущей роли." icon={Settings} />;
+			return <PlaceholderScreen title="Раздел" text="Раздел недоступен для текущей роли." icon={Settings} />;
 		}
 
 		return <AdminHome actor={actor} online={online} />;
@@ -289,39 +295,6 @@ function PlaceholderScreen({
 					<p>{text}</p>
 				</div>
 				<Icon aria-hidden size={22} />
-			</div>
-		</section>
-	);
-}
-
-function SettingsScreen({
-	actor,
-	logout,
-	logoutPending,
-}: {
-	actor: CurrentActor;
-	logout: () => void;
-	logoutPending: boolean;
-}) {
-	return (
-		<section className="screen-stack">
-			<div className="section-heading">
-				<h2>Настройки</h2>
-			</div>
-
-			<div className="settings-panel">
-				<div className="section-heading compact">
-					<h2>{actor.displayName}</h2>
-					<span>{ROLE_LABELS[actor.role]}</span>
-				</div>
-				<div className="settings-row">
-					<span>Логин</span>
-					<strong>@{actor.login}</strong>
-				</div>
-				<button className="primary-button danger-button" disabled={logoutPending} onClick={logout} type="button">
-					<LogOut aria-hidden size={18} />
-					{logoutPending ? "Выходим" : "Выйти"}
-				</button>
 			</div>
 		</section>
 	);

@@ -2926,38 +2926,6 @@ input[type="search"]::-webkit-search-decoration {
 	font-weight: var(--font-weight-emphasis);
 }
 
-.danger-button {
-	width: 100%;
-	margin-top: 14px;
-}
-
-.settings-panel {
-	border: 1px solid #dfe8dc;
-	border-radius: 18px;
-	background: var(--base-white);
-	padding: 14px;
-}
-
-.settings-row {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 16px;
-	border-top: 1px solid var(--line);
-	padding: 14px 0 0;
-	color: var(--text-muted);
-	font-size: 13px;
-	line-height: 1.2;
-}
-
-.settings-row strong {
-	overflow-wrap: anywhere;
-	color: var(--base-black);
-	font-size: 15px;
-	font-weight: var(--font-weight-emphasis);
-	text-align: right;
-}
-
 .form-error {
 	margin: 0;
 	border-radius: var(--control-radius);

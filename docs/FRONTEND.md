@@ -358,6 +358,7 @@ App icon использует Pearl Cove знак в `apps/web/app/icon.svg`. Au
 - сотрудники отображаются как плотный access-list в white management panel, а не как `entity-card`: строка показывает имя, login, role select и reset action;
 - сброс пароля требует подтверждения в `operation-dialog` modal и после успеха обновляет `["users"]`;
 - admin write-действия в users screen блокируются offline на первом уровне: создание, смена роли и сброс пароля визуально недоступны без сети;
+- admin bottom navigation использует `Еще`, а не старую вкладку `Настройки`; `AdminMoreHome` показывает account block, disabled future entry `Сменить пароль` и logout row в том же ledger vocabulary, что остальные роли;
 - роль admin не получает операционные sale/load UI, хотя backend может поддерживать часть этих flows.
 
 Фактический operation history screen:
@@ -409,6 +410,7 @@ apps/web/
 
     roles/
       admin/
+        AdminMoreHome.tsx
         AdminHome.tsx
       director/
         DirectorMoreHome.tsx
@@ -584,7 +586,6 @@ Read-only экран остатков распределителя живет в
 
 ## 11. Что остается вне main-role cleanup
 
-- admin contour: отдельная миграция админских экранов и settings/profile pattern;
 - cross-role hardening: смена пароля, экспорт/печать, расширенная пагинация истории продаж;
 - детальная component API для будущих бизнес-функций до появления самих функций;
 - новые роли или новые read models, которых еще нет в runtime/API.

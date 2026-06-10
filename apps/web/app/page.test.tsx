@@ -503,7 +503,9 @@ describe("HomePage", () => {
 
 		render(<HomePage />);
 
-		fireEvent.click(await screen.findByRole("button", { name: "Настройки" }));
+		fireEvent.click(await screen.findByRole("button", { name: "Еще" }));
+		expect(await screen.findByRole("heading", { name: "Еще" })).toBeTruthy();
+		expect(screen.getByRole("button", { name: "Сменить пароль" })).toHaveProperty("disabled", true);
 		fireEvent.click(await screen.findByRole("button", { name: "Выйти" }));
 
 		expect(await screen.findByText("Логин")).toBeTruthy();

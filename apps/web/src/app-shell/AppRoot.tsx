@@ -9,7 +9,7 @@ import {
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
-import { Bell, Box, Check, ClipboardList, Factory, Gauge, History, LayoutDashboard, MoreHorizontal, ReceiptText, Settings, Truck, Users, type LucideIcon } from "lucide-react";
+import { Bell, Box, Check, ClipboardList, Factory, Gauge, History, LayoutDashboard, MoreHorizontal, ReceiptText, Truck, Users, type LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { LoginForm } from "../auth/LoginForm";
 import { getCurrentActor, isUnauthorizedError, listNotifications, signOut, type CurrentActor } from "../lib/api-client";
@@ -218,7 +218,7 @@ function BottomNav({
 			...clientsItem,
 			...courierBalancesItem,
 			...operationHistoryItem,
-			{ id: "settings", label: "Настройки", icon: Settings },
+			{ id: "more", label: "Еще", icon: MoreHorizontal },
 		]
 		: actor.role === "production_manager"
 			? productionItems
@@ -253,7 +253,7 @@ function BottomNav({
 			...clientsItem,
 			...courierBalancesItem,
 			...salesHistoryItem,
-			{ id: "settings", label: "Профиль", icon: Settings },
+			{ id: "more", label: "Еще", icon: MoreHorizontal },
 		];
 
 	return (
@@ -262,7 +262,7 @@ function BottomNav({
 				const isActive = activeTab === item.id || (
 					actor.role === "director"
 					&& item.id === "more"
-					&& (activeTab === "catalog" || activeTab === "clients" || activeTab === "settings")
+					&& (activeTab === "catalog" || activeTab === "clients")
 				) || (
 					actor.role === "production_manager"
 					&& item.id === "more"

@@ -44,7 +44,7 @@
 | --- | --- | --- | --- |
 | App shell | `AppRoot`, `BottomNav`, `LoadingScreen` | auth/loading/authenticated, offline status, success notice | Навигационный стиль не трогать. Проверить только safe bottom spacing, loading, toast и offline surfaces на совместимость с новой плотностью. |
 | Login | `LoginForm` | password visible/hidden, pending/error | Привести форму к будущему стандарту form panel/buttons, без изменения auth flow. |
-| Settings | `SettingsScreen` в `RoleHomeRouter` | все роли, logout pending | Сделать профильный блок частью будущего стандарта settings/action rows. |
+| More / account | role-specific `*MoreHome` components | logout pending, future change-password entry | Profile/logout moved into role-specific `Еще` ledger surfaces. Old generic `SettingsScreen` removed after admin migration. |
 | Placeholder | `PlaceholderScreen` | недоступный раздел, будущий раздел | Убрать ощущение декоративной карточки, оставить спокойное пустое состояние. |
 | Shared controls | `SegmentedControl`, `PaymentMethodSegmentedControl`, combobox/search components | tabs, payment, client/product search, filters | Унифицировать tabs/segmented vocabulary с директорской главной: active fill, inactive muted surface, компактный шрифт, стабильная высота. |
 
@@ -68,7 +68,7 @@
 | Каталог | `catalog` при `catalog.manage` | `CatalogHome` | Shared with director. Уже мигрирован как compact management surface; admin stage должен только проверить роль/permission context и не делать отдельный дизайн. |
 | Клиенты | `clients` при `client.read` | `ClientsHome` | Shared with director/commercial/distributor contexts. Уже мигрирован к clients management standard; admin stage должен оставить общий экран без fork. |
 | История операций | `operation-history` | `OperationHistoryHome` | Shared with director. Уже мигрирован: filters dialog, readable details, no raw JSON/technical ids. Для admin нужен только smoke/тестовый контроль входа через nav. |
-| Еще / аккаунт | `more` | future `AdminMoreHome`, shared account/logout vocabulary | Заменить старую нижнюю вкладку `Настройки` и `SettingsScreen` на established `Еще` pattern: account block, logout row, future `Сменить пароль` как cross-role hardening. |
+| Еще / аккаунт | `more` | `AdminMoreHome`, shared account/logout vocabulary | Заменяет старую нижнюю вкладку `Настройки` и `SettingsScreen`: account block, logout row, future `Сменить пароль` как cross-role hardening. |
 
 Impeccable audit 2026-06-10:
 
@@ -107,6 +107,7 @@ Admin implementation order:
    - Add admin account surface using the same More/account vocabulary as Director, Production, Commercial, Distributor Worker and Courier.
    - Remove or shrink `SettingsScreen`/settings CSS only after no role route still uses it.
    - Run focused tests plus docs check, update documentation, then commit.
+   - Status 2026-06-10: complete. Admin bottom nav now uses `Еще`, `AdminMoreHome` owns the account/logout surface, shared `Каталог` / `Клиенты` / `История` routes stay reused, and old `SettingsScreen` plus settings CSS are removed.
 
 ### 5.4 Заведующий Производством
 
@@ -473,7 +474,7 @@ Owner-confirmed shape:
    - Remove unused CSS/code that becomes unreachable.
    - Update `docs/FRONTEND.md` and this plan with the final worker contour.
    - Commit the final cleanup separately.
-   - Status: complete. Search confirmed worker no longer routes to bottom-nav `Профиль` / `SettingsScreen` and no worker-specific old card/action code remains reachable. Later main-role cleanup removed the remaining old action-card and compact-balance code/CSS; `SettingsScreen` remains only for admin/fallback. `docs/FRONTEND.md` and this plan now describe the final worker contour.
+   - Status: complete. Search confirmed worker no longer routes to bottom-nav `Профиль` / `SettingsScreen` and no worker-specific old card/action code remains reachable. Later main-role cleanup removed the remaining old action-card and compact-balance code/CSS; admin migration removed the final generic `SettingsScreen` route. `docs/FRONTEND.md` and this plan now describe the final worker contour.
 
 ### Stage 7. Курьер
 
@@ -513,7 +514,7 @@ Problems to remove:
 - `CourierSaleHome` still opens the new-client form inline; it should use the existing `operation-dialog` modal pattern from distributor sale and clients.
 - `CourierLoadHome` and `CourierSaleHome` use muted helper sentences for selected stock; migrated forms should show selected facts as compact ledger rows.
 - `CourierUnloadHome` is the densest old surface: destination, product quantities, cash return and submit reason need clearer grouping and spacing.
-- Bottom-nav `Профиль` / generic `SettingsScreen` is now legacy for migrated roles; courier should move to `Еще`.
+- Bottom-nav `Профиль` / generic `SettingsScreen` was legacy for migrated roles; courier should move to `Еще`.
 
 Already migrated overlaps:
 
