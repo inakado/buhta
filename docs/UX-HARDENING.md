@@ -2,7 +2,7 @@
 
 Статус: `Draft`
 Дата первого прохода: 2026-06-04
-Дата актуализации: 2026-06-08
+Дата актуализации: 2026-06-10
 
 Документ фиксирует найденные UX-пробелы v1 и служит рабочим backlog для полировки интерфейса. Это не source of truth для бизнес-правил: постоянные бизнес-решения остаются в `docs/crm-requirements.md`, frontend conventions — в `docs/FRONTEND.md`, execution plans — в `docs/exec-plans/active/`.
 
@@ -16,7 +16,7 @@
 - исходникам `apps/web/src/**`, `apps/web/app/globals.css`, `apps/api/src/**`, `packages/shared/src/**`;
 - ручной проверке в браузере на `http://localhost:3001` для ролей Директор и Администратор, включая desktop viewport и mobile viewport `390x844`.
 
-Актуализация 2026-06-08 выполнена после polish-этапов `Остатки Директора`, `История`, `Клиенты` и первого прохода по `Каталогу` в активном плане frontend design system migration. Проверка была документационно-кодовой: активный plan, `DESIGN.md`, `docs/FRONTEND.md`, релевантные frontend-компоненты и CSS. Новый browser smoke в этот проход не выполнялся.
+Актуализация 2026-06-10 выполнена после завершения frontend design system migration для основных ролей и администратора. Проверка была документационно-кодовой: completed plan, `DESIGN.md`, `docs/FRONTEND.md`, релевантные frontend-компоненты и CSS. Новый browser smoke в этот проход не выполнялся.
 
 Приоритеты:
 
@@ -61,6 +61,7 @@
 - `Клиенты` приведены к dense management list: heading row со счетчиком, live search без отдельной кнопки, ledger-строки и стабильные copy/edit actions.
 - Постоянная верхняя надпись роли удалена из app shell для всех ролей: роль больше не дублируется над каждым экраном, а остается в профильных/account местах и истории операций.
 - Директорский contour закрыт как набор экранов: `Главная`, `Остатки`, `История`, `Еще`, `Клиенты`, `Справочники`. `Экспорт` и `Сменить пароль` остаются отдельными cross-role hardening задачами.
+- Frontend всех основных ролей и администратора переведен на новую Impeccable design system: role homes, stock/list surfaces, operational forms, histories, clients/catalog, notifications, courier flows, admin users and `Еще` screens use white panels, thin ledger dividers, compact typography, restrained radii and modal dialogs for create/confirm flows.
 
 ## 4. Не считаем проблемами первого прохода
 
@@ -76,7 +77,6 @@
 | UX-004 | P1 | Cross-role reports / control | Первый слой контроля закрыт историей операций и директорской аналитикой, но это еще не полноценный отчетный contour для сверки: нет экспорта/печати, discount analytics, сохраненных фильтров, коммерческого среза и быстрого объяснения движения по конкретному товару или клиенту. Export/print является общим reports flow, а не незакрытым директорским экраном. | Сформировать следующий reports/control pack поверх уже реализованных read models: export/print, скидки, товары/клиенты, cash movement, сохранение периода/фильтров, отдельный коммерческий срез без доступа к директорским данным. | `docs/exec-plans/completed/2026-06-05-operation-history.md`, `docs/exec-plans/completed/2026-06-05-director-money-production-analytics.md`, `docs/crm-requirements.md` |
 | UX-005 | P2 | Desktop/tablet | На desktop приложение остается в mobile shell шириной около 430px. Для операционных mobile-flow это нормально, но история, аналитика и админские списки на большом экране будут искусственно зажаты. | Оставить mobile shell для ежедневных операций, но для history/control/admin списков добавить tablet/desktop layout с широкой таблицей и фильтрами. | `apps/web/app/globals.css` |
 | UX-006 | P2 | Админка пользователей | Список пользователей уже длинный, но нет поиска, фильтра по роли, архива/деактивации, копирования логина. Смена роли происходит сразу через select. Offline block для создания, смены роли и сброса пароля уже добавлен, но нет видимого applied filter/search слоя и защиты от ошибочной смены роли. | Добавить поиск по имени/login, фильтр роли, быстрый copy login, явное подтверждение смены критичной роли или undo/success notice. | `apps/web/src/features/users/AdminUsersHome.tsx`, `apps/web/src/app-shell/RoleHomeRouter.tsx` |
-| UX-007 | P2 | Visual system cleanup | После extraction главной и остатков Директора часть старых экранов все еще может использовать декоративные карточки, oversized metrics, случайные radius/spacing values и screen-local токены, которые не совпадают с новым control-surface языком. Стандарты action blocks, новых компактных кнопок и role-specific command areas еще не завершены. | Постепенно мигрировать read-only, history, admin, operational и report-like экраны к `DESIGN.md` Dashboard / Control Surfaces и stock ledger pattern: строки с разделителями, owner/detail rows, компактная типографика, ограниченное число summary-зон, изолированные selector scopes поверх общих стандартов, без дублирования данных ради заполнения экрана. Следующими extraction-этапами выделить стандарты action blocks и новых кнопок. | `DESIGN.md`, `docs/FRONTEND.md`, `apps/web/app/globals.css` |
 | UX-013 | P2 | Long lists / mobile | В `screen-stack` уже есть bottom padding, но после появления истории операций, истории продаж, аналитики и длинных админских списков нужен повторный mobile smoke: проверить последние строки, модалки отмены, модалки фильтров и success notices относительно bottom nav. | Зафиксировать единый safe bottom spacer и browser smoke checklist для всех длинных экранов и форм: пользователи, история операций, история продаж, клиенты, каталог, аналитика. | `apps/web/app/globals.css`, `apps/web/src/features/users/AdminUsersHome.tsx`, `apps/web/src/features/operations/OperationHistoryHome.tsx`, `apps/web/src/features/sales/SalesHistoryHome.tsx` |
 | UX-017 | P1 | История операций | Кнопка `Показать еще` использует cursor, но текущий компонент хранит только один `cursor` и показывает `history.data.items` текущего запроса. Для пользователя это выглядит как "показать еще", а фактически может заменить первую страницу следующей. | Сделать append pagination: хранить накопленный список страниц или использовать `useInfiniteQuery`; кнопка должна добавлять операции ниже, а не менять контекст просмотра. | `apps/web/src/features/operations/OperationHistoryHome.tsx` |
 | UX-018 | P2 | История операций / фильтры | Фильтры истории живут только в локальном state компонента и сбрасываются при уходе со вкладки. Нет quick presets кроме default 7 дней, нет видимого applied summary, нет deep link/share для расследования. | Сохранять фильтры в URL или local state shell, добавить quick presets `7/30/90`, applied summary и явный `Сбросить` только когда фильтры отличаются от default. | `apps/web/src/features/operations/OperationHistoryHome.tsx` |

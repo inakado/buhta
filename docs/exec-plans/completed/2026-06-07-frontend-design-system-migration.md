@@ -1,7 +1,8 @@
 # Frontend Design System Migration
 
-Статус: `Active`
+Статус: `Completed`
 Дата: `2026-06-07`
+Дата завершения: `2026-06-10`
 
 ## 1. Цель
 
@@ -33,7 +34,7 @@
 - `apps/web/app/globals.css` - текущая CSS-система и место будущей очистки старых selectors.
 - `DESIGN.md` - visual source of truth для Impeccable design system.
 - `docs/FRONTEND.md` - frontend conventions и правила PWA/mobile flows.
-- `docs/UX-HARDENING.md` - текущий UX backlog, включая `UX-007 Visual system cleanup`.
+- `docs/UX-HARDENING.md` - текущий UX backlog для hardening-задач, которые остались за scope visual migration.
 - `apps/web/src/app-shell/RoleHomeRouter.tsx` и `apps/web/src/app-shell/AppRoot.tsx` - фактическая карта ролей, табов и условных экранов.
 
 ## 5. Карта Экранов И Вариантов
@@ -593,7 +594,7 @@ Implementation stages:
   - курьерские `Балансы курьеров`;
   - own courier balance.
 - Проверить все prop variants: `embedded`, `hideHeading`, `mode`, `showCashBalance`, `canAssignDiscount`, `canWithdrawCash`.
-- Status 2026-06-10: complete for main roles except admin. Commercial drilldown, director/commercial courier balances and own courier home now use the migrated stock/list/table standards. `CourierBalanceHome` is intentionally read-only all-couriers only; own courier stock is owned by `CourierHomeOverview` / `CourierStockList`.
+- Status 2026-06-10: complete. Commercial drilldown, director/commercial courier balances, own courier home and admin shared read-only routes use the migrated stock/list/table standards. `CourierBalanceHome` is intentionally read-only all-couriers only; own courier stock is owned by `CourierHomeOverview` / `CourierStockList`.
 
 ### Stage 9. Remaining Role Home Overview Screens
 
@@ -601,7 +602,7 @@ Implementation stages:
 - Убрать старый декоративный card language там, где экран должен быть рабочим control surface.
 - Стандартизировать action blocks: иконка, label, disabled/offline reason, compact spacing.
 - Не дублировать данные из нижней навигации или соседних экранов.
-- Status 2026-06-10: complete for main roles except admin. `DistributorHomeOverview` now has only the migrated ledger/command rendering path, and `CourierHomeOverview` owns the courier's first-screen balance/product list.
+- Status 2026-06-10: complete. `DistributorHomeOverview` now has only the migrated ledger/command rendering path, and `CourierHomeOverview` owns the courier's first-screen balance/product list.
 
 ### Stage 10. Remaining Operational Forms
 
@@ -620,7 +621,7 @@ Implementation stages:
 - Мигрировать `AdminUsersHome`, remaining shared `CatalogHome`, `ClientsHome`, `NotificationsHome` states.
 - Для long lists проверить bottom spacing and row density.
 - Не делать строки карточками, если они read-only and non-drilldown.
-- Status 2026-06-10: complete for Director, Production, Commercial, Distributor Worker and Courier surfaces. Admin users are migrated; admin `Еще`/account and shared-route cleanup remain in section 5.3.
+- Status 2026-06-10: complete for Director, Production, Commercial, Distributor Worker, Courier and Admin surfaces. Admin users and admin `Еще`/account are migrated; shared `CatalogHome`, `ClientsHome`, `NotificationsHome`, `OperationHistoryHome` and sales history surfaces keep the completed compact management/ledger standards.
 
 ### Stage 12. Documentation And CSS Cleanup
 
@@ -628,7 +629,7 @@ Implementation stages:
 - Удалять старые selectors только после того, как не осталось usages.
 - Запретить новые локальные tokens без причины: radius, font size, shadow, gradient, card treatment.
 - Финально пройти `globals.css` на legacy classes, duplicates and dead design rules.
-- Status 2026-06-10: main-role cleanup complete. Removed unreachable compact-balance, action grid, action-card, flat balance row and inline nested form CSS/code paths; docs now describe command actions, ledger summaries and the simplified read-only courier balance split. Final cleanup still needs the admin users/settings pass.
+- Status 2026-06-10: complete. Removed unreachable compact-balance, action grid, action-card, flat balance row, inline nested form, settings screen and old settings CSS/code paths. Final static scan found no active usages of old `SettingsScreen`, action-card/compact-balance or production legacy selectors in app code, and `globals.css` has no obvious dead project selectors beyond runtime library classes.
 
 ## 9. Implementation Protocol Для Каждого Stage
 
@@ -686,3 +687,22 @@ Rollback:
 - Director home, stock and history form a coherent director control contour.
 - Остальные роли используют ту же систему, но сохраняют свои операционные особенности.
 - Финальные проверки пройдены and documented before moving this plan to `completed`.
+
+## 14. Completion Notes
+
+Инициатива завершена 2026-06-10. Миграция охватила Директора, заведующего производством, коммерческого руководителя, работника распределителя, курьера и администратора. Активный frontend теперь строится вокруг белых панелей, тонких ledger-разделителей, compact typography, restrained radii, rows over decorative cards, shared operational forms, modal create/confirm flows and role-specific `Еще` account surfaces.
+
+Не вошли в эту инициативу и остаются в `docs/UX-HARDENING.md`: self password change, export/print/report hardening, desktop/tablet expansion, deeper admin user search/filtering and history/sales pagination improvements.
+
+Final cleanup:
+
+- Static scan found no active app-code usages of `SettingsScreen`, `settings-panel`, `settings-row`, `danger-button`, `action-card`, `action-grid`, `compact-balance`, old production balance/detail list hooks or old commercial card hooks.
+- CSS selector scan found no obvious dead project selectors in `apps/web/app/globals.css`; apparent external/runtime selectors such as DayPicker classes remain intentional.
+- Untracked `.impeccable/critique/...` and `.playwright-cli/` artifacts were left untouched.
+
+Final verification:
+
+- `pnpm --filter @buhta/web test -- page.test.tsx`
+- `pnpm --filter @buhta/web typecheck`
+- `pnpm --filter @buhta/web lint`
+- `pnpm docs:check`

@@ -2,7 +2,7 @@
 
 Frontend notes проекта «Бухта».
 
-Статус: `Draft`. Фиксирует frontend-направление: mobile-first PWA и постепенно извлекаемую Impeccable design system. Главная Директора и `Остатки Директора` являются текущими эталонами для контрольных/read-only поверхностей.
+Статус: `Draft`. Фиксирует frontend-направление: mobile-first PWA и извлеченную Impeccable design system. Главная Директора и `Остатки Директора` остаются эталонами для контрольных/read-only поверхностей; остальные роли и админские экраны следуют тем же ledger, command, form and management standards.
 
 ## 1. Назначение
 

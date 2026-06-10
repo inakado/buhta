@@ -305,7 +305,7 @@ The design system migration is intentional and incremental. Screens may keep iso
 - **Shared standards underneath:** local selectors should reuse the same font scale, tab treatment, button vocabulary, spacing rhythm, line color and state colors defined here or in shared primitives.
 - **No screen-local inventions by default:** new radius, font sizes, shadows, action blocks or button styles need a reason. If the intent already exists, reuse or extend the standard.
 - **Extract after repetition:** when a local pattern appears across multiple screens with the same intent, promote it to a shared primitive or documented token instead of copying CSS.
-- **Known unfinished areas:** action blocks, compact command buttons and some role-specific summary strips are not fully standardized yet. Future cleanup should extract them from the best current examples rather than preserve older decorative variants.
+- **Command surfaces:** action blocks, compact command buttons and role-specific summary strips now follow the same white ledger/control language. Keep screen-local selectors only when they encode a role-specific layout, not a new visual treatment.
 
 ## 6. Do's and Don'ts
 
