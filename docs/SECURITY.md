@@ -30,6 +30,7 @@ Security notes проекта «Бухта».
 - BetterAuth подключен в API на `/api/auth`.
 - Текущий v1 flow использует BetterAuth email/password + username plugin.
 - Администратор создает пользователя, назначает роль, получает логин и временный пароль, а сотрудник входит по логину и паролю.
+- Публичный BetterAuth endpoint `/api/auth/sign-up/email` отключен и должен отклонять самостоятельную регистрацию. Роль `courier` остается дефолтом в auth user table только как технический fallback, но не как способ открыть регистрацию.
 - Email не является пользовательским идентификатором в интерфейсе CRM.
 - BetterAuth все еще требует email на уровне auth user table, поэтому API генерирует внутренний технический email вида `login@internal.buhta.local`. Это поле не показывать в UI и не использовать как бизнес-идентификатор.
 - Session хранится в httpOnly cookie `better-auth.session_token`.
@@ -42,6 +43,9 @@ Security notes проекта «Бухта».
 - Audit для создания пользователя, смены роли и сброса пароля не должен содержать plaintext password.
 - Публичные routes должны быть явно отмечены как anonymous.
 - Protected routes проходят через BetterAuth session guard и затем через backend role/policy guards.
+- Критичные POST-команды, которые меняют деньги, товарные остатки или выпуск продукции, требуют `Idempotency-Key`. Key фиксируется в `operation` внутри той же transaction; повтор того же key для того же actor не должен создавать вторую доменную операцию.
+- Dev seed может использовать `admin / Pass123!` только на локальной dev-БД. Production или non-local seed обязан получить явный non-default `SEED_ADMIN_PASSWORD`.
+- `BETTER_AUTH_SECRET` обязан быть не короче 32 символов; production runtime дополнительно отклоняет локальный placeholder `replace-with-at-least-32-random-characters`.
 
 ## 4. Policy Layer Direction
 

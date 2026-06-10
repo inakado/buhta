@@ -5,9 +5,14 @@ import { prisma } from "../prisma/client";
 import { isValidLogin, normalizeLogin } from "../users/login";
 
 const secret = process.env.BETTER_AUTH_SECRET;
+const localDevPlaceholderSecret = "replace-with-at-least-32-random-characters";
 
 if (!secret || secret.length < 32) {
 	throw new Error("BETTER_AUTH_SECRET must be at least 32 characters");
+}
+
+if (process.env.NODE_ENV === "production" && secret === localDevPlaceholderSecret) {
+	throw new Error("BETTER_AUTH_SECRET must not use the local development placeholder in production");
 }
 
 export const auth = betterAuth({
@@ -17,6 +22,7 @@ export const auth = betterAuth({
 	}),
 	emailAndPassword: {
 		enabled: true,
+		disableSignUp: true,
 	},
 	plugins: [
 		username({

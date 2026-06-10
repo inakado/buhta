@@ -3,6 +3,8 @@ import { DistributorController } from "../src/distributor/distributor.controller
 import type { DistributorService } from "../src/distributor/distributor.service";
 import type { Actor } from "../src/policy/actor";
 
+const idempotencyKey = "controller-test-key";
+
 describe("DistributorController", () => {
 	it("returns distributor inventory from service", async () => {
 		const inventory = {
@@ -132,28 +134,28 @@ describe("DistributorController", () => {
 		const controller = new DistributorController(distributorService);
 
 		await expect(
-			controller.createSale(actor, {
+				controller.createSale(actor, {
+					distributorProductBalanceId: "balance1",
+					clientId: "client1",
+					quantity: 2,
+					paymentMethod: "cash",
+				}, idempotencyKey),
+			).resolves.toEqual(response);
+			expect(distributorService.createDistributorSale).toHaveBeenCalledWith(actor, {
 				distributorProductBalanceId: "balance1",
 				clientId: "client1",
 				quantity: 2,
 				paymentMethod: "cash",
-			}),
-		).resolves.toEqual(response);
-		expect(distributorService.createDistributorSale).toHaveBeenCalledWith(actor, {
-			distributorProductBalanceId: "balance1",
-			clientId: "client1",
-			quantity: 2,
-			paymentMethod: "cash",
+			}, idempotencyKey);
+			await expect(
+				controller.createSale(actor, {
+					distributorProductBalanceId: "balance1",
+					clientId: "client1",
+					quantity: 0,
+					paymentMethod: "cash",
+				}, idempotencyKey),
+			).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
 		});
-		await expect(
-			controller.createSale(actor, {
-				distributorProductBalanceId: "balance1",
-				clientId: "client1",
-				quantity: 0,
-				paymentMethod: "cash",
-			}),
-		).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
-	});
 
 	it("returns distributor sales history and validates cancellation through service", async () => {
 		const recentSales = { items: [] };
@@ -226,17 +228,17 @@ describe("DistributorController", () => {
 		});
 		await expect(controller.salesHistory({ status: "unknown" }))
 			.rejects.toMatchObject({ code: "VALIDATION_ERROR" });
-		await expect(
-			controller.cancelSale(actor, "sale1", { reason: " Ошибка клиента " }),
-		).resolves.toEqual(cancelResponse);
-		expect(distributorService.cancelDistributorSale).toHaveBeenCalledWith(actor, "sale1", {
-			reason: "Ошибка клиента",
+			await expect(
+				controller.cancelSale(actor, "sale1", { reason: " Ошибка клиента " }, idempotencyKey),
+			).resolves.toEqual(cancelResponse);
+			expect(distributorService.cancelDistributorSale).toHaveBeenCalledWith(actor, "sale1", {
+				reason: "Ошибка клиента",
+			}, idempotencyKey);
+			await expect(controller.cancelSale(actor, "sale1", { reason: "  " }, idempotencyKey))
+				.rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+			await expect(controller.cancelSale(undefined, "sale1", { reason: "Ошибка клиента" }, idempotencyKey))
+				.rejects.toMatchObject({ code: "UNAUTHENTICATED" });
 		});
-		await expect(controller.cancelSale(actor, "sale1", { reason: "  " }))
-			.rejects.toMatchObject({ code: "VALIDATION_ERROR" });
-		await expect(controller.cancelSale(undefined, "sale1", { reason: "Ошибка клиента" }))
-			.rejects.toMatchObject({ code: "UNAUTHENTICATED" });
-	});
 
 	it("validates and creates distributor cash withdrawal through service", async () => {
 		const response = {
@@ -270,28 +272,28 @@ describe("DistributorController", () => {
 		const controller = new DistributorController(distributorService);
 
 		await expect(
-			controller.createCashWithdrawal(actor, {
+				controller.createCashWithdrawal(actor, {
+					distributorId: "dist1",
+					amountCents: 50000,
+					comment: " Забрал наличные ",
+				}, idempotencyKey),
+			).resolves.toEqual(response);
+			expect(distributorService.createCashWithdrawal).toHaveBeenCalledWith(actor, {
 				distributorId: "dist1",
 				amountCents: 50000,
-				comment: " Забрал наличные ",
-			}),
-		).resolves.toEqual(response);
-		expect(distributorService.createCashWithdrawal).toHaveBeenCalledWith(actor, {
-			distributorId: "dist1",
-			amountCents: 50000,
-			comment: "Забрал наличные",
+				comment: "Забрал наличные",
+			}, idempotencyKey);
+			await expect(
+				controller.createCashWithdrawal(actor, {
+					distributorId: "dist1",
+					amountCents: 0,
+				}, idempotencyKey),
+			).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+			await expect(
+				controller.createCashWithdrawal(undefined, {
+					distributorId: "dist1",
+					amountCents: 50000,
+				}, idempotencyKey),
+			).rejects.toMatchObject({ code: "UNAUTHENTICATED" });
 		});
-		await expect(
-			controller.createCashWithdrawal(actor, {
-				distributorId: "dist1",
-				amountCents: 0,
-			}),
-		).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
-		await expect(
-			controller.createCashWithdrawal(undefined, {
-				distributorId: "dist1",
-				amountCents: 50000,
-			}),
-		).rejects.toMatchObject({ code: "UNAUTHENTICATED" });
 	});
-});

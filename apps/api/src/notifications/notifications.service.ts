@@ -139,14 +139,26 @@ export class NotificationsService {
 					},
 				});
 
-				const completed = await tx.productionNotification.update({
-					where: { id: notification.id },
+				const completedAt = new Date();
+				const completion = await tx.productionNotification.updateMany({
+					where: {
+						id: notification.id,
+						status: "new",
+					},
 					data: {
 						status: "completed",
 						completedByUserId: actor.userId,
-						completedAt: new Date(),
+						completedAt,
 						completeOperationId: operation.id,
 					},
+				});
+
+				if (completion.count !== 1) {
+					throw new AppError("DOMAIN_RULE_VIOLATION", "Notification is already completed");
+				}
+
+				const completed = await tx.productionNotification.findUniqueOrThrow({
+					where: { id: notification.id },
 					include: NOTIFICATION_INCLUDE,
 				});
 

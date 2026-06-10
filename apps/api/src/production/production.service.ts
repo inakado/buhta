@@ -38,6 +38,7 @@ type ProductionOperationInput = {
 	type: BaselineOperationType;
 	entityType: string;
 	entityId?: string;
+	idempotencyKey?: string | undefined;
 	details: Prisma.InputJsonValue;
 };
 
@@ -141,16 +142,18 @@ export class ProductionService {
 	async createRawMaterialIntake(
 		actor: Actor,
 		input: CreateRawMaterialIntakeRequest,
+		idempotencyKey?: string,
 	): Promise<ProductionBalanceItem> {
 		const rawMaterialType = await this.ensureActiveRawMaterialType(input.rawMaterialTypeId);
 
 		const balance = await prisma.$transaction(async (tx) => {
 			const operation = await this.createOperation(tx, {
 				actor,
-				type: "production.raw_material_intake.create",
-				entityType: "raw_material_type",
-				entityId: input.rawMaterialTypeId,
-				details: {
+					type: "production.raw_material_intake.create",
+					entityType: "raw_material_type",
+					entityId: input.rawMaterialTypeId,
+					idempotencyKey,
+					details: {
 					rawMaterialTypeId: input.rawMaterialTypeId,
 					rawMaterialTypeName: rawMaterialType.name,
 					quantity: input.quantity,
@@ -189,16 +192,21 @@ export class ProductionService {
 		return mapRawMaterialBalance(balance);
 	}
 
-	async createPackagingIntake(actor: Actor, input: CreatePackagingIntakeRequest): Promise<ProductionBalanceItem> {
+	async createPackagingIntake(
+		actor: Actor,
+		input: CreatePackagingIntakeRequest,
+		idempotencyKey?: string,
+	): Promise<ProductionBalanceItem> {
 		const packagingType = await this.ensureActivePackagingType(input.packagingTypeId);
 
 		const balance = await prisma.$transaction(async (tx) => {
 			const operation = await this.createOperation(tx, {
 				actor,
-				type: "production.packaging_intake.create",
-				entityType: "packaging_type",
-				entityId: input.packagingTypeId,
-				details: {
+					type: "production.packaging_intake.create",
+					entityType: "packaging_type",
+					entityId: input.packagingTypeId,
+					idempotencyKey,
+					details: {
 					packagingTypeId: input.packagingTypeId,
 					packagingTypeName: packagingType.name,
 					quantity: input.quantity,
@@ -237,7 +245,11 @@ export class ProductionService {
 		return mapPackagingBalance(balance);
 	}
 
-	async createProductBatch(actor: Actor, input: CreateProductBatchRequest): Promise<ProductBatch> {
+	async createProductBatch(
+		actor: Actor,
+		input: CreateProductBatchRequest,
+		idempotencyKey?: string,
+	): Promise<ProductBatch> {
 		const template = await prisma.productTemplate.findUnique({
 			where: { id: input.productTemplateId },
 			include: {
@@ -303,9 +315,10 @@ export class ProductionService {
 
 			const operation = await this.createOperation(tx, {
 				actor,
-				type: "production.product_batch.create",
-				entityType: "product_batch",
-				details: {
+					type: "production.product_batch.create",
+					entityType: "product_batch",
+					idempotencyKey,
+					details: {
 					productTemplateId: template.id,
 					productName: template.name,
 					rawMaterialTypeId: template.rawMaterialTypeId,
@@ -362,6 +375,7 @@ export class ProductionService {
 	async createProductTransfer(
 		actor: Actor,
 		input: CreateProductTransferRequest,
+		idempotencyKey?: string,
 	): Promise<ProductTransferResponse> {
 		const productBatch = await prisma.productBatch.findUnique({ where: { id: input.productBatchId } });
 
@@ -441,9 +455,10 @@ export class ProductionService {
 
 			const operation = await this.createOperation(tx, {
 				actor,
-				type: "production.product_transfer.create",
-				entityType: "product_transfer",
-				details: {
+					type: "production.product_transfer.create",
+					entityType: "product_transfer",
+					idempotencyKey,
+					details: {
 					productBatchId: input.productBatchId,
 					productName: productBatch.productName,
 					baseUnitPriceCents: productBatch.priceCents,
@@ -526,11 +541,12 @@ export class ProductionService {
 	private async createOperation(tx: Prisma.TransactionClient, input: ProductionOperationInput) {
 		const operation = await tx.operation.create({
 			data: {
-				type: input.type,
-				status: OPERATION_STATUS.succeeded,
-				actorUserId: input.actor.userId,
-			},
-		});
+					type: input.type,
+					status: OPERATION_STATUS.succeeded,
+					actorUserId: input.actor.userId,
+					idempotencyKey: input.idempotencyKey ?? null,
+				},
+			});
 
 		const auditData: Prisma.AuditLogUncheckedCreateInput = {
 			operationId: operation.id,

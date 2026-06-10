@@ -52,6 +52,7 @@
 - auth foundation строится на `BetterAuth` через `@thallesp/nestjs-better-auth`;
 - spike `NestJS + Prisma + BetterAuth + роли Бухты` пройден;
 - BetterAuth отвечает за identity, sessions, cookies, user management и базовые permissions;
+- публичная самостоятельная регистрация через BetterAuth отключена; пользователей v1 создает только администратор через users API;
 - backend policy/guards и application services отвечают за доменные права и бизнес-инварианты.
 
 Причина:
@@ -66,7 +67,7 @@ Fallback:
 
 Проверка spike:
 
-- `/api/auth/sign-up/email` создает пользователя с ролью по умолчанию `courier`;
+- `/api/auth/sign-up/email` отклоняет самостоятельную регистрацию и не создает пользователя;
 - protected route без сессии возвращает `401`;
 - courier-сессия на director-only route возвращает `403`;
 - director-сессия на director-only route возвращает `200`.

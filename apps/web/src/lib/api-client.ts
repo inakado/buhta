@@ -363,8 +363,7 @@ export async function createRawMaterialIntake(
 	input: CreateRawMaterialIntakeRequest,
 ): Promise<RawMaterialIntakeResponse> {
 	return fetchJson<RawMaterialIntakeResponse>("/production/raw-material-intakes", {
-		method: "POST",
-		body: JSON.stringify(input),
+		...idempotentJsonPost(input),
 	});
 }
 
@@ -374,8 +373,7 @@ export async function listPackagingBalances(): Promise<PackagingBalancesResponse
 
 export async function createPackagingIntake(input: CreatePackagingIntakeRequest): Promise<PackagingIntakeResponse> {
 	return fetchJson<PackagingIntakeResponse>("/production/packaging-intakes", {
-		method: "POST",
-		body: JSON.stringify(input),
+		...idempotentJsonPost(input),
 	});
 }
 
@@ -393,8 +391,7 @@ export async function getProductionTransferOptions(): Promise<ProductionTransfer
 
 export async function createProductBatch(input: CreateProductBatchRequest): Promise<ProductBatchResponse> {
 	return fetchJson<ProductBatchResponse>("/production/product-batches", {
-		method: "POST",
-		body: JSON.stringify(input),
+		...idempotentJsonPost(input),
 	});
 }
 
@@ -402,8 +399,7 @@ export async function createProductTransfer(
 	input: CreateProductTransferRequest,
 ): Promise<ProductTransferResponse> {
 	return fetchJson<ProductTransferResponse>("/production/product-transfers", {
-		method: "POST",
-		body: JSON.stringify(input),
+		...idempotentJsonPost(input),
 	});
 }
 
@@ -425,8 +421,7 @@ export async function getCourierCashBalances(): Promise<CourierCashBalancesRespo
 
 export async function createCourierLoad(input: CreateCourierLoadRequest): Promise<CourierLoadResponse> {
 	return fetchJson<CourierLoadResponse>("/courier/loads", {
-		method: "POST",
-		body: JSON.stringify(input),
+		...idempotentJsonPost(input),
 	});
 }
 
@@ -447,8 +442,7 @@ export async function getCourierSalesHistory(
 
 export async function createCourierSale(input: CreateCourierSaleRequest): Promise<CourierSaleResponse> {
 	return fetchJson<CourierSaleResponse>("/courier/sales", {
-		method: "POST",
-		body: JSON.stringify(input),
+		...idempotentJsonPost(input),
 	});
 }
 
@@ -457,8 +451,7 @@ export async function cancelCourierSale(
 	input: CancelCourierSaleRequest,
 ): Promise<CancelCourierSaleResponse> {
 	return fetchJson<CancelCourierSaleResponse>(`/courier/sales/${saleId}/cancel`, {
-		method: "POST",
-		body: JSON.stringify(input),
+		...idempotentJsonPost(input),
 	});
 }
 
@@ -468,8 +461,7 @@ export async function getCourierUnloadOptions(): Promise<CourierUnloadOptionsRes
 
 export async function createCourierUnload(input: CreateCourierUnloadRequest): Promise<CourierUnloadResponse> {
 	return fetchJson<CourierUnloadResponse>("/courier/unloads", {
-		method: "POST",
-		body: JSON.stringify(input),
+		...idempotentJsonPost(input),
 	});
 }
 
@@ -496,8 +488,7 @@ export async function createDistributorCashWithdrawal(
 	input: CreateDistributorCashWithdrawalRequest,
 ): Promise<DistributorCashWithdrawalResponse> {
 	return fetchJson<DistributorCashWithdrawalResponse>("/distributor/cash-withdrawals", {
-		method: "POST",
-		body: JSON.stringify(input),
+		...idempotentJsonPost(input),
 	});
 }
 
@@ -505,8 +496,7 @@ export async function assignDistributorDiscount(
 	input: AssignDistributorDiscountRequest,
 ): Promise<AssignDistributorDiscountResponse> {
 	return fetchJson<AssignDistributorDiscountResponse>("/distributor/discounts", {
-		method: "POST",
-		body: JSON.stringify(input),
+		...idempotentJsonPost(input),
 	});
 }
 
@@ -514,8 +504,7 @@ export async function createDistributorSale(
 	input: CreateDistributorSaleRequest,
 ): Promise<DistributorSaleResponse> {
 	return fetchJson<DistributorSaleResponse>("/distributor/sales", {
-		method: "POST",
-		body: JSON.stringify(input),
+		...idempotentJsonPost(input),
 	});
 }
 
@@ -524,9 +513,26 @@ export async function cancelDistributorSale(
 	input: CancelDistributorSaleRequest,
 ): Promise<CancelDistributorSaleResponse> {
 	return fetchJson<CancelDistributorSaleResponse>(`/distributor/sales/${saleId}/cancel`, {
-		method: "POST",
-		body: JSON.stringify(input),
+		...idempotentJsonPost(input),
 	});
+}
+
+function idempotentJsonPost(input: unknown): RequestInit {
+	return {
+		method: "POST",
+		headers: {
+			"Idempotency-Key": createIdempotencyKey(),
+		},
+		body: JSON.stringify(input),
+	};
+}
+
+function createIdempotencyKey(): string {
+	if (globalThis.crypto?.randomUUID) {
+		return globalThis.crypto.randomUUID();
+	}
+
+	return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
 async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {

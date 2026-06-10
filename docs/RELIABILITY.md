@@ -31,14 +31,14 @@ Reliability notes проекта «Бухта».
 
 ## 4. Текущая idempotency baseline
 
-Для критичных write-команд вводится таблица `idempotency_record`.
+Критичные HTTP write-команды production, distributor и courier контуров требуют header `Idempotency-Key`.
 
 Текущий принцип:
 
 - idempotency key уникален в рамках `actorUserId`;
-- request hash считается детерминированно по command payload;
-- повтор с тем же ключом и тем же payload возвращает уже созданную operation;
-- повтор с тем же ключом и другим payload отклоняется ошибкой `IDEMPOTENCY_CONFLICT`;
-- запись idempotency, `operation` и `audit_log` создаются в одной Prisma transaction.
+- key пишется в `operation.idempotencyKey` в той же Prisma transaction, что и бизнес-факт, audit и обновление балансов;
+- повтор с тем же ключом откатывается уникальным индексом `operation(actorUserId, idempotencyKey)` и не создает вторую продажу, загрузку, сгрузку, списание или выпуск;
+- frontend API client генерирует новый key для каждой write-команды;
+- прямые service-level тесты могут вызывать сервисы без key, но HTTP controllers для критичных write endpoints требуют key.
 
-Политика хранения и очистки старых idempotency records пока не автоматизирована. Baseline использует `expiresAt`; реальный cleanup нужно добавить перед появлением production write-команд.
+Таблица `idempotency_record` остается baseline-заготовкой для будущего full replay flow с request hash и response snapshot. Текущий runtime-fix закрывает повторное выполнение fail-closed: повтор не возвращает сохраненный response, а не дает создать вторую доменную операцию.

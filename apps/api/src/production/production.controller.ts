@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Inject, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Headers, Inject, Post, UseGuards } from "@nestjs/common";
 import {
 	CreatePackagingIntakeRequestSchema,
 	CreateProductBatchRequestSchema,
@@ -8,6 +8,7 @@ import {
 import type { z } from "zod";
 import { CurrentActor } from "../auth/actor.decorator";
 import { AppError } from "../common/errors/app-error";
+import { requireIdempotencyKey } from "../common/idempotency-key";
 import type { Actor } from "../policy/actor";
 import { PolicyGuard } from "../policy/policy.guard";
 import { RequirePermission } from "../policy/require-permission.decorator";
@@ -39,11 +40,16 @@ export class ProductionController {
 	}
 
 	@Post("raw-material-intakes")
-	async createRawMaterialIntake(@CurrentActor() actor: Actor | undefined, @Body() body: unknown) {
+	async createRawMaterialIntake(
+		@CurrentActor() actor: Actor | undefined,
+		@Body() body: unknown,
+		@Headers("idempotency-key") idempotencyKey: string | undefined,
+	) {
 		return {
 			rawMaterialBalance: await this.productionService.createRawMaterialIntake(
 				requireActor(actor),
 				parseBody(CreateRawMaterialIntakeRequestSchema, body, "Invalid raw material intake payload"),
+				requireIdempotencyKey(idempotencyKey),
 			),
 		};
 	}
@@ -56,11 +62,16 @@ export class ProductionController {
 	}
 
 	@Post("packaging-intakes")
-	async createPackagingIntake(@CurrentActor() actor: Actor | undefined, @Body() body: unknown) {
+	async createPackagingIntake(
+		@CurrentActor() actor: Actor | undefined,
+		@Body() body: unknown,
+		@Headers("idempotency-key") idempotencyKey: string | undefined,
+	) {
 		return {
 			packagingBalance: await this.productionService.createPackagingIntake(
 				requireActor(actor),
 				parseBody(CreatePackagingIntakeRequestSchema, body, "Invalid packaging intake payload"),
+				requireIdempotencyKey(idempotencyKey),
 			),
 		};
 	}
@@ -85,20 +96,30 @@ export class ProductionController {
 	}
 
 	@Post("product-batches")
-	async createProductBatch(@CurrentActor() actor: Actor | undefined, @Body() body: unknown) {
+	async createProductBatch(
+		@CurrentActor() actor: Actor | undefined,
+		@Body() body: unknown,
+		@Headers("idempotency-key") idempotencyKey: string | undefined,
+	) {
 		return {
 			productBatch: await this.productionService.createProductBatch(
 				requireActor(actor),
 				parseBody(CreateProductBatchRequestSchema, body, "Invalid product batch payload"),
+				requireIdempotencyKey(idempotencyKey),
 			),
 		};
 	}
 
 	@Post("product-transfers")
-	async createProductTransfer(@CurrentActor() actor: Actor | undefined, @Body() body: unknown) {
+	async createProductTransfer(
+		@CurrentActor() actor: Actor | undefined,
+		@Body() body: unknown,
+		@Headers("idempotency-key") idempotencyKey: string | undefined,
+	) {
 		return this.productionService.createProductTransfer(
 			requireActor(actor),
 			parseBody(CreateProductTransferRequestSchema, body, "Invalid product transfer payload"),
+			requireIdempotencyKey(idempotencyKey),
 		);
 	}
 }

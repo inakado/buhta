@@ -19,6 +19,7 @@ const rawMaterialBalance = {
 	quantity: 12.5,
 	updatedAt: new Date(0).toISOString(),
 };
+const idempotencyKey = "controller-test-key";
 
 describe("ProductionController", () => {
 	it("validates raw material intake payload before calling service", async () => {
@@ -28,10 +29,10 @@ describe("ProductionController", () => {
 		const controller = new ProductionController(productionService);
 
 		await expect(
-			controller.createRawMaterialIntake(actor, {
-				rawMaterialTypeId: "raw1",
-				quantity: 0,
-			}),
+				controller.createRawMaterialIntake(actor, {
+					rawMaterialTypeId: "raw1",
+					quantity: 0,
+				}, idempotencyKey),
 		).rejects.toThrow(AppError);
 		expect(productionService.createRawMaterialIntake).not.toHaveBeenCalled();
 	});
@@ -43,19 +44,19 @@ describe("ProductionController", () => {
 		const controller = new ProductionController(productionService);
 
 		await expect(
-			controller.createRawMaterialIntake(actor, {
-				rawMaterialTypeId: "raw1",
-				quantity: 12.5,
-				comment: "Утренний приход",
-			}),
+				controller.createRawMaterialIntake(actor, {
+					rawMaterialTypeId: "raw1",
+					quantity: 12.5,
+					comment: "Утренний приход",
+				}, idempotencyKey),
 		).resolves.toEqual({
 			rawMaterialBalance,
 		});
 		expect(productionService.createRawMaterialIntake).toHaveBeenCalledWith(actor, {
-			rawMaterialTypeId: "raw1",
-			quantity: 12.5,
-			comment: "Утренний приход",
-		});
+				rawMaterialTypeId: "raw1",
+				quantity: 12.5,
+				comment: "Утренний приход",
+			}, idempotencyKey);
 	});
 
 	it("requires actor for writes", async () => {
@@ -65,11 +66,11 @@ describe("ProductionController", () => {
 		const controller = new ProductionController(productionService);
 
 		await expect(
-			controller.createProductBatch(undefined, {
-				productTemplateId: "template1",
-				quantity: 4,
-				consumedRawMaterialQuantity: 2.5,
-			}),
+				controller.createProductBatch(undefined, {
+					productTemplateId: "template1",
+					quantity: 4,
+					consumedRawMaterialQuantity: 2.5,
+				}, idempotencyKey),
 		).rejects.toThrow(AppError);
 		expect(productionService.createProductBatch).not.toHaveBeenCalled();
 	});
@@ -81,11 +82,11 @@ describe("ProductionController", () => {
 		const controller = new ProductionController(productionService);
 
 		await expect(
-			controller.createProductTransfer(actor, {
-				productBatchId: "batch1",
-				distributorId: "dist1",
-				quantity: 0,
-			}),
+				controller.createProductTransfer(actor, {
+					productBatchId: "batch1",
+					distributorId: "dist1",
+					quantity: 0,
+				}, idempotencyKey),
 		).rejects.toThrow(AppError);
 		expect(productionService.createProductTransfer).not.toHaveBeenCalled();
 	});
@@ -129,18 +130,18 @@ describe("ProductionController", () => {
 		const controller = new ProductionController(productionService);
 
 		await expect(
-			controller.createProductTransfer(actor, {
-				productBatchId: "batch1",
-				distributorId: "dist1",
-				quantity: 2,
-				comment: " На Центральный ",
-			}),
+				controller.createProductTransfer(actor, {
+					productBatchId: "batch1",
+					distributorId: "dist1",
+					quantity: 2,
+					comment: " На Центральный ",
+				}, idempotencyKey),
 		).resolves.toEqual(transferResponse);
 		expect(productionService.createProductTransfer).toHaveBeenCalledWith(actor, {
 			productBatchId: "batch1",
-			distributorId: "dist1",
-			quantity: 2,
-			comment: "На Центральный",
-		});
+				distributorId: "dist1",
+				quantity: 2,
+				comment: "На Центральный",
+			}, idempotencyKey);
 	});
 });

@@ -17,6 +17,7 @@ const actor: Actor = {
 		"courier.unload.create",
 	],
 };
+const idempotencyKey = "controller-test-key";
 
 describe("CourierController", () => {
 	it("returns courier load options from service", async () => {
@@ -113,21 +114,21 @@ describe("CourierController", () => {
 		const controller = new CourierController(courierService);
 
 		await expect(
-			controller.createLoad(actor, {
+				controller.createLoad(actor, {
+					distributorProductBalanceId: "balance1",
+					quantity: 2,
+				}, idempotencyKey),
+			).resolves.toEqual(response);
+			expect(courierService.createCourierLoad).toHaveBeenCalledWith(actor, {
 				distributorProductBalanceId: "balance1",
 				quantity: 2,
-			}),
-		).resolves.toEqual(response);
-		expect(courierService.createCourierLoad).toHaveBeenCalledWith(actor, {
-			distributorProductBalanceId: "balance1",
-			quantity: 2,
-		});
-		await expect(
-			controller.createLoad(actor, {
-				distributorProductBalanceId: "balance1",
-				quantity: 0,
-			}),
-		).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+			}, idempotencyKey);
+			await expect(
+				controller.createLoad(actor, {
+					distributorProductBalanceId: "balance1",
+					quantity: 0,
+				}, idempotencyKey),
+			).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
 	});
 
 	it("returns courier sale options and cash balances through service", async () => {
@@ -211,27 +212,27 @@ describe("CourierController", () => {
 		const controller = new CourierController(courierService);
 
 		await expect(
-			controller.createSale(actor, {
+				controller.createSale(actor, {
+					courierProductBalanceId: "courier-balance1",
+					clientId: "client1",
+					quantity: 2,
+					paymentMethod: "cash",
+				}, idempotencyKey),
+			).resolves.toEqual(response);
+			expect(courierService.createCourierSale).toHaveBeenCalledWith(actor, {
 				courierProductBalanceId: "courier-balance1",
 				clientId: "client1",
 				quantity: 2,
 				paymentMethod: "cash",
-			}),
-		).resolves.toEqual(response);
-		expect(courierService.createCourierSale).toHaveBeenCalledWith(actor, {
-			courierProductBalanceId: "courier-balance1",
-			clientId: "client1",
-			quantity: 2,
-			paymentMethod: "cash",
-		});
-		await expect(
-			controller.createSale(actor, {
-				courierProductBalanceId: "courier-balance1",
-				clientId: "client1",
-				quantity: 0,
-				paymentMethod: "cash",
-			}),
-		).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+			}, idempotencyKey);
+			await expect(
+				controller.createSale(actor, {
+					courierProductBalanceId: "courier-balance1",
+					clientId: "client1",
+					quantity: 0,
+					paymentMethod: "cash",
+				}, idempotencyKey),
+			).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
 	});
 
 	it("returns courier sales history and validates cancellation through service", async () => {
@@ -307,16 +308,16 @@ describe("CourierController", () => {
 			.rejects.toMatchObject({ code: "VALIDATION_ERROR" });
 		await expect(controller.salesHistory(undefined, {}))
 			.rejects.toMatchObject({ code: "UNAUTHENTICATED" });
-		await expect(
-			controller.cancelSale(actor, "sale1", { reason: " Ошибка клиента " }),
-		).resolves.toEqual(cancelResponse);
-		expect(courierService.cancelCourierSale).toHaveBeenCalledWith(actor, "sale1", {
-			reason: "Ошибка клиента",
-		});
-		await expect(controller.cancelSale(actor, "sale1", { reason: "  " }))
-			.rejects.toMatchObject({ code: "VALIDATION_ERROR" });
-		await expect(controller.cancelSale(undefined, "sale1", { reason: "Ошибка клиента" }))
-			.rejects.toMatchObject({ code: "UNAUTHENTICATED" });
+			await expect(
+				controller.cancelSale(actor, "sale1", { reason: " Ошибка клиента " }, idempotencyKey),
+			).resolves.toEqual(cancelResponse);
+			expect(courierService.cancelCourierSale).toHaveBeenCalledWith(actor, "sale1", {
+				reason: "Ошибка клиента",
+			}, idempotencyKey);
+			await expect(controller.cancelSale(actor, "sale1", { reason: "  " }, idempotencyKey))
+				.rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+			await expect(controller.cancelSale(undefined, "sale1", { reason: "Ошибка клиента" }, idempotencyKey))
+				.rejects.toMatchObject({ code: "UNAUTHENTICATED" });
 	});
 
 	it("returns courier unload options through service", async () => {
@@ -416,33 +417,33 @@ describe("CourierController", () => {
 		const controller = new CourierController(courierService);
 
 		await expect(
-			controller.createUnload(actor, {
+				controller.createUnload(actor, {
+					distributorId: "dist1",
+					items: [{ courierProductBalanceId: "courier-balance1", quantity: 2 }],
+					cashAmountCents: 100000,
+				}, idempotencyKey),
+			).resolves.toEqual(response);
+			expect(courierService.createCourierUnload).toHaveBeenCalledWith(actor, {
 				distributorId: "dist1",
 				items: [{ courierProductBalanceId: "courier-balance1", quantity: 2 }],
 				cashAmountCents: 100000,
-			}),
-		).resolves.toEqual(response);
-		expect(courierService.createCourierUnload).toHaveBeenCalledWith(actor, {
-			distributorId: "dist1",
-			items: [{ courierProductBalanceId: "courier-balance1", quantity: 2 }],
-			cashAmountCents: 100000,
-		});
-		await expect(
-			controller.createUnload(actor, {
-				distributorId: "dist1",
-				items: [],
-				cashAmountCents: 0,
-			}),
-		).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
-		await expect(
-			controller.createUnload(actor, {
+			}, idempotencyKey);
+			await expect(
+				controller.createUnload(actor, {
+					distributorId: "dist1",
+					items: [],
+					cashAmountCents: 0,
+				}, idempotencyKey),
+			).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+			await expect(
+				controller.createUnload(actor, {
 				distributorId: "dist1",
 				items: [
 					{ courierProductBalanceId: "courier-balance1", quantity: 1 },
 					{ courierProductBalanceId: "courier-balance1", quantity: 1 },
-				],
-				cashAmountCents: 0,
-			}),
-		).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+					],
+					cashAmountCents: 0,
+				}, idempotencyKey),
+			).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
 	});
 });

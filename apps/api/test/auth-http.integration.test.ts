@@ -1,6 +1,8 @@
 import cookieParser from "cookie-parser";
+import { hashPassword } from "better-auth/crypto";
 import { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
+import type { Server } from "node:http";
 import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { AppModule } from "../src/app.module";
@@ -9,10 +11,11 @@ import { prisma } from "../src/prisma/client";
 const email = "auth-http-integration@buhta.local";
 const username = "auth-http-admin";
 const password = "Pass123!";
+const seededUserId = "auth-http-admin-id";
 
 describe("auth and policy HTTP integration", () => {
 	let app: INestApplication | undefined;
-	let server: Parameters<typeof request.agent>[0];
+	let server: Server;
 	let agent: ReturnType<typeof request.agent>;
 	let userId: string;
 
@@ -27,23 +30,18 @@ describe("auth and policy HTTP integration", () => {
 		app.use(cookieParser());
 		await app.init();
 
-		server = app.getHttpServer();
+		server = app.getHttpServer() as Server;
 		agent = request.agent(server);
 
+		userId = await createCredentialUser();
+
 		await agent
-			.post("/api/auth/sign-up/email")
+			.post("/api/auth/sign-in/username")
 			.send({
-				email,
-				password,
-				name: "Auth HTTP Integration",
 				username,
+				password,
 			})
 			.expect(200);
-
-		const user = await prisma.user.findUniqueOrThrow({
-			where: { email },
-		});
-		userId = user.id;
 	});
 
 	afterAll(async () => {
@@ -63,6 +61,35 @@ describe("auth and policy HTTP integration", () => {
 			},
 		});
 		expect(response.body.actor.permissions).toContain("courier.sale.create");
+	});
+
+	it("rejects public BetterAuth email sign-up", async () => {
+		const publicSignupEmail = "auth-http-public-signup@buhta.local";
+		const publicSignupUsername = "auth-http-public-signup";
+
+		await prisma.user.deleteMany({
+			where: {
+				OR: [{ email: publicSignupEmail }, { username: publicSignupUsername }],
+			},
+		});
+
+		const response = await request(server)
+			.post("/api/auth/sign-up/email")
+			.send({
+				email: publicSignupEmail,
+				password: "Pass123!",
+				name: "Public Signup",
+				username: publicSignupUsername,
+			});
+
+		expect(response.status).toBeGreaterThanOrEqual(400);
+
+		const createdUser = await prisma.user.findFirst({
+			where: {
+				OR: [{ email: publicSignupEmail }, { username: publicSignupUsername }],
+			},
+		});
+		expect(createdUser).toBeNull();
 	});
 
 	it("rejects courier session on director-only policy route", async () => {
@@ -221,6 +248,32 @@ describe("auth and policy HTTP integration", () => {
 		expect(JSON.stringify(auditLog.details)).not.toContain(resetResponse.body.temporaryPassword);
 	});
 });
+
+async function createCredentialUser(): Promise<string> {
+	await prisma.user.create({
+		data: {
+			id: seededUserId,
+			email,
+			name: "Auth HTTP Integration",
+			username,
+			displayUsername: username,
+			emailVerified: true,
+			role: "courier",
+		},
+	});
+
+	await prisma.account.create({
+		data: {
+			id: `${seededUserId}-credential`,
+			accountId: seededUserId,
+			providerId: "credential",
+			userId: seededUserId,
+			password: await hashPassword(password),
+		},
+	});
+
+	return seededUserId;
+}
 
 async function cleanupUser() {
 	const users = await prisma.user.findMany({

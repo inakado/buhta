@@ -228,7 +228,30 @@ describe("NotificationsService real Postgres integration", () => {
 			notificationsService.completeNotification(productionActor, notification.id),
 		).rejects.toMatchObject({
 			code: "DOMAIN_RULE_VIOLATION",
+			});
+	});
+
+	it("prevents duplicate completion under concurrency", async () => {
+		await ensureActors();
+
+		const notification = await notificationsService.createNotification(commercialActor, {
+			message: "Сделать партию икры",
 		});
+
+		const results = await Promise.allSettled([
+			notificationsService.completeNotification(productionActor, notification.id),
+			notificationsService.completeNotification(productionActor, notification.id),
+		]);
+
+		expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+		expect(results.filter((result) => result.status === "rejected")).toHaveLength(1);
+
+		await expect(prisma.operation.count({
+			where: {
+				type: "production.notification.complete",
+				actorUserId: productionActor.userId,
+			},
+		})).resolves.toBe(1);
 	});
 
 	it("returns a typed error for missing notification", async () => {

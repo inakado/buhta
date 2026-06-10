@@ -87,7 +87,8 @@ Mobile/PWA foundation реализуется рано, а не в конце: ap
 
 - `operation` — общий envelope действия: тип, статус, actor, idempotency key, metadata и время создания;
 - `audit_log` — append-only запись действия с actor, operation, action, entity и display/details context;
-- `idempotency_record` — защита write-команды от повторного выполнения по паре `actorUserId + key`.
+- `operation(actorUserId, idempotencyKey)` — runtime replay guard для критичных HTTP write-команд;
+- `idempotency_record` — baseline-заготовка для будущего full replay flow с request hash и response snapshot.
 
 Admin user management уже пишет audit operations:
 

@@ -248,7 +248,11 @@ export class CourierService {
 		};
 	}
 
-	async createCourierLoad(actor: Actor, input: CreateCourierLoadRequest): Promise<CourierLoadResponse> {
+	async createCourierLoad(
+		actor: Actor,
+		input: CreateCourierLoadRequest,
+		idempotencyKey?: string,
+	): Promise<CourierLoadResponse> {
 		const targetCourierUserId = resolveTargetCourierUserId(actor, input);
 		const comment = input.comment?.trim() || undefined;
 
@@ -337,11 +341,12 @@ export class CourierService {
 
 			const operation = await tx.operation.create({
 				data: {
-					type: "courier.stock.load.create",
-					status: OPERATION_STATUS.succeeded,
-					actorUserId: actor.userId,
-				},
-			});
+						type: "courier.stock.load.create",
+						status: OPERATION_STATUS.succeeded,
+						actorUserId: actor.userId,
+						idempotencyKey: idempotencyKey ?? null,
+					},
+				});
 
 			const loadData: Prisma.CourierLoadUncheckedCreateInput = {
 				courierUserId: targetCourierUserId,
@@ -408,7 +413,11 @@ export class CourierService {
 		};
 	}
 
-	async createCourierSale(actor: Actor, input: CreateCourierSaleRequest): Promise<CourierSaleResponse> {
+	async createCourierSale(
+		actor: Actor,
+		input: CreateCourierSaleRequest,
+		idempotencyKey?: string,
+	): Promise<CourierSaleResponse> {
 		const targetCourierUserId = resolveSaleTargetCourierUserId(actor, input);
 		const comment = input.comment?.trim() || undefined;
 
@@ -487,11 +496,12 @@ export class CourierService {
 
 			const operation = await tx.operation.create({
 				data: {
-					type: "courier.sale.create",
-					status: OPERATION_STATUS.succeeded,
-					actorUserId: actor.userId,
-				},
-			});
+						type: "courier.sale.create",
+						status: OPERATION_STATUS.succeeded,
+						actorUserId: actor.userId,
+						idempotencyKey: idempotencyKey ?? null,
+					},
+				});
 
 			const saleData: Prisma.CourierSaleUncheckedCreateInput = {
 				courierProductBalanceId: input.courierProductBalanceId,
@@ -566,6 +576,7 @@ export class CourierService {
 		actor: Actor,
 		saleId: string,
 		input: CancelCourierSaleRequest,
+		idempotencyKey?: string,
 	): Promise<CancelCourierSaleResponse> {
 		const reason = input.reason.trim();
 
@@ -600,11 +611,12 @@ export class CourierService {
 
 				const operation = await tx.operation.create({
 					data: {
-						type: "courier.sale.cancel",
-						status: OPERATION_STATUS.succeeded,
-						actorUserId: actor.userId,
-					},
-				});
+							type: "courier.sale.cancel",
+							status: OPERATION_STATUS.succeeded,
+							actorUserId: actor.userId,
+							idempotencyKey: idempotencyKey ?? null,
+						},
+					});
 
 				const cancellation = await tx.courierSaleCancellation.create({
 					data: {
@@ -724,7 +736,11 @@ export class CourierService {
 		}
 	}
 
-	async createCourierUnload(actor: Actor, input: CreateCourierUnloadRequest): Promise<CourierUnloadResponse> {
+	async createCourierUnload(
+		actor: Actor,
+		input: CreateCourierUnloadRequest,
+		idempotencyKey?: string,
+	): Promise<CourierUnloadResponse> {
 		const targetCourierUserId = resolveUnloadTargetCourierUserId(actor, input);
 		const comment = input.comment?.trim() || undefined;
 		assertValidUnloadRequest(input);
@@ -852,11 +868,12 @@ export class CourierService {
 
 			const operation = await tx.operation.create({
 				data: {
-					type: "courier.unload.create",
-					status: OPERATION_STATUS.succeeded,
-					actorUserId: actor.userId,
-				},
-			});
+						type: "courier.unload.create",
+						status: OPERATION_STATUS.succeeded,
+						actorUserId: actor.userId,
+						idempotencyKey: idempotencyKey ?? null,
+					},
+				});
 
 			const unloadData: Prisma.CourierUnloadUncheckedCreateInput = {
 				courierUserId: targetCourierUserId,

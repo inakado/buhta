@@ -49,7 +49,8 @@ Backend является источником доменных операций,
 Spike подтвердил:
 
 - `@thallesp/nestjs-better-auth` подключает BetterAuth в NestJS на `/api/auth`;
-- email/password sign-up и sign-in работают через BetterAuth;
+- email/password sign-in работает через BetterAuth;
+- публичный BetterAuth sign-up отключен, потому что v1 использует admin-managed создание пользователей;
 - BetterAuth username plugin добавляет sign-in по `username + password`;
 - session cookie доступна backend guard-слою;
 - backend route может различать anonymous, wrong role и allowed role;

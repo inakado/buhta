@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Inject, Param, Post, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Headers, Inject, Param, Post, Query, UseGuards } from "@nestjs/common";
 import {
 	CancelCourierSaleRequestSchema,
 	CreateCourierLoadRequestSchema,
@@ -9,6 +9,7 @@ import {
 import type { z } from "zod";
 import { CurrentActor } from "../auth/actor.decorator";
 import { AppError } from "../common/errors/app-error";
+import { requireIdempotencyKey } from "../common/idempotency-key";
 import type { Actor } from "../policy/actor";
 import { PolicyGuard } from "../policy/policy.guard";
 import { RequirePermission } from "../policy/require-permission.decorator";
@@ -66,19 +67,29 @@ export class CourierController {
 
 	@Post("loads")
 	@RequirePermission("courier.stock.load")
-	async createLoad(@CurrentActor() actor: Actor | undefined, @Body() body: unknown) {
+	async createLoad(
+		@CurrentActor() actor: Actor | undefined,
+		@Body() body: unknown,
+		@Headers("idempotency-key") idempotencyKey: string | undefined,
+	) {
 		return this.courierService.createCourierLoad(
 			requireActor(actor),
 			parseBody(CreateCourierLoadRequestSchema, body, "Invalid courier load payload"),
+			requireIdempotencyKey(idempotencyKey),
 		);
 	}
 
 	@Post("sales")
 	@RequirePermission("courier.sale.create")
-	async createSale(@CurrentActor() actor: Actor | undefined, @Body() body: unknown) {
+	async createSale(
+		@CurrentActor() actor: Actor | undefined,
+		@Body() body: unknown,
+		@Headers("idempotency-key") idempotencyKey: string | undefined,
+	) {
 		return this.courierService.createCourierSale(
 			requireActor(actor),
 			parseBody(CreateCourierSaleRequestSchema, body, "Invalid courier sale payload"),
+			requireIdempotencyKey(idempotencyKey),
 		);
 	}
 
@@ -88,20 +99,27 @@ export class CourierController {
 		@CurrentActor() actor: Actor | undefined,
 		@Param("saleId") saleId: string,
 		@Body() body: unknown,
+		@Headers("idempotency-key") idempotencyKey: string | undefined,
 	) {
 		return this.courierService.cancelCourierSale(
 			requireActor(actor),
 			saleId,
 			parseBody(CancelCourierSaleRequestSchema, body, "Invalid courier sale cancellation payload"),
+			requireIdempotencyKey(idempotencyKey),
 		);
 	}
 
 	@Post("unloads")
 	@RequirePermission("courier.unload.create")
-	async createUnload(@CurrentActor() actor: Actor | undefined, @Body() body: unknown) {
+	async createUnload(
+		@CurrentActor() actor: Actor | undefined,
+		@Body() body: unknown,
+		@Headers("idempotency-key") idempotencyKey: string | undefined,
+	) {
 		return this.courierService.createCourierUnload(
 			requireActor(actor),
 			parseBody(CreateCourierUnloadRequestSchema, body, "Invalid courier unload payload"),
+			requireIdempotencyKey(idempotencyKey),
 		);
 	}
 }

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Inject, Param, Post, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Headers, Inject, Param, Post, Query, UseGuards } from "@nestjs/common";
 import {
 	AssignDistributorDiscountRequestSchema,
 	CancelDistributorSaleRequestSchema,
@@ -9,6 +9,7 @@ import {
 import type { z } from "zod";
 import { CurrentActor } from "../auth/actor.decorator";
 import { AppError } from "../common/errors/app-error";
+import { requireIdempotencyKey } from "../common/idempotency-key";
 import type { Actor } from "../policy/actor";
 import { PolicyGuard } from "../policy/policy.guard";
 import { RequirePermission } from "../policy/require-permission.decorator";
@@ -51,10 +52,15 @@ export class DistributorController {
 
 	@Post("sales")
 	@RequirePermission("distributor.sale.create")
-	async createSale(@CurrentActor() actor: Actor | undefined, @Body() body: unknown) {
+	async createSale(
+		@CurrentActor() actor: Actor | undefined,
+		@Body() body: unknown,
+		@Headers("idempotency-key") idempotencyKey: string | undefined,
+	) {
 		return this.distributorService.createDistributorSale(
 			requireActor(actor),
 			parseBody(CreateDistributorSaleRequestSchema, body, "Invalid distributor sale payload"),
+			requireIdempotencyKey(idempotencyKey),
 		);
 	}
 
@@ -64,29 +70,41 @@ export class DistributorController {
 		@CurrentActor() actor: Actor | undefined,
 		@Param("saleId") saleId: string,
 		@Body() body: unknown,
+		@Headers("idempotency-key") idempotencyKey: string | undefined,
 	) {
 		return this.distributorService.cancelDistributorSale(
 			requireActor(actor),
 			saleId,
 			parseBody(CancelDistributorSaleRequestSchema, body, "Invalid distributor sale cancellation payload"),
+			requireIdempotencyKey(idempotencyKey),
 		);
 	}
 
 	@Post("cash-withdrawals")
 	@RequirePermission("cash.withdraw")
-	async createCashWithdrawal(@CurrentActor() actor: Actor | undefined, @Body() body: unknown) {
+	async createCashWithdrawal(
+		@CurrentActor() actor: Actor | undefined,
+		@Body() body: unknown,
+		@Headers("idempotency-key") idempotencyKey: string | undefined,
+	) {
 		return this.distributorService.createCashWithdrawal(
 			requireActor(actor),
 			parseBody(CreateDistributorCashWithdrawalRequestSchema, body, "Invalid distributor cash withdrawal payload"),
+			requireIdempotencyKey(idempotencyKey),
 		);
 	}
 
 	@Post("discounts")
 	@RequirePermission("discount.assign")
-	async assignDiscount(@CurrentActor() actor: Actor | undefined, @Body() body: unknown) {
+	async assignDiscount(
+		@CurrentActor() actor: Actor | undefined,
+		@Body() body: unknown,
+		@Headers("idempotency-key") idempotencyKey: string | undefined,
+	) {
 		return this.distributorService.assignDiscount(
 			requireActor(actor),
 			parseBody(AssignDistributorDiscountRequestSchema, body, "Invalid distributor discount payload"),
+			requireIdempotencyKey(idempotencyKey),
 		);
 	}
 }

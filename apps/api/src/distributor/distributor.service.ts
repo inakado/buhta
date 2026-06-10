@@ -161,6 +161,7 @@ export class DistributorService {
 	async createCashWithdrawal(
 		actor: Actor,
 		input: CreateDistributorCashWithdrawalRequest,
+		idempotencyKey?: string,
 	): Promise<DistributorCashWithdrawalResponse> {
 		const comment = input.comment?.trim();
 		const normalizedComment = comment ? comment : null;
@@ -201,11 +202,12 @@ export class DistributorService {
 
 			const operation = await tx.operation.create({
 				data: {
-					type: "distributor.cash.withdraw",
-					status: OPERATION_STATUS.succeeded,
-					actorUserId: actor.userId,
-				},
-			});
+						type: "distributor.cash.withdraw",
+						status: OPERATION_STATUS.succeeded,
+						actorUserId: actor.userId,
+						idempotencyKey: idempotencyKey ?? null,
+					},
+				});
 
 			const withdrawal = await tx.distributorCashWithdrawal.create({
 				data: {
@@ -251,6 +253,7 @@ export class DistributorService {
 	async createDistributorSale(
 		actor: Actor,
 		input: CreateDistributorSaleRequest,
+		idempotencyKey?: string,
 	): Promise<DistributorSaleResponse> {
 		const comment = input.comment?.trim();
 		const result = await prisma.$transaction(async (tx) => {
@@ -332,11 +335,12 @@ export class DistributorService {
 
 			const operation = await tx.operation.create({
 				data: {
-					type: "distributor.sale.create",
-					status: OPERATION_STATUS.succeeded,
-					actorUserId: actor.userId,
-				},
-			});
+						type: "distributor.sale.create",
+						status: OPERATION_STATUS.succeeded,
+						actorUserId: actor.userId,
+						idempotencyKey: idempotencyKey ?? null,
+					},
+				});
 
 			const saleData: Prisma.DistributorSaleUncheckedCreateInput = {
 				distributorProductBalanceId: input.distributorProductBalanceId,
@@ -415,6 +419,7 @@ export class DistributorService {
 		actor: Actor,
 		saleId: string,
 		input: CancelDistributorSaleRequest,
+		idempotencyKey?: string,
 	): Promise<CancelDistributorSaleResponse> {
 		const reason = input.reason.trim();
 
@@ -440,11 +445,12 @@ export class DistributorService {
 
 				const operation = await tx.operation.create({
 					data: {
-						type: "distributor.sale.cancel",
-						status: OPERATION_STATUS.succeeded,
-						actorUserId: actor.userId,
-					},
-				});
+							type: "distributor.sale.cancel",
+							status: OPERATION_STATUS.succeeded,
+							actorUserId: actor.userId,
+							idempotencyKey: idempotencyKey ?? null,
+						},
+					});
 
 				const cancellation = await tx.distributorSaleCancellation.create({
 					data: {
@@ -569,6 +575,7 @@ export class DistributorService {
 	async assignDiscount(
 		actor: Actor,
 		input: AssignDistributorDiscountRequest,
+		idempotencyKey?: string,
 	): Promise<AssignDistributorDiscountResponse> {
 		const comment = input.comment?.trim();
 		const normalizedComment = comment ? comment : null;
@@ -655,11 +662,12 @@ export class DistributorService {
 
 			const operation = await tx.operation.create({
 				data: {
-					type: "distributor.discount.assign",
-					status: OPERATION_STATUS.succeeded,
-					actorUserId: actor.userId,
-				},
-			});
+						type: "distributor.discount.assign",
+						status: OPERATION_STATUS.succeeded,
+						actorUserId: actor.userId,
+						idempotencyKey: idempotencyKey ?? null,
+					},
+				});
 
 			const discount = await tx.productDiscountAssignment.create({
 				data: {
