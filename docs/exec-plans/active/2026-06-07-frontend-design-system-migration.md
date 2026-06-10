@@ -124,8 +124,8 @@ Status 2026-06-09: role contour complete. Финальный static cleanup не
 | Продажа | action sets `sale` | `CourierSaleHome` | Same sale form standard as distributor/commercial: client combobox, product select from courier balance, payment segmented, operation total, new client in modal instead of inline nested form. |
 | Загрузка | action sets `load` | `CourierLoadHome` | Load from distributor to courier. Align product selection and selected-stock details with the operational form standard. |
 | Возврат | action sets `unload` | `CourierUnloadHome` | Return products/cash to distributor. Dense form requiring a cleaner ledger grouping for destination, products, cash and operation total. |
-| История продаж | `sales-history` | `SalesHistoryHome`, `RecentSalesPanel` | Already migrated shared sales history with courier cancel variant; keep direct bottom-nav access. |
-| Еще / аккаунт | `more` | New courier More screen, shared account/logout vocabulary | Replace bottom-nav `Профиль` / `SettingsScreen` with the established More/account pattern. |
+| История продаж | `more` -> `sales-history` | `SalesHistoryHome`, `RecentSalesPanel` | Already migrated shared sales history with courier cancel variant; entry moves into `Еще` like commercial manager. |
+| Еще / аккаунт | `more` | `CourierMoreHome`, shared account/logout vocabulary | Replace bottom-nav `Профиль` / `SettingsScreen` with the established More/account pattern and provide the `История` entry. |
 
 ## 6. Общие Компонентные Кластеры
 
@@ -465,8 +465,8 @@ Screens, variations and meaning:
 | Продажа | Record a courier sale from own stock. | Existing/new client, no client, product selected/not selected, cash/cashless, insufficient quantity, offline/backend error, success. |
 | Загрузка | Accept products from distributor into courier balance. | Product selected/not selected, discounted product marker, unavailable quantity, offline/backend error, success. |
 | Возврат | Return products and/or cash to distributor. | One/multiple distributor options, default full return, product-only return, cash-only return, invalid quantity/cash, no active distributor, no payload, success/error. |
-| История продаж | Review courier sales and cancel permitted sales. | Empty/list, cancelled sale, cancel modal, disabled cancel reason, shared courier variant. |
-| Еще / аккаунт | Account identity, logout and future password change entry. | Account-only More screen; no duplicate `История` while history stays in bottom nav. |
+| История продаж | Review courier sales and cancel permitted sales. | Empty/list, cancelled sale, cancel modal, disabled cancel reason, shared courier variant; opened from `Еще`. |
+| Еще / аккаунт | Navigate to sales history, see account identity, logout and future password change entry. | Navigation block with `История`, account identity, disabled password entry, logout. |
 
 Problems to remove:
 
@@ -527,15 +527,18 @@ Implementation stages:
 
 5. **История продаж.**
    - Confirm courier still uses the migrated shared history and cancel modal.
+   - Move the courier history entry from bottom nav into `Еще`, keeping `Еще` active while history is open.
    - Fix only courier-specific copy, nav state or tests if audit finds drift.
    - Commit after targeted verification and docs update if anything changes.
+   - Status: implemented. Courier sales history still uses shared `SalesHistoryHome` / `RecentSalesPanel` and the cancel modal, but the entry now lives under `Еще → История`; bottom-nav `История` is removed for the courier.
 
 6. **Еще / аккаунт.**
    - Replace bottom-nav `Профиль` with `Еще`.
    - Follow the shared account screen: identity, disabled `Сменить пароль`, quiet logout.
-   - Keep `История` direct in bottom nav and do not duplicate it in `Еще`.
+   - Include `История` as the navigation row because it no longer stays direct in bottom nav.
    - Update navigation tests, cleanup settings usage and docs.
    - Commit after implementation.
+   - Status: implemented. Courier bottom nav now uses `Баланс` and `Еще`; `CourierMoreHome` follows the shared Director/Production/Commercial account pattern with `Навигация → История`, identity, disabled `Сменить пароль` and quiet logout.
 
 7. **Final courier cleanup.**
    - Search for stale courier uses of old card/action/settings classes.

@@ -184,8 +184,8 @@ function BottomNav({
 		&& (actor.role === "director" || actor.role === "commercial_manager")
 		? [{ id: "couriers", label: "Курьеры", icon: Truck }]
 		: [];
-	const salesHistoryItem: BottomNavItem[] = (actor.role === "distributor_worker" || actor.role === "courier")
-		&& (actor.permissions.includes("distributor.sale.create") || actor.permissions.includes("courier.sale.create"))
+	const salesHistoryItem: BottomNavItem[] = actor.role === "distributor_worker"
+		&& actor.permissions.includes("distributor.sale.create")
 		? [{ id: "sales-history", label: "История", icon: History }]
 		: [];
 	const directorStockItem: BottomNavItem[] = actor.role === "director"
@@ -203,8 +203,7 @@ function BottomNav({
 		: [];
 	const courierItems: BottomNavItem[] = [
 		{ id: "home", label: "Баланс", icon: LayoutDashboard },
-		...salesHistoryItem,
-		{ id: "settings", label: "Профиль", icon: Settings },
+		{ id: "more", label: "Еще", icon: MoreHorizontal },
 	];
 	const productionItems: BottomNavItem[] = [
 		{ id: "home", label: "Главная", icon: Factory },
@@ -270,6 +269,10 @@ function BottomNav({
 					&& activeTab === "history"
 				) || (
 					actor.role === "commercial_manager"
+					&& item.id === "more"
+					&& activeTab === "sales-history"
+				) || (
+					actor.role === "courier"
 					&& item.id === "more"
 					&& activeTab === "sales-history"
 				);

@@ -20,6 +20,7 @@ import { AdminHome } from "../roles/admin/AdminHome";
 import { CommercialMoreHome } from "../roles/commercial-manager/CommercialMoreHome";
 import { CommercialManagerHome } from "../roles/commercial-manager/CommercialManagerHome";
 import { CourierHome } from "../roles/courier/CourierHome";
+import { CourierMoreHome } from "../roles/courier/CourierMoreHome";
 import { DirectorMoreHome } from "../roles/director/DirectorMoreHome";
 import { DirectorStockHome } from "../roles/director/DirectorStockHome";
 import { DistributorWorkerHome } from "../roles/distributor-worker/DistributorWorkerHome";
@@ -84,6 +85,17 @@ export function RoleHomeRouter({
 				actor={actor}
 				logout={logout}
 				logoutPending={logoutPending}
+			/>
+		);
+	}
+
+	if (actor.role === "courier" && activeTab === "more") {
+		return (
+			<CourierMoreHome
+				actor={actor}
+				logout={logout}
+				logoutPending={logoutPending}
+				onTabChange={onTabChange}
 			/>
 		);
 	}

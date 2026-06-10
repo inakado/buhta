@@ -1919,6 +1919,10 @@ describe("HomePage", () => {
 				return jsonResponse(courierLoadOptionsResponse);
 			}
 
+			if (url.includes("/courier/sales/recent")) {
+				return jsonResponse(courierRecentSalesResponse);
+			}
+
 			if (url.endsWith("/courier/loads") && method === "POST") {
 				return jsonResponse({
 					load: {
@@ -1965,7 +1969,24 @@ describe("HomePage", () => {
 		expect(screen.getByText("Количество")).toBeTruthy();
 		expect(await screen.findByText("Икра горбуши")).toBeTruthy();
 		expect(screen.queryByText("У курьера")).toBeNull();
+		expect(screen.queryByRole("button", { name: "История" })).toBeNull();
+		expect(screen.queryByRole("button", { name: "Профиль" })).toBeNull();
+		expect(screen.getByRole("button", { name: "Еще" })).toBeTruthy();
 		expect(document.querySelector(".compact-balance-overview")).toBeNull();
+		fireEvent.click(screen.getByRole("button", { name: "Еще" }));
+		expect(screen.getByRole("button", { name: "Еще" }).getAttribute("aria-current")).toBe("page");
+		expect(await screen.findByRole("heading", { name: "Еще" })).toBeTruthy();
+		expect(screen.getByText("Courier")).toBeTruthy();
+		expect(screen.getByText("Курьер · @courier")).toBeTruthy();
+		expect(screen.getByRole("button", { name: "Сменить пароль" })).toHaveProperty("disabled", true);
+		expect(screen.getByRole("button", { name: "Выйти" })).toBeTruthy();
+		fireEvent.click(screen.getByRole("button", { name: "История" }));
+		expect(screen.getByRole("button", { name: "Еще" }).getAttribute("aria-current")).toBe("page");
+		expect(await screen.findByRole("heading", { name: "История продаж" })).toBeTruthy();
+		expect(document.querySelector(".sales-history-home")).toBeTruthy();
+		expect(await screen.findByText("Продаж пока нет.")).toBeTruthy();
+		fireEvent.click(screen.getByRole("button", { name: "Баланс" }));
+		expect(await screen.findByRole("heading", { name: "Мой баланс" })).toBeTruthy();
 		const loadAction = screen.getByRole("button", { name: "Загрузить" });
 		expect(loadAction.className).toContain("production-command-button");
 		expect(screen.getByRole("button", { name: "Продать" }).className).toContain("production-command-button");
