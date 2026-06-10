@@ -41,12 +41,14 @@ Security notes проекта «Бухта».
 - Администратор не может изменить собственную роль через users API.
 - Администратор не может сбросить временный пароль самому себе; смена собственного пароля должна быть отдельным защищенным flow, когда он появится.
 - Audit для создания пользователя, смены роли и сброса пароля не должен содержать plaintext password.
+- BetterAuth `admin()` plugin временно остается включенным как принятый MVP-риск: он требует admin-сессию, но открывает отдельный `/api/auth/admin/*` control plane вне CRM `/users` lifecycle. Для рабочих user-management сценариев источником истины остается `/users`; перед production-запуском риск нужно пересмотреть и либо отключить HTTP admin endpoints BetterAuth, либо доказать, что они заблокированы/делегированы в CRM lifecycle.
 - Публичные routes должны быть явно отмечены как anonymous.
 - Protected routes проходят через BetterAuth session guard и затем через backend role/policy guards.
 - Критичные POST-команды, которые меняют деньги, товарные остатки или выпуск продукции, требуют `Idempotency-Key`. Key фиксируется в `operation` внутри той же transaction; повтор того же key для того же actor не должен создавать вторую доменную операцию.
 - Dev seed может использовать `admin / Pass123!` только на локальной dev-БД. Production или non-local seed обязан получить явный non-default `SEED_ADMIN_PASSWORD`.
 - `BETTER_AUTH_SECRET` обязан быть не короче 32 символов; production runtime дополнительно отклоняет локальный placeholder `replace-with-at-least-32-random-characters`.
 - Production runtime отклоняет `DATABASE_URL` с локальными дефолтными credentials `buhta/buhta`.
+- Prisma CLI config пока может использовать local fallback `DATABASE_URL` для dev-удобства; production/deploy workflow должен задавать `DATABASE_URL` явно. Fail-closed поведение для `prisma migrate deploy` вынесено в tech debt.
 - `audit_log` append-only защищен database trigger-ом от обычных runtime `UPDATE` и `DELETE`; тестовый cleanup использует явный session flag.
 
 ## 4. Policy Layer Direction

@@ -144,3 +144,21 @@ Fallback:
 - деньги, остатки, роли и история действий требуют основательной сквозной реализации;
 - при этом регулярные внутренние checkpoints не дают копить ошибки до конца разработки;
 - typed operation details лучше подходят для отчетов, тестов и инвариантов, чем один универсальный JSON payload для всех операций.
+
+## DEC-08 — BetterAuth admin plugin MVP risk acceptance
+
+Статус: `Accepted Risk`
+
+Решение:
+
+- для MVP оставляем BetterAuth `admin()` plugin включенным;
+- публичная самостоятельная регистрация BetterAuth остается отключенной;
+- рабочий user-management flow CRM остается только через `/users`;
+- риск отдельного `/api/auth/admin/*` control plane принимается как admin-only риск до production-hardening этапа;
+- перед production-запуском нужно вернуться к этому решению и либо отключить/заблокировать HTTP admin endpoints BetterAuth, либо доказать тестами, что они не обходят CRM audit/lifecycle.
+
+Причина:
+
+- `/api/auth/admin/*` требует уже существующую admin-сессию и не дает anonymous или lower-role escalation;
+- при компрометации admin account ущерб и так высокий, поэтому для MVP этот риск не блокирует следующий этап;
+- при этом риск остается важным для audit integrity: BetterAuth admin endpoints могут выполнить user lifecycle действия вне `UsersService`, где сейчас находятся CRM audit records и self-guard правила.
