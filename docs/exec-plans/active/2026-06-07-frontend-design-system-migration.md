@@ -507,6 +507,7 @@ Implementation stages:
    - Keep existing data, validations and invalidation behavior.
    - Update targeted tests, cleanup stale inline nested form code and docs.
    - Commit after implementation.
+   - Status: implemented. Courier sale now uses `production-detail-screen` / `production-action-form`, opens `Новый клиент` in `operation-dialog`, shows selected stock facts as ledger rows and keeps courier sale API, validations and query invalidation unchanged.
 
 3. **Загрузка.**
    - Align `CourierLoadHome` with the operational form standard.

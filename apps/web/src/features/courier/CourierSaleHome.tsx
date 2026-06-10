@@ -1,8 +1,9 @@
 "use client";
 
+import * as Dialog from "@radix-ui/react-dialog";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FormEvent, useState } from "react";
-import { ReceiptText, UserPlus } from "lucide-react";
+import { FormEvent, type ReactNode, useState } from "react";
+import { ReceiptText, UserPlus, X } from "lucide-react";
 import type { CourierSaleOption, PaymentMethod } from "@buhta/shared";
 import {
 	createClient,
@@ -30,7 +31,8 @@ export function CourierSaleHome({
 	const [quantity, setQuantity] = useState("");
 	const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
 	const [comment, setComment] = useState("");
-	const [localError, setLocalError] = useState("");
+	const [clientError, setClientError] = useState("");
+	const [saleError, setSaleError] = useState("");
 	const [showNewClientForm, setShowNewClientForm] = useState(false);
 	const [newClientName, setNewClientName] = useState("");
 	const [newClientPhone, setNewClientPhone] = useState("");
@@ -65,6 +67,7 @@ export function CourierSaleHome({
 			setNewClientName("");
 			setNewClientPhone("");
 			setNewClientDescription("");
+			setClientError("");
 			setShowNewClientForm(false);
 			await queryClient.invalidateQueries({ queryKey: ["clients"] });
 		},
@@ -83,7 +86,7 @@ export function CourierSaleHome({
 			setQuantity("");
 			setPaymentMethod("cash");
 			setComment("");
-			setLocalError("");
+			setSaleError("");
 			await Promise.all([
 				queryClient.invalidateQueries({ queryKey: ["courier", "product-balances"] }),
 				queryClient.invalidateQueries({ queryKey: ["courier", "sale-options"] }),
@@ -108,14 +111,14 @@ export function CourierSaleHome({
 
 	function handleCreateClient(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
-		setLocalError("");
+		setClientError("");
 
 		if (!newClientName.trim()) {
-			setLocalError("Введите имя нового клиента.");
+			setClientError("Введите имя нового клиента.");
 			return;
 		}
 		if (!newClientPhone.trim()) {
-			setLocalError("Введите телефон нового клиента.");
+			setClientError("Введите телефон нового клиента.");
 			return;
 		}
 
@@ -125,24 +128,43 @@ export function CourierSaleHome({
 	function handleClientChange(clientId: string) {
 		setSelectedClientId(clientId);
 		if (clientId) {
-			setShowNewClientForm(false);
+			closeNewClientDialog();
 		}
+	}
+
+	function openNewClientDialog() {
+		createClientMutation.reset();
+		setClientError("");
+		setShowNewClientForm(true);
+	}
+
+	function closeNewClientDialog() {
+		if (createClientMutation.isPending) {
+			return;
+		}
+
+		setShowNewClientForm(false);
+		setNewClientName("");
+		setNewClientPhone("");
+		setNewClientDescription("");
+		setClientError("");
+		createClientMutation.reset();
 	}
 
 	function handleSaleSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
-		setLocalError("");
+		setSaleError("");
 
 		if (!selectedClientId) {
-			setLocalError("Выберите клиента.");
+			setSaleError("Выберите клиента.");
 			return;
 		}
 		if (!selectedStock) {
-			setLocalError("Выберите продукцию.");
+			setSaleError("Выберите продукцию.");
 			return;
 		}
 		if (!isValidQuantity(parsedQuantity, selectedStock)) {
-			setLocalError("Количество должно быть целым числом не больше доступного количества.");
+			setSaleError("Количество должно быть целым числом не больше доступного количества.");
 			return;
 		}
 
@@ -150,15 +172,13 @@ export function CourierSaleHome({
 	}
 
 	return (
-		<section className="screen-stack">
+		<section className="screen-stack production-detail-screen">
 			<div className="section-heading compact">
 				<h2>Продажа</h2>
 			</div>
 
-			<div className="form-panel">
-				<div className="section-heading compact">
-					<h2>Клиент</h2>
-				</div>
+			<div className="form-panel production-action-form">
+				<SaleFormHeading title="Клиент" meta={selectedClient?.name} />
 				<ClientCombobox
 					clients={clients.data?.clients ?? []}
 					loading={clients.isLoading}
@@ -175,54 +195,91 @@ export function CourierSaleHome({
 					<button
 						className="secondary-button compact-button"
 						disabled={!online}
-						onClick={() => setShowNewClientForm((current) => !current)}
+						onClick={openNewClientDialog}
 						type="button"
 					>
 						<UserPlus aria-hidden size={16} />
 						Новый клиент
 					</button>
 				)}
-
-				{showNewClientForm && !selectedClientId ? (
-					<form className="nested-form" onSubmit={handleCreateClient}>
-						<label className="field">
-							<span>Имя нового клиента</span>
-							<input
-								onChange={(event) => setNewClientName(event.target.value)}
-								type="text"
-								value={newClientName}
-							/>
-						</label>
-						<label className="field">
-							<span>Телефон нового клиента</span>
-							<input
-								onChange={(event) => setNewClientPhone(event.target.value)}
-								type="tel"
-								value={newClientPhone}
-							/>
-						</label>
-						<label className="field">
-							<span>Описание нового клиента</span>
-							<textarea
-								onChange={(event) => setNewClientDescription(event.target.value)}
-								rows={2}
-								value={newClientDescription}
-							/>
-						</label>
-						{createClientMutation.isError ? (
-							<p className="form-error">{createClientMutation.error.message}</p>
-						) : null}
-						<button className="secondary-button" disabled={!online || createClientMutation.isPending} type="submit">
-							Создать клиента
-						</button>
-					</form>
-				) : null}
 			</div>
 
-			<form className="form-panel" onSubmit={handleSaleSubmit}>
-				<div className="section-heading compact">
-					<h2>Детали продажи</h2>
-				</div>
+			<Dialog.Root
+				open={showNewClientForm && !selectedClientId}
+				onOpenChange={(open) => {
+					if (open) {
+						openNewClientDialog();
+						return;
+					}
+
+					closeNewClientDialog();
+				}}
+			>
+				<Dialog.Portal>
+					<Dialog.Overlay className="operation-dialog-overlay" />
+					<Dialog.Content aria-describedby={undefined} className="operation-dialog">
+						<form className="operation-dialog-form" onSubmit={handleCreateClient}>
+							<div className="operation-dialog-heading">
+								<div>
+									<Dialog.Title>Новый клиент</Dialog.Title>
+								</div>
+								<Dialog.Close
+									aria-label="Закрыть"
+									className="icon-button"
+									disabled={createClientMutation.isPending}
+									type="button"
+								>
+									<X aria-hidden size={18} />
+								</Dialog.Close>
+							</div>
+							<label className="field">
+								<span>Имя нового клиента</span>
+								<input
+									onChange={(event) => setNewClientName(event.target.value)}
+									type="text"
+									value={newClientName}
+								/>
+							</label>
+							<label className="field">
+								<span>Телефон нового клиента</span>
+								<input
+									onChange={(event) => setNewClientPhone(event.target.value)}
+									type="tel"
+									value={newClientPhone}
+								/>
+							</label>
+							<label className="field">
+								<span>Описание нового клиента</span>
+								<textarea
+									onChange={(event) => setNewClientDescription(event.target.value)}
+									rows={2}
+									value={newClientDescription}
+								/>
+							</label>
+							{createClientMutation.isError ? (
+								<p className="form-error">{createClientMutation.error.message}</p>
+							) : null}
+							{clientError ? <p className="form-error">{clientError}</p> : null}
+							<div className="form-actions">
+								<button
+									className="secondary-button"
+									disabled={createClientMutation.isPending}
+									onClick={closeNewClientDialog}
+									type="button"
+								>
+									Отмена
+								</button>
+								<button className="primary-button" disabled={!online || createClientMutation.isPending} type="submit">
+									Создать клиента
+								</button>
+							</div>
+						</form>
+					</Dialog.Content>
+				</Dialog.Portal>
+			</Dialog.Root>
+
+			<form className="form-panel production-action-form" onSubmit={handleSaleSubmit}>
+				<SaleFormHeading title="Детали продажи" />
 				<OperationProductSelect
 					label="Продукция"
 					onValueChange={setSelectedBalanceId}
@@ -241,7 +298,7 @@ export function CourierSaleHome({
 					<p className="muted">Нет продукции для продажи.</p>
 				) : null}
 
-				{selectedStock ? <SelectedStockInfo stock={selectedStock} quantity={parsedQuantity} /> : null}
+				{selectedStock ? <SelectedStockInfo stock={selectedStock} /> : null}
 
 				<label className="field">
 					<span>Количество, шт</span>
@@ -262,47 +319,68 @@ export function CourierSaleHome({
 					<span>Комментарий</span>
 					<textarea onChange={(event) => setComment(event.target.value)} rows={2} value={comment} />
 				</label>
-				<div className="operation-total">
-					<div>
-						<span>Итого</span>
-						<strong>{formatRubles(saleTotalCents)} ₽</strong>
-					</div>
-					<p>
-						{selectedClient?.name ?? (selectedClientId ? "Клиент выбран" : "Клиент не выбран")}
-						{" · "}
-						{selectedStock?.productName ?? "Товар не выбран"}
-						{" · "}
-						{summaryQuantity}
-						{" · "}
-						{paymentMethod === "cash" ? "Наличные" : "Безнал"}
-					</p>
-				</div>
-				{localError ? <p className="form-error">{localError}</p> : null}
+				<SaleInfoLedger>
+					<SaleInfoRow label="Клиент" value={selectedClient?.name ?? (selectedClientId ? "Клиент выбран" : "Не выбран")} />
+					<SaleInfoRow label="Количество" value={summaryQuantity} />
+					<SaleInfoRow label="Оплата" value={paymentMethod === "cash" ? "Наличные" : "Безнал"} />
+					<SaleInfoRow label="Итого" value={`${formatRubles(saleTotalCents)} ₽`} />
+				</SaleInfoLedger>
+				{saleError ? <p className="form-error">{saleError}</p> : null}
 				{saleMutation.isError ? <p className="form-error">{saleMutation.error.message}</p> : null}
-				{submitBlockReason ? <p className="muted">{submitBlockReason}</p> : null}
-				<button className="primary-button" disabled={submitDisabled} type="submit">
-					<ReceiptText aria-hidden size={18} />
-					Записать продажу
-				</button>
+				<SaleSubmitBlock blockReason={submitBlockReason}>
+					<button className="primary-button" disabled={submitDisabled} type="submit">
+						<ReceiptText aria-hidden size={18} />
+						Записать продажу
+					</button>
+				</SaleSubmitBlock>
 			</form>
 		</section>
 	);
 }
 
-function SelectedStockInfo({
-	quantity,
-	stock,
-}: {
-	quantity: number;
-	stock: CourierSaleOption;
-}) {
-	const totalCents = Number.isInteger(quantity) && quantity > 0 ? quantity * stock.unitPriceCents : 0;
-
+function SaleFormHeading({ meta, title }: { meta?: string | undefined; title: string }) {
 	return (
-		<p className="muted">
-			Доступно: {stock.availableQuantity} шт · {formatRubles(stock.unitPriceCents)} ₽/шт
-			{totalCents > 0 ? ` · ${formatRubles(totalCents)} ₽` : ""}
-		</p>
+		<div className="production-form-heading">
+			<h2>{title}</h2>
+			{meta ? <span>{meta}</span> : null}
+		</div>
+	);
+}
+
+function SaleInfoLedger({ children }: { children: ReactNode }) {
+	return <div className="production-form-ledger">{children}</div>;
+}
+
+function SaleInfoRow({ label, value }: { label: string; value: string }) {
+	return (
+		<div className="production-form-ledger-row">
+			<span>{label}</span>
+			<strong>{value}</strong>
+		</div>
+	);
+}
+
+function SaleSubmitBlock({
+	blockReason,
+	children,
+}: {
+	blockReason: string;
+	children: ReactNode;
+}) {
+	return (
+		<div className="production-submit-block">
+			{blockReason ? <p className="production-submit-reason">{blockReason}</p> : null}
+			{children}
+		</div>
+	);
+}
+
+function SelectedStockInfo({ stock }: { stock: CourierSaleOption }) {
+	return (
+		<SaleInfoLedger>
+			<SaleInfoRow label="Доступно" value={`${stock.availableQuantity} шт`} />
+			<SaleInfoRow label="Цена" value={`${formatRubles(stock.unitPriceCents)} ₽/шт`} />
+		</SaleInfoLedger>
 	);
 }
 

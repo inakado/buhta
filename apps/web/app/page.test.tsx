@@ -2256,11 +2256,22 @@ describe("HomePage", () => {
 		fireEvent.click(screen.getByRole("button", { name: "Очистить клиента" }));
 		expect(await screen.findByLabelText("Клиент")).toBeTruthy();
 		expect(screen.getByRole("button", { name: "Новый клиент" })).toBeTruthy();
+		fireEvent.click(screen.getByRole("button", { name: "Новый клиент" }));
+		expect(await screen.findByRole("dialog")).toBeTruthy();
+		expect(await screen.findByRole("heading", { name: "Новый клиент" })).toBeTruthy();
+		expect(document.querySelector(".operation-dialog-overlay")).toBeTruthy();
+		expect(document.querySelector(".production-action-form .nested-form")).toBeNull();
+		fireEvent.click(screen.getByRole("button", { name: "Отмена" }));
+		await waitFor(() => {
+			expect(screen.queryByRole("dialog")).toBeNull();
+		});
 		fireEvent.change(screen.getByLabelText("Клиент"), { target: { value: "Иван" } });
 		fireEvent.click(await screen.findByRole("option", { name: "Выбрать клиента Иван Петров" }));
 		fireEvent.focus(await screen.findByRole("combobox", { name: "Продукция" }));
 		expect(await screen.findByRole("option", { name: /Икра горбуши/ })).toBeTruthy();
 		await selectOperationProduct(/Икра горбуши/);
+		expect(screen.getByText("Доступно")).toBeTruthy();
+		expect(screen.getByText("Цена")).toBeTruthy();
 		fireEvent.change(screen.getByLabelText("Количество, шт"), { target: { value: "1" } });
 		fireEvent.click(screen.getByRole("button", { name: "Безнал" }));
 		expect(screen.getByRole("button", { name: "Безнал" }).getAttribute("aria-pressed")).toBe("true");
