@@ -236,6 +236,10 @@ button:disabled {
 	gap: 12px;
 }
 
+.catalog-section {
+	flex: 0 0 auto;
+}
+
 .screen-stack {
 	flex: 1 1 auto;
 	min-height: 0;
@@ -805,6 +809,7 @@ input[type="search"]::-webkit-search-decoration {
 
 .client-list-table {
 	display: flex;
+	flex: 0 0 auto;
 	flex-direction: column;
 	overflow: hidden;
 	border-top: 1px solid var(--line);
@@ -1096,6 +1101,7 @@ input[type="search"]::-webkit-search-decoration {
 
 .recent-sales-list {
 	display: flex;
+	flex: 0 0 auto;
 	flex-direction: column;
 	overflow: hidden;
 	border-top: 1px solid var(--line);
@@ -1307,6 +1313,7 @@ input[type="search"]::-webkit-search-decoration {
 
 .director-stock-home .inventory-overview-strip,
 .courier-ledger-surface .inventory-overview-strip {
+	flex: 0 0 auto;
 	overflow: hidden;
 	border: 1px solid var(--ds-border);
 	border-radius: var(--ds-radius);
@@ -1388,6 +1395,7 @@ input[type="search"]::-webkit-search-decoration {
 .director-stock-home .inventory-table-list,
 .director-stock-home .courier-balance-list,
 .courier-ledger-surface .courier-balance-list {
+	flex: 0 0 auto;
 	overflow: hidden;
 	margin-inline: 0;
 	border: 1px solid var(--ds-border);
@@ -1490,6 +1498,7 @@ input[type="search"]::-webkit-search-decoration {
 
 .director-stock-home .production-stock-stack {
 	gap: 0;
+	flex: 0 0 auto;
 	overflow: hidden;
 	border: 1px solid var(--ds-border);
 	border-radius: var(--ds-radius);
@@ -1548,6 +1557,7 @@ input[type="search"]::-webkit-search-decoration {
 
 .stock-ledger-surface .inventory-overview-strip {
 	grid-template-columns: repeat(2, minmax(0, 1fr));
+	flex: 0 0 auto;
 	overflow: hidden;
 	border: 1px solid var(--ds-border);
 	border-radius: var(--ds-radius);
@@ -1582,6 +1592,7 @@ input[type="search"]::-webkit-search-decoration {
 }
 
 .stock-ledger-surface .inventory-table-list {
+	flex: 0 0 auto;
 	overflow: hidden;
 	margin-inline: 0;
 	border: 1px solid var(--ds-border);
@@ -1803,6 +1814,7 @@ input[type="search"]::-webkit-search-decoration {
 }
 
 .director-more-section {
+	flex: 0 0 auto;
 	overflow: hidden;
 	border: 1px solid var(--line);
 	border-radius: 12px;
@@ -2985,6 +2997,7 @@ input[type="search"]::-webkit-search-decoration {
 
 .admin-access-list {
 	display: flex;
+	flex: 0 0 auto;
 	flex-direction: column;
 	gap: 0;
 	overflow: hidden;
@@ -3896,6 +3909,7 @@ input[type="search"]::-webkit-search-decoration {
 
 .production-detail-screen .inventory-table-list,
 .production-ledger-list {
+	flex: 0 0 auto;
 	overflow: hidden;
 	margin-inline: 0;
 	border: 1px solid var(--production-list-border);
@@ -4091,6 +4105,7 @@ input[type="search"]::-webkit-search-decoration {
 
 .notification-ledger {
 	display: flex;
+	flex: 0 0 auto;
 	flex-direction: column;
 	gap: 0;
 	overflow: hidden;

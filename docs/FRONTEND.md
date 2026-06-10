@@ -293,6 +293,7 @@ App icon использует Pearl Cove знак в `apps/web/app/icon.svg`. Au
 - справочники начинаются с обычного заголовка и tabs, без decorative summary-card;
 - обычные строки справочников используют `catalog-list-row`, а формы создания/редактирования остаются в `operation-dialog` / `form-panel` management pattern;
 - клиенты отображаются через `client-list-table` / `client-list-row`, а не `entity-card`;
+- длинные list/ledger panels внутри scrollable `.screen-stack` не должны становиться height clamp: если панель использует `overflow: hidden` для радиуса и разделителей, ей нужен non-shrinking flex behavior, чтобы скроллился родительский экран, а не обрезались строки;
 - собственный баланс курьера находится на `CourierHomeOverview`: горизонтальная ledger-сводка показывает продукцию, стоимость и наличные, а список товара идет через `CourierStockList`;
 - `Продукция в цеху` у заведующего производством использует `inventory-table-*`, как история и read-only остатки.
 
