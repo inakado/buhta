@@ -22,7 +22,6 @@ type DistributorHomeOverviewProps = {
 	summaryMeta?: string;
 	summaryTitle?: string;
 	summaryVariant?: "stacked" | "horizontal";
-	summaryLayout?: "default" | "commercial";
 	stockSummaryLabel: string;
 	stockValueLabel?: string;
 	title: string;
@@ -44,7 +43,6 @@ export function DistributorHomeOverview({
 	summaryMeta = "Сводка",
 	summaryTitle = "Распределитель",
 	summaryVariant = "stacked",
-	summaryLayout = "default",
 	stockSummaryLabel,
 	stockValueLabel = "Стоимость продукции",
 	title,
@@ -72,115 +70,69 @@ export function DistributorHomeOverview({
 				{isFetching ? <span>Обновление</span> : null}
 			</div>
 
-			{summaryLayout === "commercial" ? (
-				<section
-					aria-label={showSummaryHeading ? undefined : "Сводка распределителя"}
-					aria-labelledby={showSummaryHeading ? "commercial-home-summary" : undefined}
-					className={`production-home-surface commercial-home-surface summary-${summaryVariant}`}
-				>
-					{showSummaryHeading ? (
-						<div className="production-home-heading">
-							<h2 id="commercial-home-summary">{summaryTitle}</h2>
-							<span>{summaryMeta}</span>
-						</div>
-					) : null}
-					<div className={`production-summary-ledger summary-${summaryVariant}`} aria-label="Сводка распределителя">
-						<CommercialSummaryRow
-							icon={BadgeCheck}
-							label={stockSummaryLabel}
-							loading={inventory.isLoading}
-							meta={formatPositionCount(stockItemCount)}
-							showMeta={showSummaryMeta}
-							value={`${stockUnits} шт`}
-							{...(onStockOpen ? { onClick: onStockOpen } : {})}
-						/>
-						<CommercialSummaryRow
-							icon={ClipboardList}
-							label={stockValueLabel}
-							loading={inventory.isLoading}
-							meta="По текущей цене"
-							showMeta={showSummaryMeta}
-							value={formatCompactRubles(stockValueCents)}
-						/>
-						{showCashBalance ? (
-							<CommercialSummaryRow
-								icon={Banknote}
-								label="Наличные"
-								loading={cashBalances.isLoading}
-								meta="В кассе"
-								showMeta={showSummaryMeta}
-								value={formatCompactRubles(cashAmountCents)}
-							/>
-						) : null}
+			<section
+				aria-label={showSummaryHeading ? undefined : "Сводка распределителя"}
+				aria-labelledby={showSummaryHeading ? "commercial-home-summary" : undefined}
+				className={`production-home-surface commercial-home-surface summary-${summaryVariant}`}
+			>
+				{showSummaryHeading ? (
+					<div className="production-home-heading">
+						<h2 id="commercial-home-summary">{summaryTitle}</h2>
+						<span>{summaryMeta}</span>
 					</div>
-					{cashBalances.isError ? <span className="inline-error">Не удалось загрузить наличные</span> : null}
-				</section>
-			) : (
-				<div className="compact-balance-overview">
-					<div>
-						<span>Продукция</span>
-						<strong>{formatCompactRubles(stockValueCents)}</strong>
-					</div>
+				) : null}
+				<div className={`production-summary-ledger summary-${summaryVariant}`} aria-label="Сводка распределителя">
+					<CommercialSummaryRow
+						icon={BadgeCheck}
+						label={stockSummaryLabel}
+						loading={inventory.isLoading}
+						meta={formatPositionCount(stockItemCount)}
+						showMeta={showSummaryMeta}
+						value={`${stockUnits} шт`}
+						{...(onStockOpen ? { onClick: onStockOpen } : {})}
+					/>
+					<CommercialSummaryRow
+						icon={ClipboardList}
+						label={stockValueLabel}
+						loading={inventory.isLoading}
+						meta="По текущей цене"
+						showMeta={showSummaryMeta}
+						value={formatCompactRubles(stockValueCents)}
+					/>
 					{showCashBalance ? (
-						<div>
-							<span>Наличные</span>
-							<strong>{cashBalances.isLoading ? "Загрузка" : formatCompactRubles(cashAmountCents)}</strong>
-						</div>
-					) : null}
-				</div>
-			)}
-
-			{showCashBalance && summaryLayout !== "commercial" && cashBalances.isError ? (
-				<span className="inline-error">Не удалось загрузить наличные</span>
-			) : null}
-
-			{summaryLayout === "commercial" ? (
-				<div className="production-command-panel" aria-label="Действия продаж">
-					<div className="production-command-group frequent" aria-label="Частые действия">
-						<CommercialCommandButton
-							disabled={saleDisabled}
-							icon={ReceiptText}
-							label="Продать"
-							onClick={onSale}
-							tone={saleCommandTone}
+						<CommercialSummaryRow
+							icon={Banknote}
+							label="Наличные"
+							loading={cashBalances.isLoading}
+							meta="В кассе"
+							showMeta={showSummaryMeta}
+							value={formatCompactRubles(cashAmountCents)}
 						/>
-						{onNotify ? (
-							<CommercialCommandButton
-								disabled={notifyDisabled}
-								icon={Send}
-								label="Уведомить"
-								onClick={onNotify}
-							/>
-						) : null}
-					</div>
-					{saleDisabled || notifyDisabled ? <p className="production-command-note">Нет сети: операции записи недоступны</p> : null}
-				</div>
-			) : (
-				<div className="action-grid">
-					<button
-						aria-label="Открыть продажу"
-						className="action-tile primary-action"
-						disabled={saleDisabled}
-						onClick={onSale}
-						type="button"
-					>
-						<ReceiptText aria-hidden size={22} />
-						<span>{saleDisabled ? "Продать — нет сети" : "Продать"}</span>
-					</button>
-					{onNotify ? (
-						<button
-							aria-label="Уведомить производство"
-							className="action-tile"
-							disabled={notifyDisabled}
-							onClick={onNotify}
-							type="button"
-						>
-							<Send aria-hidden size={22} />
-							<span>{notifyDisabled ? "Уведомить — нет сети" : "Уведомить"}</span>
-						</button>
 					) : null}
 				</div>
-			)}
+				{cashBalances.isError ? <span className="inline-error">Не удалось загрузить наличные</span> : null}
+			</section>
+
+			<div className="production-command-panel" aria-label="Действия продаж">
+				<div className="production-command-group frequent" aria-label="Частые действия">
+					<CommercialCommandButton
+						disabled={saleDisabled}
+						icon={ReceiptText}
+						label="Продать"
+						onClick={onSale}
+						tone={saleCommandTone}
+					/>
+					{onNotify ? (
+						<CommercialCommandButton
+							disabled={notifyDisabled}
+							icon={Send}
+							label="Уведомить"
+							onClick={onNotify}
+						/>
+					) : null}
+				</div>
+				{saleDisabled || notifyDisabled ? <p className="production-command-note">Нет сети: операции записи недоступны</p> : null}
+			</div>
 
 			{showStockList ? (
 				<>

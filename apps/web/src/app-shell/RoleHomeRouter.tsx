@@ -117,7 +117,7 @@ export function RoleHomeRouter({
 		&& actor.permissions.includes("courier.stock.read")
 		&& (actor.role === "director" || actor.role === "commercial_manager")
 	) {
-		return <CourierBalanceHome mode="all" variant="director-stock" />;
+		return <CourierBalanceHome variant="director-stock" />;
 	}
 
 	if (activeTab === "notifications" && actor.permissions.includes("notification.read")) {

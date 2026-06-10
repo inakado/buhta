@@ -302,7 +302,7 @@ export function DistributorInventoryHome({
 			{showWithdrawalAction ? (
 				<div className="cash-withdrawal-actions">
 					<button
-						className="action-tile primary-action"
+						className="cash-withdrawal-button"
 						disabled={withdrawalActionDisabled}
 						onClick={() => {
 							if (withdrawalActionDisabled) {

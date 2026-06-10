@@ -75,7 +75,7 @@ export function DirectorStockHome({
 						showCashBalance={actor.permissions.includes("distributor.cash.read")}
 					/>
 				) : (
-					<CourierBalanceHome embedded hideHeading mode="all" variant="director-stock" />
+					<CourierBalanceHome embedded hideHeading variant="director-stock" />
 				)}
 			</div>
 		</section>

@@ -567,50 +567,6 @@ button:disabled {
 	color: var(--text-muted);
 }
 
-.compact-balance-overview {
-	display: grid;
-	grid-template-columns: repeat(2, minmax(0, 1fr));
-	gap: 0;
-	border-radius: 18px;
-	background: linear-gradient(135deg, var(--brand-lime), #eefbdf 72%);
-	padding: var(--metric-summary-padding);
-	color: var(--base-black);
-}
-
-.compact-balance-overview > div {
-	min-width: 0;
-	padding: 8px;
-}
-
-.compact-balance-overview > div:nth-child(2n) {
-	border-left: 1px solid rgb(37 119 45 / 8%);
-}
-
-.compact-balance-overview > div:nth-child(n + 3) {
-	border-top: 1px solid rgb(37 119 45 / 8%);
-}
-
-.compact-balance-overview span {
-	display: block;
-	margin-bottom: var(--metric-summary-label-gap);
-	color: rgb(0 0 0 / 60%);
-	font-size: var(--font-size-metric-label-compact);
-	font-weight: var(--font-weight-label);
-	line-height: 1.15;
-}
-
-.compact-balance-overview strong {
-	display: block;
-	overflow-wrap: anywhere;
-	color: var(--base-black);
-	font-size: var(--font-size-metric-dense);
-	font-weight: var(--font-weight-emphasis);
-	font-variant-numeric: tabular-nums;
-	letter-spacing: 0;
-	line-height: 1;
-	white-space: nowrap;
-}
-
 .section-heading {
 	justify-content: space-between;
 	gap: 12px;
@@ -672,48 +628,10 @@ button:disabled {
 	padding: 0 12px;
 }
 
-.action-grid {
-	display: grid;
-	grid-template-columns: repeat(2, minmax(0, 1fr));
-	gap: var(--control-gap);
-}
-
 .form-panel {
 	border: 1px solid var(--line);
 	border-radius: var(--control-radius);
 	background: var(--base-white);
-}
-
-.action-tile {
-	display: flex;
-	flex-direction: column;
-	align-items: flex-start;
-	justify-content: space-between;
-	gap: 14px;
-	min-height: 96px;
-	border: 0;
-	border-radius: 24px;
-	background: var(--surface-action);
-	color: var(--base-black);
-	padding: 18px;
-	text-align: left;
-}
-
-.action-tile.primary-action {
-	background: var(--surface-action);
-	color: var(--base-black);
-}
-
-.action-tile span {
-	font-size: 16px;
-	font-weight: var(--font-weight-regular);
-	line-height: 1.15;
-}
-
-.action-tile small {
-	color: var(--text-muted);
-	font-size: 11px;
-	line-height: 1.2;
 }
 
 .segmented-control {
@@ -1137,15 +1055,6 @@ input[type="search"]::-webkit-search-decoration {
 	cursor: pointer;
 }
 
-.nested-form {
-	display: flex;
-	flex-direction: column;
-	gap: 10px;
-	margin-top: 10px;
-	padding-top: 10px;
-	border-top: 1px solid var(--line);
-}
-
 .payment-segmented {
 	display: grid;
 	grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1451,7 +1360,7 @@ input[type="search"]::-webkit-search-decoration {
 	gap: 8px;
 }
 
-.director-stock-home .cash-withdrawal-actions .action-tile {
+.director-stock-home .cash-withdrawal-actions .cash-withdrawal-button {
 	display: inline-flex;
 	flex: 1 1 100%;
 	flex-direction: row;
@@ -1467,12 +1376,12 @@ input[type="search"]::-webkit-search-decoration {
 	gap: 7px;
 }
 
-.director-stock-home .cash-withdrawal-actions .action-tile svg {
+.director-stock-home .cash-withdrawal-actions .cash-withdrawal-button svg {
 	width: 15px;
 	height: 15px;
 }
 
-.director-stock-home .cash-withdrawal-actions .action-tile span {
+.director-stock-home .cash-withdrawal-actions .cash-withdrawal-button span {
 	font-size: 12px;
 	font-weight: var(--font-weight-label);
 	line-height: 1;
@@ -4123,41 +4032,6 @@ input[type="search"]::-webkit-search-decoration {
 	text-align: left;
 }
 
-.flat-balance-row {
-	display: grid;
-	grid-template-columns: minmax(0, 1fr) auto;
-	align-items: center;
-	column-gap: 12px;
-	border-top: 1px solid var(--line);
-	border-bottom: 1px solid var(--line);
-	padding: 12px 0;
-	color: var(--base-black);
-}
-
-.flat-balance-row > div {
-	min-width: 0;
-}
-
-.flat-balance-row strong {
-	display: block;
-	font-size: 15px;
-	font-weight: var(--font-weight-emphasis);
-	font-variant-numeric: tabular-nums;
-	line-height: 1.15;
-}
-
-.flat-balance-row p {
-	margin: 4px 0 0;
-	color: var(--text-muted);
-	font-size: 12px;
-	line-height: 1.15;
-}
-
-.flat-balance-row > strong {
-	text-align: right;
-	white-space: nowrap;
-}
-
 .notification-screen {
 	gap: 12px;
 }
@@ -4690,11 +4564,6 @@ input[type="search"]::-webkit-search-decoration {
 	display: grid;
 	grid-template-columns: repeat(2, minmax(0, 1fr));
 	gap: 8px;
-}
-
-.cash-withdrawal-actions .action-tile {
-	grid-column: 1 / 2;
-	width: 100%;
 }
 
 .cash-withdrawal-panel,

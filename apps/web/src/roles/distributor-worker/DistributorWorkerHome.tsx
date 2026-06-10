@@ -23,7 +23,6 @@ export function DistributorWorkerHome({
 			showSummaryMeta={false}
 			showSummaryHeading={false}
 			stockListSurface="worker-home"
-			summaryLayout="commercial"
 			summaryVariant="horizontal"
 			stockSummaryLabel="Продукция"
 			stockValueLabel="Стоимость"

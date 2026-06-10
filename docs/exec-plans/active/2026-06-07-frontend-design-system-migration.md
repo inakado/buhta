@@ -97,7 +97,7 @@ Status 2026-06-09: role contour complete. Финальный static cleanup не
 | Главная продаж | `home` | `CommercialManagerHome`, `DistributorHomeOverview` | Owner-confirmed direction: сводка и действия повторяют production manager home rhythm. Summary shows distributor product total as clickable drilldown; actions include `Продать` and production notify with the same spatial grouping as production actions. |
 | Продукция на распределителе | internal drilldown from home summary | `DistributorInventoryHome` / commercial product detail variant | Replaces standalone bottom-nav `Остатки` for commercial manager. Full-screen detail with back navigation, ledger/table rhythm from director and production stock screens, discount affordance by permission, no separate bottom nav item. |
 | Продажа | action sets `sale` | `DistributorSaleHome` | Shared distributor sale flow. Не показывается в bottom nav, открывается с home action. Bring to the existing operational form standard after home. |
-| Курьеры | `couriers` | `CourierBalanceHome mode="all"` | Остается в bottom nav by owner decision. Uses director/stock ledger language and commercial permissions. |
+| Курьеры | `couriers` | `CourierBalanceHome` | Остается в bottom nav by owner decision. Uses director/stock ledger language and commercial permissions. |
 | История продаж | `more` -> `sales-history` | `SalesHistoryHome`, `RecentSalesPanel` | Recent sales, cancellation affordance by permissions. Commercial entry moved into `Еще`; list migrated to compact ledger rhythm. |
 | Задачи производству | action/internal entry from home or `more` if needed | `NotificationsHome` | Commercial keeps create form by permission and uses the migrated task ledger standard from production notifications. |
 | Клиенты | `clients` | `ClientsHome` | Uses the already established clients management standard, without a fresh redesign. |
@@ -120,7 +120,7 @@ Status 2026-06-09: role contour complete. Финальный static cleanup не
 
 | Экран | Entry point | Компоненты | Варианты и особенности |
 | --- | --- | --- | --- |
-| Баланс курьера | `home` | `CourierHome`, `CourierHomeOverview`, `CourierStockList` | Needs migration from old `compact-balance-overview` / `action-tile` to compact white ledger summary and command actions. Own product list stays visible on the home screen. |
+| Баланс курьера | `home` | `CourierHome`, `CourierHomeOverview`, `CourierStockList` | Migrated to compact white ledger summary and command actions. Own product list stays visible on the home screen. |
 | Продажа | action sets `sale` | `CourierSaleHome` | Same sale form standard as distributor/commercial: client combobox, product select from courier balance, payment segmented, operation total, new client in modal instead of inline nested form. |
 | Загрузка | action sets `load` | `CourierLoadHome` | Load from distributor to courier. Align product selection and selected-stock details with the operational form standard. |
 | Возврат | action sets `unload` | `CourierUnloadHome` | Return products/cash to distributor. Dense form requiring a cleaner ledger grouping for destination, products, cash and operation total. |
@@ -302,7 +302,7 @@ Status 2026-06-09: role contour complete. Финальный static cleanup не
    - `NotificationsHome` для заведующего оформить как task ledger от коммерческого руководителя: visible heading, summary `Новые / Выполнено`, rows with completion action.
    - Create form не показывать для заведующего без `notification.create`; не оставлять пустой верхний form gap.
    - Проверить badge count in bottom nav and polling state text.
-   - Реализационный стандарт: видимый heading `Задачи производству`, default filter `Новые`, completed tasks hidden from the main queue and available through `Выполненные`, white task ledger rows with thin dividers, status badge in meta and checkbox completion control. Старый `flat-balance-row` treatment для задач не использовать.
+   - Реализационный стандарт: видимый heading `Задачи производству`, default filter `Новые`, completed tasks hidden from the main queue and available through `Выполненные`, white task ledger rows with thin dividers, status badge in meta and checkbox completion control. Старый плоский balance-row treatment для задач не использовать.
    - Status: implemented. Production manager sees read/complete task ledger only; commercial manager keeps create form by permission.
 
 6. **Еще, история, аккаунт.**
@@ -388,11 +388,11 @@ Owner-confirmed shape:
 - Commit after every stage below.
 
 1. **Главная распределителя.**
-   - Replace the old `compact-balance-overview` / `action-tile` home with a white ledger summary matching commercial/production surfaces.
+   - Replace the old compact balance/action card home with a white ledger summary matching commercial/production surfaces.
    - Show compact centered horizontal `Продукция`, `Стоимость` and optional `Наличные`, without a repeated inner summary heading or helper meta labels.
    - Keep one clear primary command action: `Продать`.
    - Keep the product list visible below the action block, because this role needs stock visibility on the first screen.
-   - Rewrite targeted tests that currently assert the old `action-tile` behavior.
+   - Rewrite targeted tests that currently assert the old action-card behavior.
    - Commit after implementation, tests, cleanup and docs update.
    - Status: implemented. Worker home now uses the compact centered horizontal white ledger summary and primary `production-command-button` sale action while keeping the product list visible on the main screen.
 
@@ -435,7 +435,7 @@ Owner-confirmed shape:
    - Remove unused CSS/code that becomes unreachable.
    - Update `docs/FRONTEND.md` and this plan with the final worker contour.
    - Commit the final cleanup separately.
-   - Status: complete. Search confirmed worker no longer routes to bottom-nav `Профиль` / `SettingsScreen` and no worker-specific old card/action code remains reachable. Shared `action-tile`, `compact-balance-overview` and `SettingsScreen` CSS/code are still used by other roles and were intentionally kept. `docs/FRONTEND.md` and this plan now describe the final worker contour.
+   - Status: complete. Search confirmed worker no longer routes to bottom-nav `Профиль` / `SettingsScreen` and no worker-specific old card/action code remains reachable. Later main-role cleanup removed the remaining old action-card and compact-balance code/CSS; `SettingsScreen` remains only for admin/fallback. `docs/FRONTEND.md` and this plan now describe the final worker contour.
 
 ### Stage 7. Курьер
 
@@ -444,7 +444,7 @@ Impeccable audit summary:
 - Score: 13/20. The courier contour is functionally complete and mostly uses shared data/form primitives, but the home and return flow still carry old visual language.
 - Accessibility: 3/4. Forms have explicit labels and actions are buttons, but old action tiles and dense return rows make hierarchy and state reading weaker than the migrated screens.
 - Performance: 4/4. No heavy assets or unnecessary visual effects were found; the role uses existing query hooks and shared read models.
-- Theming: 2/4. `compact-balance-overview`, old action tiles and muted sentence-style stock details do not match the new white ledger system.
+- Theming: 2/4. The old compact balance overview, old action tiles and muted sentence-style stock details do not match the new white ledger system.
 - Responsive: 2/4. The shared stock list is already close to the new standard, but the home action group and `CourierUnloadHome` need a 390px-first layout pass.
 - Anti-patterns: 2/4. Remaining issues are old card-like action surfaces, inline new-client expansion inside the sale form and overly dense return form composition.
 
@@ -470,7 +470,7 @@ Screens, variations and meaning:
 
 Problems to remove:
 
-- Old home shell: `compact-balance-overview`, old rounded action tiles and card-like action grid are inconsistent with completed role screens.
+- Old home shell: compact balance overview, old rounded action tiles and card-like action grid are inconsistent with completed role screens.
 - Product summary wording can be confusing because the home currently mixes product value, cash and product list without the same ledger hierarchy as newer screens.
 - `CourierSaleHome` still opens the new-client form inline; it should use the existing `operation-dialog` modal pattern from distributor sale and clients.
 - `CourierLoadHome` and `CourierSaleHome` use muted helper sentences for selected stock; migrated forms should show selected facts as compact ledger rows.
@@ -515,7 +515,7 @@ Implementation stages:
    - Preserve product options, quantity rules and success behavior.
    - Update targeted tests, cleanup stale form styles and docs.
    - Commit after implementation.
-   - Status: implemented. Courier load now uses `production-detail-screen` / `production-action-form`, selected-stock facts and operation totals are compact ledger rows, old `operation-total` is gone, and the existing load API, validation and query invalidation behavior is unchanged.
+   - Status: implemented. Courier load now uses `production-detail-screen` / `production-action-form`, selected-stock facts and operation totals are compact ledger rows, and the existing load API, validation and query invalidation behavior is unchanged.
 
 4. **Возврат.**
    - Use the approved mock to rebuild `CourierUnloadHome` around destination, products, cash and operation total.
@@ -523,7 +523,7 @@ Implementation stages:
    - Make disabled submit reasons readable without adding extra data.
    - Update targeted tests, cleanup stale unload row styles and docs.
    - Commit after implementation.
-   - Status: implemented. Courier unload now uses separate `production-action-form` panels for destination, products, cash and totals; old `unload-row` / `operation-total` UI is gone while default full return, product/cash-only payloads, validation and query invalidation stay unchanged.
+   - Status: implemented. Courier unload now uses separate `production-action-form` panels for destination, products, cash and totals while default full return, product/cash-only payloads, validation and query invalidation stay unchanged.
 
 5. **История продаж.**
    - Confirm courier still uses the migrated shared history and cancel modal.
@@ -545,6 +545,7 @@ Implementation stages:
    - Remove unreachable CSS/code only after usages are gone.
    - Update `docs/FRONTEND.md` and this plan with the final courier contour.
    - Commit final cleanup separately.
+   - Status: complete. Courier no longer routes to bottom-nav `Профиль` / `SettingsScreen`; own courier balance uses `CourierHomeOverview`, while read-only all-couriers balances use the simplified `CourierBalanceHome`. Main-role cleanup removed old balance row, action-card, compact-balance and inline nested form CSS/code.
 
 ### Stage 8. Shared Stock Surfaces Across Roles
 
@@ -553,6 +554,7 @@ Implementation stages:
   - курьерские `Балансы курьеров`;
   - own courier balance.
 - Проверить все prop variants: `embedded`, `hideHeading`, `mode`, `showCashBalance`, `canAssignDiscount`, `canWithdrawCash`.
+- Status 2026-06-10: complete for main roles except admin. Commercial drilldown, director/commercial courier balances and own courier home now use the migrated stock/list/table standards. `CourierBalanceHome` is intentionally read-only all-couriers only; own courier stock is owned by `CourierHomeOverview` / `CourierStockList`.
 
 ### Stage 9. Remaining Role Home Overview Screens
 
@@ -560,6 +562,7 @@ Implementation stages:
 - Убрать старый декоративный card language там, где экран должен быть рабочим control surface.
 - Стандартизировать action blocks: иконка, label, disabled/offline reason, compact spacing.
 - Не дублировать данные из нижней навигации или соседних экранов.
+- Status 2026-06-10: complete for main roles except admin. `DistributorHomeOverview` now has only the migrated ledger/command rendering path, and `CourierHomeOverview` owns the courier's first-screen balance/product list.
 
 ### Stage 10. Remaining Operational Forms
 
@@ -570,6 +573,7 @@ Implementation stages:
   - `CourierUnloadHome`.
 - Сохранить быстрый ввод, block reasons и online-only behavior.
 - Payment segmented, product select and client combobox должны визуально совпадать с новым selector standard.
+- Status 2026-06-10: complete for main roles. Distributor sale, courier sale, courier load and courier unload use the operational form standard; removed stale inline nested form and old operation total CSS.
 
 ### Stage 11. Histories, Lists And Management Surfaces
 
@@ -577,6 +581,7 @@ Implementation stages:
 - Мигрировать `AdminUsersHome`, remaining shared `CatalogHome`, `ClientsHome`, `NotificationsHome` states.
 - Для long lists проверить bottom spacing and row density.
 - Не делать строки карточками, если они read-only and non-drilldown.
+- Status 2026-06-10: complete for Director, Production, Commercial, Distributor Worker and Courier surfaces. Admin remains the explicit not-yet-migrated role.
 
 ### Stage 12. Documentation And CSS Cleanup
 
@@ -584,6 +589,7 @@ Implementation stages:
 - Удалять старые selectors только после того, как не осталось usages.
 - Запретить новые локальные tokens без причины: radius, font size, shadow, gradient, card treatment.
 - Финально пройти `globals.css` на legacy classes, duplicates and dead design rules.
+- Status 2026-06-10: main-role cleanup complete. Removed unreachable compact-balance, action grid, action-card, flat balance row and inline nested form CSS/code paths; docs now describe command actions, ledger summaries and the simplified read-only courier balance split.
 
 ## 9. Implementation Protocol Для Каждого Stage
 

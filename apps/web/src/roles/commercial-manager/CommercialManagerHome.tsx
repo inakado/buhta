@@ -24,7 +24,6 @@ export function CommercialManagerHome({
 			saleDisabled={!online}
 			showCashBalance={showCashBalance}
 			showStockList={false}
-			summaryLayout="commercial"
 			stockSummaryLabel="Остаток распределителя"
 			title="Продажи"
 		/>

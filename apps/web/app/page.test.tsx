@@ -1516,9 +1516,7 @@ describe("HomePage", () => {
 		expect(await screen.findByRole("heading", { name: "Задачи производству" })).toBeTruthy();
 		expect(screen.queryByLabelText("Что передать производству")).toBeNull();
 		expect(await screen.findByText("Сделать партию икры")).toBeTruthy();
-		expect(document.querySelector(".compact-balance-overview")).toBeNull();
 		expect(document.querySelector(".notification-ledger")).toBeTruthy();
-		expect(document.querySelector(".notification-ledger .flat-balance-row")).toBeNull();
 		expect(screen.getByRole("tab", { name: /Новые/ }).getAttribute("aria-selected")).toBe("true");
 		expect(document.querySelector(".notification-summary-panel")?.textContent).toContain("Новые1");
 		expect(fetchMock.mock.calls.some(([request]) => String(request).includes("/notifications?status=new"))).toBe(true);
@@ -1658,7 +1656,6 @@ describe("HomePage", () => {
 		fireEvent.click(screen.getByRole("button", { name: "Уведомить" }));
 		expect(await screen.findByRole("heading", { name: "Задачи производству" })).toBeTruthy();
 		expect(await screen.findByText("Сделать партию икры")).toBeTruthy();
-		expect(document.querySelector(".compact-balance-overview")).toBeNull();
 		expect(document.querySelector(".notification-summary-panel")).toBeTruthy();
 		expect(document.querySelector(".notification-summary-panel")?.textContent).toContain("Выполненные0");
 		expect(screen.getByRole("heading", { name: "Новая задача" })).toBeTruthy();
@@ -1843,7 +1840,6 @@ describe("HomePage", () => {
 		const saleAction = screen.getByRole("button", { name: "Продать" });
 		expect(saleAction.className).toContain("production-command-button");
 		expect(saleAction.className).toContain("primary");
-		expect(document.querySelector(".compact-balance-overview")).toBeNull();
 		expect(screen.queryByRole("heading", { name: "Действия" })).toBeNull();
 		expect(screen.queryByRole("button", { name: "Показать остатки" })).toBeNull();
 		expect(screen.queryByRole("button", { name: "Открыть клиентов" })).toBeNull();
@@ -1972,7 +1968,6 @@ describe("HomePage", () => {
 		expect(screen.queryByRole("button", { name: "История" })).toBeNull();
 		expect(screen.queryByRole("button", { name: "Профиль" })).toBeNull();
 		expect(screen.getByRole("button", { name: "Еще" })).toBeTruthy();
-		expect(document.querySelector(".compact-balance-overview")).toBeNull();
 		fireEvent.click(screen.getByRole("button", { name: "Еще" }));
 		expect(screen.getByRole("button", { name: "Еще" }).getAttribute("aria-current")).toBe("page");
 		expect(await screen.findByRole("heading", { name: "Еще" })).toBeTruthy();
@@ -2000,7 +1995,6 @@ describe("HomePage", () => {
 		expect(screen.getByText("Доступно")).toBeTruthy();
 		expect(screen.getByText("Цена")).toBeTruthy();
 		expect(screen.getByText("Операция")).toBeTruthy();
-		expect(document.querySelector(".operation-total")).toBeNull();
 		fireEvent.change(screen.getByLabelText("Количество, шт"), { target: { value: "1" } });
 		fireEvent.change(screen.getByLabelText("Комментарий"), { target: { value: "На доставку" } });
 		fireEvent.click(screen.getByRole("button", { name: "Записать загрузку" }));
@@ -2055,7 +2049,6 @@ describe("HomePage", () => {
 
 		fireEvent.click(await screen.findByRole("button", { name: "Загрузить" }));
 		await selectOperationProduct(/Икра горбуши/);
-		expect(document.querySelector(".operation-total")).toBeNull();
 		fireEvent.change(screen.getByLabelText("Количество, шт"), { target: { value: "1" } });
 		fireEvent.change(screen.getByLabelText("Комментарий"), { target: { value: "На доставку" } });
 		fireEvent.click(screen.getByRole("button", { name: "Записать загрузку" }));
@@ -2173,7 +2166,6 @@ describe("HomePage", () => {
 		expect(screen.getByRole("heading", { name: "Наличные" })).toBeTruthy();
 		expect(screen.getByRole("heading", { name: "Итого" })).toBeTruthy();
 		expect(screen.getByText("Место")).toBeTruthy();
-		expect(document.querySelector(".operation-total")).toBeNull();
 		expect(document.querySelector(".unload-list")).toBeNull();
 		expect((screen.getByLabelText("Сумма, ₽") as HTMLInputElement).value).toBe("700.00");
 		fireEvent.change(screen.getByLabelText("Сумма, ₽"), { target: { value: "0" } });
@@ -2293,7 +2285,6 @@ describe("HomePage", () => {
 		expect(await screen.findByRole("dialog")).toBeTruthy();
 		expect(await screen.findByRole("heading", { name: "Новый клиент" })).toBeTruthy();
 		expect(document.querySelector(".operation-dialog-overlay")).toBeTruthy();
-		expect(document.querySelector(".production-action-form .nested-form")).toBeNull();
 		fireEvent.click(screen.getByRole("button", { name: "Отмена" }));
 		await waitFor(() => {
 			expect(screen.queryByRole("dialog")).toBeNull();
@@ -2707,7 +2698,7 @@ describe("HomePage", () => {
 		expect(screen.queryByRole("heading", { name: "Распределитель" })).toBeNull();
 		expect(await screen.findByText("Икра горбуши")).toBeTruthy();
 		const cashWithdrawalAction = screen.getByRole("button", { name: "Списать наличные" });
-		expect(cashWithdrawalAction.className).toContain("action-tile");
+		expect(cashWithdrawalAction.className).toContain("cash-withdrawal-button");
 		fireEvent.click(cashWithdrawalAction);
 		expect(await screen.findByRole("heading", { name: "Списать наличные" })).toBeTruthy();
 		expect(screen.getByRole("combobox", { name: "Распределитель" })).toHaveProperty("disabled", true);
@@ -2860,7 +2851,6 @@ describe("HomePage", () => {
 		expect(await screen.findByRole("dialog")).toBeTruthy();
 		expect(await screen.findByRole("heading", { name: "Новый клиент" })).toBeTruthy();
 		expect(document.querySelector(".operation-dialog-overlay")).toBeTruthy();
-		expect(document.querySelector(".production-action-form .nested-form")).toBeNull();
 		fireEvent.change(await screen.findByLabelText("Имя нового клиента"), { target: { value: "Анна" } });
 		fireEvent.change(screen.getByLabelText("Телефон нового клиента"), { target: { value: "+7 (999) 888-77-66" } });
 		fireEvent.click(screen.getByRole("button", { name: "Создать клиента" }));

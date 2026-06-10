@@ -8,18 +8,15 @@ import {
 } from "@buhta/shared";
 import { getCourierCashBalances, getCourierProductBalances } from "../../lib/api-client";
 import { formatCompactMoneyCents, formatCompactRubles } from "../../lib/money-format";
-import { CourierStockList } from "./CourierStockList";
 
 export function CourierBalanceHome({
 	embedded = false,
 	hideHeading = false,
-	mode = "own",
 	title: titleOverride,
 	variant = "default",
 }: {
 	embedded?: boolean;
 	hideHeading?: boolean;
-	mode?: "own" | "all";
 	title?: string;
 	variant?: "default" | "director-stock";
 }) {
@@ -33,7 +30,7 @@ export function CourierBalanceHome({
 	});
 	const data = balances.data;
 	const cashData = cashBalances.data;
-	const title = titleOverride ?? (mode === "own" ? "Баланс курьера" : "Балансы курьеров");
+	const title = titleOverride ?? "Балансы курьеров";
 	const totalUnits = data?.summary.totalUnits ?? 0;
 	const totalStockValueCents = data?.summary.totalStockValueCents ?? 0;
 	const totalCashCents = cashData?.totalAmountCents ?? 0;
@@ -68,53 +65,20 @@ export function CourierBalanceHome({
 				</div>
 			</div>
 
-			{balances.isLoading ? (
-				<p className="muted">{mode === "all" ? "Загрузка остатков курьеров" : "Загрузка баланса курьера"}</p>
-			) : null}
+			{balances.isLoading ? <p className="muted">Загрузка остатков курьеров</p> : null}
 			{balances.isError ? <p className="form-error">{balances.error.message}</p> : null}
 			{cashBalances.isError ? <p className="form-error">Не удалось загрузить наличные курьеров</p> : null}
 			{!balances.isLoading && !balances.isError && data?.items.length === 0 ? (
-				<p className="muted">{mode === "all" ? "У курьеров пока нет продукции." : "У курьера пока нет продукции."}</p>
+				<p className="muted">У курьеров пока нет продукции.</p>
 			) : null}
-
-			{mode === "own" ? <CourierCashPanel items={cashData?.items ?? []} /> : null}
 
 			<CourierPeopleList
 				cashItems={cashData?.items ?? []}
 				productItems={data?.items ?? []}
 				summaries={data?.courierSummaries ?? []}
-				mode={mode}
 				variant={variant}
 			/>
-
-			{mode === "own" ? (
-				<>
-					<div className="section-heading">
-						<h2>Остатки</h2>
-						<span>{stockItemCount} позиций</span>
-					</div>
-					<CourierStockList items={data?.items ?? []} />
-				</>
-			) : null}
 		</Frame>
-	);
-}
-
-function CourierCashPanel({
-	items,
-}: {
-	items: CourierCashBalanceItem[];
-}) {
-	const ownItem = items[0];
-
-	return (
-		<div className="flat-balance-row">
-			<div>
-				<strong>Наличные</strong>
-				<p>{ownItem?.updatedAt ? "Обновлен" : "Операций нет"}</p>
-			</div>
-			<strong>{formatRubles(ownItem?.amountCents ?? 0)} ₽</strong>
-		</div>
 	);
 }
 
@@ -122,16 +86,14 @@ function CourierPeopleList({
 	cashItems,
 	productItems,
 	summaries,
-	mode,
 	variant,
 }: {
 	cashItems: CourierCashBalanceItem[];
 	productItems: CourierProductBalanceItem[];
 	summaries: CourierProductBalancesCourierSummary[];
-	mode: "own" | "all";
 	variant: "default" | "director-stock";
 }) {
-	if (mode !== "all" || summaries.length === 0) {
+	if (summaries.length === 0) {
 		return null;
 	}
 	const cashByCourier = new Map(cashItems.map((item) => [item.courierUserId, item.amountCents]));
