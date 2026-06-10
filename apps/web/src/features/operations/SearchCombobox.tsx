@@ -97,6 +97,7 @@ export function SearchCombobox({
 							aria-autocomplete="list"
 							aria-controls={listId}
 							aria-expanded={showResults}
+							aria-haspopup="listbox"
 							{...(labelledBy ? { "aria-labelledby": labelledBy } : { "aria-label": ariaLabel ?? "Выберите значение" })}
 							onChange={(event) => {
 								onQueryChange(event.target.value);

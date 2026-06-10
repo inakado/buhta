@@ -20,16 +20,23 @@ export function CourierBalanceHome({
 	title?: string;
 	variant?: "default" | "director-stock";
 }) {
-	const balances = useQuery({
+	const {
+		data,
+		error: balancesErrorValue,
+		isError: balancesError,
+		isLoading: balancesLoading,
+	} = useQuery({
 		queryKey: ["courier", "product-balances"],
 		queryFn: getCourierProductBalances,
 	});
-	const cashBalances = useQuery({
+	const {
+		data: cashData,
+		isError: cashBalancesError,
+		isLoading: cashBalancesLoading,
+	} = useQuery({
 		queryKey: ["courier", "cash-balances"],
 		queryFn: getCourierCashBalances,
 	});
-	const data = balances.data;
-	const cashData = cashBalances.data;
 	const title = titleOverride ?? "Балансы курьеров";
 	const totalUnits = data?.summary.totalUnits ?? 0;
 	const totalStockValueCents = data?.summary.totalStockValueCents ?? 0;
@@ -53,7 +60,7 @@ export function CourierBalanceHome({
 			<div className="inventory-overview-strip">
 				<div>
 					<span>Количество</span>
-					<strong>{balances.isLoading ? "Загрузка" : `${totalUnits} шт`}</strong>
+					<strong>{balancesLoading ? "Загрузка" : `${totalUnits} шт`}</strong>
 				</div>
 				<div>
 					<span>Продукция</span>
@@ -61,14 +68,14 @@ export function CourierBalanceHome({
 				</div>
 				<div>
 					<span>Наличные</span>
-					<strong>{cashBalances.isLoading ? "Загрузка" : formatCompactRubles(totalCashCents)}</strong>
+					<strong>{cashBalancesLoading ? "Загрузка" : formatCompactRubles(totalCashCents)}</strong>
 				</div>
 			</div>
 
-			{balances.isLoading ? <p className="muted">Загрузка остатков курьеров</p> : null}
-			{balances.isError ? <p className="form-error">{balances.error.message}</p> : null}
-			{cashBalances.isError ? <p className="form-error">Не удалось загрузить наличные курьеров</p> : null}
-			{!balances.isLoading && !balances.isError && data?.items.length === 0 ? (
+			{balancesLoading ? <p className="muted">Загрузка остатков курьеров</p> : null}
+			{balancesError ? <p className="form-error">{balancesErrorValue.message}</p> : null}
+			{cashBalancesError ? <p className="form-error">Не удалось загрузить наличные курьеров</p> : null}
+			{!balancesLoading && !balancesError && data?.items.length === 0 ? (
 				<p className="muted">У курьеров пока нет продукции.</p>
 			) : null}
 
@@ -136,40 +143,36 @@ function CourierPeopleList({
 								</div>
 							)}
 						</div>
-						<div className="courier-product-table" role="table" aria-label={`Продукция курьера ${summary.courierDisplayName}`}>
-							{variant === "director-stock" ? (
-								<div className="sr-only" role="row">
-									<span role="columnheader">Наименование</span>
-									<span role="columnheader">Количество</span>
-									<span role="columnheader">Итого</span>
-								</div>
-							) : (
-								<div className="courier-product-table-head" role="row">
-									<span role="columnheader">Наименование</span>
-									<span role="columnheader">Количество</span>
-									<span role="columnheader">Итого</span>
-								</div>
-							)}
-							{courierProducts.length ? courierProducts.map((item) => (
-								<div className="courier-product-row" key={item.id} role="row">
-									<div role="cell">
-										<strong>{item.productName}</strong>
-										{variant === "director-stock" ? null : <span>{formatRubles(item.unitPriceCents)} ₽/шт</span>}
-									</div>
-									<div role="cell">
-										<strong>{item.quantity} шт</strong>
-										{variant === "director-stock" ? <span>{formatRubles(item.unitPriceCents)} ₽/шт</span> : null}
-									</div>
-									<div role="cell">
-										<strong>{formatRubles(item.stockValueCents)} ₽</strong>
-									</div>
-								</div>
-							)) : (
-								<div className="courier-product-empty" role="row">
-									<span role="cell">Нет продукции</span>
-								</div>
-							)}
-						</div>
+						<table className="courier-product-table" aria-label={`Продукция курьера ${summary.courierDisplayName}`}>
+							<thead className={variant === "director-stock" ? "sr-only" : undefined}>
+								<tr className="courier-product-table-head">
+									<th scope="col">Наименование</th>
+									<th scope="col">Количество</th>
+									<th scope="col">Итого</th>
+								</tr>
+							</thead>
+							<tbody>
+								{courierProducts.length ? courierProducts.map((item) => (
+									<tr className="courier-product-row" key={item.id}>
+										<td>
+											<strong>{item.productName}</strong>
+											{variant === "director-stock" ? null : <span>{formatRubles(item.unitPriceCents)} ₽/шт</span>}
+										</td>
+										<td>
+											<strong>{item.quantity} шт</strong>
+											{variant === "director-stock" ? <span>{formatRubles(item.unitPriceCents)} ₽/шт</span> : null}
+										</td>
+										<td>
+											<strong>{formatRubles(item.stockValueCents)} ₽</strong>
+										</td>
+									</tr>
+								)) : (
+									<tr className="courier-product-empty">
+										<td colSpan={3}>Нет продукции</td>
+									</tr>
+								)}
+							</tbody>
+						</table>
 						{variant === "director-stock" ? null : (
 							<div className="courier-product-total">
 								<span>Всего продукции</span>

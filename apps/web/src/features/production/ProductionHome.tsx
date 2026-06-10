@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { type FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { type FormEvent, type ReactNode, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import {
 	ArrowRightLeft,
 	ArrowLeft,
@@ -33,12 +33,77 @@ import {
 import { formatCompactMoneyCents } from "../../lib/money-format";
 import { ProductionHomeOverview } from "./ProductionHomeOverview";
 
+const PRODUCTION_DATE_TIME_FORMATTER = new Intl.DateTimeFormat("ru-RU", {
+	day: "2-digit",
+	hour: "2-digit",
+	minute: "2-digit",
+	month: "2-digit",
+});
+
 type ProductionTab = "home" | "history";
 type ProductionScreen = "raw-intake" | "packaging-intake" | "batch-release" | "transfer" | "raw-stock" | "packaging-stock" | "products";
 type SuccessNotice = {
 	id: number;
 	message: string;
 };
+
+type ProductBatchFormState = {
+	productTemplateId: string;
+	quantity: string;
+	rawQuantity: string;
+	comment: string;
+	localError: string;
+};
+
+type ProductTransferFormState = {
+	productBatchId: string;
+	distributorId: string;
+	quantity: string;
+	comment: string;
+	localError: string;
+};
+
+type FormAction<State> =
+	| { type: "patch"; values: Partial<State> }
+	| { type: "reset" };
+
+const EMPTY_PRODUCT_BATCH_FORM: ProductBatchFormState = {
+	productTemplateId: "",
+	quantity: "",
+	rawQuantity: "",
+	comment: "",
+	localError: "",
+};
+
+const EMPTY_PRODUCT_TRANSFER_FORM: ProductTransferFormState = {
+	productBatchId: "",
+	distributorId: "",
+	quantity: "",
+	comment: "",
+	localError: "",
+};
+
+function productBatchFormReducer(
+	state: ProductBatchFormState,
+	action: FormAction<ProductBatchFormState>,
+): ProductBatchFormState {
+	if (action.type === "reset") {
+		return EMPTY_PRODUCT_BATCH_FORM;
+	}
+
+	return { ...state, ...action.values };
+}
+
+function productTransferFormReducer(
+	state: ProductTransferFormState,
+	action: FormAction<ProductTransferFormState>,
+): ProductTransferFormState {
+	if (action.type === "reset") {
+		return EMPTY_PRODUCT_TRANSFER_FORM;
+	}
+
+	return { ...state, ...action.values };
+}
 
 export function ProductionHome({
 	activeTab,
@@ -50,40 +115,56 @@ export function ProductionHome({
 	const [activeScreen, setActiveScreen] = useState<ProductionScreen | null>(null);
 	const [successNotice, setSuccessNotice] = useState<SuccessNotice | null>(null);
 	const successNoticeId = useRef(0);
-	const summary = useQuery({
+	const {
+		data: summary,
+		isLoading: summaryLoading,
+	} = useQuery({
 		queryKey: ["production", "summary"],
 		queryFn: getProductionSummary,
 	});
-	const rawMaterialBalances = useQuery({
+	const {
+		data: rawMaterialBalances,
+		isLoading: rawMaterialBalancesLoading,
+	} = useQuery({
 		queryKey: ["production", "raw-material-balances"],
 		queryFn: listRawMaterialBalances,
 	});
-	const packagingBalances = useQuery({
+	const {
+		data: packagingBalances,
+		isLoading: packagingBalancesLoading,
+	} = useQuery({
 		queryKey: ["production", "packaging-balances"],
 		queryFn: listPackagingBalances,
 	});
-	const productBatches = useQuery({
+	const {
+		data: productBatches,
+		isLoading: productBatchesLoading,
+	} = useQuery({
 		queryKey: ["production", "product-batches"],
 		queryFn: listProductBatches,
 	});
-	const workshopProductBalances = useQuery({
+	const {
+		data: workshopProductBalances,
+		isLoading: workshopProductBalancesLoading,
+	} = useQuery({
 		queryKey: ["production", "workshop-product-balances"],
 		queryFn: listWorkshopProductBalances,
 	});
-	const transferOptions = useQuery({
+	const {
+		data: transferOptions,
+		isLoading: transferOptionsLoading,
+	} = useQuery({
 		queryKey: ["production", "transfer-options"],
 		queryFn: getProductionTransferOptions,
 	});
-	const options = useQuery({
+	const { data: options } = useQuery({
 		queryKey: ["production", "options"],
 		queryFn: getProductionOptions,
 	});
 
-	useEffect(() => {
-		if (activeTab !== "home") {
-			setActiveScreen(null);
-		}
-	}, [activeTab]);
+	if (activeTab !== "home" && activeScreen !== null) {
+		setActiveScreen(null);
+	}
 
 	useEffect(() => {
 		if (!successNotice) {
@@ -113,18 +194,18 @@ export function ProductionHome({
 				onBack={() => setActiveScreen(null)}
 				onActionSuccess={handleActionSuccess}
 				online={online}
-				packagingBalances={packagingBalances.data?.packagingBalances ?? []}
-				packagingBalancesLoading={packagingBalances.isLoading}
-				packagingTypes={options.data?.packagingTypes ?? []}
-				productTemplates={options.data?.productTemplates ?? []}
-				rawMaterialBalances={rawMaterialBalances.data?.rawMaterialBalances ?? []}
-				rawMaterialBalancesLoading={rawMaterialBalances.isLoading}
-				rawMaterialTypes={options.data?.rawMaterialTypes ?? []}
-				transferDistributors={transferOptions.data?.distributors ?? []}
-				transferOptionsLoading={transferOptions.isLoading}
-				transferWorkshopProductBalances={transferOptions.data?.workshopProductBalances ?? []}
-				workshopProductBalances={workshopProductBalances.data?.workshopProductBalances ?? []}
-				workshopProductBalancesLoading={workshopProductBalances.isLoading}
+				packagingBalances={packagingBalances?.packagingBalances ?? []}
+				packagingBalancesLoading={packagingBalancesLoading}
+				packagingTypes={options?.packagingTypes ?? []}
+				productTemplates={options?.productTemplates ?? []}
+				rawMaterialBalances={rawMaterialBalances?.rawMaterialBalances ?? []}
+				rawMaterialBalancesLoading={rawMaterialBalancesLoading}
+				rawMaterialTypes={options?.rawMaterialTypes ?? []}
+				transferDistributors={transferOptions?.distributors ?? []}
+				transferOptionsLoading={transferOptionsLoading}
+				transferWorkshopProductBalances={transferOptions?.workshopProductBalances ?? []}
+				workshopProductBalances={workshopProductBalances?.workshopProductBalances ?? []}
+				workshopProductBalancesLoading={workshopProductBalancesLoading}
 			/>
 		);
 	}
@@ -132,18 +213,18 @@ export function ProductionHome({
 	if (activeTab === "history") {
 		return (
 			<ProductionHistory
-				loading={productBatches.isLoading}
-				productBatches={productBatches.data?.productBatches ?? []}
+				loading={productBatchesLoading}
+				productBatches={productBatches?.productBatches ?? []}
 			/>
 		);
 	}
 
-	const summaryValue = summary.data?.summary;
+	const summaryValue = summary?.summary;
 
 	return (
 		<section className="screen-stack">
 			<ProductionHomeOverview
-				loading={summary.isLoading}
+				loading={summaryLoading}
 				onOpenBatchRelease={() => setActiveScreen("batch-release")}
 				onOpenPackaging={() => setActiveScreen("packaging-stock")}
 				onOpenPackagingIntake={() => setActiveScreen("packaging-intake")}
@@ -415,11 +496,8 @@ function ProductBatchForm({
 	rawMaterialBalancesLoading: boolean;
 }) {
 	const queryClient = useQueryClient();
-	const [productTemplateId, setProductTemplateId] = useState("");
-	const [quantity, setQuantity] = useState("");
-	const [rawQuantity, setRawQuantity] = useState("");
-	const [comment, setComment] = useState("");
-	const [localError, setLocalError] = useState("");
+	const [form, dispatchForm] = useReducer(productBatchFormReducer, EMPTY_PRODUCT_BATCH_FORM);
+	const { comment, localError, productTemplateId, quantity, rawQuantity } = form;
 	const selectedTemplate = productTemplates.find((item) => item.id === productTemplateId);
 	const selectedRawMaterialBalance = rawMaterialBalances.find((item) =>
 		item.typeId === selectedTemplate?.rawMaterialTypeId
@@ -455,11 +533,7 @@ function ProductBatchForm({
 			...(comment.trim() ? { comment: comment.trim() } : {}),
 		}),
 		onSuccess: async () => {
-			setProductTemplateId("");
-			setQuantity("");
-			setRawQuantity("");
-			setComment("");
-			setLocalError("");
+			dispatchForm({ type: "reset" });
 			await invalidateProduction(queryClient);
 			onActionSuccess("Выпуск записан");
 		},
@@ -471,10 +545,13 @@ function ProductBatchForm({
 			parsePositiveInteger(quantity, "Количество продукции");
 			parsePositiveNumber(rawQuantity, "Расход сырья");
 		} catch (error) {
-			setLocalError(error instanceof Error ? error.message : "Проверьте количество.");
+			dispatchForm({
+				type: "patch",
+				values: { localError: error instanceof Error ? error.message : "Проверьте количество." },
+			});
 			return;
 		}
-		setLocalError("");
+		dispatchForm({ type: "patch", values: { localError: "" } });
 		mutation.mutate();
 	}
 	const releaseSubmitDisabled = !online
@@ -496,7 +573,11 @@ function ProductBatchForm({
 			<ProductionFormHeading title="Выпуск продукции" />
 			<label className="field">
 				<span>Шаблон продукции</span>
-				<select onChange={(event) => setProductTemplateId(event.target.value)} required value={productTemplateId}>
+				<select
+					onChange={(event) => dispatchForm({ type: "patch", values: { productTemplateId: event.target.value } })}
+					required
+					value={productTemplateId}
+				>
 					<option value="">Выберите шаблон</option>
 					{productTemplates.map((item) => (
 						<option key={item.id} value={item.id}>
@@ -517,7 +598,7 @@ function ProductBatchForm({
 				<span>Количество продукции, шт</span>
 				<input
 					inputMode="numeric"
-					onChange={(event) => setQuantity(event.target.value)}
+					onChange={(event) => dispatchForm({ type: "patch", values: { quantity: event.target.value } })}
 					placeholder="18"
 					required
 					type="text"
@@ -528,7 +609,7 @@ function ProductBatchForm({
 				<span>Расход сырья, {selectedTemplate?.rawMaterialType.unit ?? "кг"}</span>
 				<input
 					inputMode="decimal"
-					onChange={(event) => setRawQuantity(event.target.value)}
+					onChange={(event) => dispatchForm({ type: "patch", values: { rawQuantity: event.target.value } })}
 					placeholder="12.5"
 					required
 					type="text"
@@ -537,7 +618,11 @@ function ProductBatchForm({
 			</label>
 			<label className="field">
 				<span>Комментарий</span>
-				<input onChange={(event) => setComment(event.target.value)} type="text" value={comment} />
+				<input
+					onChange={(event) => dispatchForm({ type: "patch", values: { comment: event.target.value } })}
+					type="text"
+					value={comment}
+				/>
 			</label>
 			{localError ? <p className="form-error">{localError}</p> : null}
 			{mutation.isError ? <p className="form-error">{mutation.error.message}</p> : null}
@@ -565,11 +650,8 @@ function ProductTransferForm({
 	workshopProductBalances: WorkshopProductBalanceItem[];
 }) {
 	const queryClient = useQueryClient();
-	const [productBatchId, setProductBatchId] = useState("");
-	const [distributorId, setDistributorId] = useState("");
-	const [quantity, setQuantity] = useState("");
-	const [comment, setComment] = useState("");
-	const [localError, setLocalError] = useState("");
+	const [form, dispatchForm] = useReducer(productTransferFormReducer, EMPTY_PRODUCT_TRANSFER_FORM);
+	const { comment, distributorId, localError, productBatchId, quantity } = form;
 	const selectedProduct = workshopProductBalances.find((item) => item.productBatchId === productBatchId);
 	const selectedDistributor = distributors.find((item) => item.id === distributorId);
 	const mutation = useMutation({
@@ -580,11 +662,7 @@ function ProductTransferForm({
 			...(comment.trim() ? { comment: comment.trim() } : {}),
 		}),
 		onSuccess: async () => {
-			setProductBatchId("");
-			setDistributorId("");
-			setQuantity("");
-			setComment("");
-			setLocalError("");
+			dispatchForm({ type: "reset" });
 			await invalidateProduction(queryClient);
 			onActionSuccess("Передано на распределитель");
 		},
@@ -602,10 +680,13 @@ function ProductTransferForm({
 				throw new Error("Количество продукции: нельзя передать больше доступного остатка.");
 			}
 		} catch (error) {
-			setLocalError(error instanceof Error ? error.message : "Проверьте количество.");
+			dispatchForm({
+				type: "patch",
+				values: { localError: error instanceof Error ? error.message : "Проверьте количество." },
+			});
 			return;
 		}
-		setLocalError("");
+		dispatchForm({ type: "patch", values: { localError: "" } });
 		mutation.mutate();
 	}
 	const transferSubmitDisabled = !online
@@ -629,7 +710,11 @@ function ProductTransferForm({
 			<ProductionFormHeading title="Передать" meta={selectedDistributor?.name} />
 			<label className="field">
 				<span>Продукция</span>
-				<select onChange={(event) => setProductBatchId(event.target.value)} required value={productBatchId}>
+				<select
+					onChange={(event) => dispatchForm({ type: "patch", values: { productBatchId: event.target.value } })}
+					required
+					value={productBatchId}
+				>
 					<option value="">Выберите продукцию</option>
 					{workshopProductBalances.map((item) => (
 						<option key={item.id} value={item.productBatchId}>
@@ -647,7 +732,11 @@ function ProductTransferForm({
 			) : null}
 			<label className="field">
 				<span>Распределитель</span>
-				<select onChange={(event) => setDistributorId(event.target.value)} required value={distributorId}>
+				<select
+					onChange={(event) => dispatchForm({ type: "patch", values: { distributorId: event.target.value } })}
+					required
+					value={distributorId}
+				>
 					<option value="">Выберите распределитель</option>
 					{distributors.map((item) => (
 						<option key={item.id} value={item.id}>
@@ -660,7 +749,7 @@ function ProductTransferForm({
 				<span>Количество, шт</span>
 				<input
 					inputMode="numeric"
-					onChange={(event) => setQuantity(event.target.value)}
+					onChange={(event) => dispatchForm({ type: "patch", values: { quantity: event.target.value } })}
 					placeholder="4"
 					required
 					type="text"
@@ -669,7 +758,11 @@ function ProductTransferForm({
 			</label>
 			<label className="field">
 				<span>Комментарий</span>
-				<input onChange={(event) => setComment(event.target.value)} type="text" value={comment} />
+				<input
+					onChange={(event) => dispatchForm({ type: "patch", values: { comment: event.target.value } })}
+					type="text"
+					value={comment}
+				/>
 			</label>
 			{localError ? <p className="form-error">{localError}</p> : null}
 			{mutation.isError ? <p className="form-error">{mutation.error.message}</p> : null}
@@ -759,20 +852,24 @@ function StockListScreen({
 }) {
 	return (
 		<section className="production-detail-list">
-			<div className="production-ledger-list" role="table" aria-label={`${title}: список`}>
-				<div className="inventory-table-title" role="row">
+			<table className="production-ledger-list" aria-label={`${title}: список`}>
+				<caption className="inventory-table-title">
 					<h2>{title}</h2>
-				</div>
-				<div className="production-ledger-head" role="row">
-					<span>Наименование</span>
-					<span>Остаток</span>
-				</div>
-				{loading ? <ProductionListMessage text="Загрузка списка" /> : null}
-				{!loading && items.length === 0 ? <ProductionListMessage text={emptyText} /> : null}
-				{items.map((item) => (
-					<BalanceRow item={item} key={item.id} />
-				))}
-			</div>
+				</caption>
+				<thead>
+					<tr className="production-ledger-head">
+						<th scope="col">Наименование</th>
+						<th scope="col">Остаток</th>
+					</tr>
+				</thead>
+				<tbody>
+					{loading ? <ProductionListMessage colSpan={2} text="Загрузка списка" /> : null}
+					{!loading && items.length === 0 ? <ProductionListMessage colSpan={2} text={emptyText} /> : null}
+					{items.map((item) => (
+						<BalanceRow item={item} key={item.id} />
+					))}
+				</tbody>
+			</table>
 		</section>
 	);
 }
@@ -799,43 +896,47 @@ function WorkshopProductBalanceList({
 	workshopProductBalances: WorkshopProductBalanceItem[];
 }) {
 	return (
-		<div className="inventory-table-list" role="table" aria-label="Продукция в цеху">
-			<div className="inventory-table-title" role="row">
+		<table className="inventory-table-list" aria-label="Продукция в цеху">
+			<caption className="inventory-table-title">
 				<h2>Продукция в цеху</h2>
-			</div>
-			<div className="inventory-table-head" role="row">
-				<span>Наименование</span>
-				<span>Количество</span>
-				<span>Цена</span>
-			</div>
-			{loading ? <ProductionListMessage text="Загрузка продукции" /> : null}
-			{!loading && workshopProductBalances.length === 0 ? (
-				<ProductionListMessage text="Готовой продукции пока нет. Выпустите первую партию." />
-			) : null}
-			{workshopProductBalances.map((balance) => (
-				<div className="inventory-table-row" key={balance.id} role="row">
-					<div className="inventory-table-product" role="cell">
-						<strong>{balance.productName}</strong>
-						<span>{formatDateTime(balance.createdAt)}</span>
-					</div>
-					<div className="inventory-table-quantity" role="cell">
-						<strong>{balance.quantity} шт</strong>
-						<span>из {balance.producedQuantity} шт</span>
-					</div>
-					<div className="inventory-table-total" role="cell">
-						<strong>{formatPriceRubles(balance.priceCents)} ₽</strong>
-					</div>
-				</div>
-			))}
-		</div>
+			</caption>
+			<thead>
+				<tr className="inventory-table-head">
+					<th scope="col">Наименование</th>
+					<th scope="col">Количество</th>
+					<th scope="col">Цена</th>
+				</tr>
+			</thead>
+			<tbody>
+				{loading ? <ProductionListMessage colSpan={3} text="Загрузка продукции" /> : null}
+				{!loading && workshopProductBalances.length === 0 ? (
+					<ProductionListMessage colSpan={3} text="Готовой продукции пока нет. Выпустите первую партию." />
+				) : null}
+				{workshopProductBalances.map((balance) => (
+					<tr className="inventory-table-row" key={balance.id}>
+						<td className="inventory-table-product">
+							<strong>{balance.productName}</strong>
+							<span>{formatDateTime(balance.createdAt)}</span>
+						</td>
+						<td className="inventory-table-quantity">
+							<strong>{balance.quantity} шт</strong>
+							<span>из {balance.producedQuantity} шт</span>
+						</td>
+						<td className="inventory-table-total">
+							<strong>{formatPriceRubles(balance.priceCents)} ₽</strong>
+						</td>
+					</tr>
+				))}
+			</tbody>
+		</table>
 	);
 }
 
 function ProductBatchList({ productBatches }: { productBatches: ProductBatch[] }) {
 	return (
-		<div className="operation-history-list production-history-list" aria-label="Последние выпуски" role="list">
+		<ul className="operation-history-list production-history-list" aria-label="Последние выпуски">
 			{productBatches.map((batch) => (
-				<div className="operation-history-row production-history-row" key={batch.id} role="listitem">
+				<li className="operation-history-row production-history-row" key={batch.id}>
 					<div className="operation-history-row-main">
 						<strong>{batch.productName}</strong>
 						<p>
@@ -850,17 +951,17 @@ function ProductBatchList({ productBatches }: { productBatches: ProductBatch[] }
 						<strong>{batch.quantity} шт</strong>
 						<span>{formatPriceRubles(batch.priceCents)}&nbsp;₽/шт</span>
 					</div>
-				</div>
+				</li>
 			))}
-		</div>
+		</ul>
 	);
 }
 
-function ProductionListMessage({ text }: { text: string }) {
+function ProductionListMessage({ colSpan, text }: { colSpan: number; text: string }) {
 	return (
-		<div className="production-list-message" role="row">
-			<span role="cell">{text}</span>
-		</div>
+		<tr className="production-list-message">
+			<td colSpan={colSpan}>{text}</td>
+		</tr>
 	);
 }
 
@@ -870,14 +971,14 @@ function BalanceRow({
 	item: { name: string; quantity: number; unit: string };
 }) {
 	return (
-		<div className="production-ledger-row" role="row">
-			<div role="cell">
+		<tr className="production-ledger-row">
+			<td>
 				<strong>{item.name}</strong>
-			</div>
-			<span role="cell">
+			</td>
+			<td className="production-ledger-quantity">
 				{formatQuantity(item.quantity)} {item.unit}
-			</span>
-		</div>
+			</td>
+		</tr>
 	);
 }
 
@@ -886,19 +987,24 @@ function buildStockItems(
 	balances: ProductionBalanceItem[],
 ): Array<{ id: string; name: string; quantity: number; unit: string }> {
 	const balanceByTypeId = new Map(balances.map((balance) => [balance.typeId, balance]));
+	const stockItems: Array<{ id: string; name: string; quantity: number; unit: string }> = [];
 
-	return types
-		.map((type) => {
-			const balance = balanceByTypeId.get(type.id);
+	for (const type of types) {
+		const balance = balanceByTypeId.get(type.id);
+		const quantity = balance?.quantity ?? 0;
+		if (quantity <= 0) {
+			continue;
+		}
 
-			return {
-				id: type.id,
-				name: type.name,
-				quantity: balance?.quantity ?? 0,
-				unit: type.unit,
-			};
-		})
-		.filter((item) => item.quantity > 0);
+		stockItems.push({
+			id: type.id,
+			name: type.name,
+			quantity,
+			unit: type.unit,
+		});
+	}
+
+	return stockItems;
 }
 
 function formatReleaseStockLine({
@@ -923,10 +1029,10 @@ function formatReleaseStockLine({
 
 function ProductionSuccessNotice({ notice }: { notice: SuccessNotice }) {
 	return (
-		<div className="production-success-notice" role="status" aria-live="polite" key={notice.id}>
+		<output className="production-success-notice" aria-live="polite" key={notice.id}>
 			<Check aria-hidden size={18} />
 			<span>{notice.message}</span>
-		</div>
+		</output>
 	);
 }
 
@@ -1013,12 +1119,7 @@ function formatPriceRubles(priceCents: number): string {
 }
 
 function formatDateTime(value: string): string {
-	return new Intl.DateTimeFormat("ru-RU", {
-		day: "2-digit",
-		hour: "2-digit",
-		minute: "2-digit",
-		month: "2-digit",
-	}).format(new Date(value));
+	return PRODUCTION_DATE_TIME_FORMATTER.format(new Date(value));
 }
 
 async function invalidateProduction(queryClient: ReturnType<typeof useQueryClient>) {

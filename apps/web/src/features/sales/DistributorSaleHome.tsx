@@ -39,16 +39,26 @@ export function DistributorSaleHome({
 	const [newClientName, setNewClientName] = useState("");
 	const [newClientPhone, setNewClientPhone] = useState("");
 	const [newClientDescription, setNewClientDescription] = useState("");
-	const clients = useQuery({
+	const {
+		data: clients,
+		error: clientsErrorValue,
+		isError: clientsError,
+		isLoading: clientsLoading,
+	} = useQuery({
 		queryKey: ["clients", activeClientSearch],
 		queryFn: () => listClients(activeClientSearch),
 	});
-	const saleOptions = useQuery({
+	const {
+		data: saleOptions,
+		error: saleOptionsErrorValue,
+		isError: saleOptionsError,
+		isLoading: saleOptionsLoading,
+	} = useQuery({
 		queryKey: ["distributor", "sale-options"],
 		queryFn: getDistributorSaleOptions,
 	});
-	const selectedClient = clients.data?.clients.find((client) => client.id === selectedClientId);
-	const selectedStock = saleOptions.data?.items.find((item) =>
+	const selectedClient = clients?.clients.find((client) => client.id === selectedClientId);
+	const selectedStock = saleOptions?.items.find((item) =>
 		item.distributorProductBalanceId === selectedBalanceId,
 	);
 	const parsedQuantity = Number(quantity);
@@ -102,8 +112,8 @@ export function DistributorSaleHome({
 		availableQuantity: selectedStock?.availableQuantity,
 		hasClient: !!selectedClientId,
 		hasProduct: !!selectedStock,
-		hasProductOptions: (saleOptions.data?.items.length ?? 0) > 0,
-		loadingOptions: saleOptions.isLoading,
+		hasProductOptions: (saleOptions?.items.length ?? 0) > 0,
+		loadingOptions: saleOptionsLoading,
 		online,
 		pending: saleMutation.isPending,
 		quantity: parsedQuantity,
@@ -189,16 +199,16 @@ export function DistributorSaleHome({
 			<div className="form-panel production-action-form">
 				<SaleFormHeading title="Клиент" meta={selectedClient?.name} />
 				<ClientCombobox
-					clients={clients.data?.clients ?? []}
-					loading={clients.isLoading}
+					clients={clients?.clients ?? []}
+					loading={clientsLoading}
 					onClientChange={handleClientChange}
 					onQueryChange={setActiveClientSearch}
 					query={activeClientSearch}
 					selectedClient={selectedClient}
 					selectedClientId={selectedClientId}
 				/>
-				{clients.isLoading ? <p className="muted">Загрузка клиентов</p> : null}
-				{clients.isError ? <p className="form-error">{clients.error.message}</p> : null}
+				{clientsLoading ? <p className="muted">Загрузка клиентов</p> : null}
+				{clientsError ? <p className="form-error">{clientsErrorValue.message}</p> : null}
 
 				{selectedClientId ? null : (
 					<button
@@ -292,7 +302,7 @@ export function DistributorSaleHome({
 				<OperationProductSelect
 					label="Продукция"
 					onValueChange={setSelectedBalanceId}
-					options={(saleOptions.data?.items ?? []).map((item) => ({
+					options={(saleOptions?.items ?? []).map((item) => ({
 						discounted: item.discounted,
 						id: item.distributorProductBalanceId,
 						label: item.productName,
@@ -301,9 +311,9 @@ export function DistributorSaleHome({
 					placeholder="Выберите продукцию"
 					value={selectedBalanceId}
 				/>
-				{saleOptions.isLoading ? <p className="muted">Загрузка продукции</p> : null}
-				{saleOptions.isError ? <p className="form-error">{saleOptions.error.message}</p> : null}
-				{!saleOptions.isLoading && !saleOptions.isError && saleOptions.data?.items.length === 0 ? (
+				{saleOptionsLoading ? <p className="muted">Загрузка продукции</p> : null}
+				{saleOptionsError ? <p className="form-error">{saleOptionsErrorValue.message}</p> : null}
+				{!saleOptionsLoading && !saleOptionsError && saleOptions?.items.length === 0 ? (
 					<p className="muted">Нет продукции для продажи.</p>
 				) : null}
 

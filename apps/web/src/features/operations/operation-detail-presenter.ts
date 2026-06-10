@@ -21,6 +21,13 @@ export type OperationDetailPresentation = {
 	sections: OperationDetailSection[];
 };
 
+const OPERATION_DATE_TIME_FORMATTER = new Intl.DateTimeFormat("ru-RU", {
+	day: "2-digit",
+	hour: "2-digit",
+	minute: "2-digit",
+	month: "short",
+});
+
 const OPERATION_LABELS: Record<string, string> = {
 	"catalog.distributor.archive": "Архивация распределителя",
 	"catalog.distributor.create": "Создание распределителя",
@@ -403,10 +410,20 @@ function summarizeRecord(record: Record<string, unknown>): string {
 		"login",
 		"message",
 	]);
-	const parts = Object.entries(record)
-		.filter(([key, value]) => !isHiddenDetail(key, value))
-		.filter(([key]) => key !== "productName" && key !== "clientName" && key !== "distributorName" && key !== "name")
-		.map(([key, value]) => `${getDetailLabel(key)}: ${formatValue(value, key)}`);
+	const parts: string[] = [];
+	for (const [key, value] of Object.entries(record)) {
+		if (
+			isHiddenDetail(key, value)
+			|| key === "productName"
+			|| key === "clientName"
+			|| key === "distributorName"
+			|| key === "name"
+		) {
+			continue;
+		}
+
+		parts.push(`${getDetailLabel(key)}: ${formatValue(value, key)}`);
+	}
 
 	return [name, ...parts].filter(Boolean).join(" · ");
 }
@@ -542,12 +559,7 @@ export function formatMoney(amountCents: number): string {
 }
 
 export function formatDateTime(value: string): string {
-	return new Intl.DateTimeFormat("ru-RU", {
-		day: "2-digit",
-		hour: "2-digit",
-		minute: "2-digit",
-		month: "short",
-	}).format(new Date(value));
+	return OPERATION_DATE_TIME_FORMATTER.format(new Date(value));
 }
 
 function formatInteger(value: number): string {

@@ -2,7 +2,7 @@
 
 import * as Dialog from "@radix-ui/react-dialog";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, useEffect, useReducer, useRef, useState } from "react";
 import { Check, Copy, Edit3, Plus, Search, UserPlus, X } from "lucide-react";
 import type { Client } from "@buhta/shared";
 import {
@@ -17,8 +17,54 @@ type SuccessNotice = {
 	id: number;
 	message: string;
 };
+type ClientsHomeState = {
+	mode: ClientsMode;
+	editingClient: Client | null;
+	searchDraft: string;
+	activeSearch: string;
+	successNotice: SuccessNotice | null;
+};
+type ClientsHomeAction =
+	| { type: "patch"; values: Partial<ClientsHomeState> }
+	| { type: "showSuccess"; notice: SuccessNotice }
+	| { type: "clearSuccess"; noticeId: number }
+	| { type: "openCreate" }
+	| { type: "openEdit"; client: Client }
+	| { type: "closeForm" };
 
 const CLIENT_SEARCH_DEBOUNCE_MS = 250;
+const INITIAL_CLIENTS_HOME_STATE: ClientsHomeState = {
+	mode: "list",
+	editingClient: null,
+	searchDraft: "",
+	activeSearch: "",
+	successNotice: null,
+};
+
+function clientsHomeReducer(state: ClientsHomeState, action: ClientsHomeAction): ClientsHomeState {
+	switch (action.type) {
+		case "patch":
+			return { ...state, ...action.values };
+		case "showSuccess":
+			return {
+				...state,
+				mode: "list",
+				editingClient: null,
+				successNotice: action.notice,
+			};
+		case "clearSuccess":
+			return {
+				...state,
+				successNotice: state.successNotice?.id === action.noticeId ? null : state.successNotice,
+			};
+		case "openCreate":
+			return { ...state, mode: "create", editingClient: null };
+		case "openEdit":
+			return { ...state, mode: "edit", editingClient: action.client };
+		case "closeForm":
+			return { ...state, mode: "list", editingClient: null };
+	}
+}
 
 export function ClientsHome({
 	actor,
@@ -27,14 +73,16 @@ export function ClientsHome({
 	actor: CurrentActor;
 	online: boolean;
 }) {
-	const [mode, setMode] = useState<ClientsMode>("list");
-	const [editingClient, setEditingClient] = useState<Client | null>(null);
-	const [searchDraft, setSearchDraft] = useState("");
-	const [activeSearch, setActiveSearch] = useState("");
-	const [successNotice, setSuccessNotice] = useState<SuccessNotice | null>(null);
+	const [state, dispatch] = useReducer(clientsHomeReducer, INITIAL_CLIENTS_HOME_STATE);
+	const { activeSearch, editingClient, mode, searchDraft, successNotice } = state;
 	const successNoticeId = useRef(0);
 	const canManage = actor.permissions.includes("client.manage");
-	const clients = useQuery({
+	const {
+		data: clients,
+		error: clientsErrorValue,
+		isError: clientsError,
+		isLoading: clientsLoading,
+	} = useQuery({
 		queryKey: ["clients", activeSearch],
 		queryFn: () => listClients(activeSearch),
 	});
@@ -45,7 +93,7 @@ export function ClientsHome({
 		}
 
 		const timeoutId = window.setTimeout(() => {
-			setSuccessNotice((current) => current?.id === successNotice.id ? null : current);
+			dispatch({ type: "clearSuccess", noticeId: successNotice.id });
 		}, 3000);
 
 		return () => window.clearTimeout(timeoutId);
@@ -53,7 +101,7 @@ export function ClientsHome({
 
 	useEffect(() => {
 		const timeoutId = window.setTimeout(() => {
-			setActiveSearch(searchDraft.trim());
+			dispatch({ type: "patch", values: { activeSearch: searchDraft.trim() } });
 		}, CLIENT_SEARCH_DEBOUNCE_MS);
 
 		return () => window.clearTimeout(timeoutId);
@@ -61,11 +109,12 @@ export function ClientsHome({
 
 	function showSuccess(message: string) {
 		successNoticeId.current += 1;
-		setMode("list");
-		setEditingClient(null);
-		setSuccessNotice({
+		dispatch({
+			type: "showSuccess",
+			notice: {
 			id: successNoticeId.current,
 			message,
+			},
 		});
 	}
 
@@ -77,13 +126,13 @@ export function ClientsHome({
 			<div className="section-heading compact clients-heading">
 				<h2>Клиенты</h2>
 				<div className="clients-heading-side">
-					<span>{clients.isLoading ? "Загрузка" : `${clients.data?.clients.length ?? 0} клиентов`}</span>
+					<span>{clientsLoading ? "Загрузка" : `${clients?.clients.length ?? 0} клиентов`}</span>
 					{canManage ? (
 						<button
 							aria-label="Добавить клиента"
 							className="secondary-button compact-button client-create-button"
 							disabled={!online}
-							onClick={() => setMode("create")}
+							onClick={() => dispatch({ type: "openCreate" })}
 							type="button"
 						>
 							<UserPlus aria-hidden size={16} />
@@ -100,7 +149,7 @@ export function ClientsHome({
 						<Search aria-hidden size={18} />
 						<input
 							aria-label="Поиск"
-							onChange={(event) => setSearchDraft(event.target.value)}
+							onChange={(event) => dispatch({ type: "patch", values: { searchDraft: event.target.value } })}
 							placeholder="Имя или телефон"
 							type="search"
 							value={searchDraft}
@@ -109,7 +158,7 @@ export function ClientsHome({
 							<button
 								aria-label="Очистить поиск"
 								className="client-combobox-clear"
-								onClick={() => setSearchDraft("")}
+								onClick={() => dispatch({ type: "patch", values: { searchDraft: "" } })}
 								type="button"
 							>
 								<X aria-hidden size={16} />
@@ -119,19 +168,16 @@ export function ClientsHome({
 				</label>
 			</div>
 
-			{clients.isLoading ? <p className="muted">Загрузка клиентов</p> : null}
-			{clients.isError ? <p className="form-error">{clients.error.message}</p> : null}
-			{!clients.isLoading && !clients.isError && clients.data?.clients.length === 0 ? (
+			{clientsLoading ? <p className="muted">Загрузка клиентов</p> : null}
+			{clientsError ? <p className="form-error">{clientsErrorValue.message}</p> : null}
+			{!clientsLoading && !clientsError && clients?.clients.length === 0 ? (
 				<p className="muted">{activeSearch ? "Клиенты не найдены." : "Клиентов пока нет."}</p>
 			) : null}
 
 			<ClientList
 				canManage={canManage}
-				clients={clients.data?.clients ?? []}
-				onEdit={(client) => {
-					setEditingClient(client);
-					setMode("edit");
-				}}
+				clients={clients?.clients ?? []}
+				onEdit={(client) => dispatch({ type: "openEdit", client })}
 			/>
 
 			{canManage ? (
@@ -139,8 +185,7 @@ export function ClientsHome({
 					open={formOpen}
 					onOpenChange={(open) => {
 						if (!open) {
-							setMode("list");
-							setEditingClient(null);
+							dispatch({ type: "closeForm" });
 						}
 					}}
 				>
@@ -265,9 +310,9 @@ function ClientList({
 	}
 
 	return (
-		<div className="client-list-table" role="list">
+		<ul className="client-list-table">
 			{clients.map((client) => (
-				<div className="client-list-row" key={client.id} role="listitem">
+				<li className="client-list-row" key={client.id}>
 					<div className="client-list-main">
 						<strong>{client.name}</strong>
 						<p className="client-list-phone">{client.phone}</p>
@@ -294,17 +339,17 @@ function ClientList({
 							</button>
 						) : null}
 					</div>
-				</div>
+				</li>
 			))}
-		</div>
+		</ul>
 	);
 }
 
 function ClientsSuccessNotice({ notice }: { notice: SuccessNotice }) {
 	return (
-		<div className="success-notice" role="status" aria-live="polite" key={notice.id}>
+		<output className="success-notice" aria-live="polite" key={notice.id}>
 			<Check aria-hidden size={18} />
 			<span>{notice.message}</span>
-		</div>
+		</output>
 	);
 }

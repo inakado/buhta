@@ -9,28 +9,32 @@ export function CourierStockList({
 	showCourier?: boolean;
 }) {
 	return (
-		<div className="inventory-table-list" role="table" aria-label="Продукция курьера">
-			<div className="inventory-table-head" role="row">
-				<span>Наименование</span>
-				<span>Количество</span>
-				<span>Итого</span>
-			</div>
-			{items.map((item) => (
-				<div className="inventory-table-row" key={item.id} role="row">
-					<div className="inventory-table-product" role="cell">
-						<strong>{item.productName}</strong>
-						<span>{showCourier ? item.courierDisplayName : formatRubles(item.unitPriceCents) + "/шт"}</span>
-					</div>
-					<div className="inventory-table-quantity" role="cell">
-						<strong>{item.quantity} шт</strong>
-						{showCourier ? <span>{formatRubles(item.unitPriceCents)}/шт</span> : null}
-					</div>
-					<div className="inventory-table-total" role="cell">
-						<strong>{formatRubles(item.stockValueCents)}</strong>
-					</div>
-				</div>
-			))}
-		</div>
+		<table className="inventory-table-list" aria-label="Продукция курьера">
+			<thead>
+				<tr className="inventory-table-head">
+					<th className="inventory-table-product" scope="col">Наименование</th>
+					<th className="inventory-table-quantity" scope="col">Количество</th>
+					<th className="inventory-table-total" scope="col">Итого</th>
+				</tr>
+			</thead>
+			<tbody>
+				{items.map((item) => (
+					<tr className="inventory-table-row" key={item.id}>
+						<td className="inventory-table-product">
+							<strong>{item.productName}</strong>
+							<span>{showCourier ? item.courierDisplayName : formatRubles(item.unitPriceCents) + "/шт"}</span>
+						</td>
+						<td className="inventory-table-quantity">
+							<strong>{item.quantity} шт</strong>
+							{showCourier ? <span>{formatRubles(item.unitPriceCents)}/шт</span> : null}
+						</td>
+						<td className="inventory-table-total">
+							<strong>{formatRubles(item.stockValueCents)}</strong>
+						</td>
+					</tr>
+				))}
+			</tbody>
+		</table>
 	);
 }
 

@@ -3,7 +3,7 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, BadgePercent, Banknote, Box, X } from "lucide-react";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import {
 	formatMoneyCents,
 	moneyCents,
@@ -58,17 +58,24 @@ export function DistributorInventoryHome({
 	const [localError, setLocalError] = useState("");
 	const [discountError, setDiscountError] = useState("");
 	const [successMessage, setSuccessMessage] = useState("");
-	const inventory = useQuery({
+	const {
+		data,
+		error: inventoryErrorValue,
+		isError: inventoryError,
+		isLoading: inventoryLoading,
+	} = useQuery({
 		queryKey: ["distributor", "inventory"],
 		queryFn: getDistributorInventory,
 	});
-	const cashBalances = useQuery({
+	const {
+		data: cashData,
+		isError: cashBalancesError,
+		isLoading: cashBalancesLoading,
+	} = useQuery({
 		queryKey: ["distributor", "cash-balances"],
 		queryFn: getDistributorCashBalances,
 		enabled: showCashBalance,
 	});
-	const data = inventory.data;
-	const cashData = cashBalances.data;
 	const totalUnits = data?.summary.totalUnits ?? 0;
 	const totalStockValueCents = data?.summary.totalStockValueCents ?? 0;
 	const totalCashCents = cashData?.totalAmountCents ?? 0;
@@ -87,14 +94,19 @@ export function DistributorInventoryHome({
 		() => (cashData?.items ?? []).filter((item) => item.active),
 		[cashData?.items],
 	);
-	const selectedCashItem = activeCashItems.find((item) => item.distributorId === selectedDistributorId) ?? null;
+	const activeSelectedDistributorId = activeCashItems.length === 1
+		? activeCashItems[0]?.distributorId ?? ""
+		: activeCashItems.some((item) => item.distributorId === selectedDistributorId)
+			? selectedDistributorId
+			: "";
+	const selectedCashItem = activeCashItems.find((item) => item.distributorId === activeSelectedDistributorId) ?? null;
 	const parsedAmountCents = parseAmountCents(amountRubles);
 	const amountCents = parsedAmountCents.ok ? parsedAmountCents.value : 0;
 	const availableCashCents = selectedCashItem?.amountCents ?? 0;
 	const remainingCashCents = Math.max(availableCashCents - amountCents, 0);
 	const showWithdrawalAction = canWithdrawCash && showCashBalance;
 	const withdrawalActionBlockReason = getWithdrawalActionBlockReason(
-		cashBalances.isLoading,
+		cashBalancesLoading,
 		activeCashItems.length > 0,
 		totalCashCents,
 	);
@@ -105,7 +117,7 @@ export function DistributorInventoryHome({
 	const selectedDiscountQuantity = parsedDiscountQuantity.ok ? parsedDiscountQuantity.value : 0;
 	const withdrawal = useMutation({
 		mutationFn: () => createDistributorCashWithdrawal({
-			distributorId: selectedDistributorId,
+			distributorId: activeSelectedDistributorId,
 			amountCents,
 			...(comment.trim() ? { comment } : {}),
 		}),
@@ -163,16 +175,6 @@ export function DistributorInventoryHome({
 	const discountBeforeValueCents = (discountItem?.unitPriceCents ?? 0) * selectedDiscountQuantity;
 	const discountStockValueCents = parsedDiscountPriceCents.ok ? selectedDiscountQuantity * discountPriceCents : 0;
 	const Frame = embedded ? "div" : "section";
-
-	useEffect(() => {
-		if (activeCashItems.length === 1) {
-			setSelectedDistributorId(activeCashItems[0]?.distributorId ?? "");
-			return;
-		}
-		if (selectedDistributorId && !activeCashItems.some((item) => item.distributorId === selectedDistributorId)) {
-			setSelectedDistributorId("");
-		}
-	}, [activeCashItems, selectedDistributorId]);
 
 	function handleWithdrawSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
@@ -276,7 +278,7 @@ export function DistributorInventoryHome({
 			{hideHeading ? null : (
 				<div className="section-heading">
 					<h2>{title}</h2>
-					{useStockLedger ? null : <span>{inventory.isLoading ? "Загрузка" : formatPositionCount(stockItemCount)}</span>}
+					{useStockLedger ? null : <span>{inventoryLoading ? "Загрузка" : formatPositionCount(stockItemCount)}</span>}
 				</div>
 			)}
 
@@ -284,7 +286,7 @@ export function DistributorInventoryHome({
 				<div className="inventory-overview-strip">
 					<div>
 						<span>Количество</span>
-						<strong>{inventory.isLoading ? "Загрузка" : `${totalUnits} шт`}</strong>
+						<strong>{inventoryLoading ? "Загрузка" : `${totalUnits} шт`}</strong>
 					</div>
 					<div>
 						<span>Продукция</span>
@@ -293,7 +295,7 @@ export function DistributorInventoryHome({
 					{showCashBalance ? (
 						<div>
 							<span>Наличные</span>
-							{cashBalances.isLoading ? <strong>Загрузка</strong> : <MoneyValue compact valueCents={totalCashCents} />}
+							{cashBalancesLoading ? <strong>Загрузка</strong> : <MoneyValue compact valueCents={totalCashCents} />}
 						</div>
 					) : null}
 				</div>
@@ -361,7 +363,7 @@ export function DistributorInventoryHome({
 										<select
 											disabled={activeCashItems.length <= 1}
 											onChange={(event) => setSelectedDistributorId(event.target.value)}
-											value={selectedDistributorId}
+											value={activeSelectedDistributorId}
 										>
 											{activeCashItems.length !== 1 ? <option value="">Выберите распределитель</option> : null}
 											{activeCashItems.map((item) => (
@@ -532,10 +534,10 @@ export function DistributorInventoryHome({
 
 				{successMessage ? <p className="success-inline">{successMessage}</p> : null}
 
-			{inventory.isLoading ? <p className="muted">Загрузка остатков распределителя</p> : null}
-			{inventory.isError ? <p className="form-error">{inventory.error.message}</p> : null}
-			{cashBalances.isError ? <p className="form-error">Не удалось загрузить наличные распределителя</p> : null}
-			{!inventory.isLoading && !inventory.isError && data?.items.length === 0 ? (
+			{inventoryLoading ? <p className="muted">Загрузка остатков распределителя</p> : null}
+			{inventoryError ? <p className="form-error">{inventoryErrorValue.message}</p> : null}
+			{cashBalancesError ? <p className="form-error">Не удалось загрузить наличные распределителя</p> : null}
+			{!inventoryLoading && !inventoryError && data?.items.length === 0 ? (
 				<p className="muted">На распределителе пока нет продукции.</p>
 			) : null}
 

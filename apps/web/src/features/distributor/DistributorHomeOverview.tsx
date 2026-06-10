@@ -47,21 +47,31 @@ export function DistributorHomeOverview({
 	stockValueLabel = "Стоимость продукции",
 	title,
 }: DistributorHomeOverviewProps) {
-	const inventory = useQuery({
+	const {
+		data,
+		error: inventoryErrorValue,
+		isError: inventoryError,
+		isFetching: inventoryFetching,
+		isLoading: inventoryLoading,
+	} = useQuery({
 		queryKey: ["distributor", "inventory"],
 		queryFn: getDistributorInventory,
 	});
-	const cashBalances = useQuery({
+	const {
+		data: cashBalances,
+		isError: cashBalancesError,
+		isFetching: cashBalancesFetching,
+		isLoading: cashBalancesLoading,
+	} = useQuery({
 		queryKey: ["distributor", "cash-balances"],
 		queryFn: getDistributorCashBalances,
 		enabled: showCashBalance,
 	});
-	const data = inventory.data;
-	const isFetching = inventory.isFetching || (showCashBalance && cashBalances.isFetching);
+	const isFetching = inventoryFetching || (showCashBalance && cashBalancesFetching);
 	const stockUnits = data?.summary.totalUnits ?? 0;
 	const stockValueCents = data?.summary.totalStockValueCents ?? 0;
 	const stockItemCount = data?.summary.stockItemCount ?? 0;
-	const cashAmountCents = cashBalances.data?.totalAmountCents ?? 0;
+	const cashAmountCents = cashBalances?.totalAmountCents ?? 0;
 
 	return (
 		<section className="screen-stack">
@@ -85,7 +95,7 @@ export function DistributorHomeOverview({
 					<CommercialSummaryRow
 						icon={BadgeCheck}
 						label={stockSummaryLabel}
-						loading={inventory.isLoading}
+						loading={inventoryLoading}
 						meta={formatPositionCount(stockItemCount)}
 						showMeta={showSummaryMeta}
 						value={`${stockUnits} шт`}
@@ -94,7 +104,7 @@ export function DistributorHomeOverview({
 					<CommercialSummaryRow
 						icon={ClipboardList}
 						label={stockValueLabel}
-						loading={inventory.isLoading}
+						loading={inventoryLoading}
 						meta="По текущей цене"
 						showMeta={showSummaryMeta}
 						value={formatCompactRubles(stockValueCents)}
@@ -103,14 +113,14 @@ export function DistributorHomeOverview({
 						<CommercialSummaryRow
 							icon={Banknote}
 							label="Наличные"
-							loading={cashBalances.isLoading}
+							loading={cashBalancesLoading}
 							meta="В кассе"
 							showMeta={showSummaryMeta}
 							value={formatCompactRubles(cashAmountCents)}
 						/>
 					) : null}
 				</div>
-				{cashBalances.isError ? <span className="inline-error">Не удалось загрузить наличные</span> : null}
+				{cashBalancesError ? <span className="inline-error">Не удалось загрузить наличные</span> : null}
 			</section>
 
 			<div className="production-command-panel" aria-label="Действия продаж">
@@ -140,9 +150,9 @@ export function DistributorHomeOverview({
 						<h2>Продукция</h2>
 						<span>{data?.summary.stockItemCount ?? 0} позиций</span>
 					</div>
-					{inventory.isLoading ? <p className="muted">Загрузка остатков распределителя</p> : null}
-					{inventory.isError ? <p className="form-error">{inventory.error.message}</p> : null}
-					{!inventory.isLoading && !inventory.isError && data?.items.length === 0 ? (
+					{inventoryLoading ? <p className="muted">Загрузка остатков распределителя</p> : null}
+					{inventoryError ? <p className="form-error">{inventoryErrorValue.message}</p> : null}
+					{!inventoryLoading && !inventoryError && data?.items.length === 0 ? (
 						<p className="muted">На распределителе пока нет продукции.</p>
 					) : null}
 					<div className={stockListSurface === "worker-home" ? "distributor-worker-stock-surface" : undefined}>

@@ -20,8 +20,8 @@ export function PaymentMethodSegmentedControl({
 	onChange,
 }: PaymentMethodSegmentedControlProps) {
 	return (
-		<div aria-labelledby={id} className="payment-segmented" role="group">
-			<span id={id}>Способ оплаты</span>
+		<fieldset className="payment-segmented">
+			<legend id={id}>Способ оплаты</legend>
 			{PAYMENT_OPTIONS.map((option) => {
 				const Icon = option.icon;
 				const active = value === option.value;
@@ -38,6 +38,6 @@ export function PaymentMethodSegmentedControl({
 					</button>
 				);
 			})}
-		</div>
+		</fieldset>
 	);
 }

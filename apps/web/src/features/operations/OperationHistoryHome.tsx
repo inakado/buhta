@@ -23,15 +23,28 @@ const FILTER_STORAGE_KEY = "buhta.operationHistory.filters";
 export function OperationHistoryHome() {
 	const defaultFilters = useMemo(() => getDefaultFilters(), []);
 	const [filters, setFilters] = useState(defaultFilters);
-	const [filtersHydrated, setFiltersHydrated] = useState(false);
 	const [filtersOpen, setFiltersOpen] = useState(false);
 	const [selectedItem, setSelectedItem] = useState<OperationHistoryItem | null>(null);
 	const activeFilterCount = getAdvancedFilterCount(filters);
-	const options = useQuery({
+	const {
+		data: options,
+		error: optionsErrorValue,
+		isError: optionsError,
+		isFetching: optionsFetching,
+	} = useQuery({
 		queryKey: ["operations", "history", "options"],
 		queryFn: getOperationHistoryOptions,
 	});
-	const history = useInfiniteQuery({
+	const {
+		data: history,
+		error: historyErrorValue,
+		fetchNextPage,
+		hasNextPage,
+		isError: historyError,
+		isFetching: historyFetching,
+		isFetchingNextPage,
+		isPending: historyPending,
+	} = useInfiniteQuery({
 		queryKey: ["operations", "history", filters],
 		initialPageParam: undefined as string | undefined,
 		queryFn: ({ pageParam }) => getOperationHistory({
@@ -41,31 +54,27 @@ export function OperationHistoryHome() {
 		}),
 		getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
 	});
-	const historyItems = history.data?.pages.flatMap((page) => page.items) ?? [];
+	const historyItems = history?.pages.flatMap((page) => page.items) ?? [];
 
 	useEffect(() => {
 		const storedFilters = readStoredFilters(defaultFilters);
 		if (storedFilters) {
 			setFilters(storedFilters);
 		}
-		setFiltersHydrated(true);
 	}, [defaultFilters]);
 
-	useEffect(() => {
-		if (filtersHydrated) {
-			window.localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(filters));
-		}
-	}, [filters, filtersHydrated]);
-
 	function updateFilter(key: keyof typeof filters, value: string) {
-		setFilters((current) => ({
-			...current,
+		const nextFilters = {
+			...filters,
 			[key]: value || undefined,
-		}));
+		};
+		setFilters(nextFilters);
+		writeStoredFilters(nextFilters);
 	}
 
 	function resetFilters() {
 		setFilters(defaultFilters);
+		writeStoredFilters(defaultFilters);
 		setFiltersOpen(false);
 	}
 
@@ -74,7 +83,7 @@ export function OperationHistoryHome() {
 			<div className="operation-history-topbar">
 				<div className="section-heading compact">
 					<h2>История</h2>
-					{history.isFetching || options.isFetching ? <span>Обновление</span> : null}
+					{historyFetching || optionsFetching ? <span>Обновление</span> : null}
 				</div>
 
 				<div className="operation-history-filter-summary" aria-label="Период истории">
@@ -105,14 +114,14 @@ export function OperationHistoryHome() {
 				onReset={resetFilters}
 				onUpdate={updateFilter}
 				open={filtersOpen}
-				options={options.data}
+				options={options}
 			/>
 
 			<div className="operation-history-body">
-				{history.isError ? <p className="form-error">{history.error.message}</p> : null}
-				{options.isError ? <p className="form-error">{options.error.message}</p> : null}
-				{history.isPending ? <p className="muted">Загрузка истории</p> : null}
-				{!history.isPending && !history.isError && historyItems.length === 0 ? (
+				{historyError ? <p className="form-error">{historyErrorValue.message}</p> : null}
+				{optionsError ? <p className="form-error">{optionsErrorValue.message}</p> : null}
+				{historyPending ? <p className="muted">Загрузка истории</p> : null}
+				{!historyPending && !historyError && historyItems.length === 0 ? (
 					<p className="muted">Операций за выбранный период нет.</p>
 				) : null}
 
@@ -126,14 +135,14 @@ export function OperationHistoryHome() {
 					))}
 				</div>
 
-				{history.hasNextPage ? (
+				{hasNextPage ? (
 					<button
 						className="secondary-button operation-history-more"
-						disabled={history.isFetchingNextPage}
-						onClick={() => void history.fetchNextPage()}
+						disabled={isFetchingNextPage}
+						onClick={() => void fetchNextPage()}
 						type="button"
 					>
-						{history.isFetchingNextPage ? "Загрузка" : "Показать еще"}
+						{isFetchingNextPage ? "Загрузка" : "Показать еще"}
 					</button>
 				) : null}
 			</div>
@@ -407,6 +416,10 @@ function readStoredFilters(defaultFilters: OperationHistoryQuery): OperationHist
 	} catch {
 		return null;
 	}
+}
+
+function writeStoredFilters(filters: OperationHistoryQuery) {
+	window.localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(filters));
 }
 
 function getAdvancedFilterCount(filters: OperationHistoryQuery): number {

@@ -13,11 +13,17 @@ export function AdminUsersHome({ actor, online }: { actor: CurrentActor; online:
 	const [createOpen, setCreateOpen] = useState(false);
 	const [resetTarget, setResetTarget] = useState<UserSummary | null>(null);
 	const [temporaryPassword, setTemporaryPassword] = useState<string | null>(null);
-	const users = useQuery({
+	const {
+		data: users,
+		error: usersError,
+		isError: usersIsError,
+		isFetching: usersFetching,
+		isLoading: usersLoading,
+	} = useQuery({
 		queryKey: ["users"],
 		queryFn: listUsers,
 	});
-	const visibleUsers = users.data?.users.filter((user) => user.id !== actor.userId) ?? [];
+	const visibleUsers = users?.users.filter((user) => user.id !== actor.userId) ?? [];
 	const resetPassword = useMutation({
 		mutationFn: (user: UserSummary) => resetUserPassword(user.id),
 		onSuccess: async (data) => {
@@ -32,7 +38,7 @@ export function AdminUsersHome({ actor, online }: { actor: CurrentActor; online:
 			<div className="section-heading compact admin-users-heading">
 				<h2>Пользователи</h2>
 				<div className="admin-users-heading-side">
-					<span>{users.isFetching ? "Обновление" : `${visibleUsers.length} сотрудников`}</span>
+					<span>{usersFetching ? "Обновление" : `${visibleUsers.length} сотрудников`}</span>
 					<button
 						className="secondary-button compact-button admin-create-button"
 						disabled={!online}
@@ -61,11 +67,11 @@ export function AdminUsersHome({ actor, online }: { actor: CurrentActor; online:
 			) : null}
 
 			<UserAccessList
-				loading={users.isLoading}
+				loading={usersLoading}
 				onResetPassword={setResetTarget}
 				online={online}
 				users={visibleUsers}
-				error={users.isError ? users.error.message : ""}
+				error={usersIsError ? usersError.message : ""}
 			/>
 
 			<ResetPasswordDialog

@@ -8,6 +8,8 @@
 		"dev:api": "pnpm --filter @buhta/api dev",
 		"dev:web": "pnpm --filter @buhta/web dev",
 		"build": "turbo build",
+		"doctor": "react-doctor",
+		"doctor:local": "react-doctor --no-telemetry --yes --blocking none",
 		"lint": "turbo lint",
 		"lint:boundaries": "eslint \"apps/*/{app,src,test}/**/*.{ts,tsx}\" \"packages/*/src/**/*.{ts,tsx}\" --no-error-on-unmatched-pattern --quiet",
 		"typecheck": "turbo typecheck",
@@ -29,6 +31,7 @@
 		"dotenv-cli": "^11.0.0",
 		"eslint": "^10.4.0",
 		"eslint-plugin-boundaries": "^6.0.2",
+		"react-doctor": "0.5.1",
 		"turbo": "^2.8.1",
 		"typescript": "^6.0.3"
 	}

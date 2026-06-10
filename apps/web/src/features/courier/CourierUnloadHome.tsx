@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FormEvent, type ReactNode, useEffect, useMemo, useState } from "react";
+import { FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { PackageCheck } from "lucide-react";
 import {
 	formatMoneyCents,
@@ -11,6 +11,20 @@ import {
 import { createCourierUnload, getCourierUnloadOptions } from "../../lib/api-client";
 import { formatCompactRubles } from "../../lib/money-format";
 
+type CourierUnloadFormState = {
+	selectedDistributorId: string;
+	quantityByBalanceId: Record<string, string>;
+	cashRubles: string;
+	comment: string;
+};
+
+const EMPTY_FORM: CourierUnloadFormState = {
+	selectedDistributorId: "",
+	quantityByBalanceId: {},
+	cashRubles: "",
+	comment: "",
+};
+
 export function CourierUnloadHome({
 	onUnloadSuccess,
 	online,
@@ -19,46 +33,54 @@ export function CourierUnloadHome({
 	online: boolean;
 }) {
 	const queryClient = useQueryClient();
-	const [initialized, setInitialized] = useState(false);
-	const [selectedDistributorId, setSelectedDistributorId] = useState("");
-	const [quantityByBalanceId, setQuantityByBalanceId] = useState<Record<string, string>>({});
-	const [cashRubles, setCashRubles] = useState("");
-	const [comment, setComment] = useState("");
+	const initializedRef = useRef(false);
+	const [form, setForm] = useState<CourierUnloadFormState>(EMPTY_FORM);
 	const [localError, setLocalError] = useState("");
-	const unloadOptions = useQuery({
+	const { cashRubles, comment, quantityByBalanceId, selectedDistributorId } = form;
+	const {
+		data: unloadOptions,
+		error: unloadOptionsErrorValue,
+		isError: unloadOptionsError,
+		isLoading: unloadOptionsLoading,
+	} = useQuery({
 		queryKey: ["courier", "unload-options"],
 		queryFn: getCourierUnloadOptions,
 	});
-	const distributors = unloadOptions.data?.distributors ?? [];
-	const productItems = unloadOptions.data?.productItems ?? [];
-	const cashBalance = unloadOptions.data?.cashBalance;
+	const distributors = useMemo(() => unloadOptions?.distributors ?? [], [unloadOptions?.distributors]);
+	const productItems = useMemo(() => unloadOptions?.productItems ?? [], [unloadOptions?.productItems]);
+	const cashBalance = unloadOptions?.cashBalance;
 
 	useEffect(() => {
-		if (!unloadOptions.data || initialized) {
+		if (!unloadOptions || initializedRef.current) {
 			return;
 		}
 
-		const onlyDistributor = unloadOptions.data.distributors[0];
-		if (onlyDistributor && unloadOptions.data.distributors.length === 1) {
-			setSelectedDistributorId(onlyDistributor.distributorId);
-		}
-		setQuantityByBalanceId(Object.fromEntries(
-			unloadOptions.data.productItems.map((item) => [item.courierProductBalanceId, String(item.availableQuantity)]),
-		));
-		setCashRubles(formatMoneyCents(moneyCents(unloadOptions.data.cashBalance.amountCents)));
-		setInitialized(true);
-	}, [initialized, unloadOptions.data]);
+		const onlyDistributor = unloadOptions.distributors[0];
+		initializedRef.current = true;
+		setForm((current) => ({
+			...current,
+			selectedDistributorId: onlyDistributor && unloadOptions.distributors.length === 1
+				? onlyDistributor.distributorId
+				: current.selectedDistributorId,
+			quantityByBalanceId: Object.fromEntries(
+				unloadOptions.productItems.map((item) => [item.courierProductBalanceId, String(item.availableQuantity)]),
+			),
+			cashRubles: formatMoneyCents(moneyCents(unloadOptions.cashBalance.amountCents)),
+		}));
+	}, [unloadOptions]);
 
 	const selectedDistributor = distributors.find((item) => item.distributorId === selectedDistributorId);
-	const parsedItems = useMemo(
-		() => productItems
-			.map((item) => ({
-				item,
-				quantity: Number(quantityByBalanceId[item.courierProductBalanceId] ?? "0"),
-			}))
-			.filter(({ quantity }) => Number.isInteger(quantity) && quantity > 0),
-		[productItems, quantityByBalanceId],
-	);
+	const parsedItems = useMemo(() => {
+		const nextItems: Array<{ item: CourierUnloadProductOption; quantity: number }> = [];
+		for (const item of productItems) {
+			const quantity = Number(quantityByBalanceId[item.courierProductBalanceId] ?? "0");
+			if (Number.isInteger(quantity) && quantity > 0) {
+				nextItems.push({ item, quantity });
+			}
+		}
+
+		return nextItems;
+	}, [productItems, quantityByBalanceId]);
 	const cashAmountCents = parseCashAmountCents(cashRubles);
 	const totalUnits = parsedItems.reduce((sum, item) => sum + item.quantity, 0);
 	const totalStockValueCents = parsedItems.reduce(
@@ -100,7 +122,7 @@ export function CourierUnloadHome({
 	});
 	const submitDisabled = !online
 		|| unloadMutation.isPending
-		|| unloadOptions.isLoading
+		|| unloadOptionsLoading
 		|| distributors.length === 0
 		|| !selectedDistributorId
 		|| hasInvalidQuantity
@@ -112,7 +134,7 @@ export function CourierUnloadHome({
 			hasInvalidCash,
 			hasInvalidQuantity,
 			hasPayload: hasUnloadPayload,
-			isLoading: unloadOptions.isLoading,
+			isLoading: unloadOptionsLoading,
 			isPending: unloadMutation.isPending,
 			online,
 			selectedDistributorId,
@@ -120,9 +142,12 @@ export function CourierUnloadHome({
 		: "";
 
 	function handleQuantityChange(balanceId: string, value: string) {
-		setQuantityByBalanceId((current) => ({
+		setForm((current) => ({
 			...current,
-			[balanceId]: value,
+			quantityByBalanceId: {
+				...current.quantityByBalanceId,
+				[balanceId]: value,
+			},
 		}));
 	}
 
@@ -162,7 +187,10 @@ export function CourierUnloadHome({
 					<div className="field">
 						<select
 							aria-label="Куда вернуть"
-							onChange={(event) => setSelectedDistributorId(event.target.value)}
+							onChange={(event) => setForm((current) => ({
+								...current,
+								selectedDistributorId: event.target.value,
+							}))}
 							value={selectedDistributorId}
 						>
 							<option value="">Выберите место</option>
@@ -173,9 +201,9 @@ export function CourierUnloadHome({
 							))}
 						</select>
 					</div>
-					{unloadOptions.isLoading ? <p className="muted">Загрузка баланса</p> : null}
-					{unloadOptions.isError ? <p className="form-error">{unloadOptions.error.message}</p> : null}
-					{!unloadOptions.isLoading && !unloadOptions.isError && distributors.length === 0 ? (
+					{unloadOptionsLoading ? <p className="muted">Загрузка баланса</p> : null}
+					{unloadOptionsError ? <p className="form-error">{unloadOptionsErrorValue.message}</p> : null}
+					{!unloadOptionsLoading && !unloadOptionsError && distributors.length === 0 ? (
 						<p className="form-error">Нет активного места для возврата.</p>
 					) : null}
 				</div>
@@ -209,7 +237,10 @@ export function CourierUnloadHome({
 						<input
 							inputMode="decimal"
 							min="0"
-							onChange={(event) => setCashRubles(event.target.value)}
+							onChange={(event) => setForm((current) => ({
+								...current,
+								cashRubles: event.target.value,
+							}))}
 							type="number"
 							value={cashRubles}
 						/>
@@ -219,7 +250,14 @@ export function CourierUnloadHome({
 					</UnloadInfoLedger>
 					<label className="field">
 						<span>Комментарий</span>
-						<textarea onChange={(event) => setComment(event.target.value)} rows={2} value={comment} />
+						<textarea
+							onChange={(event) => setForm((current) => ({
+								...current,
+								comment: event.target.value,
+							}))}
+							rows={2}
+							value={comment}
+						/>
 					</label>
 				</div>
 

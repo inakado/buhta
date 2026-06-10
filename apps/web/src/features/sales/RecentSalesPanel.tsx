@@ -2,7 +2,6 @@
 
 import * as Dialog from "@radix-ui/react-dialog";
 import { BadgePercent, CheckCircle2, RotateCcw, X } from "lucide-react";
-import { FormEvent } from "react";
 import {
 	formatMoneyCents,
 	moneyCents,
@@ -11,6 +10,13 @@ import {
 } from "@buhta/shared";
 
 type RecentSaleItem = CourierRecentSaleItem | DistributorRecentSaleItem;
+
+const SALE_DATE_FORMATTER = new Intl.DateTimeFormat("ru-RU", {
+	day: "2-digit",
+	hour: "2-digit",
+	minute: "2-digit",
+	month: "short",
+});
 
 type RecentSalesPanelProps = {
 	cancelError: string | undefined;
@@ -121,15 +127,7 @@ export function RecentSalesPanel({
 				<Dialog.Portal>
 					<Dialog.Overlay className="operation-dialog-overlay" />
 					<Dialog.Content aria-describedby={undefined} className="operation-dialog sale-cancel-dialog">
-						<form
-							className="operation-dialog-form"
-							onSubmit={(event: FormEvent<HTMLFormElement>) => {
-								event.preventDefault();
-								if (selectedSale) {
-									onCancelSubmit(selectedSale.id, cancelReason);
-								}
-							}}
-						>
+						<div className="operation-dialog-form">
 							<div className="operation-dialog-heading">
 								<div>
 									<Dialog.Title>Отмена продажи</Dialog.Title>
@@ -167,12 +165,21 @@ export function RecentSalesPanel({
 										Закрыть
 									</button>
 								</Dialog.Close>
-								<button className="primary-button" disabled={!canSubmit} type="submit">
+								<button
+									className="primary-button"
+									disabled={!canSubmit}
+									onClick={() => {
+										if (selectedSale) {
+											onCancelSubmit(selectedSale.id, cancelReason);
+										}
+									}}
+									type="button"
+								>
 									<RotateCcw aria-hidden size={16} />
 									Отменить продажу
 								</button>
 							</div>
-						</form>
+						</div>
 					</Dialog.Content>
 				</Dialog.Portal>
 			</Dialog.Root>
@@ -185,10 +192,5 @@ function formatRubles(priceCents: number): string {
 }
 
 function formatSaleDate(value: string): string {
-	return new Intl.DateTimeFormat("ru-RU", {
-		day: "2-digit",
-		hour: "2-digit",
-		minute: "2-digit",
-		month: "short",
-	}).format(new Date(value));
+	return SALE_DATE_FORMATTER.format(new Date(value));
 }

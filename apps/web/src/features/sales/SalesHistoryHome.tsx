@@ -2,7 +2,7 @@
 
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Check } from "lucide-react";
-import { FormEvent, useState } from "react";
+import { FormEvent, useReducer } from "react";
 import type { CourierRecentSaleItem, DistributorRecentSaleItem } from "@buhta/shared";
 import {
 	cancelCourierSale,
@@ -24,28 +24,91 @@ type RecentSalesResponse = {
 };
 
 type SalesStatusFilter = "all" | "active" | "cancelled";
+type SalesHistoryState = {
+	cancellingSaleId: string;
+	cancelReason: string;
+	cancelLocalError: string;
+	successNotice: string;
+	searchDraft: string;
+	search: string;
+	status: SalesStatusFilter;
+};
+type SalesHistoryAction =
+	| { type: "patch"; values: Partial<SalesHistoryState> }
+	| { type: "openCancel"; saleId: string }
+	| { type: "closeCancel" }
+	| { type: "cancelSuccess" }
+	| { type: "submitSearch" }
+	| { type: "clearSearch" };
 
 const SALES_HISTORY_LIMIT = 20;
+const INITIAL_SALES_HISTORY_STATE: SalesHistoryState = {
+	cancellingSaleId: "",
+	cancelReason: "",
+	cancelLocalError: "",
+	successNotice: "",
+	searchDraft: "",
+	search: "",
+	status: "all",
+};
 const STATUS_FILTERS: Array<{ id: SalesStatusFilter; label: string }> = [
 	{ id: "all", label: "Все" },
 	{ id: "active", label: "Активные" },
 	{ id: "cancelled", label: "Отмененные" },
 ];
 
+function salesHistoryReducer(state: SalesHistoryState, action: SalesHistoryAction): SalesHistoryState {
+	switch (action.type) {
+		case "patch":
+			return { ...state, ...action.values };
+		case "openCancel":
+			return {
+				...state,
+				cancellingSaleId: action.saleId,
+				cancelReason: "",
+				cancelLocalError: "",
+				successNotice: "",
+			};
+		case "closeCancel":
+			return {
+				...state,
+				cancellingSaleId: "",
+				cancelReason: "",
+				cancelLocalError: "",
+			};
+		case "cancelSuccess":
+			return {
+				...state,
+				cancellingSaleId: "",
+				cancelReason: "",
+				cancelLocalError: "",
+				successNotice: "Продажа отменена",
+			};
+		case "submitSearch":
+			return { ...state, search: state.searchDraft.trim() };
+		case "clearSearch":
+			return { ...state, searchDraft: "", search: "" };
+	}
+}
+
 export function SalesHistoryHome({ actor, online }: SalesHistoryHomeProps) {
 	const queryClient = useQueryClient();
-	const [cancellingSaleId, setCancellingSaleId] = useState("");
-	const [cancelReason, setCancelReason] = useState("");
-	const [cancelLocalError, setCancelLocalError] = useState("");
-	const [successNotice, setSuccessNotice] = useState("");
-	const [searchDraft, setSearchDraft] = useState("");
-	const [search, setSearch] = useState("");
-	const [status, setStatus] = useState<SalesStatusFilter>("all");
+	const [state, dispatch] = useReducer(salesHistoryReducer, INITIAL_SALES_HISTORY_STATE);
+	const { cancellingSaleId, cancelLocalError, cancelReason, search, searchDraft, status, successNotice } = state;
 	const source = actor.role === "courier" ? "courier" : "distributor";
 	const queryKey = source === "courier"
 		? ["courier", "sales", "history", { search, status }]
 		: ["distributor", "sales", "history", { search, status }];
-	const salesHistory = useInfiniteQuery<RecentSalesResponse>({
+	const {
+		data: salesHistory,
+		error: salesHistoryErrorValue,
+		fetchNextPage,
+		hasNextPage,
+		isError: salesHistoryError,
+		isFetching: salesHistoryFetching,
+		isFetchingNextPage,
+		isPending: salesHistoryPending,
+	} = useInfiniteQuery<RecentSalesResponse>({
 		queryKey,
 		initialPageParam: undefined as string | undefined,
 		queryFn: async ({ pageParam }) => source === "courier"
@@ -63,7 +126,7 @@ export function SalesHistoryHome({ actor, online }: SalesHistoryHomeProps) {
 			}),
 		getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
 	});
-	const items = salesHistory.data?.pages.flatMap((page) => page.items) ?? [];
+	const items = salesHistory?.pages.flatMap((page) => page.items) ?? [];
 	const cancelMutation = useMutation({
 		mutationFn: async ({ reason, saleId }: { reason: string; saleId: string }): Promise<void> => {
 			if (source === "courier") {
@@ -74,10 +137,7 @@ export function SalesHistoryHome({ actor, online }: SalesHistoryHomeProps) {
 			await cancelDistributorSale(saleId, { reason });
 		},
 		onSuccess: async () => {
-			setCancellingSaleId("");
-			setCancelReason("");
-			setCancelLocalError("");
-			setSuccessNotice("Продажа отменена");
+			dispatch({ type: "cancelSuccess" });
 
 			if (source === "courier") {
 				await Promise.all([
@@ -99,17 +159,14 @@ export function SalesHistoryHome({ actor, online }: SalesHistoryHomeProps) {
 	});
 
 	function handleCancelOpen(saleId: string) {
-		setCancellingSaleId(saleId);
-		setCancelReason("");
-		setCancelLocalError("");
-		setSuccessNotice("");
+		dispatch({ type: "openCancel", saleId });
 	}
 
 	function handleCancelSubmit(saleId: string, reason: string) {
-		setCancelLocalError("");
+		dispatch({ type: "patch", values: { cancelLocalError: "" } });
 		const trimmedReason = reason.trim();
 		if (trimmedReason.length < 3) {
-			setCancelLocalError("Укажите причину отмены.");
+			dispatch({ type: "patch", values: { cancelLocalError: "Укажите причину отмены." } });
 			return;
 		}
 		cancelMutation.mutate({ saleId, reason: trimmedReason });
@@ -117,26 +174,25 @@ export function SalesHistoryHome({ actor, online }: SalesHistoryHomeProps) {
 
 	function handleSearchSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
-		setSearch(searchDraft.trim());
+		dispatch({ type: "submitSearch" });
 	}
 
 	function clearSearch() {
-		setSearchDraft("");
-		setSearch("");
+		dispatch({ type: "clearSearch" });
 	}
 
 	return (
 		<section className="screen-stack sales-history-home">
 			<div className="section-heading compact">
 				<h2>История продаж</h2>
-				{salesHistory.isFetching && !salesHistory.isFetchingNextPage ? <span>Обновление</span> : null}
+				{salesHistoryFetching && !isFetchingNextPage ? <span>Обновление</span> : null}
 			</div>
 			<form className="sales-history-filters" onSubmit={handleSearchSubmit}>
 				<label className="field">
 					<span>Поиск</span>
 					<div className="input-shell">
 						<input
-							onChange={(event) => setSearchDraft(event.target.value)}
+							onChange={(event) => dispatch({ type: "patch", values: { searchDraft: event.target.value } })}
 							placeholder="Клиент, телефон или товар"
 							type="search"
 							value={searchDraft}
@@ -159,7 +215,7 @@ export function SalesHistoryHome({ actor, online }: SalesHistoryHomeProps) {
 					<button
 						className={status === filter.id ? "active" : undefined}
 						key={filter.id}
-						onClick={() => setStatus(filter.id)}
+						onClick={() => dispatch({ type: "patch", values: { status: filter.id } })}
 						type="button"
 					>
 						<span>{filter.label}</span>
@@ -167,32 +223,28 @@ export function SalesHistoryHome({ actor, online }: SalesHistoryHomeProps) {
 				))}
 			</div>
 			{successNotice ? (
-				<div className="success-notice inline-success" role="status" aria-live="polite">
+				<output className="success-notice inline-success" aria-live="polite">
 					<Check aria-hidden size={16} />
 					{successNotice}
-				</div>
+				</output>
 			) : null}
-			{salesHistory.isError ? <p className="form-error">{salesHistory.error.message}</p> : null}
+			{salesHistoryError ? <p className="form-error">{salesHistoryErrorValue.message}</p> : null}
 			<RecentSalesPanel
 				cancelError={cancelLocalError || (cancelMutation.isError ? cancelMutation.error.message : undefined)}
 				cancelReason={cancelReason}
 				emptyText={search || status !== "all" ? "Продаж по выбранным условиям нет." : "Продаж пока нет."}
-				hasMore={salesHistory.hasNextPage}
+				hasMore={hasNextPage}
 				items={items}
-				loading={salesHistory.isPending}
-				loadingMore={salesHistory.isFetchingNextPage}
+				loading={salesHistoryPending}
+				loadingMore={isFetchingNextPage}
 				online={online}
 				pending={cancelMutation.isPending}
 				selectedSaleId={cancellingSaleId}
-				onCancelClose={() => {
-					setCancellingSaleId("");
-					setCancelReason("");
-					setCancelLocalError("");
-				}}
+				onCancelClose={() => dispatch({ type: "closeCancel" })}
 				onCancelOpen={handleCancelOpen}
-				onCancelReasonChange={setCancelReason}
+				onCancelReasonChange={(reason) => dispatch({ type: "patch", values: { cancelReason: reason } })}
 				onCancelSubmit={handleCancelSubmit}
-				onLoadMore={() => void salesHistory.fetchNextPage()}
+				onLoadMore={() => void fetchNextPage()}
 			/>
 		</section>
 	);

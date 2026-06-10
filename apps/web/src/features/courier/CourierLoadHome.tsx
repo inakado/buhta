@@ -21,11 +21,16 @@ export function CourierLoadHome({
 	const [quantity, setQuantity] = useState("");
 	const [comment, setComment] = useState("");
 	const [localError, setLocalError] = useState("");
-	const loadOptions = useQuery({
+	const {
+		data: loadOptions,
+		error: loadOptionsErrorValue,
+		isError: loadOptionsError,
+		isLoading: loadOptionsLoading,
+	} = useQuery({
 		queryKey: ["courier", "load-options"],
 		queryFn: getCourierLoadOptions,
 	});
-	const selectedStock = loadOptions.data?.items.find((item) =>
+	const selectedStock = loadOptions?.items.find((item) =>
 		item.distributorProductBalanceId === selectedBalanceId,
 	);
 	const parsedQuantity = Number(quantity);
@@ -54,8 +59,8 @@ export function CourierLoadHome({
 	const submitBlockReason = getLoadSubmitBlockReason({
 		availableQuantity: selectedStock?.availableQuantity,
 		hasProduct: !!selectedStock,
-		hasProductOptions: (loadOptions.data?.items.length ?? 0) > 0,
-		loadingOptions: loadOptions.isLoading,
+		hasProductOptions: (loadOptions?.items.length ?? 0) > 0,
+		loadingOptions: loadOptionsLoading,
 		online,
 		pending: loadMutation.isPending,
 		quantity: parsedQuantity,
@@ -89,7 +94,7 @@ export function CourierLoadHome({
 				<OperationProductSelect
 					label="Продукция"
 					onValueChange={setSelectedBalanceId}
-					options={(loadOptions.data?.items ?? []).map((item) => ({
+					options={(loadOptions?.items ?? []).map((item) => ({
 						discounted: item.discounted,
 						id: item.distributorProductBalanceId,
 						label: item.productName,
@@ -98,9 +103,9 @@ export function CourierLoadHome({
 					placeholder="Выберите продукцию"
 					value={selectedBalanceId}
 				/>
-				{loadOptions.isLoading ? <p className="muted">Загрузка продукции</p> : null}
-				{loadOptions.isError ? <p className="form-error">{loadOptions.error.message}</p> : null}
-				{!loadOptions.isLoading && !loadOptions.isError && loadOptions.data?.items.length === 0 ? (
+				{loadOptionsLoading ? <p className="muted">Загрузка продукции</p> : null}
+				{loadOptionsError ? <p className="form-error">{loadOptionsErrorValue.message}</p> : null}
+				{!loadOptionsLoading && !loadOptionsError && loadOptions?.items.length === 0 ? (
 					<p className="muted">Нет продукции для загрузки.</p>
 				) : null}
 

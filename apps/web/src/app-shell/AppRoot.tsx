@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import {
 	MutationCache,
 	QueryCache,
@@ -24,6 +25,11 @@ type BottomNavItem = {
 	icon: LucideIcon;
 	badgeCount?: number;
 };
+
+const COURIER_NAV_ITEMS: BottomNavItem[] = [
+	{ id: "home", label: "Баланс", icon: LayoutDashboard },
+	{ id: "more", label: "Еще", icon: MoreHorizontal },
+];
 
 function completeLocalSignOut(client: QueryClient) {
 	void client.cancelQueries();
@@ -69,21 +75,24 @@ export function AppRoot() {
 }
 
 function AppContent() {
-	const currentActor = useQuery({
+	const {
+		data: currentActor,
+		isLoading: currentActorLoading,
+	} = useQuery({
 		queryKey: ["current-actor"],
 		queryFn: getCurrentActor,
 		retry: false,
 	});
 
-	if (currentActor.isLoading) {
+	if (currentActorLoading) {
 		return <LoadingScreen />;
 	}
 
-	if (!currentActor.data?.authenticated || !currentActor.data.actor) {
+	if (!currentActor?.authenticated || !currentActor.actor) {
 		return <LoginForm />;
 	}
 
-	return <AppShell actor={currentActor.data.actor} />;
+	return <AppShell actor={currentActor.actor} />;
 }
 
 function AppShell({ actor }: { actor: CurrentActor }) {
@@ -143,10 +152,10 @@ function AppShell({ actor }: { actor: CurrentActor }) {
 					onTabChange={setActiveTab}
 				/>
 				{successNotice ? (
-					<div className="success-notice" role="status" aria-live="polite">
+					<output className="success-notice" aria-live="polite">
 						<Check aria-hidden size={17} />
 						{successNotice.message}
-					</div>
+					</output>
 				) : null}
 				<BottomNav activeTab={activeTab} onTabChange={setActiveTab} actor={actor} />
 			</div>
@@ -165,14 +174,14 @@ function BottomNav({
 }) {
 	const shouldShowProductionNotifications = actor.role === "production_manager"
 		&& actor.permissions.includes("notification.read");
-	const productionNotifications = useQuery({
+	const { data: productionNotifications } = useQuery({
 		queryKey: ["notifications", "all"],
 		queryFn: () => listNotifications("all"),
 		enabled: shouldShowProductionNotifications,
 		refetchInterval: 30_000,
 	});
 	const newProductionNotifications = shouldShowProductionNotifications
-		? productionNotifications.data?.summary.newCount ?? 0
+		? productionNotifications?.summary.newCount ?? 0
 		: 0;
 	const catalogItem: BottomNavItem[] = actor.permissions.includes("catalog.manage")
 		? [{ id: "catalog", label: "Каталог", icon: ClipboardList }]
@@ -201,10 +210,6 @@ function BottomNav({
 	const operationHistoryItem: BottomNavItem[] = actor.permissions.includes("operation.history.read")
 		? [{ id: "operation-history", label: "История", icon: ReceiptText }]
 		: [];
-	const courierItems: BottomNavItem[] = [
-		{ id: "home", label: "Баланс", icon: LayoutDashboard },
-		{ id: "more", label: "Еще", icon: MoreHorizontal },
-	];
 	const productionItems: BottomNavItem[] = [
 		{ id: "home", label: "Главная", icon: Factory },
 		{ id: "distributor", label: "Распределитель", icon: Box },
@@ -223,7 +228,7 @@ function BottomNav({
 		: actor.role === "production_manager"
 			? productionItems
 			: actor.role === "courier"
-				? courierItems
+				? COURIER_NAV_ITEMS
 				: actor.role === "director"
 					? [
 			{ id: "home", label: "Главная", icon: Gauge },
@@ -303,7 +308,7 @@ function LoadingScreen() {
 	return (
 		<main className="app-page loading-page">
 			<div className="mobile-shell centered-shell loading-shell">
-				<img className="loading-logo" src="/loader-pearl-cove.svg" alt="" aria-hidden />
+				<Image className="loading-logo" src="/loader-pearl-cove.svg" alt="" aria-hidden width={96} height={96} priority />
 			</div>
 		</main>
 	);

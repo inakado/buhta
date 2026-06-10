@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { DayPicker, type DateRange } from "react-day-picker";
 import { ru } from "react-day-picker/locale";
 
@@ -26,6 +27,7 @@ export function DateRangePickerPanel({
 	onChange,
 }: DateRangePickerPanelProps) {
 	const selectedRange = toCalendarDateRange(dateFrom, dateTo);
+	const [defaultMonth] = useState(() => new Date());
 
 	function selectCalendarRange(range: DateRange | undefined) {
 		onChange({
@@ -38,7 +40,7 @@ export function DateRangePickerPanel({
 		<div aria-label={ariaLabel} className="date-range-picker-panel">
 			<DayPicker
 				className="date-range-picker-calendar"
-				defaultMonth={selectedRange?.from ?? new Date()}
+				defaultMonth={selectedRange?.from ?? defaultMonth}
 				locale={ru}
 				mode="range"
 				onSelect={selectCalendarRange}

@@ -11,3 +11,13 @@ apps/web/next-env.d.ts
 apps/api/src/generated/
 *.tsbuildinfo
 .env
+
+# Local agent/browser artifacts
+.agents/
+.claude/
+.github/
+.goose/
+.impeccable/
+.kiro/
+.playwright-cli/
+.trae/

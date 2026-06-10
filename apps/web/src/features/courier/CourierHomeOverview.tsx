@@ -14,17 +14,27 @@ type CourierHomeOverviewProps = {
 };
 
 export function CourierHomeOverview({ onLoad, onSale, onUnload, online }: CourierHomeOverviewProps) {
-	const balances = useQuery({
+	const {
+		data,
+		error: balancesErrorValue,
+		isError: balancesError,
+		isFetching: balancesFetching,
+		isLoading: balancesLoading,
+	} = useQuery({
 		queryKey: ["courier", "product-balances"],
 		queryFn: getCourierProductBalances,
 	});
-	const cashBalances = useQuery({
+	const {
+		data: cashBalances,
+		isError: cashBalancesError,
+		isFetching: cashBalancesFetching,
+		isLoading: cashBalancesLoading,
+	} = useQuery({
 		queryKey: ["courier", "cash-balances"],
 		queryFn: getCourierCashBalances,
 	});
-	const data = balances.data;
-	const ownCashBalance = cashBalances.data?.items[0];
-	const isFetching = balances.isFetching || cashBalances.isFetching;
+	const ownCashBalance = cashBalances?.items[0];
+	const isFetching = balancesFetching || cashBalancesFetching;
 	const totalUnits = data?.summary.totalUnits ?? 0;
 	const stockValueCents = data?.summary.totalStockValueCents ?? 0;
 	const cashAmountCents = ownCashBalance?.amountCents ?? 0;
@@ -38,16 +48,16 @@ export function CourierHomeOverview({ onLoad, onSale, onUnload, online }: Courie
 
 			<section className="production-home-surface courier-home-surface" aria-label="Сводка курьера">
 				<div className="production-summary-ledger summary-horizontal courier-home-summary">
-					<CourierSummaryCell label="Продукция" loading={balances.isLoading} value={`${totalUnits} шт`} />
-					<CourierSummaryCell label="Стоимость" loading={balances.isLoading} value={formatCompactRubles(stockValueCents)} />
+					<CourierSummaryCell label="Продукция" loading={balancesLoading} value={`${totalUnits} шт`} />
+					<CourierSummaryCell label="Стоимость" loading={balancesLoading} value={formatCompactRubles(stockValueCents)} />
 					<CourierSummaryCell
 						label="Наличные"
-						loading={cashBalances.isLoading}
+						loading={cashBalancesLoading}
 						value={formatCompactRubles(cashAmountCents)}
 					/>
 				</div>
 			</section>
-			{cashBalances.isError ? <span className="inline-error">Не удалось загрузить наличные</span> : null}
+			{cashBalancesError ? <span className="inline-error">Не удалось загрузить наличные</span> : null}
 
 			<div className="production-command-panel courier-command-panel" aria-label="Действия курьера">
 				<div className="production-command-group frequent" aria-label="Частые действия">
@@ -64,9 +74,9 @@ export function CourierHomeOverview({ onLoad, onSale, onUnload, online }: Courie
 				<h2>Продукция</h2>
 				<span>{data?.summary.stockItemCount ?? 0} позиций</span>
 			</div>
-			{balances.isLoading ? <p className="muted">Загрузка баланса курьера</p> : null}
-			{balances.isError ? <p className="form-error">{balances.error.message}</p> : null}
-			{!balances.isLoading && !balances.isError && data?.items.length === 0 ? (
+			{balancesLoading ? <p className="muted">Загрузка баланса курьера</p> : null}
+			{balancesError ? <p className="form-error">{balancesErrorValue.message}</p> : null}
+			{!balancesLoading && !balancesError && data?.items.length === 0 ? (
 				<p className="muted">У курьера пока нет продукции.</p>
 			) : null}
 			<div className="courier-home-stock-surface">

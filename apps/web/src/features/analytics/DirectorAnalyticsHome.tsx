@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import * as Popover from "@radix-ui/react-popover";
 import { AlertTriangle, Banknote, CalendarDays, ChevronDown, Clock3, Factory, RefreshCw, Vault, WalletCards } from "lucide-react";
-import { useId, useMemo, useState, type ReactNode } from "react";
+import { useId, useMemo, useReducer, type ReactNode } from "react";
 import {
 	type DirectorAnalyticsPeriodPreset,
 	type DirectorAnalyticsProductOutputRow,
@@ -24,6 +24,31 @@ const PERIOD_OPTIONS: Array<{ value: DirectorAnalyticsPeriodPreset; label: strin
 ];
 const ANALYTICS_MAX_RANGE_DAYS = 366;
 const DAY_MS = 24 * 60 * 60 * 1000;
+const ANALYTICS_QUANTITY_FORMATTER = new Intl.NumberFormat("ru-RU", {
+	maximumFractionDigits: 3,
+});
+const ANALYTICS_PERIOD_RANGE_FORMATTER = new Intl.DateTimeFormat("ru-RU", {
+	day: "numeric",
+	month: "short",
+	timeZone: "Asia/Vladivostok",
+});
+const ANALYTICS_BUSINESS_DATE_INPUT_FORMATTER = new Intl.DateTimeFormat("en-CA", {
+	day: "2-digit",
+	month: "2-digit",
+	timeZone: "Asia/Vladivostok",
+	year: "numeric",
+});
+const ANALYTICS_CHART_THOUSANDS_FORMATTER = new Intl.NumberFormat("ru-RU", {
+	maximumFractionDigits: 1,
+});
+const ANALYTICS_CHART_INTEGER_FORMATTER = new Intl.NumberFormat("ru-RU", {
+	maximumFractionDigits: 0,
+});
+const ANALYTICS_CHART_DATE_FORMATTER = new Intl.DateTimeFormat("ru-RU", {
+	day: "numeric",
+	month: "short",
+	timeZone: "Asia/Vladivostok",
+});
 
 const VIEW_OPTIONS = [
 	{ value: "overview", label: "Обзор", icon: Clock3 },
@@ -72,16 +97,86 @@ type RevenueChartGeometry = {
 	points: RevenueChartPoint[];
 };
 
-export function DirectorAnalyticsHome({ title = "Аналитика" }: { title?: string } = {}) {
-	const [periodSelection, setPeriodSelection] = useState<DirectorPeriodSelection>({
+type DirectorAnalyticsState = {
+	periodSelection: DirectorPeriodSelection;
+	periodPickerOpen: boolean;
+	customDateFrom: string;
+	customDateTo: string;
+	customPeriodError: string | null;
+	viewMode: AnalyticsViewMode;
+};
+
+type DirectorAnalyticsAction =
+	| { type: "selectPreset"; periodPreset: DirectorAnalyticsPeriodPreset }
+	| { type: "setPeriodPickerOpen"; open: boolean }
+	| { type: "openPeriodPicker"; dateFrom: string; dateTo: string }
+	| { type: "setCustomRange"; dateFrom: string; dateTo: string }
+	| { type: "setCustomPeriodError"; error: string | null }
+	| { type: "applyCustomPeriod" }
+	| { type: "setViewMode"; viewMode: AnalyticsViewMode };
+
+const INITIAL_DIRECTOR_ANALYTICS_STATE: DirectorAnalyticsState = {
+	periodSelection: {
 		mode: "preset",
 		periodPreset: "30d",
-	});
-	const [periodPickerOpen, setPeriodPickerOpen] = useState(false);
-	const [customDateFrom, setCustomDateFrom] = useState("");
-	const [customDateTo, setCustomDateTo] = useState("");
-	const [customPeriodError, setCustomPeriodError] = useState<string | null>(null);
-	const [viewMode, setViewMode] = useState<AnalyticsViewMode>("production");
+	},
+	periodPickerOpen: false,
+	customDateFrom: "",
+	customDateTo: "",
+	customPeriodError: null,
+	viewMode: "production",
+};
+
+function directorAnalyticsReducer(
+	state: DirectorAnalyticsState,
+	action: DirectorAnalyticsAction,
+): DirectorAnalyticsState {
+	switch (action.type) {
+		case "selectPreset":
+			return {
+				...state,
+				periodSelection: { mode: "preset", periodPreset: action.periodPreset },
+				customPeriodError: null,
+				periodPickerOpen: false,
+			};
+		case "setPeriodPickerOpen":
+			return { ...state, periodPickerOpen: action.open };
+		case "openPeriodPicker":
+			return {
+				...state,
+				periodPickerOpen: true,
+				customDateFrom: action.dateFrom,
+				customDateTo: action.dateTo,
+				customPeriodError: null,
+			};
+		case "setCustomRange":
+			return {
+				...state,
+				customDateFrom: action.dateFrom,
+				customDateTo: action.dateTo,
+				customPeriodError: null,
+			};
+		case "setCustomPeriodError":
+			return { ...state, customPeriodError: action.error };
+		case "applyCustomPeriod":
+			return {
+				...state,
+				periodSelection: {
+					mode: "custom",
+					dateFrom: state.customDateFrom,
+					dateTo: state.customDateTo,
+				},
+				customPeriodError: null,
+				periodPickerOpen: false,
+			};
+		case "setViewMode":
+			return { ...state, viewMode: action.viewMode };
+	}
+}
+
+export function DirectorAnalyticsHome({ title = "Аналитика" }: { title?: string } = {}) {
+	const [state, dispatch] = useReducer(directorAnalyticsReducer, INITIAL_DIRECTOR_ANALYTICS_STATE);
+	const { customDateFrom, customDateTo, customPeriodError, periodPickerOpen, periodSelection, viewMode } = state;
 	const analyticsQuery = useMemo(() => {
 		if (periodSelection.mode === "custom") {
 			return {
@@ -92,42 +187,43 @@ export function DirectorAnalyticsHome({ title = "Аналитика" }: { title?
 
 		return { periodPreset: periodSelection.periodPreset };
 	}, [periodSelection]);
-	const analytics = useQuery({
+	const {
+		data: analytics,
+		isError: analyticsError,
+		isFetching: analyticsFetching,
+		isLoading: analyticsLoading,
+		refetch: refetchAnalytics,
+	} = useQuery({
 		queryKey: ["analytics", "director", analyticsQuery],
 		queryFn: () => getDirectorAnalytics(analyticsQuery),
 	});
 
 	function selectPresetPeriod(periodPreset: DirectorAnalyticsPeriodPreset) {
-		setPeriodSelection({ mode: "preset", periodPreset });
-		setCustomPeriodError(null);
-		setPeriodPickerOpen(false);
+		dispatch({ type: "selectPreset", periodPreset });
 	}
 
 	function setPeriodPickerOpenState(open: boolean) {
-		if (open && analytics.data) {
-			setCustomDateFrom(formatBusinessDateInputValue(analytics.data.filters.dateFrom));
-			setCustomDateTo(formatBusinessDateInputValue(
-				new Date(new Date(analytics.data.filters.dateTo).getTime() - 1).toISOString(),
-			));
-			setCustomPeriodError(null);
+		if (open && analytics) {
+			dispatch({
+				type: "openPeriodPicker",
+				dateFrom: formatBusinessDateInputValue(analytics.filters.dateFrom),
+				dateTo: formatBusinessDateInputValue(
+					new Date(new Date(analytics.filters.dateTo).getTime() - 1).toISOString(),
+				),
+			});
+			return;
 		}
-		setPeriodPickerOpen(open);
+		dispatch({ type: "setPeriodPickerOpen", open });
 	}
 
 	function applyCustomPeriod() {
 		const validationError = validateCustomPeriod(customDateFrom, customDateTo);
 		if (validationError) {
-			setCustomPeriodError(validationError);
+			dispatch({ type: "setCustomPeriodError", error: validationError });
 			return;
 		}
 
-		setPeriodSelection({
-			mode: "custom",
-			dateFrom: customDateFrom,
-			dateTo: customDateTo,
-		});
-		setCustomPeriodError(null);
-		setPeriodPickerOpen(false);
+		dispatch({ type: "applyCustomPeriod" });
 	}
 
 	return (
@@ -135,7 +231,7 @@ export function DirectorAnalyticsHome({ title = "Аналитика" }: { title?
 			<div className="director-dashboard-topbar">
 				<div className="director-dashboard-header">
 					<h1>{title}</h1>
-					{analytics.data ? (
+					{analytics ? (
 						<Popover.Root open={periodPickerOpen} onOpenChange={setPeriodPickerOpenState}>
 							<Popover.Trigger asChild>
 								<button
@@ -145,7 +241,7 @@ export function DirectorAnalyticsHome({ title = "Аналитика" }: { title?
 									type="button"
 								>
 									<CalendarDays aria-hidden size={18} />
-									<span>{formatPeriodRange(analytics.data.filters.dateFrom, analytics.data.filters.dateTo)}</span>
+									<span>{formatPeriodRange(analytics.filters.dateFrom, analytics.filters.dateTo)}</span>
 									<ChevronDown aria-hidden size={16} />
 								</button>
 							</Popover.Trigger>
@@ -163,11 +259,11 @@ export function DirectorAnalyticsHome({ title = "Аналитика" }: { title?
 									dateTo={customDateTo}
 									error={customPeriodError}
 									maxDays={ANALYTICS_MAX_RANGE_DAYS}
-									onChange={({ dateFrom, dateTo }) => {
-										setCustomDateFrom(dateFrom);
-										setCustomDateTo(dateTo);
-										setCustomPeriodError(null);
-									}}
+									onChange={({ dateFrom, dateTo }) => dispatch({
+										type: "setCustomRange",
+										dateFrom,
+										dateTo,
+									})}
 								/>
 								<div className="director-dashboard-period-actions">
 									<Popover.Close asChild>
@@ -182,7 +278,7 @@ export function DirectorAnalyticsHome({ title = "Аналитика" }: { title?
 							</Popover.Content>
 						</Popover.Root>
 					) : null}
-					{analytics.isFetching ? (
+					{analyticsFetching ? (
 						<span className="director-dashboard-sync" aria-label="Обновление">
 							<RefreshCw aria-hidden size={16} />
 						</span>
@@ -200,24 +296,24 @@ export function DirectorAnalyticsHome({ title = "Аналитика" }: { title?
 			</div>
 
 			<div className="director-dashboard-body">
-				{analytics.isError ? (
+				{analyticsError ? (
 					<div className="director-dashboard-message error">
 						<AlertTriangle aria-hidden size={18} />
 						<span>Не удалось загрузить аналитику.</span>
-						<button type="button" onClick={() => void analytics.refetch()}>
+						<button type="button" onClick={() => void refetchAnalytics()}>
 							Повторить
 						</button>
 					</div>
 				) : null}
 
-				{analytics.data ? (
+				{analytics ? (
 					<DirectorAnalyticsView
-						data={analytics.data}
-						onViewModeChange={setViewMode}
+						data={analytics}
+						onViewModeChange={(nextViewMode) => dispatch({ type: "setViewMode", viewMode: nextViewMode })}
 						viewMode={viewMode}
 					/>
 				) : null}
-				{analytics.isLoading ? <AnalyticsSkeleton /> : null}
+				{analyticsLoading ? <AnalyticsSkeleton /> : null}
 			</div>
 		</section>
 	);
@@ -577,9 +673,7 @@ function formatRubles(priceCents: number): string {
 }
 
 function formatQuantity(value: number): string {
-	return new Intl.NumberFormat("ru-RU", {
-		maximumFractionDigits: 3,
-	}).format(value);
+	return ANALYTICS_QUANTITY_FORMATTER.format(value);
 }
 
 function formatRawMaterialTotal(rows: DirectorAnalyticsRawMaterialRow[]): string {
@@ -598,24 +692,13 @@ function formatRawMaterialTotal(rows: DirectorAnalyticsRawMaterialRow[]): string
 }
 
 function formatPeriodRange(dateFrom: string, dateTo: string): string {
-	const formatter = new Intl.DateTimeFormat("ru-RU", {
-		day: "numeric",
-		month: "short",
-		timeZone: "Asia/Vladivostok",
-	});
 	const inclusiveDateTo = new Date(new Date(dateTo).getTime() - 1);
-	return `${formatter.format(new Date(dateFrom))} - ${formatter.format(inclusiveDateTo)}`;
+	return `${ANALYTICS_PERIOD_RANGE_FORMATTER.format(new Date(dateFrom))} - ${ANALYTICS_PERIOD_RANGE_FORMATTER.format(inclusiveDateTo)}`;
 }
 
 function formatBusinessDateInputValue(value: string): string {
-	const formatter = new Intl.DateTimeFormat("en-CA", {
-		day: "2-digit",
-		month: "2-digit",
-		timeZone: "Asia/Vladivostok",
-		year: "numeric",
-	});
 	const parts = Object.fromEntries(
-		formatter.formatToParts(new Date(value))
+		ANALYTICS_BUSINESS_DATE_INPUT_FORMATTER.formatToParts(new Date(value))
 			.map((part) => [part.type, part.value]),
 	);
 
@@ -728,12 +811,22 @@ function buildRevenueGridLines(
 		domainMin,
 	];
 
-	return values.map((value) => ({
-		label: formatChartMoneyLabel(value),
-		y: valueToY(value),
-	})).filter((line, index, lines) => (
-		lines.findIndex((candidate) => candidate.label === line.label) === index
-	));
+	const lines: Array<{ label: string; y: number }> = [];
+	const seenLabels = new Set<string>();
+	for (const value of values) {
+		const label = formatChartMoneyLabel(value);
+		if (seenLabels.has(label)) {
+			continue;
+		}
+
+		seenLabels.add(label);
+		lines.push({
+			label,
+			y: valueToY(value),
+		});
+	}
+
+	return lines;
 }
 
 function buildSinglePointPath(point: RevenueChartPoint): string {
@@ -782,22 +875,14 @@ function formatChartMoneyLabel(value: number): string {
 	const rubles = Math.abs(roundedCents) / 100;
 
 	if (rubles >= 1000) {
-		return `${sign}${new Intl.NumberFormat("ru-RU", {
-			maximumFractionDigits: 1,
-		}).format(rubles / 1000)} тыс.`;
+		return `${sign}${ANALYTICS_CHART_THOUSANDS_FORMATTER.format(rubles / 1000)} тыс.`;
 	}
 
-	return `${sign}${new Intl.NumberFormat("ru-RU", {
-		maximumFractionDigits: 0,
-	}).format(rubles)}`;
+	return `${sign}${ANALYTICS_CHART_INTEGER_FORMATTER.format(rubles)}`;
 }
 
 function formatChartDate(value: string): string {
-	return new Intl.DateTimeFormat("ru-RU", {
-		day: "numeric",
-		month: "short",
-		timeZone: "Asia/Vladivostok",
-	}).format(new Date(`${value}T00:00:00.000Z`));
+	return ANALYTICS_CHART_DATE_FORMATTER.format(new Date(`${value}T00:00:00.000Z`));
 }
 
 function formatSvgNumber(value: number): string {

@@ -2,7 +2,7 @@
 
 import * as Dialog from "@radix-ui/react-dialog";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useMemo, useReducer, useState } from "react";
 import { Archive, Check, Edit3, Plus, X } from "lucide-react";
 import type {
 	Distributor,
@@ -54,6 +54,26 @@ type CatalogNoticeState = {
 	message: string;
 	restoreItem?: { id: string; name: string };
 };
+type CatalogSectionState<Item> = {
+	createOpen: boolean;
+	editingItem: Item | null;
+	archiveTarget: Item | null;
+	showArchived: boolean;
+	notice: CatalogNoticeState | null;
+};
+type CatalogSectionAction<Item> =
+	| { type: "patch"; values: Partial<CatalogSectionState<Item>> }
+	| { type: "toggleArchived" };
+type ProductTemplateFormState = {
+	name: string;
+	rawMaterialTypeId: string;
+	packagingTypeId: string;
+	priceRubles: string;
+	priceError: string;
+};
+type ProductTemplateFormAction =
+	| { type: "patch"; values: Partial<ProductTemplateFormState> }
+	| { type: "priceError"; message: string };
 
 const tabs: Array<{ value: CatalogTab; label: string }> = [
 	{ value: "raw", label: "Сырье" },
@@ -62,21 +82,75 @@ const tabs: Array<{ value: CatalogTab; label: string }> = [
 	{ value: "products", label: "Шаблоны" },
 ];
 
+function createProductTemplateFormState(item: ProductTemplate | null): ProductTemplateFormState {
+	return {
+		name: item?.name ?? "",
+		rawMaterialTypeId: item?.rawMaterialTypeId ?? "",
+		packagingTypeId: item?.packagingTypeId ?? "",
+		priceRubles: item ? formatPriceRubles(item.priceCents) : "",
+		priceError: "",
+	};
+}
+
+function productTemplateFormReducer(
+	state: ProductTemplateFormState,
+	action: ProductTemplateFormAction,
+): ProductTemplateFormState {
+	if (action.type === "priceError") {
+		return { ...state, priceError: action.message };
+	}
+
+	return { ...state, ...action.values };
+}
+
+function createCatalogSectionState<Item>(): CatalogSectionState<Item> {
+	return {
+		createOpen: false,
+		editingItem: null,
+		archiveTarget: null,
+		showArchived: false,
+		notice: null,
+	};
+}
+
+function catalogSectionReducer<Item>(
+	state: CatalogSectionState<Item>,
+	action: CatalogSectionAction<Item>,
+): CatalogSectionState<Item> {
+	if (action.type === "toggleArchived") {
+		return { ...state, showArchived: !state.showArchived };
+	}
+
+	return { ...state, ...action.values };
+}
+
 export function CatalogHome({ online }: { online: boolean }) {
 	const [activeTab, setActiveTab] = useState<CatalogTab>("raw");
-	const rawMaterialTypes = useQuery({
+	const {
+		data: rawMaterialTypes,
+		isLoading: rawMaterialTypesLoading,
+	} = useQuery({
 		queryKey: ["catalog", "raw-material-types"],
 		queryFn: listRawMaterialTypes,
 	});
-	const packagingTypes = useQuery({
+	const {
+		data: packagingTypes,
+		isLoading: packagingTypesLoading,
+	} = useQuery({
 		queryKey: ["catalog", "packaging-types"],
 		queryFn: listPackagingTypes,
 	});
-	const distributors = useQuery({
+	const {
+		data: distributors,
+		isLoading: distributorsLoading,
+	} = useQuery({
 		queryKey: ["catalog", "distributors"],
 		queryFn: listDistributors,
 	});
-	const productTemplates = useQuery({
+	const {
+		data: productTemplates,
+		isLoading: productTemplatesLoading,
+	} = useQuery({
 		queryKey: ["catalog", "product-templates"],
 		queryFn: listProductTemplates,
 	});
@@ -98,8 +172,8 @@ export function CatalogHome({ online }: { online: boolean }) {
 			{activeTab === "raw" ? (
 				<SimpleCatalogSection
 					createItem={(input) => createRawMaterialType({ name: input.name, unit: input.unit ?? "" })}
-					items={rawMaterialTypes.data?.rawMaterialTypes ?? []}
-					loading={rawMaterialTypes.isLoading}
+					items={rawMaterialTypes?.rawMaterialTypes ?? []}
+					loading={rawMaterialTypesLoading}
 					online={online}
 					queryKey={["catalog", "raw-material-types"]}
 					unitLabel="Единица измерения"
@@ -111,8 +185,8 @@ export function CatalogHome({ online }: { online: boolean }) {
 			{activeTab === "packaging" ? (
 				<SimpleCatalogSection
 					createItem={(input) => createPackagingType({ name: input.name, unit: input.unit ?? "" })}
-					items={packagingTypes.data?.packagingTypes ?? []}
-					loading={packagingTypes.isLoading}
+					items={packagingTypes?.packagingTypes ?? []}
+					loading={packagingTypesLoading}
 					online={online}
 					queryKey={["catalog", "packaging-types"]}
 					unitLabel="Единица учета"
@@ -124,8 +198,8 @@ export function CatalogHome({ online }: { online: boolean }) {
 			{activeTab === "distributors" ? (
 				<SimpleCatalogSection
 					createItem={createDistributor}
-					items={distributors.data?.distributors ?? []}
-					loading={distributors.isLoading}
+					items={distributors?.distributors ?? []}
+					loading={distributorsLoading}
 					online={online}
 					queryKey={["catalog", "distributors"]}
 					archiveItem={archiveDistributor}
@@ -135,11 +209,11 @@ export function CatalogHome({ online }: { online: boolean }) {
 
 			{activeTab === "products" ? (
 				<ProductTemplatesSection
-					items={productTemplates.data?.productTemplates ?? []}
-					loading={productTemplates.isLoading}
+					items={productTemplates?.productTemplates ?? []}
+					loading={productTemplatesLoading}
 					online={online}
-					packagingTypes={packagingTypes.data?.packagingTypes ?? []}
-					rawMaterialTypes={rawMaterialTypes.data?.rawMaterialTypes ?? []}
+					packagingTypes={packagingTypes?.packagingTypes ?? []}
+					rawMaterialTypes={rawMaterialTypes?.rawMaterialTypes ?? []}
 					archiveItem={archiveProductTemplate}
 				/>
 			) : null}
@@ -167,37 +241,47 @@ function SimpleCatalogSection({
 	updateItem: (id: string, input: SimpleCatalogUpdate) => Promise<unknown>;
 }) {
 	const queryClient = useQueryClient();
-	const [createOpen, setCreateOpen] = useState(false);
-	const [editingItem, setEditingItem] = useState<SimpleCatalogItem | null>(null);
-	const [archiveTarget, setArchiveTarget] = useState<SimpleCatalogItem | null>(null);
-	const [showArchived, setShowArchived] = useState(false);
-	const [notice, setNotice] = useState<CatalogNoticeState | null>(null);
+	const [sectionState, dispatchSection] = useReducer(
+		catalogSectionReducer<SimpleCatalogItem>,
+		undefined,
+		createCatalogSectionState<SimpleCatalogItem>,
+	);
+	const { archiveTarget, createOpen, editingItem, notice, showArchived } = sectionState;
 	const activeItems = useMemo(() => items.filter((item) => item.active), [items]);
 	const archivedItems = useMemo(() => items.filter((item) => !item.active), [items]);
 	const visibleItems = showArchived ? archivedItems : activeItems;
 	const createMutation = useMutation({
 		mutationFn: createItem,
 		onSuccess: async () => {
-			setCreateOpen(false);
-			setNotice({ message: "Запись добавлена." });
+			dispatchSection({ type: "patch", values: { createOpen: false, notice: { message: "Запись добавлена." } } });
 			await queryClient.invalidateQueries({ queryKey });
 		},
 	});
 	const updateMutation = useMutation({
 		mutationFn: ({ id, input }: { id: string; input: SimpleCatalogUpdate }) => updateItem(id, input),
 		onSuccess: async (_result, variables) => {
-			setEditingItem(null);
-			setNotice({ message: variables.input.active ? "Запись восстановлена." : "Изменения сохранены." });
+			dispatchSection({
+				type: "patch",
+				values: {
+					editingItem: null,
+					notice: { message: variables.input.active ? "Запись восстановлена." : "Изменения сохранены." },
+				},
+			});
 			await queryClient.invalidateQueries({ queryKey });
 		},
 	});
 	const archiveMutation = useMutation({
 		mutationFn: (item: SimpleCatalogItem) => archiveItem(item.id),
 		onSuccess: async (_result, item) => {
-			setArchiveTarget(null);
-			setNotice({
-				message: `${item.name} в архиве.`,
-				restoreItem: { id: item.id, name: item.name },
+			dispatchSection({
+				type: "patch",
+				values: {
+					archiveTarget: null,
+					notice: {
+						message: `${item.name} в архиве.`,
+						restoreItem: { id: item.id, name: item.name },
+					},
+				},
 			});
 			await queryClient.invalidateQueries({ queryKey });
 		},
@@ -205,7 +289,7 @@ function SimpleCatalogSection({
 	const noticeRestoreItem = notice?.restoreItem;
 	const noticeRestoreAction = noticeRestoreItem
 		? () => {
-				setNotice(null);
+				dispatchSection({ type: "patch", values: { notice: null } });
 				updateMutation.mutate({ id: noticeRestoreItem.id, input: { active: true } });
 			}
 		: undefined;
@@ -214,24 +298,25 @@ function SimpleCatalogSection({
 		<div className="catalog-section management-surface">
 			<CatalogListToolbar
 				archivedCount={archivedItems.length}
-				onCreate={() => setCreateOpen(true)}
-				onToggleArchive={() => setShowArchived((current) => !current)}
+				onCreate={() => dispatchSection({ type: "patch", values: { createOpen: true } })}
+				onToggleArchive={() => dispatchSection({ type: "toggleArchived" })}
 				online={online}
 				showArchived={showArchived}
 				visibleCount={visibleItems.length}
 			/>
 
 			<SimpleCatalogFormDialog
+				key={createOpen ? "create-open" : "create-closed"}
 				error={createMutation.isError ? createMutation.error.message : null}
 				item={null}
 				onOpenChange={(open) => {
-					setCreateOpen(open);
+					dispatchSection({ type: "patch", values: { createOpen: open } });
 					if (!open) {
 						createMutation.reset();
 					}
 				}}
 				onSubmit={(input) => {
-					setNotice(null);
+					dispatchSection({ type: "patch", values: { notice: null } });
 					createMutation.mutate(input);
 				}}
 				online={online}
@@ -243,11 +328,12 @@ function SimpleCatalogSection({
 			/>
 
 			<SimpleCatalogFormDialog
+				key={editingItem?.id ?? "edit-closed"}
 				error={updateMutation.isError && editingItem ? updateMutation.error.message : null}
 				item={editingItem}
 				onOpenChange={(open) => {
 					if (!open) {
-						setEditingItem(null);
+						dispatchSection({ type: "patch", values: { editingItem: null } });
 						updateMutation.reset();
 					}
 				}}
@@ -255,7 +341,7 @@ function SimpleCatalogSection({
 					if (!editingItem) {
 						return;
 					}
-					setNotice(null);
+					dispatchSection({ type: "patch", values: { notice: null } });
 					updateMutation.mutate({ id: editingItem.id, input });
 				}}
 				online={online}
@@ -271,13 +357,13 @@ function SimpleCatalogSection({
 				itemName={archiveTarget?.name ?? ""}
 				onConfirm={() => {
 					if (archiveTarget) {
-						setNotice(null);
+						dispatchSection({ type: "patch", values: { notice: null } });
 						archiveMutation.mutate(archiveTarget);
 					}
 				}}
 				onOpenChange={(open) => {
 					if (!open) {
-						setArchiveTarget(null);
+						dispatchSection({ type: "patch", values: { archiveTarget: null } });
 						archiveMutation.reset();
 					}
 				}}
@@ -309,11 +395,11 @@ function SimpleCatalogSection({
 						pending={updateMutation.isPending || archiveMutation.isPending}
 						{...(unitLabel ? { unitLabel } : {})}
 						archiveItem={() => {
-							setArchiveTarget(item);
+							dispatchSection({ type: "patch", values: { archiveTarget: item } });
 						}}
-						editItem={() => setEditingItem(item)}
+						editItem={() => dispatchSection({ type: "patch", values: { editingItem: item } })}
 						restoreItem={() => {
-							setNotice(null);
+							dispatchSection({ type: "patch", values: { notice: null } });
 							updateMutation.mutate({ id: item.id, input: { active: true } });
 						}}
 					/>
@@ -397,37 +483,47 @@ function ProductTemplatesSection({
 		() => packagingTypes.filter((item) => item.active),
 		[packagingTypes],
 	);
-	const [createOpen, setCreateOpen] = useState(false);
-	const [editingItem, setEditingItem] = useState<ProductTemplate | null>(null);
-	const [archiveTarget, setArchiveTarget] = useState<ProductTemplate | null>(null);
-	const [showArchived, setShowArchived] = useState(false);
-	const [notice, setNotice] = useState<CatalogNoticeState | null>(null);
+	const [sectionState, dispatchSection] = useReducer(
+		catalogSectionReducer<ProductTemplate>,
+		undefined,
+		createCatalogSectionState<ProductTemplate>,
+	);
+	const { archiveTarget, createOpen, editingItem, notice, showArchived } = sectionState;
 	const activeItems = useMemo(() => items.filter((item) => item.active), [items]);
 	const archivedItems = useMemo(() => items.filter((item) => !item.active), [items]);
 	const visibleItems = showArchived ? archivedItems : activeItems;
 	const createMutation = useMutation({
 		mutationFn: createProductTemplate,
 		onSuccess: async () => {
-			setCreateOpen(false);
-			setNotice({ message: "Шаблон добавлен." });
+			dispatchSection({ type: "patch", values: { createOpen: false, notice: { message: "Шаблон добавлен." } } });
 			await queryClient.invalidateQueries({ queryKey: ["catalog", "product-templates"] });
 		},
 	});
 	const updateMutation = useMutation({
 		mutationFn: ({ id, input }: { id: string; input: UpdateProductTemplateRequest }) => updateProductTemplate(id, input),
 		onSuccess: async (_result, variables) => {
-			setEditingItem(null);
-			setNotice({ message: variables.input.active ? "Шаблон восстановлен." : "Изменения сохранены." });
+			dispatchSection({
+				type: "patch",
+				values: {
+					editingItem: null,
+					notice: { message: variables.input.active ? "Шаблон восстановлен." : "Изменения сохранены." },
+				},
+			});
 			await queryClient.invalidateQueries({ queryKey: ["catalog", "product-templates"] });
 		},
 	});
 	const archiveMutation = useMutation({
 		mutationFn: (item: ProductTemplate) => archiveItem(item.id),
 		onSuccess: async (_result, item) => {
-			setArchiveTarget(null);
-			setNotice({
-				message: `${item.name} в архиве.`,
-				restoreItem: { id: item.id, name: item.name },
+			dispatchSection({
+				type: "patch",
+				values: {
+					archiveTarget: null,
+					notice: {
+						message: `${item.name} в архиве.`,
+						restoreItem: { id: item.id, name: item.name },
+					},
+				},
 			});
 			await queryClient.invalidateQueries({ queryKey: ["catalog", "product-templates"] });
 		},
@@ -435,7 +531,7 @@ function ProductTemplatesSection({
 	const noticeRestoreItem = notice?.restoreItem;
 	const noticeRestoreAction = noticeRestoreItem
 		? () => {
-				setNotice(null);
+				dispatchSection({ type: "patch", values: { notice: null } });
 				updateMutation.mutate({ id: noticeRestoreItem.id, input: { active: true } });
 			}
 		: undefined;
@@ -445,25 +541,26 @@ function ProductTemplatesSection({
 		<div className="catalog-section management-surface">
 			<CatalogListToolbar
 				archivedCount={archivedItems.length}
-				onCreate={() => setCreateOpen(true)}
-				onToggleArchive={() => setShowArchived((current) => !current)}
+				onCreate={() => dispatchSection({ type: "patch", values: { createOpen: true } })}
+				onToggleArchive={() => dispatchSection({ type: "toggleArchived" })}
 				online={online}
 				showArchived={showArchived}
 				visibleCount={visibleItems.length}
 			/>
 
 			<ProductTemplateFormDialog
+				key={createOpen ? "create-open" : "create-closed"}
 				dependenciesReady={dependenciesReady}
 				error={createMutation.isError ? createMutation.error.message : null}
 				item={null}
 				onOpenChange={(open) => {
-					setCreateOpen(open);
+					dispatchSection({ type: "patch", values: { createOpen: open } });
 					if (!open) {
 						createMutation.reset();
 					}
 				}}
 				onSubmit={(input) => {
-					setNotice(null);
+					dispatchSection({ type: "patch", values: { notice: null } });
 					createMutation.mutate(input);
 				}}
 				online={online}
@@ -476,12 +573,13 @@ function ProductTemplatesSection({
 			/>
 
 			<ProductTemplateFormDialog
+				key={editingItem?.id ?? "edit-closed"}
 				dependenciesReady={dependenciesReady}
 				error={updateMutation.isError && editingItem ? updateMutation.error.message : null}
 				item={editingItem}
 				onOpenChange={(open) => {
 					if (!open) {
-						setEditingItem(null);
+						dispatchSection({ type: "patch", values: { editingItem: null } });
 						updateMutation.reset();
 					}
 				}}
@@ -489,7 +587,7 @@ function ProductTemplatesSection({
 					if (!editingItem) {
 						return;
 					}
-					setNotice(null);
+					dispatchSection({ type: "patch", values: { notice: null } });
 					updateMutation.mutate({ id: editingItem.id, input });
 				}}
 				online={online}
@@ -506,13 +604,13 @@ function ProductTemplatesSection({
 				itemName={archiveTarget?.name ?? ""}
 				onConfirm={() => {
 					if (archiveTarget) {
-						setNotice(null);
+						dispatchSection({ type: "patch", values: { notice: null } });
 						archiveMutation.mutate(archiveTarget);
 					}
 				}}
 				onOpenChange={(open) => {
 					if (!open) {
-						setArchiveTarget(null);
+						dispatchSection({ type: "patch", values: { archiveTarget: null } });
 						archiveMutation.reset();
 					}
 				}}
@@ -543,11 +641,11 @@ function ProductTemplatesSection({
 						online={online}
 						pending={updateMutation.isPending || archiveMutation.isPending}
 						archiveItem={() => {
-							setArchiveTarget(item);
+							dispatchSection({ type: "patch", values: { archiveTarget: item } });
 						}}
-						editItem={() => setEditingItem(item)}
+						editItem={() => dispatchSection({ type: "patch", values: { editingItem: item } })}
 						restoreItem={() => {
-							setNotice(null);
+							dispatchSection({ type: "patch", values: { notice: null } });
 							updateMutation.mutate({ id: item.id, input: { active: true } });
 						}}
 					/>
@@ -629,17 +727,8 @@ function SimpleCatalogFormDialog({
 	title: string;
 	unitLabel?: string;
 }) {
-	const [name, setName] = useState("");
-	const [unit, setUnit] = useState("");
-
-	useEffect(() => {
-		if (!open) {
-			return;
-		}
-
-		setName(item?.name ?? "");
-		setUnit(item && "unit" in item ? item.unit : "");
-	}, [item, open]);
+	const [name, setName] = useState(item?.name ?? "");
+	const [unit, setUnit] = useState(item && "unit" in item ? item.unit : "");
 
 	function handleSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
@@ -715,33 +804,18 @@ function ProductTemplateFormDialog({
 	submitLabel: string;
 	title: string;
 }) {
-	const [name, setName] = useState("");
-	const [rawMaterialTypeId, setRawMaterialTypeId] = useState("");
-	const [packagingTypeId, setPackagingTypeId] = useState("");
-	const [priceRubles, setPriceRubles] = useState("");
-	const [priceError, setPriceError] = useState("");
-
-	useEffect(() => {
-		if (!open) {
-			return;
-		}
-
-		setName(item?.name ?? "");
-		setRawMaterialTypeId(item?.rawMaterialTypeId ?? "");
-		setPackagingTypeId(item?.packagingTypeId ?? "");
-		setPriceRubles(item ? formatPriceRubles(item.priceCents) : "");
-		setPriceError("");
-	}, [item, open]);
+	const [form, dispatchForm] = useReducer(productTemplateFormReducer, item, createProductTemplateFormState);
+	const { name, packagingTypeId, priceError, priceRubles, rawMaterialTypeId } = form;
 
 	function handleSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
 		const parsedPrice = parsePriceRubles(priceRubles);
 		if (!parsedPrice.ok) {
-			setPriceError(parsedPrice.message);
+			dispatchForm({ type: "priceError", message: parsedPrice.message });
 			return;
 		}
 
-		setPriceError("");
+		dispatchForm({ type: "priceError", message: "" });
 		onSubmit({
 			name,
 			rawMaterialTypeId,
@@ -764,13 +838,21 @@ function ProductTemplateFormDialog({
 					<form className="catalog-dialog-form catalog-product-form" onSubmit={handleSubmit}>
 						<label className="field">
 							<span>Название шаблона</span>
-							<input onChange={(event) => setName(event.target.value)} required type="text" value={name} />
+							<input
+								onChange={(event) => dispatchForm({ type: "patch", values: { name: event.target.value } })}
+								required
+								type="text"
+								value={name}
+							/>
 						</label>
 						<div className="catalog-form-grid">
 							<label className="field">
 								<span>Сырье</span>
 								<select
-									onChange={(event) => setRawMaterialTypeId(event.target.value)}
+									onChange={(event) => dispatchForm({
+										type: "patch",
+										values: { rawMaterialTypeId: event.target.value },
+									})}
 									required
 									value={rawMaterialTypeId}
 								>
@@ -785,7 +867,10 @@ function ProductTemplateFormDialog({
 							<label className="field">
 								<span>Тара</span>
 								<select
-									onChange={(event) => setPackagingTypeId(event.target.value)}
+									onChange={(event) => dispatchForm({
+										type: "patch",
+										values: { packagingTypeId: event.target.value },
+									})}
 									required
 									value={packagingTypeId}
 								>
@@ -802,7 +887,10 @@ function ProductTemplateFormDialog({
 							<span>Цена за единицу, ₽</span>
 							<input
 								inputMode="decimal"
-								onChange={(event) => setPriceRubles(event.target.value)}
+								onChange={(event) => dispatchForm({
+									type: "patch",
+									values: { priceRubles: event.target.value },
+								})}
 								placeholder="1250"
 								required
 								type="text"
@@ -914,7 +1002,7 @@ function CatalogNotice({
 	message: string;
 }) {
 	return (
-		<div className="catalog-notice" role="status">
+		<output className="catalog-notice">
 			<span>{message}</span>
 			{action && actionLabel ? (
 				<button className="status-button restore" disabled={actionDisabled} onClick={action} type="button">
@@ -922,7 +1010,7 @@ function CatalogNotice({
 					{actionLabel}
 				</button>
 			) : null}
-		</div>
+		</output>
 	);
 }
 

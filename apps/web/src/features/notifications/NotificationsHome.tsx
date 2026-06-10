@@ -21,6 +21,13 @@ type SuccessNotice = {
 	message: string;
 };
 
+const NOTIFICATION_DATE_FORMATTER = new Intl.DateTimeFormat("ru-RU", {
+	day: "2-digit",
+	hour: "2-digit",
+	minute: "2-digit",
+	month: "2-digit",
+});
+
 type NotificationStatusView = "new" | "completed";
 
 export function NotificationsHome({ actor, online }: NotificationsHomeProps) {
@@ -32,7 +39,13 @@ export function NotificationsHome({ actor, online }: NotificationsHomeProps) {
 	const successNoticeId = useRef(0);
 	const canCreate = actor.permissions.includes("notification.create");
 	const canComplete = actor.permissions.includes("notification.complete");
-	const notifications = useQuery({
+	const {
+		data: notifications,
+		error: notificationsErrorValue,
+		isError: notificationsError,
+		isFetching: notificationsFetching,
+		isLoading: notificationsLoading,
+	} = useQuery({
 		queryKey: ["notifications", statusView],
 		queryFn: () => listNotifications(statusView),
 		refetchInterval: 30_000,
@@ -58,7 +71,7 @@ export function NotificationsHome({ actor, online }: NotificationsHomeProps) {
 		|| createMutation.isPending
 		|| trimmedMessage.length === 0
 		|| trimmedMessage.length > 1000;
-	const showRefreshState = notifications.isFetching && !notifications.isLoading;
+	const showRefreshState = notificationsFetching && !notificationsLoading;
 	const emptyMessage = statusView === "new"
 		? "Новых задач для производства нет."
 		: "Выполненных задач пока нет.";
@@ -148,7 +161,7 @@ export function NotificationsHome({ actor, online }: NotificationsHomeProps) {
 					type="button"
 				>
 					<span>Новые</span>
-					<strong>{notifications.data?.summary.newCount ?? 0}</strong>
+					<strong>{notifications?.summary.newCount ?? 0}</strong>
 				</button>
 				<button
 					aria-selected={statusView === "completed"}
@@ -158,17 +171,17 @@ export function NotificationsHome({ actor, online }: NotificationsHomeProps) {
 					type="button"
 				>
 					<span>Выполненные</span>
-					<strong>{notifications.data?.summary.completedCount ?? 0}</strong>
+					<strong>{notifications?.summary.completedCount ?? 0}</strong>
 				</button>
 			</div>
 
-			{notifications.isLoading ? <p className="muted">Загрузка задач</p> : null}
-			{notifications.isError ? <p className="form-error">{notifications.error.message}</p> : null}
-			{!notifications.isLoading && !notifications.isError && (notifications.data?.items.length ?? 0) === 0 ? (
+			{notificationsLoading ? <p className="muted">Загрузка задач</p> : null}
+			{notificationsError ? <p className="form-error">{notificationsErrorValue.message}</p> : null}
+			{!notificationsLoading && !notificationsError && (notifications?.items.length ?? 0) === 0 ? (
 				<p className="muted">{emptyMessage}</p>
 			) : null}
-			<div className="notification-ledger" role="list">
-				{notifications.data?.items.map((item) => (
+			<ul className="notification-ledger">
+				{notifications?.items.map((item) => (
 					<NotificationRow
 						canComplete={canComplete}
 						completeDisabled={!online || completeMutation.isPending}
@@ -177,13 +190,13 @@ export function NotificationsHome({ actor, online }: NotificationsHomeProps) {
 						onComplete={() => completeMutation.mutate(item.id)}
 					/>
 				))}
-			</div>
+			</ul>
 			{completeMutation.isError ? <p className="form-error">{completeMutation.error.message}</p> : null}
 			{successNotice ? (
-				<div className="success-notice inline-success" role="status" aria-live="polite">
+				<output className="success-notice inline-success" aria-live="polite">
 					<Check aria-hidden size={17} />
 					{successNotice.message}
-				</div>
+				</output>
 			) : null}
 		</section>
 	);
@@ -203,7 +216,7 @@ function NotificationRow({
 	const completed = item.status === "completed";
 
 	return (
-		<div className="notification-ledger-row" role="listitem">
+		<li className="notification-ledger-row">
 			<div>
 				<strong>{item.message}</strong>
 				<div className="notification-meta-row">
@@ -242,7 +255,7 @@ function NotificationRow({
 					)}
 				</>
 			)}
-		</div>
+		</li>
 	);
 }
 
@@ -264,10 +277,5 @@ function getCreateBlockReason(online: boolean, message: string, pending: boolean
 }
 
 function formatDate(value: string): string {
-	return new Intl.DateTimeFormat("ru-RU", {
-		day: "2-digit",
-		hour: "2-digit",
-		minute: "2-digit",
-		month: "2-digit",
-	}).format(new Date(value));
+	return NOTIFICATION_DATE_FORMATTER.format(new Date(value));
 }

@@ -25,65 +25,69 @@ export function DistributorStockList({
 	const groups = groupByDistributor ? groupItemsByDistributor(items) : [{ id: "all", name: "", items }];
 
 	return (
-		<div className="inventory-table-list" role="table" aria-label="Позиции на распределителе">
+		<table className="inventory-table-list" aria-label="Позиции на распределителе">
 			{tableTitle || tableMeta ? (
-				<div className="inventory-table-title" role="row">
+				<caption className="inventory-table-title">
 					<strong>{tableTitle}</strong>
 					{tableMeta ? <span>{tableMeta}</span> : null}
-				</div>
+				</caption>
 			) : null}
-			<div className="inventory-table-head" role="row">
-				<span>Наименование</span>
-				<span>Количество</span>
-				<span>Итого</span>
-			</div>
-			{groups.map((group) => (
-				<Fragment key={group.id}>
-					{groupByDistributor && groups.length > 1 ? (
-						<div className="inventory-table-group" role="row">
-							<span>{group.name}</span>
-						</div>
-					) : null}
-					{group.items.map((item) => (
-						<div className="inventory-table-row" key={item.id} role="row">
-							<div className="inventory-table-product" role="cell">
-								<div className="inventory-product-title">
-									<strong>{item.productName}</strong>
+			<thead>
+				<tr className="inventory-table-head">
+					<th className="inventory-table-product" scope="col">Наименование</th>
+					<th className="inventory-table-quantity" scope="col">Количество</th>
+					<th className="inventory-table-total" scope="col">Итого</th>
+				</tr>
+			</thead>
+			<tbody>
+				{groups.map((group) => (
+					<Fragment key={group.id}>
+						{groupByDistributor && groups.length > 1 ? (
+							<tr className="inventory-table-group">
+								<th colSpan={3} scope="colgroup">{group.name}</th>
+							</tr>
+						) : null}
+						{group.items.map((item) => (
+							<tr className="inventory-table-row" key={item.id}>
+								<td className="inventory-table-product">
+									<div className="inventory-product-title">
+										<strong>{item.productName}</strong>
+										{item.discounted ? (
+											<BadgePercent aria-hidden className="inventory-discount-icon" size={14} strokeWidth={2.2} />
+										) : null}
+										{item.discounted ? <span className="sr-only">Цена снижена</span> : null}
+									</div>
+									{showDistributorName ? <span>{item.distributorName}</span> : null}
+								</td>
+								<td className="inventory-table-quantity">
+									<strong>{item.quantity} шт</strong>
+									<span className="inventory-price-line">
+										{formatRubles(item.unitPriceCents)}/шт
+									</span>
 									{item.discounted ? (
-										<BadgePercent aria-hidden className="inventory-discount-icon" size={14} strokeWidth={2.2} />
+										<span className="inventory-price-before">{formatRubles(item.baseUnitPriceCents)}/шт</span>
 									) : null}
-									{item.discounted ? <span className="sr-only">Цена снижена</span> : null}
-								</div>
-								{showDistributorName ? <span>{item.distributorName}</span> : null}
-							</div>
-							<div className="inventory-table-quantity" role="cell">
-								<strong>{item.quantity} шт</strong>
-								<span className="inventory-price-line">
-									{formatRubles(item.unitPriceCents)}/шт
-								</span>
-								{item.discounted ? (
-									<span className="inventory-price-before">{formatRubles(item.baseUnitPriceCents)}/шт</span>
-								) : null}
-							</div>
-							<div className="inventory-table-total" role="cell">
-								<strong>{formatRubles(item.stockValueCents)}</strong>
-								{onAssignDiscount ? (
-									<button
-										aria-label="Снизить цену"
-										className="inventory-inline-action"
-										disabled={item.quantity <= 0}
-										onClick={() => onAssignDiscount(item)}
-										type="button"
-									>
-										{discountActionLabel}
-									</button>
-								) : null}
-							</div>
-						</div>
-					))}
-				</Fragment>
-			))}
-		</div>
+								</td>
+								<td className="inventory-table-total">
+									<strong>{formatRubles(item.stockValueCents)}</strong>
+									{onAssignDiscount ? (
+										<button
+											aria-label="Снизить цену"
+											className="inventory-inline-action"
+											disabled={item.quantity <= 0}
+											onClick={() => onAssignDiscount(item)}
+											type="button"
+										>
+											{discountActionLabel}
+										</button>
+									) : null}
+								</td>
+							</tr>
+						))}
+					</Fragment>
+				))}
+			</tbody>
+		</table>
 	);
 }
 
