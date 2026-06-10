@@ -515,6 +515,7 @@ Implementation stages:
    - Preserve product options, quantity rules and success behavior.
    - Update targeted tests, cleanup stale form styles and docs.
    - Commit after implementation.
+   - Status: implemented. Courier load now uses `production-detail-screen` / `production-action-form`, selected-stock facts and operation totals are compact ledger rows, old `operation-total` is gone, and the existing load API, validation and query invalidation behavior is unchanged.
 
 4. **Возврат.**
    - Use the approved mock to rebuild `CourierUnloadHome` around destination, products, cash and operation total.

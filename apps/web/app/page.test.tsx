@@ -1976,6 +1976,10 @@ describe("HomePage", () => {
 		fireEvent.click(loadAction);
 		expect(await screen.findByRole("heading", { name: "Детали загрузки" })).toBeTruthy();
 		await selectOperationProduct(/Икра горбуши/);
+		expect(screen.getByText("Доступно")).toBeTruthy();
+		expect(screen.getByText("Цена")).toBeTruthy();
+		expect(screen.getByText("Операция")).toBeTruthy();
+		expect(document.querySelector(".operation-total")).toBeNull();
 		fireEvent.change(screen.getByLabelText("Количество, шт"), { target: { value: "1" } });
 		fireEvent.change(screen.getByLabelText("Комментарий"), { target: { value: "На доставку" } });
 		fireEvent.click(screen.getByRole("button", { name: "Записать загрузку" }));
@@ -2030,6 +2034,7 @@ describe("HomePage", () => {
 
 		fireEvent.click(await screen.findByRole("button", { name: "Загрузить" }));
 		await selectOperationProduct(/Икра горбуши/);
+		expect(document.querySelector(".operation-total")).toBeNull();
 		fireEvent.change(screen.getByLabelText("Количество, шт"), { target: { value: "1" } });
 		fireEvent.change(screen.getByLabelText("Комментарий"), { target: { value: "На доставку" } });
 		fireEvent.click(screen.getByRole("button", { name: "Записать загрузку" }));

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FormEvent, useState } from "react";
+import { FormEvent, type ReactNode, useState } from "react";
 import { PackagePlus } from "lucide-react";
 import type { CourierLoadOption } from "@buhta/shared";
 import { createCourierLoad, getCourierLoadOptions } from "../../lib/api-client";
@@ -79,15 +79,13 @@ export function CourierLoadHome({
 	}
 
 	return (
-		<section className="screen-stack">
+		<section className="screen-stack production-detail-screen">
 			<div className="section-heading compact">
 				<h2>Загрузка</h2>
 			</div>
 
-			<form className="form-panel" onSubmit={handleSubmit}>
-				<div className="section-heading compact">
-					<h2>Детали загрузки</h2>
-				</div>
+			<form className="form-panel production-action-form" onSubmit={handleSubmit}>
+				<LoadFormHeading title="Детали загрузки" />
 				<OperationProductSelect
 					label="Продукция"
 					onValueChange={setSelectedBalanceId}
@@ -106,7 +104,7 @@ export function CourierLoadHome({
 					<p className="muted">Нет продукции для загрузки.</p>
 				) : null}
 
-				{selectedStock ? <SelectedStockInfo stock={selectedStock} quantity={parsedQuantity} /> : null}
+				{selectedStock ? <SelectedStockInfo stock={selectedStock} /> : null}
 
 				<label className="field">
 					<span>Количество, шт</span>
@@ -122,39 +120,67 @@ export function CourierLoadHome({
 					<span>Комментарий</span>
 					<textarea onChange={(event) => setComment(event.target.value)} rows={2} value={comment} />
 				</label>
-				<div className="operation-total">
-					<div>
-						<span>Итого</span>
-						<strong>{formatRubles(loadValueCents)} ₽</strong>
-					</div>
-					<p>Продукция на балансе курьера</p>
-				</div>
+				<LoadInfoLedger>
+					<LoadInfoRow label="Количество" value={formatQuantity(parsedQuantity)} />
+					<LoadInfoRow label="Итого" value={`${formatRubles(loadValueCents)} ₽`} />
+					<LoadInfoRow label="Операция" value="На баланс курьера" />
+				</LoadInfoLedger>
 				{localError ? <p className="form-error">{localError}</p> : null}
 				{loadMutation.isError ? <p className="form-error">{loadMutation.error.message}</p> : null}
-				{submitBlockReason ? <p className="muted">{submitBlockReason}</p> : null}
-				<button className="primary-button" disabled={submitDisabled} type="submit">
-					<PackagePlus aria-hidden size={18} />
-					Записать загрузку
-				</button>
+				<LoadSubmitBlock blockReason={submitBlockReason}>
+					<button className="primary-button" disabled={submitDisabled} type="submit">
+						<PackagePlus aria-hidden size={18} />
+						Записать загрузку
+					</button>
+				</LoadSubmitBlock>
 			</form>
 		</section>
 	);
 }
 
-function SelectedStockInfo({
-	quantity,
-	stock,
-}: {
-	quantity: number;
-	stock: CourierLoadOption;
-}) {
-	const totalCents = Number.isInteger(quantity) && quantity > 0 ? quantity * stock.unitPriceCents : 0;
-
+function LoadFormHeading({ meta, title }: { meta?: string | undefined; title: string }) {
 	return (
-		<p className="muted">
-			Доступно: {stock.availableQuantity} шт · {formatRubles(stock.unitPriceCents)} ₽/шт
-			{totalCents > 0 ? ` · ${formatRubles(totalCents)} ₽` : ""}
-		</p>
+		<div className="production-form-heading">
+			<h2>{title}</h2>
+			{meta ? <span>{meta}</span> : null}
+		</div>
+	);
+}
+
+function LoadInfoLedger({ children }: { children: ReactNode }) {
+	return <div className="production-form-ledger">{children}</div>;
+}
+
+function LoadInfoRow({ label, value }: { label: string; value: string }) {
+	return (
+		<div className="production-form-ledger-row">
+			<span>{label}</span>
+			<strong>{value}</strong>
+		</div>
+	);
+}
+
+function LoadSubmitBlock({
+	blockReason,
+	children,
+}: {
+	blockReason: string;
+	children: ReactNode;
+}) {
+	return (
+		<div className="production-submit-block">
+			{blockReason ? <p className="production-submit-reason">{blockReason}</p> : null}
+			{children}
+		</div>
+	);
+}
+
+function SelectedStockInfo({ stock }: { stock: CourierLoadOption }) {
+	return (
+		<LoadInfoLedger>
+			<LoadInfoRow label="Доступно" value={`${stock.availableQuantity} шт`} />
+			<LoadInfoRow label="Цена" value={`${formatRubles(stock.unitPriceCents)} ₽/шт`} />
+		</LoadInfoLedger>
 	);
 }
 
@@ -167,4 +193,8 @@ function isValidQuantity(quantity: number, selectedStock: CourierLoadOption | un
 
 function formatRubles(priceCents: number): string {
 	return formatCompactMoneyCents(priceCents);
+}
+
+function formatQuantity(quantity: number): string {
+	return Number.isInteger(quantity) && quantity > 0 ? `${quantity} шт` : "Количество не задано";
 }
