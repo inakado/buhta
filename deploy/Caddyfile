@@ -1,7 +1,7 @@
 {$BUHTA_DOMAIN} {
 	encode gzip zstd
 
-	@api path /api/* /health /analytics* /catalog* /clients* /courier* /distributor* /notifications* /operations* /production* /users*
+	@api path /api/* /health /account* /analytics* /auth* /catalog* /clients* /courier* /distributor* /notifications* /operations* /production* /users*
 	reverse_proxy @api api:3000
 
 	reverse_proxy web:3001

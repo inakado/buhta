@@ -299,32 +299,34 @@ DB rollback не автоматизировать без явной необхо
 
 ### Шаг 3. Server bootstrap
 
-Статус: `Partially Completed`.
+Статус: `Completed`.
 
 - Установить Docker на сервер.
 - Настроить firewall.
 - Создать `/opt/buhta`.
-- Положить env и Caddy config: `Pending`.
-- Сделать первый ручной deploy по SSH: `Pending`.
+- Положить env и Caddy config.
+- Сделать первый deploy через GitHub Actions.
 
 Выполнено на `2026-06-11`:
 
 - Docker Engine `29.5.3` и Docker Compose plugin `v5.1.4` установлены.
 - ufw включен, разрешены `OpenSSH`, `80/tcp`, `443/tcp`.
 - `/opt/buhta/deploy` и `/opt/buhta/backups/postgres` созданы bootstrap-скриптом.
+- `/opt/buhta/.env.production` создан вручную на сервере с правами `600 root:root`.
+- Первый production deploy выполнен через GitHub Actions на `373466824e4b18cf3eecc740c7d80b946deaac6e`.
 
 ### Шаг 4. CI
 
-Статус: `Implemented, Not Yet GitHub-Verified`.
+Статус: `Completed`.
 
 - Добавить workflow `ci.yml`.
 - Поднять Postgres service в GitHub Actions.
 - Прогнать lint/typecheck/test/docs/build.
-- Убедиться, что full test suite проходит на чистой CI-БД. Если нет, сначала закрыть `API Integration Test Isolation` из tech debt или временно разделить blocking и non-blocking jobs с явным статусом.
+- `pnpm test:ci` запускает API integration tests без file parallelism, чтобы тесты не влияли друг на друга через общую CI-БД.
 
 ### Шаг 5. Image build and registry
 
-Статус: `Implemented, Not Yet GitHub-Verified`.
+Статус: `Completed`.
 
 - Добавить workflow build/push в GHCR.
 - Тегировать images по git SHA.
@@ -332,7 +334,7 @@ DB rollback не автоматизировать без явной необхо
 
 ### Шаг 6. Deploy workflow
 
-Статус: `In Progress`.
+Статус: `Completed`.
 
 - Добавить GitHub Environment `production`.
 - Добавить secrets:
@@ -347,6 +349,15 @@ DB rollback не автоматизировать без явной необхо
   - migrate;
   - restart;
   - health checks.
+
+Проверено:
+
+- GitHub Actions `CI` success.
+- GitHub Actions `Deploy Production` success.
+- `https://buhta-crm.ru/health` возвращает `200`.
+- Caddy получил Let's Encrypt certificate.
+- `docker compose ps` показывает healthy `api` и `postgres`, running `web` и `caddy`.
+- Первичный `admin` создан seed-командой, временный пароль хранится на сервере в root-only файле `/opt/buhta/initial-admin-password.txt`.
 
 ### Шаг 7. Docs and operational runbook
 

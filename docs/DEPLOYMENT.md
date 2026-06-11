@@ -2,9 +2,9 @@
 
 Production deploy runbook проекта «Бухта».
 
-Статус: `Draft`. Первый production-контур строится для закрытой CRM небольшой команды: Ubuntu Server, Docker Compose, Caddy, GitHub Actions и GHCR images.
+Статус: `Active`. Первый production-контур для закрытой CRM небольшой команды: Ubuntu Server, Docker Compose, Caddy, GitHub Actions и GHCR images.
 
-Текущее состояние на `2026-06-11`: server bootstrap на VPS выполнен, Docker Engine/Compose установлены, firewall включен. Временная server build-проверка `api` и `web` Docker images прошла успешно; тестовые images и временные build-файлы после проверки удалены.
+Текущее состояние на `2026-06-11`: production deploy выполнен через GitHub Actions, `https://buhta-crm.ru/health` отвечает `200`, Caddy получил Let's Encrypt certificate, `api`, `web`, `postgres` и `caddy` работают в Docker Compose.
 
 ## 1. Production contour
 
@@ -110,6 +110,25 @@ sh /tmp/bootstrap-ubuntu.sh
 
 Перед первым deploy вручную создать `/opt/buhta/.env.production`.
 
+После первого deploy создать первичного admin-пользователя:
+
+```sh
+ssh buhta
+cd /opt/buhta/deploy
+IMAGE_TAG=<current-git-sha> docker compose --env-file /opt/buhta/.env.production -f compose.prod.yml run --rm \
+  -e SEED_ADMIN_LOGIN=admin \
+  -e SEED_ADMIN_PASSWORD=<temporary-password> \
+  api pnpm --filter @buhta/api seed
+```
+
+В текущем production-contour временный пароль первичного admin сохранен на сервере:
+
+```text
+/opt/buhta/initial-admin-password.txt
+```
+
+Файл имеет права `600 root:root`. После первого входа admin должен сменить пароль в интерфейсе, а файл с временным паролем нужно удалить.
+
 Если нужен ручной deploy уже существующего image tag:
 
 ```sh
@@ -125,16 +144,17 @@ cd /opt/buhta/deploy
 1. Загружает `/opt/buhta/.env.production`.
 2. Делает `docker compose pull`.
 3. Поднимает `postgres`.
-4. Делает pre-deploy backup через `pg_dump -Fc`.
-5. Запускает Prisma migrations:
+4. Ждет готовности Postgres через `pg_isready`.
+5. Делает pre-deploy backup через `pg_dump -Fc`.
+6. Запускает Prisma migrations:
    ```sh
    pnpm --filter @buhta/api prisma:deploy
    ```
-6. Перезапускает сервисы:
+7. Перезапускает сервисы:
    ```sh
    docker compose up -d --remove-orphans
    ```
-7. Проверяет:
+8. Проверяет:
    ```sh
    https://buhta-crm.ru/health
    ```
