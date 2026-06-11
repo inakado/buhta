@@ -14,6 +14,7 @@
 		"lint:boundaries": "eslint \"apps/*/{app,src,test}/**/*.{ts,tsx}\" \"packages/*/src/**/*.{ts,tsx}\" --no-error-on-unmatched-pattern --quiet",
 		"typecheck": "turbo typecheck",
 		"test": "turbo test",
+		"test:ci": "pnpm --filter @buhta/shared test && pnpm --filter @buhta/web test && pnpm --filter @buhta/api test:ci",
 		"smoke": "node scripts/smoke/smoke.mjs",
 		"audit": "pnpm audit",
 		"d2:svg": "node scripts/diagrams/render-d2.mjs svg",

@@ -22,6 +22,19 @@ STAMP=$(date -u +"%Y%m%dT%H%M%SZ")
 OUT="$BACKUP_DIR/buhta-${POSTGRES_DB}-${STAMP}.dump"
 
 cd "$SCRIPT_DIR"
+
+i=0
+until docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" exec -T postgres \
+	pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB" >/dev/null 2>&1; do
+	i=$((i + 1))
+	if [ "$i" -ge 30 ]; then
+		echo "Postgres is not ready for backup" >&2
+		docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" ps
+		exit 1
+	fi
+	sleep 2
+done
+
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" exec -T postgres \
 	pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc > "$OUT"
 

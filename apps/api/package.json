@@ -10,6 +10,7 @@
 		"lint": "eslint src test --ext .ts",
 		"typecheck": "prisma generate && tsc -p tsconfig.json --noEmit",
 		"test": "prisma generate && vitest run",
+		"test:ci": "prisma generate && vitest run --no-file-parallelism --maxWorkers=1",
 		"test:watch": "vitest",
 		"prisma:generate": "prisma generate",
 		"prisma:migrate": "prisma migrate dev",

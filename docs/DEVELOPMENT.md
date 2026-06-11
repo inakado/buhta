@@ -177,4 +177,5 @@ Env-файлы:
 - Если `prisma migrate status/deploy` внутри sandbox возвращает неинформативный `Schema engine error: undefined`, повторить ту же Prisma-команду вне sandbox перед поиском ошибки в миграции.
 - Не использовать длинные `tsx -e` one-liners для Prisma/debug-кода: shell легко ломает `$disconnect`, а `tsx` может открывать IPC pipe и падать с `EPERM`. Для проверки поведения предпочтительнее targeted test или небольшой временный script, который не попадает в коммит.
 - Если API dev server отвечает `ERR_EMPTY_RESPONSE` / `ERR_CONNECTION_REFUSED` во время разработки, проверить лог `tsx watch`: частые рестарты из-за `node_modules/.pnpm/...` означают, что watch-контур снова захватывает зависимости. Dev script `@buhta/api` должен исключать `node_modules` из watch.
+- CI использует `pnpm test:ci`: shared/web тесты идут обычным способом, а API integration tests запускаются без file parallelism. Это защищает Postgres integration tests от взаимного влияния через общую CI-БД.
 - Если нужно сделать `git add` или `git commit`, операция пишет в `.git`; при отказе на `.git/index.lock` повторить git-команду с разрешением на запись git metadata.

@@ -57,7 +57,7 @@ jobs:
         run: pnpm typecheck
 
       - name: Test
-        run: pnpm test
+        run: pnpm test:ci
 
       - name: Docs check
         run: pnpm docs:check

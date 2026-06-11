@@ -30,6 +30,19 @@ echo "Deploying Buhta image tag: $IMAGE_TAG"
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" pull
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d postgres
 
+echo "Waiting for Postgres..."
+i=0
+until docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" exec -T postgres \
+	pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB" >/dev/null 2>&1; do
+	i=$((i + 1))
+	if [ "$i" -ge 30 ]; then
+		echo "Postgres did not become ready" >&2
+		docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" ps
+		exit 1
+	fi
+	sleep 2
+done
+
 echo "Creating pre-deploy database backup..."
 "$SCRIPT_DIR/backup-postgres.sh"
 
