@@ -314,6 +314,7 @@ DB rollback не автоматизировать без явной необхо
 - `/opt/buhta/deploy` и `/opt/buhta/backups/postgres` созданы bootstrap-скриптом.
 - `/opt/buhta/.env.production` создан вручную на сервере с правами `600 root:root`.
 - Первый production deploy выполнен через GitHub Actions на `373466824e4b18cf3eecc740c7d80b946deaac6e`.
+- Последний проверенный production deploy на момент закрытия задачи выполнен через GitHub Actions на `ee6686608d6493478fcb168c5baa67c4a52b908c`.
 
 ### Шаг 4. CI
 
@@ -358,6 +359,8 @@ DB rollback не автоматизировать без явной необхо
 - Caddy получил Let's Encrypt certificate.
 - `docker compose ps` показывает healthy `api` и `postgres`, running `web` и `caddy`.
 - Первичный `admin` создан seed-командой, временный пароль хранится на сервере в root-only файле `/opt/buhta/initial-admin-password.txt`.
+- CI/CD считается подготовленным для MVP: push в `main` проходит через CI, image build/push, SSH deploy, backup, migrations, restart and health check.
+- Docker image slimming не входит в закрытие этой задачи: текущие images крупнее оптимальных, но deploy на GHCR/VPS прошел успешно; оптимизацию выполнять отдельным production-hardening этапом.
 
 ### Шаг 7. Docs and operational runbook
 

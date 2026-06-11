@@ -4,9 +4,9 @@ Production deploy runbook проекта «Бухта».
 
 Статус: `Active`. Первый production-контур для закрытой CRM небольшой команды: Ubuntu Server, Docker Compose, Caddy, GitHub Actions и GHCR images.
 
-Текущее состояние на `2026-06-11`: production deploy выполнен через GitHub Actions, `https://buhta-crm.ru/health` отвечает `200`, Caddy получил Let's Encrypt certificate, `api`, `web`, `postgres` и `caddy` работают в Docker Compose.
+Текущее состояние на `2026-06-11`: production CI/CD подготовлен и проверен end-to-end. Production deploy выполняется через GitHub Actions, `https://buhta-crm.ru/health` отвечает `200`, Caddy получил Let's Encrypt certificate, `api`, `web`, `postgres` и `caddy` работают в Docker Compose.
 
-Операционный факт на `2026-06-11`: live `api` и `web` image работают на SHA `516939679608271ecb4f32fee3bf17c05a6e52a1`; Caddyfile на сервере вручную обновлен до точного API matcher из `main`. Поздний run `fix: harden production route deployment` был отменен, потому что завис на `pushing layers` в GHCR до SSH deploy; сервер он не трогал.
+Операционный факт на `2026-06-11`: live `api` и `web` image работают на SHA `ee6686608d6493478fcb168c5baa67c4a52b908c`; последний production deploy `fix: update pwa install icons` прошел успешно через полный GitHub Actions pipeline. Срочная оптимизация Docker image size не требуется для закрытия MVP CI/CD-задачи; уменьшение runtime images остается production-hardening follow-up.
 
 ## 1. Production contour
 
@@ -181,6 +181,8 @@ gh run view <run-id> --repo inakado/buhta --json jobs,url
 
 Если шаг завис именно на `pushing layers` в GHCR, сервер не менялся; можно отменить run и отдельно разбираться с размером image/cache.
 
+На `2026-06-11` повторный production deploy после добавления PWA icons прошел без зависания GHCR push. Поэтому сжатие Docker images не является текущим блокером deploy; возвращаться к нему стоит как к отдельной оптимизации, если push/pull снова станет нестабильным или слишком долгим.
+
 ## 7. Rollback
 
 Rollback приложения:
@@ -285,6 +287,7 @@ Image retention для MVP: держать текущий SHA и один пре
 - Runtime image содержит dev dependencies, потому что `tsx` нужен для MVP runtime. Перед hardening нужно перейти на compiled/bundled API runtime.
 - Postgres живет в Docker volume на том же сервере. Для маленькой закрытой CRM это допустимо на старте, но backups обязательны.
 - `.github/workflows/**` разрешены в git, остальная `.github` остается ignored.
+- Production images пока крупнее оптимальных, но последний end-to-end deploy прошел успешно. Не делать image slimming в рамках срочных hotfix/deploy задач без отдельного плана и проверки rollback.
 
 ## 11. Production-hardening follow-up
 
