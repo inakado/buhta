@@ -83,6 +83,36 @@ describe("UsersController", () => {
 		expect(usersService.updateUserRole).toHaveBeenCalledWith(actor, "u1", "director");
 	});
 
+	it("validates update identity payload before calling service", async () => {
+		const usersService = {
+			updateUserIdentity: vi.fn(),
+		} as unknown as UsersService;
+		const controller = new UsersController(usersService);
+
+		await expect(controller.updateUserIdentity(actor, "u1", { name: "", login: "bad login" })).rejects.toThrow(AppError);
+		expect(usersService.updateUserIdentity).not.toHaveBeenCalled();
+	});
+
+	it("returns user summary after identity update", async () => {
+		const updatedUser = {
+			...userSummary,
+			name: "Nikita Ivanov",
+			login: "nikita",
+		};
+		const usersService = {
+			updateUserIdentity: vi.fn().mockResolvedValue(updatedUser),
+		} as unknown as UsersService;
+		const controller = new UsersController(usersService);
+
+		await expect(controller.updateUserIdentity(actor, "u1", { name: "Nikita Ivanov", login: "Nikita" })).resolves.toEqual({
+			user: updatedUser,
+		});
+		expect(usersService.updateUserIdentity).toHaveBeenCalledWith(actor, "u1", {
+			name: "Nikita Ivanov",
+			login: "nikita",
+		});
+	});
+
 	it("validates own password change payload before calling service", async () => {
 		const usersService = {
 			changeOwnPassword: vi.fn(),

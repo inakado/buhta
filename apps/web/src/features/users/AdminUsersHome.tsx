@@ -2,10 +2,17 @@
 
 import * as Dialog from "@radix-ui/react-dialog";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Copy, KeyRound, Plus, RotateCcw, Search, X } from "lucide-react";
-import { FormEvent, useMemo, useState } from "react";
-import { ROLES, type Role, type UserSummary } from "@buhta/shared";
-import { createUser, listUsers, resetUserPassword, updateUserRole, type CurrentActor } from "../../lib/api-client";
+import { Copy, Edit3, KeyRound, Plus, RotateCcw, Search, X } from "lucide-react";
+import { FormEvent, useMemo, useReducer, useState } from "react";
+import { ROLES, type Role, type UpdateUserIdentityRequest, type UserSummary } from "@buhta/shared";
+import {
+	createUser,
+	listUsers,
+	resetUserPassword,
+	updateUserIdentity,
+	updateUserRole,
+	type CurrentActor,
+} from "../../lib/api-client";
 import { ROLE_LABELS } from "../../lib/role-labels";
 
 type RoleFilter = "all" | Role;
@@ -13,6 +20,35 @@ type RoleFilter = "all" | Role;
 type RoleChangeRequest = {
 	role: Role;
 	user: UserSummary;
+};
+
+type AdminUsersState = {
+	createOpen: boolean;
+	identityTarget: UserSummary | null;
+	resetTarget: UserSummary | null;
+	roleChangeRequest: RoleChangeRequest | null;
+	roleFilter: RoleFilter;
+	searchDraft: string;
+	temporaryPassword: string | null;
+};
+
+type AdminUsersAction =
+	| { type: "setCreateOpen"; open: boolean }
+	| { type: "setIdentityTarget"; user: UserSummary | null }
+	| { type: "setResetTarget"; user: UserSummary | null }
+	| { type: "setRoleChangeRequest"; request: RoleChangeRequest | null }
+	| { type: "setRoleFilter"; roleFilter: RoleFilter }
+	| { type: "setSearchDraft"; searchDraft: string }
+	| { type: "setTemporaryPassword"; temporaryPassword: string | null };
+
+const ADMIN_USERS_INITIAL_STATE: AdminUsersState = {
+	createOpen: false,
+	identityTarget: null,
+	resetTarget: null,
+	roleChangeRequest: null,
+	roleFilter: "all",
+	searchDraft: "",
+	temporaryPassword: null,
 };
 
 export function AdminUsersHome({
@@ -25,12 +61,16 @@ export function AdminUsersHome({
 	online: boolean;
 }) {
 	const queryClient = useQueryClient();
-	const [createOpen, setCreateOpen] = useState(false);
-	const [resetTarget, setResetTarget] = useState<UserSummary | null>(null);
-	const [roleChangeRequest, setRoleChangeRequest] = useState<RoleChangeRequest | null>(null);
-	const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
-	const [searchDraft, setSearchDraft] = useState("");
-	const [temporaryPassword, setTemporaryPassword] = useState<string | null>(null);
+	const [state, dispatch] = useReducer(adminUsersReducer, ADMIN_USERS_INITIAL_STATE);
+	const {
+		createOpen,
+		identityTarget,
+		resetTarget,
+		roleChangeRequest,
+		roleFilter,
+		searchDraft,
+		temporaryPassword,
+	} = state;
 	const {
 		data: users,
 		error: usersError,
@@ -53,16 +93,25 @@ export function AdminUsersHome({
 	const resetPassword = useMutation({
 		mutationFn: (user: UserSummary) => resetUserPassword(user.id),
 		onSuccess: async (data) => {
-			setResetTarget(null);
-			setTemporaryPassword(data.temporaryPassword);
+			dispatch({ type: "setResetTarget", user: null });
+			dispatch({ type: "setTemporaryPassword", temporaryPassword: data.temporaryPassword });
 			await queryClient.invalidateQueries({ queryKey: ["users"] });
 		},
 	});
 	const updateRole = useMutation({
 		mutationFn: ({ role, user }: RoleChangeRequest) => updateUserRole(user.id, role),
 		onSuccess: async () => {
-			setRoleChangeRequest(null);
+			dispatch({ type: "setRoleChangeRequest", request: null });
 			onActionSuccess("Роль изменена");
+			await queryClient.invalidateQueries({ queryKey: ["users"] });
+		},
+	});
+	const updateIdentity = useMutation({
+		mutationFn: ({ input, user }: { input: UpdateUserIdentityRequest; user: UserSummary }) =>
+			updateUserIdentity(user.id, input),
+		onSuccess: async () => {
+			dispatch({ type: "setIdentityTarget", user: null });
+			onActionSuccess("Пользователь изменен");
 			await queryClient.invalidateQueries({ queryKey: ["users"] });
 		},
 	});
@@ -81,7 +130,7 @@ export function AdminUsersHome({
 					<button
 						className="secondary-button compact-button admin-create-button"
 						disabled={!online}
-						onClick={() => setCreateOpen(true)}
+						onClick={() => dispatch({ type: "setCreateOpen", open: true })}
 						title={online ? undefined : "Нет сети: создание недоступно"}
 						type="button"
 					>
@@ -92,8 +141,8 @@ export function AdminUsersHome({
 			</div>
 
 			<CreateUserDialog
-				onOpenChange={setCreateOpen}
-				onTemporaryPassword={setTemporaryPassword}
+				onOpenChange={(open) => dispatch({ type: "setCreateOpen", open })}
+				onTemporaryPassword={(password) => dispatch({ type: "setTemporaryPassword", temporaryPassword: password })}
 				online={online}
 				open={createOpen}
 			/>
@@ -105,7 +154,7 @@ export function AdminUsersHome({
 						<Search aria-hidden size={17} />
 						<input
 							aria-label="Поиск пользователей"
-							onChange={(event) => setSearchDraft(event.target.value)}
+							onChange={(event) => dispatch({ type: "setSearchDraft", searchDraft: event.target.value })}
 							placeholder="Имя или login"
 							type="search"
 							value={searchDraft}
@@ -114,7 +163,7 @@ export function AdminUsersHome({
 							<button
 								aria-label="Очистить поиск пользователей"
 								className="secondary-icon-button"
-								onClick={() => setSearchDraft("")}
+								onClick={() => dispatch({ type: "setSearchDraft", searchDraft: "" })}
 								type="button"
 							>
 								<X aria-hidden size={15} />
@@ -126,7 +175,7 @@ export function AdminUsersHome({
 					<span>Роль</span>
 					<select
 						aria-label="Фильтр роли"
-						onChange={(event) => setRoleFilter(event.target.value as RoleFilter)}
+						onChange={(event) => dispatch({ type: "setRoleFilter", roleFilter: event.target.value as RoleFilter })}
 						value={roleFilter}
 					>
 						<option value="all">Все роли</option>
@@ -141,7 +190,7 @@ export function AdminUsersHome({
 
 			{temporaryPassword ? (
 				<TemporaryPasswordNotice
-					onClose={() => setTemporaryPassword(null)}
+					onClose={() => dispatch({ type: "setTemporaryPassword", temporaryPassword: null })}
 					password={temporaryPassword}
 				/>
 			) : null}
@@ -149,13 +198,32 @@ export function AdminUsersHome({
 			<UserAccessList
 				loading={usersLoading}
 				onCopyLogin={copyLogin}
-				onResetPassword={setResetTarget}
-				onRoleChangeRequest={setRoleChangeRequest}
+				onEditIdentity={(user) => dispatch({ type: "setIdentityTarget", user })}
+				onResetPassword={(user) => dispatch({ type: "setResetTarget", user })}
+				onRoleChangeRequest={(request) => dispatch({ type: "setRoleChangeRequest", request })}
 				online={online}
 				roleChangePending={updateRole.isPending}
 				users={filteredUsers}
 				error={usersIsError ? usersError.message : ""}
 				hasActiveFilters={hasActiveFilters}
+			/>
+
+			<EditUserIdentityDialog
+				error={updateIdentity.isError ? updateIdentity.error.message : null}
+				onOpenChange={(open) => {
+					if (!open) {
+						dispatch({ type: "setIdentityTarget", user: null });
+						updateIdentity.reset();
+					}
+				}}
+				onSubmit={(input) => {
+					if (identityTarget) {
+						updateIdentity.mutate({ input, user: identityTarget });
+					}
+				}}
+				online={online}
+				pending={updateIdentity.isPending}
+				user={identityTarget}
 			/>
 
 			<ResetPasswordDialog
@@ -167,7 +235,7 @@ export function AdminUsersHome({
 				}}
 				onOpenChange={(open) => {
 					if (!open) {
-						setResetTarget(null);
+						dispatch({ type: "setResetTarget", user: null });
 						resetPassword.reset();
 					}
 				}}
@@ -185,7 +253,7 @@ export function AdminUsersHome({
 				}}
 				onOpenChange={(open) => {
 					if (!open) {
-						setRoleChangeRequest(null);
+						dispatch({ type: "setRoleChangeRequest", request: null });
 						updateRole.reset();
 					}
 				}}
@@ -195,6 +263,25 @@ export function AdminUsersHome({
 			/>
 		</section>
 	);
+}
+
+function adminUsersReducer(state: AdminUsersState, action: AdminUsersAction): AdminUsersState {
+	switch (action.type) {
+		case "setCreateOpen":
+			return { ...state, createOpen: action.open };
+		case "setIdentityTarget":
+			return { ...state, identityTarget: action.user };
+		case "setResetTarget":
+			return { ...state, resetTarget: action.user };
+		case "setRoleChangeRequest":
+			return { ...state, roleChangeRequest: action.request };
+		case "setRoleFilter":
+			return { ...state, roleFilter: action.roleFilter };
+		case "setSearchDraft":
+			return { ...state, searchDraft: action.searchDraft };
+		case "setTemporaryPassword":
+			return { ...state, temporaryPassword: action.temporaryPassword };
+	}
 }
 
 function CreateUserDialog({
@@ -343,6 +430,7 @@ function UserAccessList({
 	hasActiveFilters,
 	loading,
 	onCopyLogin,
+	onEditIdentity,
 	onResetPassword,
 	onRoleChangeRequest,
 	online,
@@ -353,6 +441,7 @@ function UserAccessList({
 	hasActiveFilters: boolean;
 	loading: boolean;
 	onCopyLogin: (login: string) => void;
+	onEditIdentity: (user: UserSummary) => void;
 	onResetPassword: (user: UserSummary) => void;
 	onRoleChangeRequest: (request: RoleChangeRequest) => void;
 	online: boolean;
@@ -381,6 +470,7 @@ function UserAccessList({
 				<UserAccessRow
 					key={user.id}
 					onCopyLogin={onCopyLogin}
+					onEditIdentity={onEditIdentity}
 					onResetPassword={onResetPassword}
 					onRoleChangeRequest={onRoleChangeRequest}
 					online={online}
@@ -395,6 +485,7 @@ function UserAccessList({
 function UserAccessRow({
 	user,
 	onCopyLogin,
+	onEditIdentity,
 	onResetPassword,
 	onRoleChangeRequest,
 	online,
@@ -402,6 +493,7 @@ function UserAccessRow({
 }: {
 	user: UserSummary;
 	onCopyLogin: (login: string) => void;
+	onEditIdentity: (user: UserSummary) => void;
 	onResetPassword: (user: UserSummary) => void;
 	onRoleChangeRequest: (request: RoleChangeRequest) => void;
 	online: boolean;
@@ -433,6 +525,16 @@ function UserAccessRow({
 					))}
 				</select>
 				<button
+					aria-label={`Изменить пользователя ${user.name}`}
+					className="secondary-icon-button"
+					disabled={!online}
+					onClick={() => onEditIdentity(user)}
+					title={online ? "Изменить имя и login" : "Нет сети: изменение недоступно"}
+					type="button"
+				>
+					<Edit3 aria-hidden size={18} />
+				</button>
+				<button
 					aria-label={`Скопировать логин ${user.name}`}
 					className="secondary-icon-button"
 					onClick={() => onCopyLogin(user.login)}
@@ -453,6 +555,109 @@ function UserAccessRow({
 				</button>
 			</div>
 		</div>
+	);
+}
+
+function EditUserIdentityDialog({
+	error,
+	onOpenChange,
+	onSubmit,
+	online,
+	pending,
+	user,
+}: {
+	error: string | null;
+	onOpenChange: (open: boolean) => void;
+	onSubmit: (input: UpdateUserIdentityRequest) => void;
+	online: boolean;
+	pending: boolean;
+	user: UserSummary | null;
+}) {
+	return (
+		<Dialog.Root open={Boolean(user)} onOpenChange={onOpenChange}>
+			<Dialog.Portal>
+				<Dialog.Overlay className="operation-dialog-overlay" />
+				<Dialog.Content className="operation-dialog admin-user-dialog">
+					<div className="operation-dialog-heading">
+						<div>
+							<Dialog.Title>Изменить пользователя</Dialog.Title>
+							{user ? <Dialog.Description>{user.name} · @{user.login}</Dialog.Description> : null}
+						</div>
+						<Dialog.Close aria-label="Закрыть" className="icon-button" type="button">
+							<X aria-hidden size={18} />
+						</Dialog.Close>
+					</div>
+					{user ? (
+						<EditUserIdentityForm
+							key={user.id}
+							error={error}
+							onSubmit={onSubmit}
+							online={online}
+							pending={pending}
+							user={user}
+						/>
+					) : null}
+				</Dialog.Content>
+			</Dialog.Portal>
+		</Dialog.Root>
+	);
+}
+
+function EditUserIdentityForm({
+	error,
+	onSubmit,
+	online,
+	pending,
+	user,
+}: {
+	error: string | null;
+	onSubmit: (input: UpdateUserIdentityRequest) => void;
+	online: boolean;
+	pending: boolean;
+	user: UserSummary;
+}) {
+	function handleSubmit(event: FormEvent<HTMLFormElement>) {
+		event.preventDefault();
+		const formData = new FormData(event.currentTarget);
+
+		onSubmit({
+			name: String(formData.get("name") ?? ""),
+			login: String(formData.get("login") ?? ""),
+		});
+	}
+
+	return (
+		<form className="operation-dialog-form" onSubmit={handleSubmit}>
+			<label className="field">
+				<span>Имя</span>
+				<input
+					defaultValue={user.name}
+					name="name"
+					required
+					type="text"
+				/>
+			</label>
+			<label className="field">
+				<span>Логин</span>
+				<input
+					defaultValue={user.login}
+					name="login"
+					required
+					type="text"
+				/>
+			</label>
+			{!online ? <p className="muted">Нет сети: изменение недоступно.</p> : null}
+			{error ? <p className="form-error">{error}</p> : null}
+			<div className="form-actions">
+				<Dialog.Close className="secondary-button" disabled={pending} type="button">
+					Отмена
+				</Dialog.Close>
+				<button className="primary-button" disabled={!online || pending} type="submit">
+					<Edit3 aria-hidden size={18} />
+					Сохранить
+				</button>
+			</div>
+		</form>
 	);
 }
 

@@ -55,6 +55,19 @@ export const UpdateUserRoleResponseSchema = z.object({
 
 export type UpdateUserRoleResponse = z.infer<typeof UpdateUserRoleResponseSchema>;
 
+export const UpdateUserIdentityRequestSchema = z.object({
+	name: z.string().trim().min(1),
+	login: LoginSchema,
+});
+
+export type UpdateUserIdentityRequest = z.infer<typeof UpdateUserIdentityRequestSchema>;
+
+export const UpdateUserIdentityResponseSchema = z.object({
+	user: UserSummarySchema,
+});
+
+export type UpdateUserIdentityResponse = z.infer<typeof UpdateUserIdentityResponseSchema>;
+
 export const UserPasswordSchema = z
 	.string()
 	.min(8)

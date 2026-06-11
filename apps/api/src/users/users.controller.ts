@@ -1,6 +1,6 @@
 import type { IncomingHttpHeaders } from "node:http";
 import { Body, Controller, Get, Inject, Param, Patch, Post, Req, UseGuards } from "@nestjs/common";
-import { CreateUserRequestSchema, UpdateUserRoleRequestSchema } from "@buhta/shared";
+import { CreateUserRequestSchema, UpdateUserIdentityRequestSchema, UpdateUserRoleRequestSchema } from "@buhta/shared";
 import { CurrentActor } from "../auth/actor.decorator";
 import { AppError } from "../common/errors/app-error";
 import type { Actor } from "../policy/actor";
@@ -46,6 +46,23 @@ export class UsersController {
 
 		return {
 			user: await this.usersService.updateUserRole(requireActor(actor), userId, parsedBody.data.role),
+		};
+	}
+
+	@Patch(":userId/identity")
+	async updateUserIdentity(
+		@CurrentActor() actor: Actor | undefined,
+		@Param("userId") userId: string,
+		@Body() body: unknown,
+	) {
+		const parsedBody = UpdateUserIdentityRequestSchema.safeParse(body);
+
+		if (!parsedBody.success) {
+			throw new AppError("VALIDATION_ERROR", "Invalid user identity payload", parsedBody.error.flatten());
+		}
+
+		return {
+			user: await this.usersService.updateUserIdentity(requireActor(actor), userId, parsedBody.data),
 		};
 	}
 

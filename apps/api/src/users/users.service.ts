@@ -5,6 +5,7 @@ import {
 	type ChangeOwnPasswordRequest,
 	type CreateUserRequest,
 	type Role,
+	type UpdateUserIdentityRequest,
 	type UserSummary,
 } from "@buhta/shared";
 import { auth } from "../auth/auth";
@@ -101,6 +102,55 @@ export class UsersService {
 				login: user.username ?? user.email,
 				fromRole: existingUser.role,
 				toRole: role,
+			},
+		});
+
+		return mapUserSummary(user);
+	}
+
+	async updateUserIdentity(
+		actor: Actor,
+		userId: string,
+		input: UpdateUserIdentityRequest,
+	): Promise<UserSummary> {
+		const existingUser = await prisma.user.findUnique({
+			where: { id: userId },
+		});
+
+		if (!existingUser) {
+			throw new AppError("NOT_FOUND", "User not found", { userId });
+		}
+
+		if (existingUser.id === actor.userId) {
+			throw new AppError("FORBIDDEN", "Admin cannot change own identity", { userId });
+		}
+
+		const login = normalizeLogin(input.login);
+		const email = technicalEmailForLogin(login);
+
+		await this.ensureLoginAvailable(login, email, userId);
+
+		const user = await prisma.user.update({
+			where: { id: userId },
+			data: {
+				name: input.name,
+				email,
+				username: login,
+				displayUsername: login,
+			},
+		});
+
+		await this.operationService.createAuditOperation({
+			actor,
+			type: "user.identity.update",
+			entityType: "user",
+			entityId: user.id,
+			details: {
+				targetUserId: user.id,
+				fromName: existingUser.name,
+				toName: user.name,
+				fromLogin: existingUser.username ?? existingUser.email,
+				toLogin: login,
 			},
 		});
 
@@ -283,10 +333,11 @@ export class UsersService {
 		throw new AppError("CONFLICT", "Could not generate unique login");
 	}
 
-	private async ensureLoginAvailable(login: string, email: string): Promise<void> {
+	private async ensureLoginAvailable(login: string, email: string, exceptUserId?: string): Promise<void> {
 		const existingUser = await prisma.user.findFirst({
 			where: {
 				OR: [{ username: login }, { email }],
+				...(exceptUserId ? { id: { not: exceptUserId } } : {}),
 			},
 		});
 

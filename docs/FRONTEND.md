@@ -358,11 +358,12 @@ Manifest contract закреплен тестом: `display: standalone`, `start
 - поиск по сотрудникам и фильтр роли находятся в компактном toolbar над списком; для v1 фильтрация client-side, потому что `/users` уже возвращает текущий список сотрудников целиком;
 - форма создания сотрудника открывается по действию `Новый` в `operation-dialog` modal поверх списка и закрывается после успешного создания;
 - временный пароль показывается отдельным compact notice с возможностью копирования и закрытия;
-- сотрудники отображаются как плотный access-list в white management panel, а не как `entity-card`: строка показывает имя, login, role select, copy login action и reset action;
-- copy login и подтвержденная смена роли показывают global success notice над bottom navigation и не переводят пользователя на другой экран;
+- сотрудники отображаются как плотный access-list в white management panel, а не как `entity-card`: строка показывает имя, login, role select, edit identity action, copy login action и reset action;
+- edit identity открывает `operation-dialog` с текущим именем и login, сохраняет через `PATCH /users/:userId/identity`, после успеха обновляет `["users"]` и не меняет роль/пароль;
+- copy login, подтвержденная смена роли и сохранение identity показывают global success notice над bottom navigation и не переводят пользователя на другой экран;
 - смена роли не отправляет PATCH из select сразу: выбор открывает `operation-dialog` confirmation, потому что роль меняет доступы сотрудника;
 - сброс пароля требует подтверждения в `operation-dialog` modal и после успеха обновляет `["users"]`;
-- admin write-действия в users screen блокируются offline на первом уровне: создание, смена роли и сброс пароля визуально недоступны без сети;
+- admin write-действия в users screen блокируются offline на первом уровне: создание, изменение имени/login, смена роли и сброс пароля визуально недоступны без сети;
 - admin bottom navigation использует `Еще`, а не старую вкладку `Настройки`; account block показывает смену собственного пароля и logout row в том же ledger vocabulary, что остальные роли;
 - роль admin не получает операционные sale/load UI, хотя backend может поддерживать часть этих flows.
 

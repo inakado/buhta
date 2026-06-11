@@ -25,6 +25,7 @@
 - `docs/exec-plans/deferred-roadmap.md` — отложенные идеи, которые не являются активной задачей.
 - `docs/exec-plans/tech-debt-tracker.md` — признанный техдолг после появления кода или harness.
 - `docs/exec-plans/active/2026-05-27-v1-roadmap.md` — долгоживущая roadmap/meta-plan полной v1.
+- `docs/exec-plans/completed/2026-06-11-admin-user-identity-edit.md` — завершенный план: редактирование администратором имени и login пользователя через CRM users lifecycle.
 - `docs/exec-plans/completed/2026-06-11-production-deploy-cicd.md` — завершенный план первого production deploy и простого CI/CD-контура для Ubuntu + Docker Compose.
 - `docs/exec-plans/completed/2026-06-11-cross-role-ux-hardening.md` — завершенный cross-role UX hardening: смена собственного пароля, админский поиск/фильтр пользователей, mobile/PWA basics и smoke длинных экранов.
 - `docs/exec-plans/completed/2026-06-10-history-and-sale-cancellation-hardening.md` — завершенный UX hardening для append pagination истории операций и paginated истории продаж с поиском, статусами и отменой старых продаж без quick presets/export.

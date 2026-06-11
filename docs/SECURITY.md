@@ -33,6 +33,7 @@ Security notes проекта «Бухта».
 - Публичный BetterAuth endpoint `/api/auth/sign-up/email` отключен и должен отклонять самостоятельную регистрацию. Роль `courier` остается дефолтом в auth user table только как технический fallback, но не как способ открыть регистрацию.
 - Email не является пользовательским идентификатором в интерфейсе CRM.
 - BetterAuth все еще требует email на уровне auth user table, поэтому API генерирует внутренний технический email вида `login@internal.buhta.local`. Это поле не показывать в UI и не использовать как бизнес-идентификатор.
+- Изменение имени/login пользователя выполняется только через `PATCH /users/:userId/identity`: backend нормализует login, проверяет уникальность и обновляет `username`, `displayUsername` и технический `email` вместе. Пароль, роль и credential account этот endpoint не меняет.
 - Session хранится в httpOnly cookie `better-auth.session_token`.
 - Роль пользователя хранится в user table как дополнительное поле.
 - Логин хранится в BetterAuth username fields `username/displayUsername`.
@@ -40,8 +41,9 @@ Security notes проекта «Бухта».
 - Сброс пароля должен гарантировать наличие `credential` account: для seed/legacy users без password credential API создает credential при reset, иначе новый пароль не сможет использоваться для входа.
 - Смена собственного пароля выполняется через `POST /account/password`: доступна любому authenticated пользователю, требует текущий пароль, проверяет credential hash на backend и записывает новый hash без сброса текущей сессии. Audit action `user.password.change` не содержит plaintext password, token или hash.
 - Администратор не может изменить собственную роль через users API.
+- Администратор не может изменить собственное имя/login через admin users API; собственный профиль должен быть отдельным account-flow, если он понадобится.
 - Администратор не может сбросить временный пароль самому себе; смена собственного пароля должна быть отдельным защищенным flow, когда он появится.
-- Audit для создания пользователя, смены роли и сброса пароля не должен содержать plaintext password.
+- Audit для создания пользователя, изменения имени/login, смены роли и сброса пароля не должен содержать plaintext password.
 - BetterAuth `admin()` plugin временно остается включенным как принятый MVP-риск: он требует admin-сессию, но открывает отдельный `/api/auth/admin/*` control plane вне CRM `/users` lifecycle. Для рабочих user-management сценариев источником истины остается `/users`; перед production-запуском риск нужно пересмотреть и либо отключить HTTP admin endpoints BetterAuth, либо доказать, что они заблокированы/делегированы в CRM lifecycle.
 - Публичные routes должны быть явно отмечены как anonymous.
 - Protected routes проходят через BetterAuth session guard и затем через backend role/policy guards.

@@ -36,6 +36,7 @@
 |---|---|---|
 | `foundation.baseline` | проверочный baseline для operation/idempotency service | нет |
 | `user.create` | администратор создал пользователя с логином и временным паролем | нет, audit details без пароля |
+| `user.identity.update` | администратор изменил имя и/или login пользователя | нет, audit details содержат старые и новые `name/login`, без пароля |
 | `user.role.update` | администратор изменил роль пользователя | нет |
 | `user.password.reset` | администратор сбросил временный пароль пользователя | нет, audit details без пароля |
 | `catalog.raw_material_type.create` | администратор или директор создал вид сырья | нет |

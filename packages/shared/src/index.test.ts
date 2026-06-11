@@ -65,6 +65,7 @@ import {
 	ClientSearchQuerySchema,
 	UpdateClientRequestSchema,
 	UpdateRawMaterialTypeRequestSchema,
+	UpdateUserIdentityRequestSchema,
 	UpdateUserRoleRequestSchema,
 	UserSummarySchema,
 	normalizeClientPhone,
@@ -164,6 +165,12 @@ describe("shared contracts", () => {
 		).toBe(true);
 		expect(UpdateUserRoleRequestSchema.safeParse({ role: "director" }).success).toBe(true);
 		expect(UpdateUserRoleRequestSchema.safeParse({ role: "owner" }).success).toBe(false);
+		expect(UpdateUserIdentityRequestSchema.parse({ name: " Nikita ", login: "Director-2" })).toEqual({
+			name: "Nikita",
+			login: "director-2",
+		});
+		expect(UpdateUserIdentityRequestSchema.safeParse({ name: "", login: "director-2" }).success).toBe(false);
+		expect(UpdateUserIdentityRequestSchema.safeParse({ name: "Nikita", login: "bad login" }).success).toBe(false);
 		expect(
 			ChangeOwnPasswordRequestSchema.safeParse({
 				currentPassword: "OldPass123!",

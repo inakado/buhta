@@ -220,6 +220,71 @@ describe("auth and policy HTTP integration", () => {
 		expect(JSON.stringify(auditLog.details)).not.toContain(createResponse.body.temporaryPassword);
 	});
 
+	it("lets admin update user identity and keeps the existing password on the new login", async () => {
+		await prisma.user.update({
+			where: { id: userId },
+			data: { role: "admin" },
+		});
+
+		const createResponse = await agent
+			.post("/users")
+			.send({
+				name: "Auth Edit Courier",
+				role: "courier",
+				login: "auth-http-edit",
+			})
+			.expect(201);
+
+		const updateResponse = await agent
+			.patch(`/users/${createResponse.body.user.id}/identity`)
+			.send({
+				name: "Auth Edited Courier",
+				login: "auth-http-edited",
+			})
+			.expect(200);
+
+		expect(updateResponse.body.user).toMatchObject({
+			id: createResponse.body.user.id,
+			name: "Auth Edited Courier",
+			login: "auth-http-edited",
+			role: "courier",
+		});
+
+		const oldLoginAgent = request.agent(server);
+		const oldLoginResponse = await oldLoginAgent.post("/api/auth/sign-in/username").send({
+			username: "auth-http-edit",
+			password: createResponse.body.temporaryPassword,
+		});
+		expect(oldLoginResponse.status).toBeGreaterThanOrEqual(400);
+
+		const editedAgent = request.agent(server);
+		await editedAgent
+			.post("/api/auth/sign-in/username")
+			.send({
+				username: "auth-http-edited",
+				password: createResponse.body.temporaryPassword,
+			})
+			.expect(200);
+
+		const meResponse = await editedAgent.get("/auth/me").expect(200);
+		expect(meResponse.body).toMatchObject({
+			authenticated: true,
+			actor: {
+				login: "auth-http-edited",
+				displayName: "Auth Edited Courier",
+				role: "courier",
+			},
+		});
+
+		const auditLog = await prisma.auditLog.findFirstOrThrow({
+			where: {
+				action: "user.identity.update",
+				entityId: createResponse.body.user.id,
+			},
+		});
+		expect(JSON.stringify(auditLog.details)).not.toContain(createResponse.body.temporaryPassword);
+	});
+
 	it("lets admin reset a user password without writing the password to audit", async () => {
 		await prisma.user.update({
 			where: { id: userId },

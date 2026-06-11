@@ -77,6 +77,8 @@ import type {
 	UpdatePackagingTypeRequest,
 	UpdateProductTemplateRequest,
 	UpdateRawMaterialTypeRequest,
+	UpdateUserIdentityRequest,
+	UpdateUserIdentityResponse,
 	UpdateUserRoleResponse,
 	UsersListResponse,
 	WorkshopProductBalancesResponse,
@@ -147,6 +149,16 @@ export async function updateUserRole(userId: string, role: Role): Promise<Update
 	return fetchJson<UpdateUserRoleResponse>(`/users/${userId}/role`, {
 		method: "PATCH",
 		body: JSON.stringify({ role }),
+	});
+}
+
+export async function updateUserIdentity(
+	userId: string,
+	input: UpdateUserIdentityRequest,
+): Promise<UpdateUserIdentityResponse> {
+	return fetchJson<UpdateUserIdentityResponse>(`/users/${userId}/identity`, {
+		method: "PATCH",
+		body: JSON.stringify(input),
 	});
 }
 

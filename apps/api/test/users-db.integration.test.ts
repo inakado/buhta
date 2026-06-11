@@ -212,6 +212,105 @@ describe("UsersService real Postgres integration", () => {
 		});
 	});
 
+	it("updates a user's name and login without changing role or password", async () => {
+		await ensureAdmin();
+		await ensureUser("director");
+		await ensureUserCredential("OldPass123!");
+
+		const user = await usersService.updateUserIdentity(adminActor, testUserId, {
+			name: "Renamed User",
+			login: "users-integration-renamed",
+		});
+
+		expect(user).toMatchObject({
+			id: testUserId,
+			name: "Renamed User",
+			login: "users-integration-renamed",
+			role: "director",
+		});
+		await expect(prisma.user.findUniqueOrThrow({ where: { id: testUserId } })).resolves.toMatchObject({
+			name: "Renamed User",
+			email: "users-integration-renamed@internal.buhta.local",
+			username: "users-integration-renamed",
+			displayUsername: "users-integration-renamed",
+			role: "director",
+		});
+
+		const credential = await prisma.account.findFirstOrThrow({
+			where: { userId: testUserId, providerId: "credential" },
+		});
+		expect(await verifyPassword({ password: "OldPass123!", hash: credential.password ?? "" })).toBe(true);
+
+		const auditLog = await prisma.auditLog.findFirstOrThrow({
+			where: {
+				action: "user.identity.update",
+				entityId: testUserId,
+			},
+		});
+		expect(auditLog.details).toMatchObject({
+			targetUserId: testUserId,
+			fromName: "Users Integration",
+			toName: "Renamed User",
+			fromLogin: testUserLogin,
+			toLogin: "users-integration-renamed",
+		});
+		expect(JSON.stringify(auditLog.details)).not.toContain("OldPass123!");
+	});
+
+	it("allows changing only the user's name while keeping the same login", async () => {
+		await ensureAdmin();
+		await ensureUser("courier");
+
+		const user = await usersService.updateUserIdentity(adminActor, testUserId, {
+			name: "Only Name Changed",
+			login: testUserLogin,
+		});
+
+		expect(user).toMatchObject({
+			name: "Only Name Changed",
+			login: testUserLogin,
+			role: "courier",
+		});
+	});
+
+	it("rejects identity update when another user already owns the login", async () => {
+		await ensureAdmin();
+		await ensureUser("courier");
+		await prisma.user.create({
+			data: {
+				id: "users-integration-duplicate",
+				email: "users-integration-duplicate@internal.buhta.local",
+				username: "users-integration-duplicate",
+				displayUsername: "users-integration-duplicate",
+				name: "Duplicate",
+				emailVerified: true,
+				role: "courier",
+			},
+		});
+
+		await expect(
+			usersService.updateUserIdentity(adminActor, testUserId, {
+				name: "Renamed User",
+				login: "users-integration-duplicate",
+			}),
+		).rejects.toMatchObject({
+			code: "CONFLICT",
+		});
+	});
+
+	it("rejects identity update for the current actor", async () => {
+		await ensureAdmin();
+
+		await expect(
+			usersService.updateUserIdentity(adminActor, adminActor.userId, {
+				name: "Admin Renamed",
+				login: "users-integration-admin-renamed",
+			}),
+		).rejects.toMatchObject({
+			code: "FORBIDDEN",
+		});
+	});
+
 	it("changes own password after verifying current password", async () => {
 		await ensureUser("courier");
 		await ensureUserCredential("OldPass123!");
