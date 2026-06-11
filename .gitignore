@@ -15,7 +15,11 @@ apps/api/src/generated/
 # Local agent/browser artifacts
 .agents/
 .claude/
-.github/
+.github/*
+!.github/workflows/
+.github/workflows/*
+!.github/workflows/ci.yml
+!.github/workflows/deploy-production.yml
 .goose/
 .impeccable/
 .kiro/

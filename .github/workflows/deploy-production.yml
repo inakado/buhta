@@ -1,0 +1,171 @@
+name: Deploy Production
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: Git SHA image tag to deploy
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  API_IMAGE: ghcr.io/inakado/buhta-api
+  WEB_IMAGE: ghcr.io/inakado/buhta-web
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_DB: buhta
+          POSTGRES_USER: buhta
+          POSTGRES_PASSWORD: buhta
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U buhta -d buhta"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      DATABASE_URL: postgresql://buhta:buhta@localhost:5433/buhta
+      BETTER_AUTH_SECRET: ci-better-auth-secret-at-least-32-chars
+      BETTER_AUTH_URL: http://localhost:3000
+      WEB_ORIGIN: http://localhost:3001
+      SEED_ADMIN_PASSWORD: Pass123!
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Apply database migrations
+        run: pnpm --filter @buhta/api exec prisma migrate deploy
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      - name: Docs check
+        run: pnpm docs:check
+
+      - name: Build
+        run: pnpm build
+
+  build:
+    runs-on: ubuntu-latest
+    needs: verify
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push API image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          push: true
+          tags: |
+            ${{ env.API_IMAGE }}:${{ github.sha }}
+            ${{ env.API_IMAGE }}:main
+
+      - name: Build and push Web image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/web/Dockerfile
+          push: true
+          build-args: |
+            NEXT_PUBLIC_API_BASE_URL=
+          tags: |
+            ${{ env.WEB_IMAGE }}:${{ github.sha }}
+            ${{ env.WEB_IMAGE }}:main
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve image tag
+        id: deploy
+        run: |
+          if [ -n "${{ inputs.image_tag }}" ]; then
+            echo "image_tag=${{ inputs.image_tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "image_tag=${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Configure SSH
+        env:
+          PRODUCTION_HOST: ${{ secrets.PRODUCTION_HOST }}
+          PRODUCTION_SSH_KEY: ${{ secrets.PRODUCTION_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$PRODUCTION_SSH_KEY" > ~/.ssh/buhta_production
+          chmod 600 ~/.ssh/buhta_production
+          ssh-keyscan -H "$PRODUCTION_HOST" >> ~/.ssh/known_hosts
+
+      - name: Sync deploy files
+        env:
+          PRODUCTION_HOST: ${{ secrets.PRODUCTION_HOST }}
+          PRODUCTION_USER: ${{ secrets.PRODUCTION_USER }}
+        run: |
+          tar -czf /tmp/buhta-deploy.tgz deploy
+          ssh -i ~/.ssh/buhta_production "$PRODUCTION_USER@$PRODUCTION_HOST" 'mkdir -p /opt/buhta'
+          scp -i ~/.ssh/buhta_production /tmp/buhta-deploy.tgz "$PRODUCTION_USER@$PRODUCTION_HOST:/tmp/buhta-deploy.tgz"
+          ssh -i ~/.ssh/buhta_production "$PRODUCTION_USER@$PRODUCTION_HOST" 'tar -xzf /tmp/buhta-deploy.tgz -C /opt/buhta && rm /tmp/buhta-deploy.tgz'
+
+      - name: Deploy over SSH
+        env:
+          PRODUCTION_HOST: ${{ secrets.PRODUCTION_HOST }}
+          PRODUCTION_USER: ${{ secrets.PRODUCTION_USER }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IMAGE_TAG: ${{ steps.deploy.outputs.image_tag }}
+        run: |
+          printf '%s' "$GHCR_TOKEN" | ssh -i ~/.ssh/buhta_production "$PRODUCTION_USER@$PRODUCTION_HOST" \
+            "docker login ghcr.io -u '${{ github.actor }}' --password-stdin"
+          ssh -i ~/.ssh/buhta_production "$PRODUCTION_USER@$PRODUCTION_HOST" \
+            "cd /opt/buhta/deploy && ./deploy.sh '$IMAGE_TAG'"

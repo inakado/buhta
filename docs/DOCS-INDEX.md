@@ -11,6 +11,7 @@
 - `docs/ARCHITECTURE-PRINCIPLES.md` — общие архитектурные и инженерные принципы.
 - `docs/TECH-STACK.md` — выбранный базовый стек, auth-направление и Docker-dev принцип.
 - `docs/DEVELOPMENT.md` — dev/test/docs runbook и целевой Docker-contour.
+- `docs/DEPLOYMENT.md` — production deploy runbook: Ubuntu + Docker Compose + Caddy + GitHub Actions/GHCR, backup, rollback и операции на сервере.
 - `docs/FOR-HUMANS.md` — короткая человеческая инструкция: как поднять dev-версию, API, frontend, БД и прогнать проверки.
 - `docs/DECISIONS.md` — короткий журнал принятых архитектурных решений.
 - `docs/PLANS.md` — правила execution plans и lifecycle инициатив.

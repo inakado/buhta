@@ -1,0 +1,10 @@
+BUHTA_DOMAIN=buhta-crm.ru
+IMAGE_TAG=replace-with-git-sha
+BUHTA_API_IMAGE=ghcr.io/inakado/buhta-api
+BUHTA_WEB_IMAGE=ghcr.io/inakado/buhta-web
+
+POSTGRES_DB=buhta
+POSTGRES_USER=buhta
+POSTGRES_PASSWORD=replace-with-long-random-password
+
+BETTER_AUTH_SECRET=replace-with-at-least-32-random-production-secret

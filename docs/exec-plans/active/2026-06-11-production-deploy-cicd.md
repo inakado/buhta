@@ -4,6 +4,13 @@
 
 Дата старта: `2026-06-11`
 
+Фактические входные данные:
+
+- GitHub repo: `inakado/buhta`;
+- production domain: `buhta-crm.ru`;
+- VPS IPv4: `46.173.28.149`;
+- SSH alias на Mac: `buhta`.
+
 ## 1. Цель
 
 Поднять первую production-версию «Бухты» на выделенном Ubuntu-сервере так, чтобы deploy был простым, повторяемым и быстрым:
@@ -269,15 +276,20 @@ DB rollback не автоматизировать без явной необхо
 
 ### Шаг 1. Production Docker baseline
 
+Статус: `Completed`.
+
 - Добавить `.dockerignore`.
 - Добавить production Dockerfile для API.
 - Добавить production Dockerfile для Web.
-- Проверить локально:
-  - `docker build` для обоих images;
-  - запуск `api` с production env;
-  - `/health`.
+- Проверено на сервере вместо локальной машины из-за плохого локального соединения:
+  - `docker build -f apps/api/Dockerfile -t buhta-api:server-test .`;
+  - `docker build -f apps/web/Dockerfile -t buhta-web:server-test .`;
+  - после проверки `server-test` images и временные files удалены.
+- Локальный production compose не запускался; локально оставлен только dev-contour.
 
 ### Шаг 2. Production compose
+
+Статус: `Completed`.
 
 - Добавить `compose.prod.yml`.
 - Добавить `postgres`, `api`, `web`, `caddy`.
@@ -287,13 +299,23 @@ DB rollback не автоматизировать без явной необхо
 
 ### Шаг 3. Server bootstrap
 
+Статус: `Partially Completed`.
+
 - Установить Docker на сервер.
 - Настроить firewall.
 - Создать `/opt/buhta`.
-- Положить env и Caddy config.
-- Сделать первый ручной deploy по SSH.
+- Положить env и Caddy config: `Pending`.
+- Сделать первый ручной deploy по SSH: `Pending`.
+
+Выполнено на `2026-06-11`:
+
+- Docker Engine `29.5.3` и Docker Compose plugin `v5.1.4` установлены.
+- ufw включен, разрешены `OpenSSH`, `80/tcp`, `443/tcp`.
+- `/opt/buhta/deploy` и `/opt/buhta/backups/postgres` созданы bootstrap-скриптом.
 
 ### Шаг 4. CI
+
+Статус: `Implemented, Not Yet GitHub-Verified`.
 
 - Добавить workflow `ci.yml`.
 - Поднять Postgres service в GitHub Actions.
@@ -302,11 +324,15 @@ DB rollback не автоматизировать без явной необхо
 
 ### Шаг 5. Image build and registry
 
+Статус: `Implemented, Not Yet GitHub-Verified`.
+
 - Добавить workflow build/push в GHCR.
 - Тегировать images по git SHA.
 - Не использовать `latest` как production selector.
 
 ### Шаг 6. Deploy workflow
+
+Статус: `In Progress`.
 
 - Добавить GitHub Environment `production`.
 - Добавить secrets:
@@ -323,6 +349,8 @@ DB rollback не автоматизировать без явной необхо
   - health checks.
 
 ### Шаг 7. Docs and operational runbook
+
+Статус: `Completed`.
 
 - Добавить `docs/DEPLOYMENT.md`.
 - Описать:
@@ -353,6 +381,17 @@ DB rollback не автоматизировать без явной необхо
 - проверить backup-файл после deploy.
 
 Browser smoke не включать в этот этап, если владелец явно не просит.
+
+Проверено на `2026-06-11`:
+
+- `docker compose --env-file deploy/env/production.example -f deploy/compose.prod.yml config`;
+- VPS bootstrap: Docker/Compose installed, ufw active;
+- server Docker build для `api` и `web`;
+- повторный server Docker build для `web` после OpenSSL фикса;
+- cleanup локальных test images `buhta-api:local` / `buhta-web:local`;
+- cleanup server-test images и временных `/tmp/buhta-*`.
+
+Локальный `pnpm install --lockfile-only --offline` был остановлен: локальная сеть не давала пройти npm registry / attestation DNS retries. Lockfile проверен фактически через server `pnpm install --frozen-lockfile` внутри Docker build.
 
 ## 16. Риски
 

@@ -51,6 +51,8 @@ Security notes проекта «Бухта».
 - Production runtime отклоняет `DATABASE_URL` с локальными дефолтными credentials `buhta/buhta`.
 - Prisma CLI config пока может использовать local fallback `DATABASE_URL` для dev-удобства; production/deploy workflow должен задавать `DATABASE_URL` явно. Fail-closed поведение для `prisma migrate deploy` вынесено в tech debt.
 - `audit_log` append-only защищен database trigger-ом от обычных runtime `UPDATE` и `DELETE`; тестовый cleanup использует явный session flag.
+- Production deploy использует один публичный HTTPS origin `buhta-crm.ru` через Caddy. Наружу открываются только `80/tcp`, `443/tcp` и SSH; Postgres не публикуется.
+- Production secrets хранятся в GitHub Environment Secrets и `/opt/buhta/.env.production` на сервере с правами `600`; значения production env не коммитятся.
 
 ## 4. Policy Layer Direction
 

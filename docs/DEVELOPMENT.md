@@ -81,6 +81,8 @@ Runbook разработки проекта «Бухта».
 
 Docker не должен скрывать ошибки приложения. Если локальная команда `pnpm test` падает, compose-сборка не считается заменой исправления.
 
+Production Docker-контур живет отдельно в `deploy/compose.prod.yml` и описан в `docs/DEPLOYMENT.md`. Dev `docker-compose.yml` не использовать как production compose: он ставит зависимости на старте и запускает dev-серверы.
+
 ## 5. Verification commands
 
 Целевой набор перед завершением задачи:
