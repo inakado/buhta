@@ -69,8 +69,9 @@ Fallback:
 
 - `/api/auth/sign-up/email` отклоняет самостоятельную регистрацию и не создает пользователя;
 - protected route без сессии возвращает `401`;
-- courier-сессия на director-only route возвращает `403`;
-- director-сессия на director-only route возвращает `200`.
+- courier-сессия на test-only director-only route возвращает `403`;
+- director-сессия на test-only director-only route возвращает `200`;
+- диагностический `auth-spike` route не регистрируется в production `AppModule`.
 
 ## DEC-04 — Docs harness
 

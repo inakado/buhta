@@ -53,6 +53,9 @@ docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" run --rm api \
 echo "Restarting application..."
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d --remove-orphans
 
+echo "Recreating Caddy to pick up Caddyfile changes..."
+docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d --no-deps --force-recreate caddy
+
 echo "Waiting for health check..."
 i=0
 until curl -fsS "https://${BUHTA_DOMAIN}/health" >/dev/null; do

@@ -1,7 +1,6 @@
 import { Module } from "@nestjs/common";
 import { APP_FILTER } from "@nestjs/core";
 import { AuthModule } from "@thallesp/nestjs-better-auth";
-import { AuthSpikeController } from "./auth/auth-spike.controller";
 import { AuthMeController } from "./auth/auth-me.controller";
 import { AnalyticsModule } from "./analytics/analytics.module";
 import { auth } from "./auth/auth";
@@ -37,7 +36,7 @@ import { UsersModule } from "./users/users.module";
 		CourierModule,
 		NotificationsModule,
 	],
-	controllers: [HealthController, AuthMeController, AuthSpikeController],
+	controllers: [HealthController, AuthMeController],
 	providers: [
 		{
 			provide: APP_FILTER,

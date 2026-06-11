@@ -154,7 +154,8 @@ cd /opt/buhta/deploy
    ```sh
    docker compose up -d --remove-orphans
    ```
-8. Проверяет:
+8. Форсированно пересоздает только `caddy`, чтобы обновленный через `rsync` `Caddyfile` попал внутрь container file bind mount.
+9. Проверяет:
    ```sh
    https://buhta-crm.ru/health
    ```

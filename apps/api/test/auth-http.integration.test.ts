@@ -1,11 +1,16 @@
 import cookieParser from "cookie-parser";
 import { hashPassword } from "better-auth/crypto";
-import { INestApplication } from "@nestjs/common";
+import { Controller, Get, INestApplication, UseGuards } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import type { Server } from "node:http";
 import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { AppModule } from "../src/app.module";
+import { CurrentActor } from "../src/auth/actor.decorator";
+import type { Actor } from "../src/policy/actor";
+import { PolicyGuard } from "../src/policy/policy.guard";
+import { PolicyModule } from "../src/policy/policy.module";
+import { RequirePermission } from "../src/policy/require-permission.decorator";
 import { prisma } from "../src/prisma/client";
 import { deleteAuditLogsForTest } from "./helpers/audit-log-cleanup";
 
@@ -13,6 +18,20 @@ const email = "auth-http-integration@buhta.local";
 const username = "auth-http-admin";
 const password = "Pass123!";
 const seededUserId = "auth-http-admin-id";
+
+@Controller("auth-spike")
+class TestAuthSpikeController {
+	@Get("director-only")
+	@RequirePermission("cash.withdraw")
+	@UseGuards(PolicyGuard)
+	directorOnly(@CurrentActor() actor: Actor) {
+		return {
+			status: "ok",
+			userId: actor.userId,
+			role: actor.role,
+		};
+	}
+}
 
 describe("auth and policy HTTP integration", () => {
 	let app: INestApplication | undefined;
@@ -24,7 +43,8 @@ describe("auth and policy HTTP integration", () => {
 		await cleanupUser();
 
 		const moduleRef = await Test.createTestingModule({
-			imports: [AppModule],
+			imports: [AppModule, PolicyModule],
+			controllers: [TestAuthSpikeController],
 		}).compile();
 
 		app = moduleRef.createNestApplication({ bodyParser: false });
