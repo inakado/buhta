@@ -15,6 +15,7 @@ Production deploy runbook проекта «Бухта».
 - OS: Ubuntu Server;
 - runtime: Docker Engine + Docker Compose plugin;
 - reverse proxy: Caddy container;
+- API routing: Caddy прокидывает в backend только CRM-префиксы, BetterAuth `/api/*`, `/health`, точные `/auth/me` и `/account/password`; неописанные `/auth*` пути не должны проходить в API;
 - database: Postgres 18 в Docker named volume;
 - images:
   - `ghcr.io/inakado/buhta-api:<git-sha>`;
