@@ -4,6 +4,7 @@ const EXACT_ERROR_MESSAGES: Record<string, string> = {
 	"Invalid username or password": "Неверный логин или пароль",
 	"Admin cannot change own role": "Нельзя изменить собственную роль",
 	"Admin cannot reset own password": "Нельзя сбросить пароль самому себе",
+	"Current password is incorrect": "Текущий пароль указан неверно",
 	"Request failed: 400": "Некорректные данные. Проверьте поля и попробуйте еще раз.",
 	"Request failed: 401": "Нужно войти в систему",
 	"Request failed: 403": "Недостаточно прав для этого действия",

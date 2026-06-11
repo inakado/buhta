@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
+import { hashPassword, verifyPassword } from "better-auth/crypto";
 import { AppError } from "../src/common/errors/app-error";
 import { IdempotencyService } from "../src/operations/idempotency.service";
 import { OperationService } from "../src/operations/operation.service";
@@ -37,6 +38,25 @@ async function ensureUser(role = "courier") {
 			name: "Users Integration",
 			emailVerified: true,
 			role,
+		},
+	});
+}
+
+async function ensureUserCredential(password: string) {
+	await prisma.account.upsert({
+		where: { id: `${testUserId}-credential` },
+		update: {
+			accountId: testUserId,
+			providerId: "credential",
+			userId: testUserId,
+			password: await hashPassword(password),
+		},
+		create: {
+			id: `${testUserId}-credential`,
+			accountId: testUserId,
+			providerId: "credential",
+			userId: testUserId,
+			password: await hashPassword(password),
 		},
 	});
 }
@@ -189,6 +209,67 @@ describe("UsersService real Postgres integration", () => {
 
 		await expect(usersService.updateUserRole(adminActor, adminActor.userId, "director")).rejects.toMatchObject({
 			code: "FORBIDDEN",
+		});
+	});
+
+	it("changes own password after verifying current password", async () => {
+		await ensureUser("courier");
+		await ensureUserCredential("OldPass123!");
+
+		const actor: Actor = {
+			userId: testUserId,
+			login: testUserLogin,
+			displayName: "Users Integration",
+			role: "courier",
+			permissions: [],
+		};
+
+		const result = await usersService.changeOwnPassword(actor, {
+			currentPassword: "OldPass123!",
+			newPassword: "NewPass123!",
+			newPasswordConfirmation: "NewPass123!",
+		});
+
+		expect(result.user).toMatchObject({
+			id: testUserId,
+			login: testUserLogin,
+		});
+		const credential = await prisma.account.findFirstOrThrow({
+			where: { userId: testUserId, providerId: "credential" },
+		});
+		expect(credential.password).toEqual(expect.any(String));
+		expect(await verifyPassword({ password: "OldPass123!", hash: credential.password ?? "" })).toBe(false);
+		expect(await verifyPassword({ password: "NewPass123!", hash: credential.password ?? "" })).toBe(true);
+
+		const auditLog = await prisma.auditLog.findFirstOrThrow({
+			where: {
+				action: "user.password.change",
+				entityId: testUserId,
+			},
+		});
+		expect(JSON.stringify(auditLog.details)).not.toContain("OldPass123!");
+		expect(JSON.stringify(auditLog.details)).not.toContain("NewPass123!");
+	});
+
+	it("rejects own password change when current password is wrong", async () => {
+		await ensureUser("courier");
+		await ensureUserCredential("OldPass123!");
+
+		await expect(
+			usersService.changeOwnPassword({
+				userId: testUserId,
+				login: testUserLogin,
+				displayName: "Users Integration",
+				role: "courier",
+				permissions: [],
+			}, {
+				currentPassword: "WrongPass123!",
+				newPassword: "NewPass123!",
+				newPasswordConfirmation: "NewPass123!",
+			}),
+		).rejects.toMatchObject({
+			code: "FORBIDDEN",
+			message: "Current password is incorrect",
 		});
 	});
 

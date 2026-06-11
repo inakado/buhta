@@ -4,19 +4,19 @@ import {
 	BookOpenText,
 	ChevronRight,
 	Download,
-	KeyRound,
-	LogOut,
 	Users,
 	type LucideIcon,
 } from "lucide-react";
-import { ROLE_LABELS } from "../../lib/role-labels";
 import type { CurrentActor } from "../../lib/api-client";
+import { AccountMoreSection } from "../../features/account/AccountMoreSection";
 
 type DirectorMoreHomeProps = {
 	actor: CurrentActor;
 	logout: () => void;
 	logoutPending: boolean;
+	onActionSuccess: (message: string) => void;
 	onTabChange: (tab: string) => void;
+	online: boolean;
 };
 
 type MenuRow = {
@@ -34,7 +34,9 @@ export function DirectorMoreHome({
 	actor,
 	logout,
 	logoutPending,
+	onActionSuccess,
 	onTabChange,
+	online,
 }: DirectorMoreHomeProps) {
 	const navigationRows: MenuRow[] = [];
 
@@ -67,26 +69,6 @@ export function DirectorMoreHome({
 		trailing: "Позже",
 	});
 
-	const accountRows: MenuRow[] = [
-		{
-			id: "change-password",
-			label: "Сменить пароль",
-			detail: "Безопасность входа",
-			disabled: true,
-			icon: KeyRound,
-			trailing: "Позже",
-		},
-		{
-			id: "logout",
-			label: logoutPending ? "Выходим" : "Выйти",
-			detail: "Завершить текущую сессию",
-			disabled: logoutPending,
-			icon: LogOut,
-			onSelect: logout,
-			tone: "danger",
-		},
-	];
-
 	return (
 		<section className="screen-stack director-more-home">
 			<h2 className="sr-only">Еще</h2>
@@ -95,22 +77,14 @@ export function DirectorMoreHome({
 				<DirectorMoreSection label="Навигация" rows={navigationRows} />
 			) : null}
 
-			<section className="director-more-section" aria-labelledby="director-more-account">
-				<h3 className="director-more-section-label" id="director-more-account">Аккаунт</h3>
-				<div className="director-more-account-identity">
-					<strong>
-						{actor.displayName}
-					</strong>
-					<span>
-						{ROLE_LABELS[actor.role]} · @{actor.login}
-					</span>
-				</div>
-				<div className="director-more-section-list">
-					{accountRows.map((row) => (
-						<DirectorMoreRow key={row.id} row={row} />
-					))}
-				</div>
-			</section>
+			<AccountMoreSection
+				actor={actor}
+				logout={logout}
+				logoutPending={logoutPending}
+				onActionSuccess={onActionSuccess}
+				online={online}
+				sectionId="director-more"
+			/>
 		</section>
 	);
 }

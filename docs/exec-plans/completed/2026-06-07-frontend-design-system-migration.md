@@ -17,7 +17,7 @@
 - Полный frontend inventory по ролям, экранам и вариантам использования общих компонентов.
 - Порядок миграции экранов от директорского контура к остальным ролям.
 - Правила, как переносить новые стили в общую систему без перемешивания со старым UI.
-- План документационной фиксации: `DESIGN.md`, `docs/FRONTEND.md`, `docs/UX-HARDENING.md` и завершенные stage plans.
+- План документационной фиксации: `DESIGN.md`, `docs/FRONTEND.md`, active/deferred execution plans и завершенные stage plans.
 - Targeted frontend verification per stage: typecheck, lint, component tests, docs check. Визуальные проверки через браузер выполнять только по отдельному запросу владельца продукта.
 
 ## 3. Out Of Scope
@@ -34,7 +34,7 @@
 - `apps/web/app/globals.css` - текущая CSS-система и место будущей очистки старых selectors.
 - `DESIGN.md` - visual source of truth для Impeccable design system.
 - `docs/FRONTEND.md` - frontend conventions и правила PWA/mobile flows.
-- `docs/UX-HARDENING.md` - текущий UX backlog для hardening-задач, которые остались за scope visual migration.
+- `docs/exec-plans/deferred-roadmap.md` - отложенные hardening-задачи, которые остались за scope visual migration.
 - `apps/web/src/app-shell/RoleHomeRouter.tsx` и `apps/web/src/app-shell/AppRoot.tsx` - фактическая карта ролей, табов и условных экранов.
 
 ## 5. Карта Экранов И Вариантов
@@ -59,7 +59,7 @@
 | Done | Еще | `more` | `DirectorMoreHome` | Согласованное меню из двух ledger-блоков: навигация (`Клиенты`, `Справочники`, `Экспорт`) и аккаунт (`Сменить пароль`, `Выйти`). Inline styles убраны, future flows показаны честным non-clickable состоянием. |
 | Done | Каталог | `catalog` из more | `CatalogHome` | Директор/admin shared management surface приведен к текущему management rhythm: tabs, compact toolbar, list rows, create/edit/archive dialogs. Дальнейшие refinements считаются shared catalog/admin задачами. |
 | Done | Клиенты | `clients` из more | `ClientsHome` | Shared client surface приведен к compact heading/search/list rhythm: счетчик в heading row справа, поиск без отдельной action row, строки с ledger-разделителями и стабильными copy/edit actions. |
-| Deferred | Смена пароля / экспорт | `more` future entries | `DirectorMoreHome`, future auth/reports flows | Не блокирует директорский contour: self password change и export/print являются общими cross-role hardening задачами и остаются в `UX-HARDENING`. |
+| Deferred | Смена пароля / экспорт | `more` future entries | `DirectorMoreHome`, future auth/reports flows | Не блокирует директорский contour: self password change переехала в активный cross-role hardening plan, export/print переехал в deferred roadmap. |
 
 ### 5.3 Администратор
 
@@ -692,7 +692,7 @@ Rollback:
 
 Инициатива завершена 2026-06-10. Миграция охватила Директора, заведующего производством, коммерческого руководителя, работника распределителя, курьера и администратора. Активный frontend теперь строится вокруг белых панелей, тонких ledger-разделителей, compact typography, restrained radii, rows over decorative cards, shared operational forms, modal create/confirm flows and role-specific `Еще` account surfaces.
 
-Не вошли в эту инициативу и остаются в `docs/UX-HARDENING.md`: self password change, export/print/report hardening, desktop/tablet expansion, deeper admin user search/filtering and history/sales pagination improvements.
+Не вошли в эту инициативу: self password change и admin user search/filtering переехали в активный cross-role hardening plan; export/print/report hardening и desktop/tablet expansion переехали в `docs/exec-plans/deferred-roadmap.md`; history/sales pagination improvements закрыты отдельным completed plan.
 
 Final cleanup:
 

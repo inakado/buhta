@@ -3108,6 +3108,33 @@ input[type="search"]::-webkit-search-decoration {
 	gap: 12px;
 }
 
+.account-password-dialog {
+	width: min(390px, calc(100vw - 28px));
+}
+
+.account-password-rules {
+	margin: -2px 0 0;
+}
+
+.operation-dialog .password-input-shell {
+	min-height: 38px;
+	border-radius: 9px;
+	background: var(--base-white);
+	padding: 0 4px 0 10px;
+}
+
+.operation-dialog .field .password-input-shell input {
+	min-height: auto;
+	border: 0;
+	background: transparent;
+	padding: 0 6px 0 0;
+}
+
+.operation-dialog .password-input-shell .password-toggle {
+	width: 30px;
+	height: 30px;
+}
+
 .catalog-list-toolbar {
 	display: grid;
 	grid-template-columns: minmax(0, 1fr) auto;

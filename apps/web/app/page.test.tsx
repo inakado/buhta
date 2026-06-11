@@ -505,7 +505,7 @@ describe("HomePage", () => {
 
 		fireEvent.click(await screen.findByRole("button", { name: "Еще" }));
 		expect(await screen.findByRole("heading", { name: "Еще" })).toBeTruthy();
-		expect(screen.getByRole("button", { name: "Сменить пароль" })).toHaveProperty("disabled", true);
+		expect(screen.getByRole("button", { name: "Сменить пароль" })).toHaveProperty("disabled", false);
 		fireEvent.click(await screen.findByRole("button", { name: "Выйти" }));
 
 		expect(await screen.findByText("Логин")).toBeTruthy();
@@ -515,6 +515,75 @@ describe("HomePage", () => {
 			expect(fetchMock).toHaveBeenCalledWith(
 				expect.stringContaining("/api/auth/sign-out"),
 				expect.objectContaining({ method: "POST" }),
+			);
+		});
+	});
+
+	it("lets authenticated users change their password from account menu", async () => {
+		const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+			const url = String(input);
+			const method = init?.method ?? "GET";
+
+			if (url.endsWith("/auth/me")) {
+				return jsonResponse(adminActorResponse);
+			}
+
+			if (url.endsWith("/users")) {
+				return jsonResponse({ users: [] });
+			}
+
+			if (url.endsWith("/account/password") && method === "POST") {
+				return jsonResponse({
+					user: {
+						id: "admin1",
+						name: "Admin",
+						login: "admin",
+						role: "admin",
+						createdAt: new Date(0).toISOString(),
+						updatedAt: new Date(0).toISOString(),
+					},
+				});
+			}
+
+			return jsonResponse({ error: { message: "Unexpected request" } }, 500);
+		});
+
+		vi.stubGlobal("fetch", fetchMock);
+
+		render(<HomePage />);
+
+		fireEvent.click(await screen.findByRole("button", { name: "Еще" }));
+		fireEvent.click(await screen.findByRole("button", { name: "Сменить пароль" }));
+
+		expect(await screen.findByRole("dialog")).toBeTruthy();
+		expect(screen.queryByText("Текущая сессия останется активной.")).toBeNull();
+		const currentPasswordInput = screen.getByLabelText("Текущий пароль");
+		expect(currentPasswordInput).toHaveProperty("type", "password");
+		fireEvent.click(screen.getByRole("button", { name: "Показать поле: Текущий пароль" }));
+		expect(currentPasswordInput).toHaveProperty("type", "text");
+		fireEvent.click(screen.getByRole("button", { name: "Скрыть поле: Текущий пароль" }));
+		expect(currentPasswordInput).toHaveProperty("type", "password");
+		fireEvent.change(currentPasswordInput, { target: { value: "OldPass123!" } });
+		fireEvent.change(screen.getByLabelText("Новый пароль"), { target: { value: "NewPass123!" } });
+		fireEvent.change(screen.getByLabelText("Повторите новый пароль"), { target: { value: "NewPass123!" } });
+		fireEvent.click(screen.getByRole("button", { name: "Сохранить" }));
+
+		await waitFor(() => {
+			const globalNotice = document.querySelector(".success-notice:not(.inline-success)");
+			expect(globalNotice?.textContent).toContain("Пароль изменен");
+		});
+		expect(document.querySelector(".account-password-success")).toBeNull();
+		await waitFor(() => {
+			expect(fetchMock).toHaveBeenCalledWith(
+				expect.stringContaining("/account/password"),
+				expect.objectContaining({
+					method: "POST",
+					body: JSON.stringify({
+						currentPassword: "OldPass123!",
+						newPassword: "NewPass123!",
+						newPasswordConfirmation: "NewPass123!",
+					}),
+				}),
 			);
 		});
 	});
@@ -1266,7 +1335,7 @@ describe("HomePage", () => {
 		fireEvent.click(screen.getByRole("button", { name: "Еще" }));
 		expect(await screen.findByRole("heading", { name: "Еще" })).toBeTruthy();
 		expect(screen.getByText("Последние выпуски")).toBeTruthy();
-		expect(screen.getByRole("button", { name: "Сменить пароль" })).toHaveProperty("disabled", true);
+		expect(screen.getByRole("button", { name: "Сменить пароль" })).toHaveProperty("disabled", false);
 		fireEvent.click(screen.getByRole("button", { name: "История" }));
 		expect(await screen.findByRole("heading", { name: "История" })).toBeTruthy();
 		expect(screen.getByRole("button", { name: "Еще" }).getAttribute("aria-current")).toBe("page");
@@ -1765,7 +1834,7 @@ describe("HomePage", () => {
 		expect(await screen.findByRole("heading", { name: "Еще" })).toBeTruthy();
 		expect(screen.getByText("Commercial Manager")).toBeTruthy();
 		expect(screen.getByText("Коммерческий руководитель · @commercial-manager")).toBeTruthy();
-		expect(screen.getByRole("button", { name: "Сменить пароль" })).toHaveProperty("disabled", true);
+		expect(screen.getByRole("button", { name: "Сменить пароль" })).toHaveProperty("disabled", false);
 		fireEvent.click(screen.getByRole("button", { name: "История" }));
 		expect(screen.getByRole("button", { name: "Еще" }).getAttribute("aria-current")).toBe("page");
 		expect(await screen.findByRole("heading", { name: "История продаж" })).toBeTruthy();
@@ -1863,7 +1932,7 @@ describe("HomePage", () => {
 		expect(await screen.findByRole("heading", { name: "Еще" })).toBeTruthy();
 		expect(screen.getByText("Distributor Worker")).toBeTruthy();
 		expect(screen.getByText("Работник распределителя · @distributor-worker")).toBeTruthy();
-		expect(screen.getByRole("button", { name: "Сменить пароль" })).toHaveProperty("disabled", true);
+		expect(screen.getByRole("button", { name: "Сменить пароль" })).toHaveProperty("disabled", false);
 		expect(screen.getByRole("button", { name: "Выйти" })).toBeTruthy();
 		expect(screen.getAllByRole("button", { name: "История" })).toHaveLength(1);
 		expect(screen.getAllByRole("button", { name: "Клиенты" })).toHaveLength(1);
@@ -1977,7 +2046,7 @@ describe("HomePage", () => {
 		expect(await screen.findByRole("heading", { name: "Еще" })).toBeTruthy();
 		expect(screen.getByText("Courier")).toBeTruthy();
 		expect(screen.getByText("Курьер · @courier")).toBeTruthy();
-		expect(screen.getByRole("button", { name: "Сменить пароль" })).toHaveProperty("disabled", true);
+		expect(screen.getByRole("button", { name: "Сменить пароль" })).toHaveProperty("disabled", false);
 		expect(screen.getByRole("button", { name: "Выйти" })).toBeTruthy();
 		fireEvent.click(screen.getByRole("button", { name: "История" }));
 		expect(screen.getByRole("button", { name: "Еще" }).getAttribute("aria-current")).toBe("page");
@@ -2690,7 +2759,7 @@ describe("HomePage", () => {
 		fireEvent.click(screen.getByRole("button", { name: "Еще" }));
 		expect(await screen.findByRole("heading", { name: "Еще" })).toBeTruthy();
 		expect(screen.getByRole("button", { name: "Экспорт" })).toHaveProperty("disabled", true);
-		expect(screen.getByRole("button", { name: "Сменить пароль" })).toHaveProperty("disabled", true);
+		expect(screen.getByRole("button", { name: "Сменить пароль" })).toHaveProperty("disabled", false);
 		fireEvent.click(screen.getByRole("button", { name: "Справочники" }));
 		expect(await screen.findByRole("heading", { name: "Справочники" })).toBeTruthy();
 		expect(screen.getByRole("button", { name: "Добавить" })).toBeTruthy();
@@ -3140,7 +3209,7 @@ describe("HomePage", () => {
 		fireEvent.click(screen.getByRole("button", { name: "Еще" }));
 		expect(await screen.findByRole("heading", { name: "Еще" })).toBeTruthy();
 		expect(screen.getByRole("button", { name: "История" })).toBeTruthy();
-		expect(screen.getByRole("button", { name: "Сменить пароль" })).toHaveProperty("disabled", true);
+		expect(screen.getByRole("button", { name: "Сменить пароль" })).toHaveProperty("disabled", false);
 	});
 
 	it("keeps client backend errors inline and disables writes offline", async () => {

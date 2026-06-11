@@ -18,6 +18,10 @@ describe("toUserErrorMessage", () => {
 		expect(toUserErrorMessage("Admin cannot change own role")).toBe("Нельзя изменить собственную роль");
 	});
 
+	it("translates wrong current password", () => {
+		expect(toUserErrorMessage("Current password is incorrect")).toBe("Текущий пароль указан неверно");
+	});
+
 	it("keeps unknown backend messages visible", () => {
 		expect(toUserErrorMessage("Логин уже занят")).toBe("Логин уже занят");
 	});

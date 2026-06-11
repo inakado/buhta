@@ -248,6 +248,56 @@ describe("auth and policy HTTP integration", () => {
 		});
 		expect(JSON.stringify(auditLog.details)).not.toContain(resetResponse.body.temporaryPassword);
 	});
+
+	it("lets authenticated users change their own password without users.manage", async () => {
+		await prisma.user.update({
+			where: { id: userId },
+			data: { role: "courier" },
+		});
+
+		const newPassword = "Changed123!";
+		const response = await agent
+			.post("/account/password")
+			.send({
+				currentPassword: password,
+				newPassword,
+				newPasswordConfirmation: newPassword,
+			})
+			.expect(201);
+
+		expect(response.body.user).toMatchObject({
+			id: userId,
+			login: username,
+			role: "courier",
+		});
+
+		await agent.get("/auth/me").expect(200);
+
+		const oldPasswordAgent = request.agent(server);
+		const oldPasswordResponse = await oldPasswordAgent.post("/api/auth/sign-in/username").send({
+			username,
+			password,
+		});
+		expect(oldPasswordResponse.status).toBeGreaterThanOrEqual(400);
+
+		const newPasswordAgent = request.agent(server);
+		await newPasswordAgent
+			.post("/api/auth/sign-in/username")
+			.send({
+				username,
+				password: newPassword,
+			})
+			.expect(200);
+
+		const auditLog = await prisma.auditLog.findFirstOrThrow({
+			where: {
+				action: "user.password.change",
+				entityId: userId,
+			},
+		});
+		expect(JSON.stringify(auditLog.details)).not.toContain(password);
+		expect(JSON.stringify(auditLog.details)).not.toContain(newPassword);
+	});
 });
 
 async function createCredentialUser(): Promise<string> {

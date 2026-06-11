@@ -38,6 +38,7 @@ Security notes проекта «Бухта».
 - Логин хранится в BetterAuth username fields `username/displayUsername`.
 - Временный пароль возвращается только в response создания пользователя или сброса пароля.
 - Сброс пароля должен гарантировать наличие `credential` account: для seed/legacy users без password credential API создает credential при reset, иначе новый пароль не сможет использоваться для входа.
+- Смена собственного пароля выполняется через `POST /account/password`: доступна любому authenticated пользователю, требует текущий пароль, проверяет credential hash на backend и записывает новый hash без сброса текущей сессии. Audit action `user.password.change` не содержит plaintext password, token или hash.
 - Администратор не может изменить собственную роль через users API.
 - Администратор не может сбросить временный пароль самому себе; смена собственного пароля должна быть отдельным защищенным flow, когда он появится.
 - Audit для создания пользователя, смены роли и сброса пароля не должен содержать plaintext password.

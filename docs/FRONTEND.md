@@ -343,7 +343,7 @@ App icon использует Pearl Cove знак в `apps/web/app/icon.svg`. Au
 - `Еще` собирается в `apps/web/src/roles/director/DirectorMoreHome.tsx` как два ledger-блока: `Навигация` (`Клиенты`, `Справочники`, `Экспорт`) и `Аккаунт` (identity row, `Сменить пароль`, `Выйти`);
 - экран `Еще` не показывает видимый заголовок и числовой счетчик: активный пункт уже виден в нижней навигации, а screen heading остается только для accessibility;
 - экран `Еще` не использует тяжелую settings-card, лишние декоративные панели и не делает `Выйти` крупным primary action: logout остается строкой account-блока с мягким danger-акцентом;
-- пункты `Экспорт` и `Сменить пароль` можно показывать как будущие системные entry points только в честном non-clickable состоянии, пока соответствующие backend/UI flows не реализованы; эти flows являются общими для ролей, а не блокером закрытия директорских экранов;
+- пункт `Экспорт` можно показывать как будущий системный entry point только в честном non-clickable состоянии, пока reports/export flow не реализован; смена собственного пароля уже доступна в account-блоке `Еще` для всех ролей;
 - `Каталог`, `Клиенты`, `Профиль`, `Аналитика`, `Распределитель` и `Курьеры` не выводятся отдельными нижними пунктами у Директора;
 - fake-блоки `Продажи сегодня`, `Последние операции`, fake revenue/report numbers не добавлять до backend/read model;
 - управленческие действия `Назначить дисконт`, `Отчеты`, `История` не показываются как disabled tiles на home, пока backend flow не реализован;
@@ -358,7 +358,7 @@ App icon использует Pearl Cove знак в `apps/web/app/icon.svg`. Au
 - сотрудники отображаются как плотный access-list в white management panel, а не как `entity-card`: строка показывает имя, login, role select и reset action;
 - сброс пароля требует подтверждения в `operation-dialog` modal и после успеха обновляет `["users"]`;
 - admin write-действия в users screen блокируются offline на первом уровне: создание, смена роли и сброс пароля визуально недоступны без сети;
-- admin bottom navigation использует `Еще`, а не старую вкладку `Настройки`; `AdminMoreHome` показывает account block, disabled future entry `Сменить пароль` и logout row в том же ledger vocabulary, что остальные роли;
+- admin bottom navigation использует `Еще`, а не старую вкладку `Настройки`; account block показывает смену собственного пароля и logout row в том же ledger vocabulary, что остальные роли;
 - роль admin не получает операционные sale/load UI, хотя backend может поддерживать часть этих flows.
 
 Фактический operation history screen:
@@ -523,7 +523,7 @@ apps/web/
 - список обновляется через React Query polling каждые 30 секунд, refetch on focus и invalidation после create/complete;
 - write-действия disabled offline и показывают короткую причину блокировки.
 
-Production account flow находится в `Еще`: экран использует тот же Director More menu vocabulary, role/account данные показываются только в account-блоке, а self password change остается disabled future entry до отдельного auth hardening stage.
+Production account flow находится в `Еще`: экран использует тот же Director More menu vocabulary, role/account данные показываются только в account-блоке. Смена собственного пароля доступна из общего account section для всех ролей, открывается в `operation-dialog`, требует текущий пароль, новый пароль и повтор, а после успеха показывает inline success без завершения текущей сессии.
 
 Нижняя навигация визуально icon-only, но каждый пункт сохраняет `aria-label` с названием раздела.
 

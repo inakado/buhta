@@ -26,6 +26,8 @@ import {
 	CreateCourierUnloadRequestSchema,
 	CreateNotificationRequestSchema,
 	CreateUserRequestSchema,
+	ChangeOwnPasswordRequestSchema,
+	ChangeOwnPasswordResponseSchema,
 	CompleteNotificationRequestSchema,
 	CourierCashBalancesResponseSchema,
 	CourierLoadOptionsResponseSchema,
@@ -163,6 +165,27 @@ describe("shared contracts", () => {
 		expect(UpdateUserRoleRequestSchema.safeParse({ role: "director" }).success).toBe(true);
 		expect(UpdateUserRoleRequestSchema.safeParse({ role: "owner" }).success).toBe(false);
 		expect(
+			ChangeOwnPasswordRequestSchema.safeParse({
+				currentPassword: "OldPass123!",
+				newPassword: "NewPass123!",
+				newPasswordConfirmation: "NewPass123!",
+			}).success,
+		).toBe(true);
+		expect(
+			ChangeOwnPasswordRequestSchema.safeParse({
+				currentPassword: "OldPass123!",
+				newPassword: "short",
+				newPasswordConfirmation: "short",
+			}).success,
+		).toBe(false);
+		expect(
+			ChangeOwnPasswordRequestSchema.safeParse({
+				currentPassword: "OldPass123!",
+				newPassword: "NewPass123!",
+				newPasswordConfirmation: "Mismatch123!",
+			}).success,
+		).toBe(false);
+		expect(
 			UserSummarySchema.safeParse({
 				id: "u1",
 				name: "Nikita",
@@ -170,6 +193,18 @@ describe("shared contracts", () => {
 				role: "director",
 				createdAt: new Date(0).toISOString(),
 				updatedAt: new Date(0).toISOString(),
+			}).success,
+		).toBe(true);
+		expect(
+			ChangeOwnPasswordResponseSchema.safeParse({
+				user: {
+					id: "u1",
+					name: "Nikita",
+					login: "director",
+					role: "director",
+					createdAt: new Date(0).toISOString(),
+					updatedAt: new Date(0).toISOString(),
+				},
 			}).success,
 		).toBe(true);
 	});

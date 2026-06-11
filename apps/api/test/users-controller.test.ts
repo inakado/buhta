@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { AppError } from "../src/common/errors/app-error";
+import { AccountController } from "../src/users/account.controller";
 import { UsersController } from "../src/users/users.controller";
 import type { UsersService } from "../src/users/users.service";
 
@@ -18,6 +19,14 @@ const actor = {
 	displayName: "Admin",
 	role: "admin" as const,
 	permissions: ["users.manage"] as const,
+};
+
+const requestUser = {
+	id: actor.userId,
+	email: "admin@internal.buhta.local",
+	name: actor.displayName,
+	username: actor.login,
+	role: actor.role,
 };
 
 describe("UsersController", () => {
@@ -72,5 +81,63 @@ describe("UsersController", () => {
 			user: userSummary,
 		});
 		expect(usersService.updateUserRole).toHaveBeenCalledWith(actor, "u1", "director");
+	});
+
+	it("validates own password change payload before calling service", async () => {
+		const usersService = {
+			changeOwnPassword: vi.fn(),
+		} as unknown as UsersService;
+		const policyRegistry = {
+			buildActor: vi.fn().mockReturnValue(actor),
+		};
+		const controller = new AccountController(usersService, policyRegistry as never);
+
+		await expect(
+			controller.changeOwnPassword({ user: requestUser }, {
+				currentPassword: "OldPass123!",
+				newPassword: "short",
+				newPasswordConfirmation: "short",
+			}),
+		).rejects.toThrow(AppError);
+		expect(usersService.changeOwnPassword).not.toHaveBeenCalled();
+	});
+
+	it("changes own password for an authenticated actor", async () => {
+		const usersService = {
+			changeOwnPassword: vi.fn().mockResolvedValue({ user: userSummary }),
+		} as unknown as UsersService;
+		const policyRegistry = {
+			buildActor: vi.fn().mockReturnValue(actor),
+		};
+		const controller = new AccountController(usersService, policyRegistry as never);
+		const input = {
+			currentPassword: "OldPass123!",
+			newPassword: "NewPass123!",
+			newPasswordConfirmation: "NewPass123!",
+		};
+
+		await expect(controller.changeOwnPassword({ user: requestUser }, input)).resolves.toEqual({
+			user: userSummary,
+		});
+		expect(usersService.changeOwnPassword).toHaveBeenCalledWith(actor, input);
+	});
+
+	it("rejects own password change without authenticated user", async () => {
+		const usersService = {
+			changeOwnPassword: vi.fn(),
+		} as unknown as UsersService;
+		const policyRegistry = {
+			buildActor: vi.fn(),
+		};
+		const controller = new AccountController(usersService, policyRegistry as never);
+
+		await expect(
+			controller.changeOwnPassword({}, {
+				currentPassword: "OldPass123!",
+				newPassword: "NewPass123!",
+				newPasswordConfirmation: "NewPass123!",
+			}),
+		).rejects.toMatchObject({ code: "UNAUTHENTICATED" });
+		expect(usersService.changeOwnPassword).not.toHaveBeenCalled();
 	});
 });

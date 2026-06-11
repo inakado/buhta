@@ -17,7 +17,6 @@
 - `docs/ARCHITECTURE.md` — placeholder для будущей карты модулей и потоков данных.
 - `docs/SECURITY.md` — placeholder для auth/security решений после scaffold.
 - `docs/FRONTEND.md` — placeholder для frontend conventions после первых экранов.
-- `docs/UX-HARDENING.md` — рабочий UX-аудит/backlog v1 polish и hardening.
 - `docs/RELIABILITY.md` — placeholder для runtime/reliability notes.
 - `docs/DOMAIN-EVENTS.md` — placeholder для будущего audit/event каталога.
 - `docs/HANDLER-MAP.md` — placeholder для карты API handlers после scaffold.
@@ -25,6 +24,7 @@
 - `docs/exec-plans/deferred-roadmap.md` — отложенные идеи, которые не являются активной задачей.
 - `docs/exec-plans/tech-debt-tracker.md` — признанный техдолг после появления кода или harness.
 - `docs/exec-plans/active/2026-05-27-v1-roadmap.md` — долгоживущая roadmap/meta-plan полной v1.
+- `docs/exec-plans/active/2026-06-11-cross-role-ux-hardening.md` — активный cross-role UX hardening: смена собственного пароля, админский поиск/фильтр пользователей, mobile/PWA basics и smoke длинных экранов.
 - `docs/exec-plans/completed/2026-06-10-history-and-sale-cancellation-hardening.md` — завершенный UX hardening для append pagination истории операций и paginated истории продаж с поиском, статусами и отменой старых продаж без quick presets/export.
 - `docs/exec-plans/completed/2026-06-07-frontend-design-system-migration.md` — завершенный план перехода frontend на новую Impeccable design system: все основные роли и администратор мигрированы к white ledger/control language, operational forms, management rows, modal create/confirm flows and role-specific `Еще` account surfaces.
 - `docs/exec-plans/completed/2026-06-05-director-money-production-analytics.md` — завершенный этап Director Money And Production Analytics: отдельный узкий экран аналитики для Директора по деньгам, сырью и выпуску продукции без перегруженных графиков и повторяющих блоков.

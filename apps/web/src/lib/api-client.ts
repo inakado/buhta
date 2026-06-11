@@ -15,6 +15,8 @@ import type {
 	CancelDistributorSaleResponse,
 	AssignDistributorDiscountRequest,
 	AssignDistributorDiscountResponse,
+	ChangeOwnPasswordRequest,
+	ChangeOwnPasswordResponse,
 	CreatePackagingTypeRequest,
 	CreatePackagingIntakeRequest,
 	CreateProductBatchRequest,
@@ -152,6 +154,13 @@ export async function resetUserPassword(userId: string): Promise<ResetUserPasswo
 	return fetchJson<ResetUserPasswordResponse>(`/users/${userId}/reset-password`, {
 		method: "POST",
 		body: JSON.stringify({}),
+	});
+}
+
+export async function changeOwnPassword(input: ChangeOwnPasswordRequest): Promise<ChangeOwnPasswordResponse> {
+	return fetchJson<ChangeOwnPasswordResponse>("/account/password", {
+		method: "POST",
+		body: JSON.stringify(input),
 	});
 }
 

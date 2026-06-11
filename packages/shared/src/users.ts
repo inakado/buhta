@@ -55,6 +55,37 @@ export const UpdateUserRoleResponseSchema = z.object({
 
 export type UpdateUserRoleResponse = z.infer<typeof UpdateUserRoleResponseSchema>;
 
+export const UserPasswordSchema = z
+	.string()
+	.min(8)
+	.max(128)
+	.regex(/[a-z]/, { message: "Password must contain a lowercase letter" })
+	.regex(/[A-Z]/, { message: "Password must contain an uppercase letter" })
+	.regex(/[0-9]/, { message: "Password must contain a digit" });
+
+export const ChangeOwnPasswordRequestSchema = z
+	.object({
+		currentPassword: z.string().min(1),
+		newPassword: UserPasswordSchema,
+		newPasswordConfirmation: z.string().min(1),
+	})
+	.refine((input) => input.newPassword === input.newPasswordConfirmation, {
+		message: "Password confirmation does not match",
+		path: ["newPasswordConfirmation"],
+	})
+	.refine((input) => input.currentPassword !== input.newPassword, {
+		message: "New password must be different",
+		path: ["newPassword"],
+	});
+
+export type ChangeOwnPasswordRequest = z.infer<typeof ChangeOwnPasswordRequestSchema>;
+
+export const ChangeOwnPasswordResponseSchema = z.object({
+	user: UserSummarySchema,
+});
+
+export type ChangeOwnPasswordResponse = z.infer<typeof ChangeOwnPasswordResponseSchema>;
+
 export const ResetUserPasswordResponseSchema = z.object({
 	user: UserSummarySchema,
 	temporaryPassword: z.string().min(1),

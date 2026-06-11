@@ -1,6 +1,12 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { hashPassword } from "better-auth/crypto";
-import type { CreateUserRequest, Role, UserSummary } from "@buhta/shared";
+import { hashPassword, verifyPassword } from "better-auth/crypto";
+import {
+	ChangeOwnPasswordRequestSchema,
+	type ChangeOwnPasswordRequest,
+	type CreateUserRequest,
+	type Role,
+	type UserSummary,
+} from "@buhta/shared";
 import { auth } from "../auth/auth";
 import { AppError } from "../common/errors/app-error";
 import { OperationService } from "../operations/operation.service";
@@ -99,6 +105,71 @@ export class UsersService {
 		});
 
 		return mapUserSummary(user);
+	}
+
+	async changeOwnPassword(
+		actor: Actor,
+		input: ChangeOwnPasswordRequest,
+	): Promise<{ user: UserSummary }> {
+		const parsedInput = ChangeOwnPasswordRequestSchema.safeParse(input);
+
+		if (!parsedInput.success) {
+			throw new AppError("VALIDATION_ERROR", "Invalid change password payload", parsedInput.error.flatten());
+		}
+
+		const existingUser = await prisma.user.findUnique({
+			where: { id: actor.userId },
+		});
+
+		if (!existingUser) {
+			throw new AppError("UNAUTHENTICATED", "Authentication is required");
+		}
+
+		const existingCredential = await prisma.account.findFirst({
+			where: {
+				userId: actor.userId,
+				providerId: "credential",
+			},
+		});
+
+		if (!existingCredential?.password) {
+			throw new AppError("FORBIDDEN", "Current password is incorrect");
+		}
+
+		const currentPasswordMatches = await verifyPassword({
+			password: parsedInput.data.currentPassword,
+			hash: existingCredential.password,
+		});
+
+		if (!currentPasswordMatches) {
+			throw new AppError("FORBIDDEN", "Current password is incorrect");
+		}
+
+		await prisma.account.update({
+			where: { id: existingCredential.id },
+			data: {
+				password: await hashPassword(parsedInput.data.newPassword),
+			},
+		});
+
+		await this.operationService.createAuditOperation({
+			actor,
+			type: "user.password.change",
+			entityType: "user",
+			entityId: actor.userId,
+			details: {
+				targetUserId: actor.userId,
+				login: existingUser.username ?? existingUser.email,
+			},
+		});
+
+		const user = await prisma.user.findUniqueOrThrow({
+			where: { id: actor.userId },
+		});
+
+		return {
+			user: mapUserSummary(user),
+		};
 	}
 
 	async resetUserPassword(

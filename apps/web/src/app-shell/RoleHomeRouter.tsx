@@ -52,7 +52,9 @@ export function RoleHomeRouter({
 				actor={actor}
 				logout={logout}
 				logoutPending={logoutPending}
+				onActionSuccess={onActionSuccess}
 				onTabChange={onTabChange}
+				online={online}
 			/>
 		);
 	}
@@ -63,7 +65,9 @@ export function RoleHomeRouter({
 				actor={actor}
 				logout={logout}
 				logoutPending={logoutPending}
+				onActionSuccess={onActionSuccess}
 				onTabChange={onTabChange}
+				online={online}
 			/>
 		);
 	}
@@ -74,7 +78,9 @@ export function RoleHomeRouter({
 				actor={actor}
 				logout={logout}
 				logoutPending={logoutPending}
+				onActionSuccess={onActionSuccess}
 				onTabChange={onTabChange}
+				online={online}
 			/>
 		);
 	}
@@ -85,6 +91,8 @@ export function RoleHomeRouter({
 				actor={actor}
 				logout={logout}
 				logoutPending={logoutPending}
+				onActionSuccess={onActionSuccess}
+				online={online}
 			/>
 		);
 	}
@@ -95,7 +103,9 @@ export function RoleHomeRouter({
 				actor={actor}
 				logout={logout}
 				logoutPending={logoutPending}
+				onActionSuccess={onActionSuccess}
 				onTabChange={onTabChange}
+				online={online}
 			/>
 		);
 	}
@@ -106,6 +116,8 @@ export function RoleHomeRouter({
 				actor={actor}
 				logout={logout}
 				logoutPending={logoutPending}
+				onActionSuccess={onActionSuccess}
+				online={online}
 			/>
 		);
 	}

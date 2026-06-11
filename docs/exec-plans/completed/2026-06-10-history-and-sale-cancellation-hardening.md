@@ -34,7 +34,8 @@
 - `apps/web/src/features/operations/OperationHistoryHome.tsx`
 - `apps/web/src/features/sales/*`
 - `apps/web/src/lib/api-client.ts`
-- `docs/UX-HARDENING.md`
+- `docs/FRONTEND.md`
+- `docs/exec-plans/active/2026-06-11-cross-role-ux-hardening.md`
 - `docs/FRONTEND.md`
 
 ## 5. Реализация
@@ -74,7 +75,7 @@ Implemented:
 - Added `GET /distributor/sales/history` and `GET /courier/sales/history` with cursor pagination, `search` and `status`.
 - `SalesHistoryHome` now uses paginated history instead of recent-only lists, with search by client/phone/product, status filters and cancellation from any loaded active sale.
 - Existing cancel modal behavior remains append-only and requires a reason.
-- `docs/UX-HARDENING.md` no longer lists the completed history/cancellation findings as active backlog.
+- History/cancellation findings were closed and later folded into the active cross-role hardening plan / deferred roadmap split.
 
 Final verification:
 

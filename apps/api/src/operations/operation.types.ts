@@ -29,6 +29,7 @@ export const BASELINE_OPERATION_TYPES = [
 	"production.product_transfer.create",
 	"production.raw_material_intake.create",
 	"user.create",
+	"user.password.change",
 	"user.role.update",
 	"user.password.reset",
 ] as const;

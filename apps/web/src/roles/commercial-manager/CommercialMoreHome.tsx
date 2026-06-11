@@ -2,19 +2,19 @@
 
 import {
 	ChevronRight,
-	KeyRound,
-	LogOut,
 	ReceiptText,
 	type LucideIcon,
 } from "lucide-react";
-import { ROLE_LABELS } from "../../lib/role-labels";
 import type { CurrentActor } from "../../lib/api-client";
+import { AccountMoreSection } from "../../features/account/AccountMoreSection";
 
 type CommercialMoreHomeProps = {
 	actor: CurrentActor;
 	logout: () => void;
 	logoutPending: boolean;
+	onActionSuccess: (message: string) => void;
 	onTabChange: (tab: string) => void;
+	online: boolean;
 };
 
 type MenuRow = {
@@ -32,7 +32,9 @@ export function CommercialMoreHome({
 	actor,
 	logout,
 	logoutPending,
+	onActionSuccess,
 	onTabChange,
+	online,
 }: CommercialMoreHomeProps) {
 	const navigationRows: MenuRow[] = [
 		{
@@ -43,46 +45,20 @@ export function CommercialMoreHome({
 			onSelect: () => onTabChange("sales-history"),
 		},
 	];
-	const accountRows: MenuRow[] = [
-		{
-			id: "change-password",
-			label: "Сменить пароль",
-			detail: "Безопасность входа",
-			disabled: true,
-			icon: KeyRound,
-			trailing: "Позже",
-		},
-		{
-			id: "logout",
-			label: logoutPending ? "Выходим" : "Выйти",
-			detail: "Завершить текущую сессию",
-			disabled: logoutPending,
-			icon: LogOut,
-			onSelect: logout,
-			tone: "danger",
-		},
-	];
-
 	return (
 		<section className="screen-stack director-more-home">
 			<h2 className="sr-only">Еще</h2>
 
 			<CommercialMoreSection label="Навигация" rows={navigationRows} />
 
-			<section className="director-more-section" aria-labelledby="commercial-more-account">
-				<h3 className="director-more-section-label" id="commercial-more-account">Аккаунт</h3>
-				<div className="director-more-account-identity">
-					<strong>{actor.displayName}</strong>
-					<span>
-						{ROLE_LABELS[actor.role]} · @{actor.login}
-					</span>
-				</div>
-				<div className="director-more-section-list">
-					{accountRows.map((row) => (
-						<CommercialMoreRow key={row.id} row={row} />
-					))}
-				</div>
-			</section>
+			<AccountMoreSection
+				actor={actor}
+				logout={logout}
+				logoutPending={logoutPending}
+				onActionSuccess={onActionSuccess}
+				online={online}
+				sectionId="commercial-more"
+			/>
 		</section>
 	);
 }
