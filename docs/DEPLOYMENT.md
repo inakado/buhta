@@ -6,6 +6,8 @@ Production deploy runbook проекта «Бухта».
 
 Текущее состояние на `2026-06-11`: production deploy выполнен через GitHub Actions, `https://buhta-crm.ru/health` отвечает `200`, Caddy получил Let's Encrypt certificate, `api`, `web`, `postgres` и `caddy` работают в Docker Compose.
 
+Операционный факт на `2026-06-11`: live `api` и `web` image работают на SHA `516939679608271ecb4f32fee3bf17c05a6e52a1`; Caddyfile на сервере вручную обновлен до точного API matcher из `main`. Поздний run `fix: harden production route deployment` был отменен, потому что завис на `pushing layers` в GHCR до SSH deploy; сервер он не трогал.
+
 ## 1. Production contour
 
 Целевой контур:
@@ -111,7 +113,7 @@ sh /tmp/bootstrap-ubuntu.sh
 
 Перед первым deploy вручную создать `/opt/buhta/.env.production`.
 
-После первого deploy создать первичного admin-пользователя:
+После первого deploy создать первичного admin-пользователя. Это одноразовое действие:
 
 ```sh
 ssh buhta
@@ -130,6 +132,8 @@ IMAGE_TAG=<current-git-sha> docker compose --env-file /opt/buhta/.env.production
 
 Файл имеет права `600 root:root`. После первого входа admin должен сменить пароль в интерфейсе, а файл с временным паролем нужно удалить.
 
+Не запускать production seed повторно при обычных deploy. CI/CD применяет только миграции через `prisma:deploy`; пользователей, роли и пароль admin он не пересоздает.
+
 Если нужен ручной deploy уже существующего image tag:
 
 ```sh
@@ -137,6 +141,8 @@ ssh buhta
 cd /opt/buhta/deploy
 ./deploy.sh <git-sha>
 ```
+
+Для ручных `docker compose up ...` команд, которые пересоздают сервисы, задавать явный `IMAGE_TAG=<git-sha>`. На сервере `/opt/buhta/.env.production` может содержать placeholder `IMAGE_TAG=main`; штатный `deploy.sh <git-sha>` переопределяет его аргументом.
 
 ## 6. What deploy does
 
@@ -160,6 +166,20 @@ cd /opt/buhta/deploy
    ```sh
    https://buhta-crm.ru/health
    ```
+
+Workflow `Deploy Production` делает то же самое в три этапа:
+
+1. `verify`: install, migrations на CI Postgres, lint, typecheck, `test:ci`, `docs:check`, build.
+2. `build`: Docker build/push `api` и `web` images в GHCR с tag `github.sha` и `main`.
+3. `deploy`: синхронизирует каталог `deploy/` на сервер и запускает `./deploy.sh <github.sha>` по SSH.
+
+Если `Deploy Production` висит на `Build and push API image`, это еще не deploy на VPS. Проверить можно через:
+
+```sh
+gh run view <run-id> --repo inakado/buhta --json jobs,url
+```
+
+Если шаг завис именно на `pushing layers` в GHCR, сервер не менялся; можно отменить run и отдельно разбираться с размером image/cache.
 
 ## 7. Rollback
 
@@ -228,6 +248,36 @@ Health:
 ```sh
 curl -fsS https://buhta-crm.ru/health
 ```
+
+Проверка route matcher после изменений Caddy:
+
+```sh
+curl -i https://buhta-crm.ru/auth/me
+curl -i https://buhta-crm.ru/auth-spike/director-only
+```
+
+Ожидаемо:
+
+- `/auth/me` без сессии возвращает API JSON `401`;
+- `/auth-spike/director-only` не должен проходить в API через Caddy.
+
+Безопасная Docker-очистка на сервере:
+
+```sh
+ssh buhta
+docker system df
+docker container prune -f
+docker image prune -f
+docker builder prune -af
+```
+
+Не запускать `docker volume prune` на production. Не удалять volumes:
+
+- `buhta_postgres18-data`;
+- `buhta_caddy-data`;
+- `buhta_caddy-config`.
+
+Image retention для MVP: держать текущий SHA и один предыдущий successful SHA для rollback; failed/прерванные deploy images можно удалить вручную после проверки, что они не используются.
 
 ## 10. Current MVP compromises
 

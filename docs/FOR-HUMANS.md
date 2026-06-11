@@ -272,9 +272,66 @@ corepack pnpm dev:web
 - это ограничение sandbox;
 - на обычной машине команду нужно просто запустить из терминала.
 
-## 10. Что читать дальше
+## 10. Production: что можно делать руками
+
+Обычный deploy делается не с твоего ноутбука, а через GitHub Actions после push в `main`.
+
+Проверить production:
+
+```bash
+curl -fsS https://buhta-crm.ru/health
+```
+
+Посмотреть контейнеры на сервере:
+
+```bash
+ssh buhta
+cd /opt/buhta/deploy
+docker compose --env-file ../.env.production -f compose.prod.yml ps
+```
+
+Посмотреть последние GitHub Actions:
+
+```bash
+gh run list --repo inakado/buhta --limit 5
+```
+
+Важно про seed:
+
+- production admin seed запускается только один раз после самого первого deploy;
+- обычные deploy не должны запускать `pnpm --filter @buhta/api seed`;
+- временный пароль первичного admin лежит только на сервере в `/opt/buhta/initial-admin-password.txt`, пока владелец не сменит пароль и не удалит файл;
+- не коммитить и не вставлять production passwords/secrets в GitHub, docs или чат.
+
+Если GitHub Actions `Deploy Production` долго висит:
+
+- если он висит на `Build and push API image`, сервер еще не менялся;
+- если в логе видно `pushing layers`, это загрузка Docker image в GHCR;
+- такой run можно отменять только после проверки, что production уже работает и job еще не дошел до SSH deploy.
+
+Безопасная очистка сервера:
+
+```bash
+ssh buhta
+docker system df
+docker container prune -f
+docker image prune -f
+docker builder prune -af
+```
+
+Не запускать на production:
+
+```bash
+docker volume prune
+docker compose down -v
+```
+
+Эти команды могут удалить базу или сертификаты. Production volumes `buhta_postgres18-data`, `buhta_caddy-data`, `buhta_caddy-config` руками не трогать.
+
+## 11. Что читать дальше
 
 - `docs/DEVELOPMENT.md` — инженерный runbook и troubleshooting для dev/test/docs контура.
+- `docs/DEPLOYMENT.md` — production deploy, rollback, backup, CI/CD и server cleanup.
 - `docs/exec-plans/active/2026-05-27-v1-roadmap.md` — где проект находится по глобальному плану.
 - `docs/crm-requirements.md` — бизнес-правила CRM.
 - `docs/FRONTEND.md` — frontend-направление, mobile/PWA и текущие visual conventions.

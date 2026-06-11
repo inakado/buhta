@@ -82,3 +82,13 @@
 - Для сложной работы использовать цикл: targeted tests -> изменение -> targeted verification -> полный релевантный прогон.
 - Перед завершением задачи запускать максимально полный доступный набор проверок: lint, typecheck, unit/integration tests, smoke и docs check. Если часть проверок невозможна, указать причину.
 - Если тестовый стек еще не выбран, сначала описать ожидаемые сценарии тестирования в плане реализации.
+
+## 8. Production и CI/CD guardrails
+
+- Перед любыми production/deploy действиями читать `docs/DEPLOYMENT.md` и `docs/FOR-HUMANS.md`.
+- Production seed первичного admin выполняется только один раз после первого deploy. Не запускать `pnpm --filter @buhta/api seed` на production повторно без явного запроса владельца проекта.
+- CI/CD delivery идет через GitHub Actions: `CI` проверяет код, `Deploy Production` собирает GHCR images, синхронизирует `deploy/` на VPS и запускает `/opt/buhta/deploy/deploy.sh <git-sha>`.
+- Runtime secrets живут на VPS в `/opt/buhta/.env.production` и в GitHub Environment secrets. Не переносить secrets в репозиторий, логи, docs или сообщения.
+- На VPS не удалять Docker volumes `buhta_postgres18-data`, `buhta_caddy-data`, `buhta_caddy-config`. Они хранят production БД и Caddy certificates/config.
+- Безопасная очистка VPS допускает только stopped containers, dangling images, BuildKit cache, явно неиспользуемые anonymous volumes и неактуальные failed image tags. Оставлять текущий image и минимум один предыдущий successful SHA для rollback.
+- Для ручных `docker compose up` на VPS задавать явный `IMAGE_TAG=<sha>`, потому что `/opt/buhta/.env.production` может содержать placeholder `IMAGE_TAG=main`; штатный путь `./deploy.sh <sha>` сам переопределяет tag аргументом.
