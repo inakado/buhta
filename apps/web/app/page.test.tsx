@@ -597,6 +597,21 @@ describe("HomePage", () => {
 				return jsonResponse(adminActorResponse);
 			}
 
+			if (url.endsWith("/users/u-courier/role") && method === "PATCH") {
+				const body = JSON.parse(String(init?.body ?? "{}")) as { role: string };
+
+				return jsonResponse({
+					user: {
+						id: "u-courier",
+						name: "Courier Browser",
+						login: "courier-browser",
+						role: body.role,
+						createdAt: new Date(0).toISOString(),
+						updatedAt: new Date(1).toISOString(),
+					},
+				});
+			}
+
 			if (url.endsWith("/users/u-courier/reset-password") && method === "POST") {
 				return jsonResponse({
 					user: {
@@ -636,6 +651,14 @@ describe("HomePage", () => {
 							createdAt: new Date(0).toISOString(),
 							updatedAt: new Date(0).toISOString(),
 						},
+						{
+							id: "u-commercial",
+							name: "Commercial Browser",
+							login: "commercial-browser",
+							role: "commercial_manager",
+							createdAt: new Date(0).toISOString(),
+							updatedAt: new Date(0).toISOString(),
+						},
 					],
 				});
 			}
@@ -644,12 +667,53 @@ describe("HomePage", () => {
 		});
 
 		vi.stubGlobal("fetch", fetchMock);
+		const writeText = vi.fn(async () => undefined);
+		Object.defineProperty(window.navigator, "clipboard", {
+			configurable: true,
+			value: { writeText },
+		});
 
 		render(<HomePage />);
 
 		expect(await screen.findByRole("heading", { name: "Пользователи" })).toBeTruthy();
 		expect(screen.queryByRole("heading", { name: "Новый сотрудник" })).toBeNull();
 		expect(await screen.findByText("Courier Browser")).toBeTruthy();
+		expect(await screen.findByText("Commercial Browser")).toBeTruthy();
+		expect(screen.getByText("2 сотрудников")).toBeTruthy();
+
+		fireEvent.change(screen.getByLabelText("Поиск пользователей"), { target: { value: "commercial" } });
+		expect(screen.queryByText("Courier Browser")).toBeNull();
+		expect(screen.getByText("Commercial Browser")).toBeTruthy();
+		fireEvent.click(screen.getByRole("button", { name: "Очистить поиск пользователей" }));
+		expect(await screen.findByText("Courier Browser")).toBeTruthy();
+
+		fireEvent.change(screen.getByLabelText("Фильтр роли"), { target: { value: "commercial_manager" } });
+		expect(screen.queryByText("Courier Browser")).toBeNull();
+		expect(screen.getByText("Commercial Browser")).toBeTruthy();
+		fireEvent.change(screen.getByLabelText("Фильтр роли"), { target: { value: "all" } });
+		expect(await screen.findByText("Courier Browser")).toBeTruthy();
+
+		fireEvent.click(screen.getByRole("button", { name: "Скопировать логин Courier Browser" }));
+		await waitFor(() => {
+			expect(writeText).toHaveBeenCalledWith("courier-browser");
+		});
+		expect(await screen.findByText("Логин скопирован")).toBeTruthy();
+
+		const rolePatchCalls = () => fetchMock.mock.calls.filter(([input]) => String(input).endsWith("/users/u-courier/role"));
+		fireEvent.change(screen.getByLabelText("Роль Courier Browser"), { target: { value: "commercial_manager" } });
+		expect(await screen.findByRole("dialog")).toBeTruthy();
+		expect(rolePatchCalls()).toHaveLength(0);
+		fireEvent.click(screen.getByRole("button", { name: "Изменить" }));
+		await waitFor(() => {
+			expect(fetchMock).toHaveBeenCalledWith(
+				expect.stringContaining("/users/u-courier/role"),
+				expect.objectContaining({
+					method: "PATCH",
+					body: JSON.stringify({ role: "commercial_manager" }),
+				}),
+			);
+		});
+		expect(await screen.findByText("Роль изменена")).toBeTruthy();
 
 		fireEvent.click(screen.getByRole("button", { name: "Новый" }));
 		expect(await screen.findByRole("dialog")).toBeTruthy();

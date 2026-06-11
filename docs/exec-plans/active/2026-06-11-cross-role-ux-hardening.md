@@ -124,8 +124,8 @@
 
 ## 9. Открытые Вопросы
 
-- Should role change use explicit confirmation before applying or undo after applying?
-- Should admin user search/filter remain client-side for v1 or become backend-backed immediately?
+- Role change uses explicit confirmation before applying, because the action changes user access.
+- Admin user search/filter remains client-side for v1, because the current `/users` contract returns the active employee list without pagination.
 
 ## 10. Уточнение Backend Password Flow
 
@@ -145,4 +145,13 @@
 - Смена пароля доступна из `Еще → Аккаунт` для всех ролей, кроме offline состояния.
 - Текущая сессия остается активной после успешной смены пароля.
 - Audit action `user.password.change` добавлен в operation history mapping and handler map.
-- Следующие подпункты плана остаются open: admin users search/filter/copy/role safety and PWA/mobile smoke basics.
+- Следующие подпункты плана остаются open: PWA/mobile smoke basics.
+
+### 2026-06-11 — Admin Users Hardening
+
+- UX-006 закрыт в `features/users/AdminUsersHome.tsx`.
+- Добавлены client-side поиск по имени/login и фильтр роли над access-list.
+- В строке сотрудника добавлен copy login action с global success notice без перехода на другой экран.
+- Смена роли переведена на confirmation dialog: select больше не вызывает PATCH сразу.
+- Подтвержденная смена роли обновляет `["users"]` и показывает global success notice `Роль изменена`.
+- На ширинах 390+ строка списка остается читаемой: mobile layout переводит identity и controls в одну колонку без обрезки select и icon buttons.

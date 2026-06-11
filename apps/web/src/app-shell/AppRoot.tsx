@@ -111,13 +111,16 @@ function AppShell({ actor }: { actor: CurrentActor }) {
 		completeLocalSignOut(queryClient);
 		logout.mutate();
 	}
-	function showSuccessOnHome(message: string) {
+	function showSuccess(message: string) {
 		successNoticeId.current += 1;
-		setActiveTab("home");
 		setSuccessNotice({
 			id: successNoticeId.current,
 			message,
 		});
+	}
+	function showSuccessOnHome(message: string) {
+		setActiveTab("home");
+		showSuccess(message);
 	}
 
 	useEffect(() => {
@@ -149,6 +152,7 @@ function AppShell({ actor }: { actor: CurrentActor }) {
 					logoutPending={logout.isPending}
 					online={online}
 					onActionSuccess={showSuccessOnHome}
+					onStatusSuccess={showSuccess}
 					onTabChange={setActiveTab}
 				/>
 				{successNotice ? (

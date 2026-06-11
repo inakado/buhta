@@ -3,6 +3,14 @@
 import type { CurrentActor } from "../../lib/api-client";
 import { AdminUsersHome } from "../../features/users/AdminUsersHome";
 
-export function AdminHome({ actor, online }: { actor: CurrentActor; online: boolean }) {
-	return <AdminUsersHome actor={actor} online={online} />;
+export function AdminHome({
+	actor,
+	onActionSuccess,
+	online,
+}: {
+	actor: CurrentActor;
+	onActionSuccess: (message: string) => void;
+	online: boolean;
+}) {
+	return <AdminUsersHome actor={actor} onActionSuccess={onActionSuccess} online={online} />;
 }

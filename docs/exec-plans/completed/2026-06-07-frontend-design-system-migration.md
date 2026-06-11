@@ -69,7 +69,7 @@
 | Каталог | `catalog` при `catalog.manage` | `CatalogHome` | Shared with director. Уже мигрирован как compact management surface; admin stage должен только проверить роль/permission context и не делать отдельный дизайн. |
 | Клиенты | `clients` при `client.read` | `ClientsHome` | Shared with director/commercial/distributor contexts. Уже мигрирован к clients management standard; admin stage должен оставить общий экран без fork. |
 | История операций | `operation-history` | `OperationHistoryHome` | Shared with director. Уже мигрирован: filters dialog, readable details, no raw JSON/technical ids. Для admin нужен только smoke/тестовый контроль входа через nav. |
-| Еще / аккаунт | `more` | `AdminMoreHome`, shared account/logout vocabulary | Заменяет старую нижнюю вкладку `Настройки` и `SettingsScreen`: account block, logout row, future `Сменить пароль` как cross-role hardening. |
+| Еще / аккаунт | `more` | `AdminMoreHome`, shared account/logout vocabulary | Заменяет старую нижнюю вкладку `Настройки` и `SettingsScreen`: account block, logout row; `Сменить пароль` позже реализован в cross-role UX hardening. |
 
 Impeccable audit 2026-06-10:
 
@@ -125,7 +125,7 @@ Admin implementation order:
 | История выпусков | `more` -> `history` | `ProductionHistory`, `ProductBatchList` | Переехала в `Еще` по аналогии с Директором. Сам экран мигрирован как compact ledger последних выпусков без новых фильтров, если API их не дает. |
 | На распределителе | `distributor` | `DistributorInventoryHome` | Read-only inventory variant со сводкой, по аналогии с директорскими остатками, но без cash/discount controls для заведующего при отсутствии прав. |
 | Уведомления | `notifications` | `NotificationsHome` | Задачи от коммерческого руководителя: видимый заголовок, default queue `Новые`, вкладка `Выполненные`, task ledger, checkbox completion control; create-form скрыт для заведующего без `notification.create`. |
-| Еще | `more` | `ProductionMoreHome`, `ProductionHistory` | Добавлен по аналогии с Director More: блок `Навигация` с `История`, блок `Аккаунт`, logout, future entry `Сменить пароль` как cross-role hardening до реализации auth flow. |
+| Еще | `more` | `ProductionMoreHome`, `ProductionHistory` | Добавлен по аналогии с Director More: блок `Навигация` с `История`, блок `Аккаунт`, logout; entry `Сменить пароль` позже реализован в cross-role UX hardening. |
 | Профиль / аккаунт | `more` account block | `ProductionMoreHome` | Профильная зона заведующего теперь находится в `Еще`; отдельная нижняя вкладка `Профиль` снята. Self password change остается cross-role hardening, если отдельный auth stage не открыт. |
 
 Status 2026-06-09: role contour complete. Финальный static cleanup не нашел legacy production home/list hooks (`production-workshop-card`, `production-balance-row`, `production-balance-list`, `detail-list-panel`) in app code. Удалены невостребованные local class hooks from migrated screens: `production-notification-screen`, `notification-summary-line`, `notification-row`, `notification-heading`, `production-more-home`, `production-history-home`, `production-inventory-table`. Product marker icon standardized to `BadgeCheck`; remaining `PackageCheck` usage is only courier unload submit icon, not a product marker.
@@ -142,7 +142,7 @@ Status 2026-06-09: role contour complete. Финальный static cleanup не
 | Задачи производству | action/internal entry from home or `more` if needed | `NotificationsHome` | Commercial keeps create form by permission and uses the migrated task ledger standard from production notifications. |
 | Клиенты | `clients` | `ClientsHome` | Uses the already established clients management standard, without a fresh redesign. |
 | Каталог | `catalog` if allowed | `CatalogHome` | Permission-dependent management surface. |
-| Еще / аккаунт | `more` | `CommercialMoreHome` | Same Director/Production More model: navigation (`История`), account block, logout, future `Сменить пароль` as cross-role hardening. |
+| Еще / аккаунт | `more` | `CommercialMoreHome` | Same Director/Production More model: navigation (`История`), account block, `Сменить пароль`, logout. |
 
 ### 5.6 Работник Распределителя
 
@@ -346,10 +346,10 @@ Status 2026-06-09: role contour complete. Финальный static cleanup не
    - Status: implemented. Production manager sees read/complete task ledger only; commercial manager keeps create form by permission.
 
 6. **Еще, история, аккаунт.**
-	- Добавить production `Еще` по аналогии с Director More: блок `Навигация` с переходом в `История`, блок `Аккаунт`, logout, future `Сменить пароль`.
+	- Добавить production `Еще` по аналогии с Director More: блок `Навигация` с переходом в `История`, блок `Аккаунт`, logout, entry `Сменить пароль`.
 	- `История выпусков` переезжает из нижней навигации в `Еще` and migrates to compact ledger list. Не добавлять фильтры или отчеты без API/read model.
 	- `Сменить пароль` остается cross-role auth hardening entry until that stage is opened.
-	- Status: implemented. Production `Еще` uses Director More menu vocabulary with `Навигация` -> `История`, `Аккаунт`, disabled `Сменить пароль`, and logout. `История выпусков` removed from bottom navigation, stays reachable through `Еще`, and keeps director `OperationHistoryHome` visual rhythm: compact topbar, `operation-history-body`, ledger rows, no filters and no details modal.
+	- Status: implemented. Production `Еще` uses Director More menu vocabulary with `Навигация` -> `История`, `Аккаунт`, `Сменить пароль`, and logout. `История выпусков` removed from bottom navigation, stays reachable through `Еще`, and keeps director `OperationHistoryHome` visual rhythm: compact topbar, `operation-history-body`, ledger rows, no filters and no details modal.
 
 Stage checks:
 
@@ -403,9 +403,9 @@ Owner-confirmed direction for commercial manager:
 
 8. **Еще / аккаунт.**
    - Replace the old profile/settings entry with `Еще`, following Director/Production More.
-   - Account block, logout and future `Сменить пароль` stay cross-role consistent.
+   - Account block, logout and `Сменить пароль` stay cross-role consistent.
    - Secondary links should not duplicate bottom nav items. Since `Курьеры` stays in nav, `Еще` is account-focused unless a non-primary commercial entry needs a home.
-   - Status: implemented. Commercial bottom nav now uses `Главная`, `Клиенты`, `Курьеры`, `Еще`; `CommercialMoreHome` follows the shared Director/Production menu pattern with `Навигация → История`, account identity, disabled `Сменить пароль`, and logout.
+   - Status: implemented. Commercial bottom nav now uses `Главная`, `Клиенты`, `Курьеры`, `Еще`; `CommercialMoreHome` follows the shared Director/Production menu pattern with `Навигация → История`, account identity, `Сменить пароль`, and logout.
 
 Stage checks:
 
@@ -465,10 +465,10 @@ Owner-confirmed shape:
 
 6. **Еще / аккаунт.**
    - Replace bottom-nav `Профиль` and generic `SettingsScreen` for this role with `Еще`.
-   - Follow Director/Production/Commercial More: account identity, disabled `Сменить пароль` as cross-role hardening, quiet logout row.
+   - Follow Director/Production/Commercial More: account identity, `Сменить пароль`, quiet logout row.
    - Do not duplicate `История` inside `Еще` while it remains a direct bottom-nav item.
    - Commit after implementation, tests, cleanup and docs update.
-   - Status: implemented. Distributor worker bottom nav now uses `Главная`, `Клиенты`, `История`, `Еще`; `DistributorWorkerMoreHome` keeps an account-only More screen with identity, disabled `Сменить пароль` and quiet logout, while `История` and `Клиенты` remain direct bottom-nav entries.
+   - Status: implemented. Distributor worker bottom nav now uses `Главная`, `Клиенты`, `История`, `Еще`; `DistributorWorkerMoreHome` keeps an account-only More screen with identity, `Сменить пароль` and quiet logout, while `История` and `Клиенты` remain direct bottom-nav entries.
 
 7. **Final worker cleanup.**
    - Search for stale distributor-worker uses of old card/action/settings classes after the staged work.
@@ -574,11 +574,11 @@ Implementation stages:
 
 6. **Еще / аккаунт.**
    - Replace bottom-nav `Профиль` with `Еще`.
-   - Follow the shared account screen: identity, disabled `Сменить пароль`, quiet logout.
+   - Follow the shared account screen: identity, `Сменить пароль`, quiet logout.
    - Include `История` as the navigation row because it no longer stays direct in bottom nav.
    - Update navigation tests, cleanup settings usage and docs.
    - Commit after implementation.
-   - Status: implemented. Courier bottom nav now uses `Баланс` and `Еще`; `CourierMoreHome` follows the shared Director/Production/Commercial account pattern with `Навигация → История`, identity, disabled `Сменить пароль` and quiet logout.
+   - Status: implemented. Courier bottom nav now uses `Баланс` and `Еще`; `CourierMoreHome` follows the shared Director/Production/Commercial account pattern with `Навигация → История`, identity, `Сменить пароль` and quiet logout.
 
 7. **Final courier cleanup.**
    - Search for stale courier uses of old card/action/settings classes.

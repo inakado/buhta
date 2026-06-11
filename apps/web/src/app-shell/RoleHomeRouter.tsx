@@ -34,6 +34,7 @@ type RoleHomeRouterProps = {
 	logoutPending: boolean;
 	online: boolean;
 	onActionSuccess: (message: string) => void;
+	onStatusSuccess: (message: string) => void;
 	onTabChange: (tab: string) => void;
 };
 
@@ -44,6 +45,7 @@ export function RoleHomeRouter({
 	logoutPending,
 	online,
 	onActionSuccess,
+	onStatusSuccess,
 	onTabChange,
 }: RoleHomeRouterProps) {
 	if (actor.role === "director" && activeTab === "more") {
@@ -52,7 +54,7 @@ export function RoleHomeRouter({
 				actor={actor}
 				logout={logout}
 				logoutPending={logoutPending}
-				onActionSuccess={onActionSuccess}
+				onActionSuccess={onStatusSuccess}
 				onTabChange={onTabChange}
 				online={online}
 			/>
@@ -65,7 +67,7 @@ export function RoleHomeRouter({
 				actor={actor}
 				logout={logout}
 				logoutPending={logoutPending}
-				onActionSuccess={onActionSuccess}
+				onActionSuccess={onStatusSuccess}
 				onTabChange={onTabChange}
 				online={online}
 			/>
@@ -78,7 +80,7 @@ export function RoleHomeRouter({
 				actor={actor}
 				logout={logout}
 				logoutPending={logoutPending}
-				onActionSuccess={onActionSuccess}
+				onActionSuccess={onStatusSuccess}
 				onTabChange={onTabChange}
 				online={online}
 			/>
@@ -91,7 +93,7 @@ export function RoleHomeRouter({
 				actor={actor}
 				logout={logout}
 				logoutPending={logoutPending}
-				onActionSuccess={onActionSuccess}
+				onActionSuccess={onStatusSuccess}
 				online={online}
 			/>
 		);
@@ -103,7 +105,7 @@ export function RoleHomeRouter({
 				actor={actor}
 				logout={logout}
 				logoutPending={logoutPending}
-				onActionSuccess={onActionSuccess}
+				onActionSuccess={onStatusSuccess}
 				onTabChange={onTabChange}
 				online={online}
 			/>
@@ -116,7 +118,7 @@ export function RoleHomeRouter({
 				actor={actor}
 				logout={logout}
 				logoutPending={logoutPending}
-				onActionSuccess={onActionSuccess}
+				onActionSuccess={onStatusSuccess}
 				online={online}
 			/>
 		);
@@ -186,7 +188,7 @@ export function RoleHomeRouter({
 			return <PlaceholderScreen title="Раздел" text="Раздел недоступен для текущей роли." icon={Settings} />;
 		}
 
-		return <AdminHome actor={actor} online={online} />;
+		return <AdminHome actor={actor} onActionSuccess={onStatusSuccess} online={online} />;
 	}
 
 	if (
