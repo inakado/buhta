@@ -49,6 +49,14 @@
 	--state-danger-text: #9a3d22;
 	--state-success-border: #caefac;
 	--state-success-text: #25772d;
+	--safe-area-top: env(safe-area-inset-top, 0px);
+	--safe-area-right: env(safe-area-inset-right, 0px);
+	--safe-area-bottom: env(safe-area-inset-bottom, 0px);
+	--safe-area-left: env(safe-area-inset-left, 0px);
+	--shell-edge: 16px;
+	--shell-bottom-nav-offset: 18px;
+	--shell-bottom-nav-reserve: calc(92px + var(--safe-area-bottom));
+	--shell-success-offset: calc(84px + var(--safe-area-bottom));
 }
 
 * {
@@ -102,7 +110,11 @@ button:disabled {
 .app-page,
 .login-page {
 	min-height: 100dvh;
-	padding: 16px;
+	padding:
+		calc(var(--shell-edge) + var(--safe-area-top))
+		calc(var(--shell-edge) + var(--safe-area-right))
+		calc(var(--shell-edge) + var(--safe-area-bottom))
+		calc(var(--shell-edge) + var(--safe-area-left));
 	background: var(--surface-muted);
 }
 
@@ -124,7 +136,7 @@ button:disabled {
 	height: calc(100dvh - 32px);
 	min-height: 0;
 	overflow: hidden;
-	padding: 18px 16px 92px;
+	padding: 18px 16px var(--shell-bottom-nav-reserve);
 	border-radius: 28px;
 }
 
@@ -5365,7 +5377,7 @@ input[type="search"]::-webkit-search-decoration {
 .production-success-notice {
 	position: absolute;
 	right: 28px;
-	bottom: 84px;
+	bottom: var(--shell-success-offset);
 	left: 28px;
 	z-index: 3;
 	display: flex;
@@ -5391,7 +5403,7 @@ input[type="search"]::-webkit-search-decoration {
 .bottom-nav {
 	position: absolute;
 	right: 16px;
-	bottom: 18px;
+	bottom: calc(var(--shell-bottom-nav-offset) + var(--safe-area-bottom));
 	left: 16px;
 	justify-content: space-around;
 	gap: 4px;
@@ -5474,6 +5486,13 @@ input[type="search"]::-webkit-search-decoration {
 }
 
 @media (max-width: 380px) {
+	:root {
+		--shell-edge: 0px;
+		--shell-bottom-nav-offset: 12px;
+		--shell-bottom-nav-reserve: calc(86px + var(--safe-area-bottom));
+		--shell-success-offset: calc(78px + var(--safe-area-bottom));
+	}
+
 	.app-page,
 	.login-page {
 		padding: 0;

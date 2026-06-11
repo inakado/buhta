@@ -35,7 +35,7 @@
 - `apps/web/src/features/sales/*`
 - `apps/web/src/lib/api-client.ts`
 - `docs/FRONTEND.md`
-- `docs/exec-plans/active/2026-06-11-cross-role-ux-hardening.md`
+- `docs/exec-plans/completed/2026-06-11-cross-role-ux-hardening.md`
 - `docs/FRONTEND.md`
 
 ## 5. Реализация

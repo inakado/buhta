@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Client } from "@buhta/shared";
+import manifest from "./manifest";
 import HomePage from "./page";
 
 const adminActorResponse = {
@@ -478,6 +479,25 @@ describe("HomePage", () => {
 		const loader = document.querySelector<HTMLImageElement>(".loading-logo");
 		expect(loader).toBeTruthy();
 		expect(loader?.getAttribute("src")).toBe("/loader-pearl-cove.svg");
+	});
+
+	it("keeps PWA installability basics stable", () => {
+		const pwaManifest = manifest();
+
+		expect(pwaManifest.name).toBe("Бухта CRM");
+		expect(pwaManifest.short_name).toBe("Бухта");
+		expect(pwaManifest.start_url).toBe("/");
+		expect(pwaManifest.display).toBe("standalone");
+		expect(pwaManifest.background_color).toBe("#FFFFFF");
+		expect(pwaManifest.theme_color).toBe("#4AB855");
+		expect(pwaManifest.icons).toEqual([
+			{
+				src: "/icon.svg",
+				sizes: "any",
+				type: "image/svg+xml",
+				purpose: "maskable",
+			},
+		]);
 	});
 
 	it("moves an authenticated admin to the login form after logout", async () => {

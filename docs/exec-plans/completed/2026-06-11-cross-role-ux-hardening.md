@@ -1,6 +1,6 @@
 # Cross-role UX Hardening
 
-Статус: `Active`
+Статус: `Completed`
 Дата: `2026-06-11`
 
 ## 1. Цель
@@ -155,3 +155,11 @@
 - Смена роли переведена на confirmation dialog: select больше не вызывает PATCH сразу.
 - Подтвержденная смена роли обновляет `["users"]` и показывает global success notice `Роль изменена`.
 - На ширинах 390+ строка списка остается читаемой: mobile layout переводит identity и controls в одну колонку без обрезки select и icon buttons.
+
+### 2026-06-11 — PWA/Mobile Basics
+
+- PWA manifest basics закреплены тестом: `standalone`, `/` start URL, theme/background colors and maskable `/icon.svg`.
+- Loading screen использует `loader-pearl-cove.svg` без текстовой подписи.
+- Mobile shell, bottom nav and global success notices use `safe-area-inset-*` CSS variables so installed/mobile contexts reserve space above the system home indicator.
+- Offline behavior remains read-only for loaded data with explicit disabled write actions; offline write queue stays out of v1 scope.
+- UX-013/mobile smoke completed at code/test level for long-screen shell rules and representative write blocking. No per-screen redesign was introduced.
