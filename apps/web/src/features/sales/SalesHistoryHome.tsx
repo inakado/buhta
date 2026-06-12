@@ -1,9 +1,13 @@
 "use client";
 
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Check } from "lucide-react";
-import { FormEvent, useReducer } from "react";
-import type { CourierRecentSaleItem, DistributorRecentSaleItem } from "@buhta/shared";
+import { FormEvent, useReducer, useState } from "react";
+import type {
+	CancelCourierSaleResponse,
+	CancelDistributorSaleResponse,
+	CourierRecentSaleItem,
+	DistributorRecentSaleItem,
+} from "@buhta/shared";
 import {
 	cancelCourierSale,
 	cancelDistributorSale,
@@ -11,6 +15,8 @@ import {
 	getDistributorSalesHistory,
 	type CurrentActor,
 } from "../../lib/api-client";
+import { formatCompactMoneyCents } from "../../lib/money-format";
+import { PostSubmitResultLayer } from "../operations/PostSubmitResultLayer";
 import { RecentSalesPanel } from "./RecentSalesPanel";
 
 type SalesHistoryHomeProps = {
@@ -28,7 +34,6 @@ type SalesHistoryState = {
 	cancellingSaleId: string;
 	cancelReason: string;
 	cancelLocalError: string;
-	successNotice: string;
 	searchDraft: string;
 	search: string;
 	status: SalesStatusFilter;
@@ -37,7 +42,6 @@ type SalesHistoryAction =
 	| { type: "patch"; values: Partial<SalesHistoryState> }
 	| { type: "openCancel"; saleId: string }
 	| { type: "closeCancel" }
-	| { type: "cancelSuccess" }
 	| { type: "submitSearch" }
 	| { type: "clearSearch" };
 
@@ -46,7 +50,6 @@ const INITIAL_SALES_HISTORY_STATE: SalesHistoryState = {
 	cancellingSaleId: "",
 	cancelReason: "",
 	cancelLocalError: "",
-	successNotice: "",
 	searchDraft: "",
 	search: "",
 	status: "all",
@@ -67,23 +70,9 @@ function salesHistoryReducer(state: SalesHistoryState, action: SalesHistoryActio
 				cancellingSaleId: action.saleId,
 				cancelReason: "",
 				cancelLocalError: "",
-				successNotice: "",
 			};
 		case "closeCancel":
-			return {
-				...state,
-				cancellingSaleId: "",
-				cancelReason: "",
-				cancelLocalError: "",
-			};
-		case "cancelSuccess":
-			return {
-				...state,
-				cancellingSaleId: "",
-				cancelReason: "",
-				cancelLocalError: "",
-				successNotice: "Продажа отменена",
-			};
+			return { ...state, cancellingSaleId: "", cancelReason: "", cancelLocalError: "" };
 		case "submitSearch":
 			return { ...state, search: state.searchDraft.trim() };
 		case "clearSearch":
@@ -91,10 +80,21 @@ function salesHistoryReducer(state: SalesHistoryState, action: SalesHistoryActio
 	}
 }
 
+type SaleCancellationResultSnapshot = {
+	clientLabel: string;
+	createdAt: string;
+	paymentMethod: "cash" | "cashless";
+	productName: string;
+	quantity: number;
+	reason: string;
+	totalCents: number;
+};
+
 export function SalesHistoryHome({ actor, online }: SalesHistoryHomeProps) {
 	const queryClient = useQueryClient();
 	const [state, dispatch] = useReducer(salesHistoryReducer, INITIAL_SALES_HISTORY_STATE);
-	const { cancellingSaleId, cancelLocalError, cancelReason, search, searchDraft, status, successNotice } = state;
+	const [cancellationResult, setCancellationResult] = useState<SaleCancellationResultSnapshot | null>(null);
+	const { cancellingSaleId, cancelLocalError, cancelReason, search, searchDraft, status } = state;
 	const source = actor.role === "courier" ? "courier" : "distributor";
 	const queryKey = source === "courier"
 		? ["courier", "sales", "history", { search, status }]
@@ -128,16 +128,27 @@ export function SalesHistoryHome({ actor, online }: SalesHistoryHomeProps) {
 	});
 	const items = salesHistory?.pages.flatMap((page) => page.items) ?? [];
 	const cancelMutation = useMutation({
-		mutationFn: async ({ reason, saleId }: { reason: string; saleId: string }): Promise<void> => {
+		mutationFn: async ({
+			reason,
+			saleId,
+		}: {
+			reason: string;
+			saleId: string;
+		}): Promise<CancelCourierSaleResponse | CancelDistributorSaleResponse> => {
 			if (source === "courier") {
-				await cancelCourierSale(saleId, { reason });
-				return;
+				return cancelCourierSale(saleId, { reason });
 			}
 
-			await cancelDistributorSale(saleId, { reason });
+			return cancelDistributorSale(saleId, { reason });
 		},
-		onSuccess: async () => {
-			dispatch({ type: "cancelSuccess" });
+		onSuccess: async (response, variables) => {
+			const cancelledSale = items.find((item) => item.id === variables.saleId);
+			setCancellationResult(createSaleCancellationResultSnapshot({
+				reason: variables.reason,
+				response,
+				sale: cancelledSale,
+			}));
+			dispatch({ type: "closeCancel" });
 
 			if (source === "courier") {
 				await Promise.all([
@@ -159,6 +170,7 @@ export function SalesHistoryHome({ actor, online }: SalesHistoryHomeProps) {
 	});
 
 	function handleCancelOpen(saleId: string) {
+		setCancellationResult(null);
 		dispatch({ type: "openCancel", saleId });
 	}
 
@@ -222,11 +234,25 @@ export function SalesHistoryHome({ actor, online }: SalesHistoryHomeProps) {
 					</button>
 				))}
 			</div>
-			{successNotice ? (
-				<output className="success-notice inline-success" aria-live="polite">
-					<Check aria-hidden size={16} />
-					{successNotice}
-				</output>
+			{cancellationResult ? (
+				<PostSubmitResultLayer
+					createdAt={cancellationResult.createdAt}
+					primaryAction={{
+						label: "Готово",
+						onClick: () => setCancellationResult(null),
+					}}
+					rows={[
+						{ label: "Клиент", value: cancellationResult.clientLabel },
+						{ label: "Отменено", value: `${cancellationResult.productName} · ${cancellationResult.quantity} шт` },
+						{ label: "Сумма", value: `${formatCompactMoneyCents(cancellationResult.totalCents)} ₽ · ${cancellationResult.paymentMethod === "cash" ? "Наличные" : "Безнал"}` },
+						{ label: "Причина", value: cancellationResult.reason },
+					]}
+					secondaryAction={{
+						label: "К истории",
+						onClick: () => setCancellationResult(null),
+					}}
+					title="Продажа отменена"
+				/>
 			) : null}
 			{salesHistoryError ? <p className="form-error">{salesHistoryErrorValue.message}</p> : null}
 			<RecentSalesPanel
@@ -248,4 +274,24 @@ export function SalesHistoryHome({ actor, online }: SalesHistoryHomeProps) {
 			/>
 		</section>
 	);
+}
+
+function createSaleCancellationResultSnapshot({
+	reason,
+	response,
+	sale,
+}: {
+	reason: string;
+	response: CancelCourierSaleResponse | CancelDistributorSaleResponse;
+	sale: CourierRecentSaleItem | DistributorRecentSaleItem | undefined;
+}): SaleCancellationResultSnapshot {
+	return {
+		clientLabel: sale ? `${sale.clientName} · ${sale.clientPhone}` : "Клиент",
+		createdAt: response.cancellation.createdAt,
+		paymentMethod: response.cancellation.paymentMethod,
+		productName: sale?.productName ?? "Продукция",
+		quantity: response.cancellation.quantity,
+		reason,
+		totalCents: response.cancellation.totalCents,
+	};
 }

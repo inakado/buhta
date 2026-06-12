@@ -463,6 +463,11 @@ function jsonResponse(body: unknown, status = 200) {
 	});
 }
 
+function byTextContent(expected: string) {
+	return (_: string, element: Element | null) =>
+		element?.textContent?.replace(/\u00A0/g, " ") === expected;
+}
+
 async function selectOperationProduct(optionName: RegExp | string) {
 	fireEvent.change(await screen.findByRole("combobox", { name: "Продукция" }), { target: { value: "Икра" } });
 	fireEvent.click(await screen.findByRole("option", { name: optionName }));
@@ -1388,8 +1393,12 @@ describe("HomePage", () => {
 			);
 		});
 
-		expect(await screen.findByText("Выпуск записан")).toBeTruthy();
+		expect(await screen.findByRole("heading", { name: "Записано" })).toBeTruthy();
+		expect(screen.getByText("6.25 кг")).toBeTruthy();
+		expect(screen.getByRole("button", { name: "Новый выпуск" })).toBeTruthy();
+		expect(screen.queryByText("Выпуск записан")).toBeNull();
 		expect(screen.queryByLabelText("Шаблон продукции")).toBeNull();
+		fireEvent.click(screen.getByRole("button", { name: "Готово" }));
 		fireEvent.click(screen.getByRole("button", { name: "Передать" }));
 		expect(await screen.findByRole("heading", { name: "Передать" })).toBeTruthy();
 		fireEvent.change(await screen.findByLabelText("Продукция"), { target: { value: "batch1" } });
@@ -1413,8 +1422,12 @@ describe("HomePage", () => {
 			);
 		});
 
-		expect(await screen.findByText("Передано на распределитель")).toBeTruthy();
+		expect(await screen.findByRole("heading", { name: "Записано" })).toBeTruthy();
+		expect(screen.getByText("Распределитель Центральный")).toBeTruthy();
+		expect(screen.getByRole("button", { name: "Новая передача" })).toBeTruthy();
+		expect(screen.queryByText("Передано на распределитель")).toBeNull();
 		expect(screen.queryByLabelText("Количество, шт")).toBeNull();
+		fireEvent.click(screen.getByRole("button", { name: "Готово" }));
 		fireEvent.click(screen.getByRole("button", { name: "Распределитель" }));
 		expect(await screen.findByRole("heading", { name: "На распределителе" })).toBeTruthy();
 		expect(screen.queryByText("Товар на распределителе")).toBeNull();
@@ -1955,9 +1968,14 @@ describe("HomePage", () => {
 				}),
 			);
 		});
-		expect(await screen.findByText("Продажа отменена")).toBeTruthy();
+		expect(await screen.findByRole("heading", { name: "Продажа отменена" })).toBeTruthy();
+		expect(screen.getByText(byTextContent("Икра горбуши · 1 шт"))).toBeTruthy();
+		expect(screen.getByText(byTextContent("1250 ₽ · Наличные"))).toBeTruthy();
+		expect(screen.queryByText("Количество")).toBeNull();
+		expect(screen.queryByText("Оплата")).toBeNull();
+		expect(screen.getByText("Ошибка клиента")).toBeTruthy();
 		expect(screen.queryByRole("dialog")).toBeNull();
-		expect(await screen.findByText(/Отменено/)).toBeTruthy();
+		expect((await screen.findAllByText(/Отменено/)).length).toBeGreaterThan(0);
 	});
 
 	it("renders distributor worker home without non-action tiles or courier management", async () => {
@@ -2181,7 +2199,9 @@ describe("HomePage", () => {
 				}),
 			);
 		});
-		expect(await screen.findByText("Загрузка записана")).toBeTruthy();
+		expect(await screen.findByRole("heading", { name: "Записано" })).toBeTruthy();
+		expect(screen.getByRole("button", { name: "Новая загрузка" })).toBeTruthy();
+		expect(screen.queryByText("Загрузка записана")).toBeNull();
 	});
 
 	it("keeps courier load form state when backend rejects the load", async () => {
@@ -2329,19 +2349,20 @@ describe("HomePage", () => {
 
 		fireEvent.click(await screen.findByRole("button", { name: "Вернуть" }));
 		expect(await screen.findByRole("heading", { name: "Возврат" })).toBeTruthy();
-		expect((await screen.findByLabelText("Куда вернуть") as HTMLSelectElement).value).toBe("dist1");
+		await waitFor(() => expect(screen.queryByLabelText("Куда вернуть")).toBeNull());
+		expect(screen.getByText("Распределитель Центральный")).toBeTruthy();
 		expect(screen.getByRole("heading", { name: "Товар" })).toBeTruthy();
 		expect(screen.getByText("Наименование")).toBeTruthy();
 		expect(screen.getByRole("heading", { name: "Наличные" })).toBeTruthy();
 		expect(screen.getByRole("heading", { name: "Итого" })).toBeTruthy();
 		expect(screen.getByText("Место")).toBeTruthy();
 		expect(document.querySelector(".unload-list")).toBeNull();
-		expect((screen.getByLabelText("Сумма, ₽") as HTMLInputElement).value).toBe("700.00");
-		fireEvent.change(screen.getByLabelText("Сумма, ₽"), { target: { value: "0" } });
+		expect((screen.getByLabelText("Вернуть, ₽") as HTMLInputElement).value).toBe("700.00");
+		fireEvent.change(screen.getByLabelText("Вернуть, ₽"), { target: { value: "0" } });
 		expect((screen.getByRole("button", { name: "Записать" }) as HTMLButtonElement).disabled).toBe(false);
 		fireEvent.change(screen.getByLabelText("Вернуть"), { target: { value: "1" } });
-		fireEvent.change(screen.getByLabelText("Сумма, ₽"), { target: { value: "500" } });
-		fireEvent.change(screen.getByLabelText("Комментарий"), { target: { value: "Смена закрыта" } });
+		fireEvent.change(screen.getByLabelText("Вернуть, ₽"), { target: { value: "500" } });
+		fireEvent.change(screen.getByLabelText("Комментарий, если нужно"), { target: { value: "Смена закрыта" } });
 		fireEvent.click(screen.getByRole("button", { name: "Записать" }));
 
 		await waitFor(() => {
@@ -2358,7 +2379,10 @@ describe("HomePage", () => {
 				}),
 			);
 		});
-		expect(await screen.findByText("Возврат записан")).toBeTruthy();
+		expect(await screen.findByRole("heading", { name: "Записано" })).toBeTruthy();
+		expect(screen.getByRole("button", { name: "Новый возврат" })).toBeTruthy();
+		expect(screen.queryByText("Возврат записан")).toBeNull();
+		fireEvent.click(screen.getByRole("button", { name: "Готово" }));
 		await waitFor(() => {
 			expect(requestCount("/courier/product-balances")).toBeGreaterThan(1);
 			expect(requestCount("/courier/cash-balances")).toBeGreaterThan(1);
@@ -2488,7 +2512,15 @@ describe("HomePage", () => {
 				}),
 			);
 		});
-		expect(await screen.findByText("Продажа записана")).toBeTruthy();
+		expect(await screen.findByRole("heading", { name: "Записано" })).toBeTruthy();
+		expect(screen.getByText("Иван Петров · +7 (999) 123-45-67")).toBeTruthy();
+		expect(screen.getByText(byTextContent("Икра горбуши · 1 шт"))).toBeTruthy();
+		expect(screen.queryByText("Количество")).toBeNull();
+		expect(screen.queryByText("Продукция")).toBeNull();
+		expect(screen.getByRole("button", { name: "Новая продажа" })).toBeTruthy();
+		fireEvent.click(screen.getByRole("button", { name: "Готово" }));
+		await waitFor(() => expect(screen.queryByRole("heading", { name: "Записано" })).toBeNull());
+		expect(screen.queryByText("Продажа записана")).toBeNull();
 		await waitFor(() => {
 			expect(screen.getAllByText("Мой баланс").length).toBeGreaterThan(0);
 		});
@@ -2887,7 +2919,9 @@ describe("HomePage", () => {
 				}),
 			);
 			});
-			expect(await screen.findByText("Наличные списаны")).toBeTruthy();
+			expect(await screen.findByRole("heading", { name: "Записано" })).toBeTruthy();
+			expect(screen.queryByText("Наличные списаны")).toBeNull();
+			fireEvent.click(screen.getByRole("button", { name: "Готово" }));
 
 			fireEvent.click(screen.getByRole("button", { name: "Снизить цену" }));
 			expect(await screen.findByRole("heading", { name: "Снизить цену" })).toBeTruthy();
@@ -2921,7 +2955,13 @@ describe("HomePage", () => {
 					}),
 				);
 			});
-			expect(await screen.findByText("Цена снижена")).toBeTruthy();
+			expect(await screen.findByRole("heading", { name: "Записано" })).toBeTruthy();
+			expect(screen.getByText(byTextContent("1 шт · 1250 ₽ → 1000 ₽/шт"))).toBeTruthy();
+			expect(screen.getByText(byTextContent("250 ₽/шт · всего 250 ₽"))).toBeTruthy();
+			expect(screen.getByText("Осталось по старой цене")).toBeTruthy();
+			expect(screen.queryByText("Итого скидка")).toBeNull();
+			expect(screen.queryByText("Цена снижена")).toBeNull();
+			fireEvent.click(screen.getByRole("button", { name: "Готово" }));
 
 			expect(fetchMock.mock.calls.filter(([, init]) => (init?.method ?? "GET") !== "GET")).toHaveLength(2);
 		});
@@ -3071,7 +3111,14 @@ describe("HomePage", () => {
 				}),
 			);
 		});
-		expect(await screen.findByText("Продажа записана")).toBeTruthy();
+		expect(await screen.findByRole("heading", { name: "Записано" })).toBeTruthy();
+		expect(screen.getByText("Анна · +7 (999) 888-77-66")).toBeTruthy();
+		expect(screen.getByText(byTextContent("Икра горбуши · 1 шт · 1250 ₽/шт"))).toBeTruthy();
+		expect(screen.queryByText("Распределитель Центральный")).toBeNull();
+		expect(screen.queryByText("Количество")).toBeNull();
+		expect(screen.getByRole("button", { name: "Новая продажа" })).toBeTruthy();
+		expect(screen.queryByText("Продажа записана")).toBeNull();
+		fireEvent.click(screen.getByRole("button", { name: "Готово" }));
 		expect(await screen.findByRole("heading", { name: "Продажи" })).toBeTruthy();
 		expect(await screen.findByText("Остаток распределителя")).toBeTruthy();
 		expect(screen.queryByText("Детали продажи")).toBeNull();

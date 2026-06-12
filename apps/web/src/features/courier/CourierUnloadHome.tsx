@@ -6,10 +6,12 @@ import { PackageCheck } from "lucide-react";
 import {
 	formatMoneyCents,
 	moneyCents,
+	type CourierUnload,
 	type CourierUnloadProductOption,
 } from "@buhta/shared";
 import { createCourierUnload, getCourierUnloadOptions } from "../../lib/api-client";
 import { formatCompactRubles } from "../../lib/money-format";
+import { PostSubmitResultLayer } from "../operations/PostSubmitResultLayer";
 
 type CourierUnloadFormState = {
 	selectedDistributorId: string;
@@ -25,17 +27,29 @@ const EMPTY_FORM: CourierUnloadFormState = {
 	comment: "",
 };
 
+type UnloadResultSnapshot = {
+	cashAmountCents: number;
+	courierCashAfterCents: number;
+	createdAt: string;
+	distributorCashAfterCents: number;
+	distributorName: string;
+	productLines: string;
+	totalStockValueCents: number;
+	totalUnits: number;
+};
+
 export function CourierUnloadHome({
-	onUnloadSuccess,
+	onDone,
 	online,
 }: {
-	onUnloadSuccess: () => void;
+	onDone: () => void;
 	online: boolean;
 }) {
 	const queryClient = useQueryClient();
 	const initializedRef = useRef(false);
 	const [form, setForm] = useState<CourierUnloadFormState>(EMPTY_FORM);
 	const [localError, setLocalError] = useState("");
+	const [unloadResult, setUnloadResult] = useState<UnloadResultSnapshot | null>(null);
 	const { cashRubles, comment, quantityByBalanceId, selectedDistributorId } = form;
 	const {
 		data: unloadOptions,
@@ -96,6 +110,7 @@ export function CourierUnloadHome({
 	const cashAvailableCents = cashBalance?.amountCents ?? 0;
 	const hasInvalidCash = cashAmountCents === null || cashAmountCents > cashAvailableCents;
 	const hasUnloadPayload = parsedItems.length > 0 || (cashAmountCents ?? 0) > 0;
+	const shouldShowDistributorPanel = unloadOptionsLoading || unloadOptionsError || distributors.length !== 1;
 	const unloadMutation = useMutation({
 		mutationFn: () => createCourierUnload({
 			distributorId: selectedDistributorId,
@@ -106,7 +121,17 @@ export function CourierUnloadHome({
 			cashAmountCents: cashAmountCents ?? 0,
 			...(comment.trim() ? { comment: comment.trim() } : {}),
 		}),
-		onSuccess: async () => {
+		onSuccess: async (response) => {
+			setUnloadResult(createUnloadResultSnapshot({
+				cashAmountCents: cashAmountCents ?? 0,
+				courierCashAfterCents: response.courierCashBalance.amountCents,
+				distributorCashAfterCents: response.distributorCashBalance.amountCents,
+				distributorName: selectedDistributor?.distributorName,
+				parsedItems,
+				totalStockValueCents,
+				totalUnits,
+				unload: response.unload,
+			}));
 			setLocalError("");
 			await Promise.all([
 				queryClient.invalidateQueries({ queryKey: ["courier", "product-balances"] }),
@@ -117,7 +142,6 @@ export function CourierUnloadHome({
 				queryClient.invalidateQueries({ queryKey: ["distributor", "inventory"] }),
 				queryClient.invalidateQueries({ queryKey: ["distributor", "cash-balances"] }),
 			]);
-			onUnloadSuccess();
 		},
 	});
 	const submitDisabled = !online
@@ -175,41 +199,60 @@ export function CourierUnloadHome({
 		unloadMutation.mutate();
 	}
 
+	function handleDone() {
+		setUnloadResult(null);
+		onDone();
+	}
+
+	function handleNewUnload() {
+		setUnloadResult(null);
+		unloadMutation.reset();
+	}
+
 	return (
 		<section className="screen-stack production-detail-screen">
 			<div className="section-heading compact">
 				<h2>Возврат</h2>
 			</div>
 
+			{unloadResult ? (
+				<UnloadResultLayer
+					onDone={handleDone}
+					onNewUnload={handleNewUnload}
+					result={unloadResult}
+				/>
+			) : (
 			<form className="screen-stack courier-unload-form" onSubmit={handleSubmit}>
-				<div className="form-panel production-action-form">
-					<UnloadFormHeading title="Куда вернуть" meta={selectedDistributor?.distributorName} />
-					<div className="field">
-						<select
-							aria-label="Куда вернуть"
-							onChange={(event) => setForm((current) => ({
-								...current,
-								selectedDistributorId: event.target.value,
-							}))}
-							value={selectedDistributorId}
-						>
-							<option value="">Выберите место</option>
-							{distributors.map((distributor) => (
-								<option key={distributor.distributorId} value={distributor.distributorId}>
-									{distributor.distributorName}
-								</option>
-							))}
-						</select>
+				{shouldShowDistributorPanel ? (
+					<div className="form-panel production-action-form">
+						<UnloadFormHeading title="Куда вернуть" />
+						<div className="field">
+							<select
+								aria-label="Куда вернуть"
+								onChange={(event) => setForm((current) => ({
+									...current,
+									selectedDistributorId: event.target.value,
+								}))}
+								value={selectedDistributorId}
+							>
+								<option value="">Выберите место</option>
+								{distributors.map((distributor) => (
+									<option key={distributor.distributorId} value={distributor.distributorId}>
+										{distributor.distributorName}
+									</option>
+								))}
+							</select>
+						</div>
+						{unloadOptionsLoading ? <p className="muted">Загрузка баланса</p> : null}
+						{unloadOptionsError ? <p className="form-error">{unloadOptionsErrorValue.message}</p> : null}
+						{!unloadOptionsLoading && !unloadOptionsError && distributors.length === 0 ? (
+							<p className="form-error">Нет активного места для возврата.</p>
+						) : null}
 					</div>
-					{unloadOptionsLoading ? <p className="muted">Загрузка баланса</p> : null}
-					{unloadOptionsError ? <p className="form-error">{unloadOptionsErrorValue.message}</p> : null}
-					{!unloadOptionsLoading && !unloadOptionsError && distributors.length === 0 ? (
-						<p className="form-error">Нет активного места для возврата.</p>
-					) : null}
-				</div>
+				) : null}
 
 				<div className="form-panel production-action-form">
-					<UnloadFormHeading title="Товар" meta={formatPositionCount(productItems.length)} />
+					<UnloadFormHeading title="Товар" />
 					{productItems.length > 0 ? (
 						<div className="courier-unload-product-list">
 							<div className="courier-unload-product-head" aria-hidden>
@@ -231,10 +274,11 @@ export function CourierUnloadHome({
 				</div>
 
 				<div className="form-panel production-action-form">
-					<UnloadFormHeading title="Наличные" meta={formatRubles(cashAvailableCents)} />
+					<UnloadFormHeading title="Наличные" />
 					<label className="field">
-						<span>Сумма, ₽</span>
+						<span>Вернуть, ₽</span>
 						<input
+							aria-label="Вернуть, ₽"
 							inputMode="decimal"
 							min="0"
 							onChange={(event) => setForm((current) => ({
@@ -244,18 +288,17 @@ export function CourierUnloadHome({
 							type="number"
 							value={cashRubles}
 						/>
+						<span aria-hidden className="courier-unload-cash-note">Доступно {formatRubles(cashAvailableCents)}</span>
 					</label>
-					<UnloadInfoLedger>
-						<UnloadInfoRow label="Доступно" value={formatRubles(cashAvailableCents)} />
-					</UnloadInfoLedger>
 					<label className="field">
-						<span>Комментарий</span>
+						<span>Комментарий, если нужно</span>
 						<textarea
+							className="courier-unload-comment"
 							onChange={(event) => setForm((current) => ({
 								...current,
 								comment: event.target.value,
 							}))}
-							rows={2}
+							rows={1}
 							value={comment}
 						/>
 					</label>
@@ -279,7 +322,50 @@ export function CourierUnloadHome({
 					</UnloadSubmitBlock>
 				</div>
 			</form>
+			)}
 		</section>
+	);
+}
+
+function UnloadResultLayer({
+	onDone,
+	onNewUnload,
+	result,
+}: {
+	onDone: () => void;
+	onNewUnload: () => void;
+	result: UnloadResultSnapshot;
+}) {
+	const rows = [
+		{ label: "Место", value: result.distributorName },
+		...(result.totalUnits > 0
+			? [
+				{ label: "Товар", value: result.productLines },
+				{ label: "Стоимость", value: formatRubles(result.totalStockValueCents) },
+			]
+			: []),
+		...(result.cashAmountCents > 0
+			? [
+				{ label: "Наличные", value: formatRubles(result.cashAmountCents) },
+				{
+					label: "После возврата",
+					value: `курьер ${formatRubles(result.courierCashAfterCents)} · место ${formatRubles(result.distributorCashAfterCents)}`,
+				},
+			]
+			: []),
+	];
+
+	return (
+		<PostSubmitResultLayer
+			createdAt={result.createdAt}
+			primaryAction={{ label: "Готово", onClick: onDone }}
+			rows={rows}
+			secondaryAction={{
+				icon: <PackageCheck aria-hidden size={16} />,
+				label: "Новый возврат",
+				onClick: onNewUnload,
+			}}
+		/>
 	);
 }
 
@@ -336,7 +422,7 @@ function UnloadProductRow({
 				<span>{item.availableQuantity} шт · {formatRubles(item.unitPriceCents)}/шт</span>
 			</div>
 			<label className="courier-unload-quantity">
-				<span>Вернуть</span>
+				<span className="sr-only">Вернуть</span>
 				<input
 					inputMode="numeric"
 					max={item.availableQuantity}
@@ -428,4 +514,37 @@ function getSubmitBlockReason({
 	}
 
 	return "";
+}
+
+function createUnloadResultSnapshot({
+	cashAmountCents,
+	courierCashAfterCents,
+	distributorCashAfterCents,
+	distributorName,
+	parsedItems,
+	totalStockValueCents,
+	totalUnits,
+	unload,
+}: {
+	cashAmountCents: number;
+	courierCashAfterCents: number;
+	distributorCashAfterCents: number;
+	distributorName: string | undefined;
+	parsedItems: Array<{ item: CourierUnloadProductOption; quantity: number }>;
+	totalStockValueCents: number;
+	totalUnits: number;
+	unload: CourierUnload;
+}): UnloadResultSnapshot {
+	return {
+		cashAmountCents,
+		courierCashAfterCents,
+		createdAt: unload.createdAt,
+		distributorCashAfterCents,
+		distributorName: distributorName ?? "Распределитель",
+		productLines: parsedItems.length
+			? parsedItems.map(({ item, quantity }) => `${item.productName} · ${quantity} шт`).join(", ")
+			: "Без товара",
+		totalStockValueCents,
+		totalUnits,
+	};
 }

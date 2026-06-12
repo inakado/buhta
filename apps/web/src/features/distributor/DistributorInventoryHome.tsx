@@ -8,7 +8,9 @@ import {
 	formatMoneyCents,
 	moneyCents,
 	rublePriceToCents,
+	type DistributorCashWithdrawal,
 	type DistributorInventoryItem,
+	type ProductDiscountAssignment,
 } from "@buhta/shared";
 import {
 	assignDistributorDiscount,
@@ -17,9 +19,28 @@ import {
 	getDistributorInventory,
 } from "../../lib/api-client";
 import { formatCompactRubles } from "../../lib/money-format";
+import { PostSubmitResultLayer } from "../operations/PostSubmitResultLayer";
 import { DistributorStockList } from "./DistributorStockList";
 
 type DistributorInventoryVariant = "default" | "stock-ledger";
+
+type WithdrawalResultSnapshot = {
+	amountCents: number;
+	createdAt: string;
+	distributorName: string;
+	remainingCashCents: number;
+};
+
+type DiscountResultSnapshot = {
+	createdAt: string;
+	discountCentsPerUnit: number;
+	discountTotalCents: number;
+	discountedUnitPriceCents: number;
+	productName: string;
+	quantity: number;
+	sourceQuantityAfter: number;
+	sourceUnitPriceCents: number;
+};
 
 export function DistributorInventoryHome({
 	canAssignDiscount = false,
@@ -57,7 +78,8 @@ export function DistributorInventoryHome({
 	const [discountComment, setDiscountComment] = useState("");
 	const [localError, setLocalError] = useState("");
 	const [discountError, setDiscountError] = useState("");
-	const [successMessage, setSuccessMessage] = useState("");
+	const [withdrawalResult, setWithdrawalResult] = useState<WithdrawalResultSnapshot | null>(null);
+	const [discountResult, setDiscountResult] = useState<DiscountResultSnapshot | null>(null);
 	const {
 		data,
 		error: inventoryErrorValue,
@@ -121,12 +143,15 @@ export function DistributorInventoryHome({
 			amountCents,
 			...(comment.trim() ? { comment } : {}),
 		}),
-		onSuccess: async () => {
+		onSuccess: async (response) => {
+			setWithdrawalResult(createWithdrawalResultSnapshot({
+				distributorName: selectedCashItem?.distributorName,
+				responseWithdrawal: response.withdrawal,
+				remainingCashCents: response.cashBalance.amountCents,
+			}));
 			setAmountRubles("");
 			setComment("");
 			setLocalError("");
-			setSuccessMessage("Наличные списаны");
-			setWithdrawalOpen(false);
 			await queryClient.invalidateQueries({ queryKey: ["distributor", "cash-balances"] });
 		},
 	});
@@ -143,13 +168,17 @@ export function DistributorInventoryHome({
 				...(discountComment.trim() ? { comment: discountComment } : {}),
 			});
 		},
-		onSuccess: async () => {
+		onSuccess: async (response) => {
+			setDiscountResult(createDiscountResultSnapshot({
+				discount: response.discount,
+				productName: discountItem?.productName,
+				sourceQuantityAfter: response.sourceBalance.quantity,
+			}));
 			setDiscountItem(null);
 			setDiscountQuantity("");
 			setDiscountPriceRubles("");
 			setDiscountComment("");
 			setDiscountError("");
-			setSuccessMessage("Цена снижена");
 			await Promise.all([
 				queryClient.invalidateQueries({ queryKey: ["distributor", "inventory"] }),
 				queryClient.invalidateQueries({ queryKey: ["distributor", "sale-options"] }),
@@ -179,7 +208,7 @@ export function DistributorInventoryHome({
 	function handleWithdrawSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
 		setLocalError("");
-		setSuccessMessage("");
+		setWithdrawalResult(null);
 
 		if (!online) {
 			setLocalError("Нет соединения.");
@@ -209,6 +238,7 @@ export function DistributorInventoryHome({
 		setAmountRubles("");
 		setComment("");
 		setLocalError("");
+		setWithdrawalResult(null);
 	}
 
 	function openDiscountForm(item: DistributorInventoryItem) {
@@ -220,7 +250,7 @@ export function DistributorInventoryHome({
 		setDiscountComment("");
 		setDiscountError("");
 		setLocalError("");
-		setSuccessMessage("");
+		setDiscountResult(null);
 	}
 
 	function closeDiscountForm() {
@@ -228,6 +258,7 @@ export function DistributorInventoryHome({
 			return;
 		}
 		setDiscountItem(null);
+		setDiscountResult(null);
 		setDiscountQuantity("");
 		setDiscountPriceRubles("");
 		setDiscountComment("");
@@ -237,7 +268,7 @@ export function DistributorInventoryHome({
 	function handleDiscountSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
 		setDiscountError("");
-		setSuccessMessage("");
+		setDiscountResult(null);
 
 		if (!online) {
 			setDiscountError("Нет соединения.");
@@ -312,7 +343,7 @@ export function DistributorInventoryHome({
 							}
 							setWithdrawalOpen(true);
 							setLocalError("");
-							setSuccessMessage("");
+							setWithdrawalResult(null);
 						}}
 						type="button"
 					>
@@ -337,6 +368,16 @@ export function DistributorInventoryHome({
 						<Dialog.Portal>
 							<Dialog.Overlay className="operation-dialog-overlay" />
 							<Dialog.Content aria-describedby={undefined} className="operation-dialog">
+								{withdrawalResult ? (
+									<WithdrawalResultLayer
+										onDone={closeWithdrawalForm}
+										onRepeat={() => {
+											setWithdrawalResult(null);
+											withdrawal.reset();
+										}}
+										result={withdrawalResult}
+									/>
+								) : (
 								<form className="operation-dialog-form cash-withdrawal-panel" onSubmit={handleWithdrawSubmit}>
 									<div className="operation-dialog-heading">
 										<div>
@@ -420,6 +461,7 @@ export function DistributorInventoryHome({
 										</button>
 									</div>
 								</form>
+								)}
 							</Dialog.Content>
 						</Dialog.Portal>
 					</Dialog.Root>
@@ -427,7 +469,7 @@ export function DistributorInventoryHome({
 
 				{canAssignDiscount ? (
 					<Dialog.Root
-						open={Boolean(discountItem)}
+						open={Boolean(discountItem) || Boolean(discountResult)}
 						onOpenChange={(open) => {
 							if (!open) {
 								closeDiscountForm();
@@ -437,7 +479,16 @@ export function DistributorInventoryHome({
 						<Dialog.Portal>
 							<Dialog.Overlay className="operation-dialog-overlay" />
 							<Dialog.Content className="operation-dialog">
-								{discountItem ? (
+								{discountResult ? (
+									<DiscountResultLayer
+										onDone={closeDiscountForm}
+										onRepeat={() => {
+											setDiscountResult(null);
+											discountAssignment.reset();
+										}}
+										result={discountResult}
+									/>
+								) : discountItem ? (
 									<form className="operation-dialog-form discount-panel" onSubmit={handleDiscountSubmit}>
 										<div className="operation-dialog-heading">
 											<div>
@@ -532,8 +583,6 @@ export function DistributorInventoryHome({
 					</Dialog.Root>
 				) : null}
 
-				{successMessage ? <p className="success-inline">{successMessage}</p> : null}
-
 			{inventoryLoading ? <p className="muted">Загрузка остатков распределителя</p> : null}
 			{inventoryError ? <p className="form-error">{inventoryErrorValue.message}</p> : null}
 			{cashBalancesError ? <p className="form-error">Не удалось загрузить наличные распределителя</p> : null}
@@ -575,6 +624,65 @@ export function DistributorInventoryHome({
 						: {})}
 				/>
 		</Frame>
+	);
+}
+
+function WithdrawalResultLayer({
+	onDone,
+	onRepeat,
+	result,
+}: {
+	onDone: () => void;
+	onRepeat: () => void;
+	result: WithdrawalResultSnapshot;
+}) {
+	return (
+		<PostSubmitResultLayer
+			createdAt={result.createdAt}
+			primaryAction={{ label: "Готово", onClick: onDone }}
+			rows={[
+				{ label: "Распределитель", value: result.distributorName },
+				{ label: "Списано", value: formatRubles(result.amountCents) },
+				{ label: "Остаток наличных", value: formatRubles(result.remainingCashCents) },
+			]}
+			secondaryAction={{
+				icon: <Banknote aria-hidden size={16} />,
+				label: "Списать еще",
+				onClick: onRepeat,
+			}}
+		/>
+	);
+}
+
+function DiscountResultLayer({
+	onDone,
+	onRepeat,
+	result,
+}: {
+	onDone: () => void;
+	onRepeat: () => void;
+	result: DiscountResultSnapshot;
+}) {
+	const rows = [
+		{ label: "Продукция", value: result.productName },
+		{ label: "Снижено", value: `${result.quantity} шт · ${formatRubles(result.sourceUnitPriceCents)} → ${formatRubles(result.discountedUnitPriceCents)}/шт` },
+		{ label: "Скидка", value: `${formatRubles(result.discountCentsPerUnit)}/шт · всего ${formatRubles(result.discountTotalCents)}` },
+		...(result.sourceQuantityAfter > 0
+			? [{ label: "Осталось по старой цене", value: `${result.sourceQuantityAfter} шт` }]
+			: []),
+	];
+
+	return (
+		<PostSubmitResultLayer
+			createdAt={result.createdAt}
+			primaryAction={{ label: "Готово", onClick: onDone }}
+			rows={rows}
+			secondaryAction={{
+				icon: <BadgePercent aria-hidden size={16} />,
+				label: "Снизить еще",
+				onClick: onRepeat,
+			}}
+		/>
 	);
 }
 
@@ -714,4 +822,42 @@ function formatPositionCount(count: number): string {
 		return `${count} позиции`;
 	}
 	return `${count} позиций`;
+}
+
+function createWithdrawalResultSnapshot({
+	distributorName,
+	remainingCashCents,
+	responseWithdrawal,
+}: {
+	distributorName: string | undefined;
+	remainingCashCents: number;
+	responseWithdrawal: DistributorCashWithdrawal;
+}): WithdrawalResultSnapshot {
+	return {
+		amountCents: responseWithdrawal.amountCents,
+		createdAt: responseWithdrawal.createdAt,
+		distributorName: distributorName ?? "Распределитель",
+		remainingCashCents,
+	};
+}
+
+function createDiscountResultSnapshot({
+	discount,
+	productName,
+	sourceQuantityAfter,
+}: {
+	discount: ProductDiscountAssignment;
+	productName: string | undefined;
+	sourceQuantityAfter: number;
+}): DiscountResultSnapshot {
+	return {
+		createdAt: discount.createdAt,
+		discountCentsPerUnit: discount.discountCentsPerUnit,
+		discountTotalCents: discount.discountTotalCents,
+		discountedUnitPriceCents: discount.discountedUnitPriceCents,
+		productName: productName ?? "Продукция",
+		quantity: discount.quantity,
+		sourceQuantityAfter,
+		sourceUnitPriceCents: discount.sourceUnitPriceCents,
+	};
 }

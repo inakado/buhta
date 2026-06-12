@@ -3,17 +3,28 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FormEvent, type ReactNode, useState } from "react";
 import { PackagePlus } from "lucide-react";
-import type { CourierLoadOption } from "@buhta/shared";
+import type { CourierLoad, CourierLoadOption } from "@buhta/shared";
 import { createCourierLoad, getCourierLoadOptions } from "../../lib/api-client";
 import { formatCompactMoneyCents } from "../../lib/money-format";
 import { OperationProductSelect } from "../operations/OperationProductSelect";
+import { PostSubmitResultLayer } from "../operations/PostSubmitResultLayer";
 import { getLoadSubmitBlockReason } from "../operations/operation-submit-reasons";
 
+type LoadResultSnapshot = {
+	courierQuantityAfter: number;
+	createdAt: string;
+	distributorName: string;
+	productName: string;
+	quantity: number;
+	stockValueCents: number;
+	unitPriceCents: number;
+};
+
 export function CourierLoadHome({
-	onLoadSuccess,
+	onDone,
 	online,
 }: {
-	onLoadSuccess: () => void;
+	onDone: () => void;
 	online: boolean;
 }) {
 	const queryClient = useQueryClient();
@@ -21,6 +32,7 @@ export function CourierLoadHome({
 	const [quantity, setQuantity] = useState("");
 	const [comment, setComment] = useState("");
 	const [localError, setLocalError] = useState("");
+	const [loadResult, setLoadResult] = useState<LoadResultSnapshot | null>(null);
 	const {
 		data: loadOptions,
 		error: loadOptionsErrorValue,
@@ -43,7 +55,13 @@ export function CourierLoadHome({
 			quantity: parsedQuantity,
 			...(comment.trim() ? { comment: comment.trim() } : {}),
 		}),
-		onSuccess: async () => {
+		onSuccess: async (response) => {
+			setLoadResult(createLoadResultSnapshot({
+				courierQuantityAfter: response.courierProductBalance.quantity,
+				distributorName: selectedStock?.distributorName,
+				load: response.load,
+				productName: selectedStock?.productName,
+			}));
 			setSelectedBalanceId("");
 			setQuantity("");
 			setComment("");
@@ -53,7 +71,6 @@ export function CourierLoadHome({
 				queryClient.invalidateQueries({ queryKey: ["courier", "load-options"] }),
 				queryClient.invalidateQueries({ queryKey: ["distributor", "inventory"] }),
 			]);
-			onLoadSuccess();
 		},
 	});
 	const submitBlockReason = getLoadSubmitBlockReason({
@@ -83,12 +100,29 @@ export function CourierLoadHome({
 		loadMutation.mutate();
 	}
 
+	function handleDone() {
+		setLoadResult(null);
+		onDone();
+	}
+
+	function handleNewLoad() {
+		setLoadResult(null);
+		loadMutation.reset();
+	}
+
 	return (
 		<section className="screen-stack production-detail-screen">
 			<div className="section-heading compact">
 				<h2>Загрузка</h2>
 			</div>
 
+			{loadResult ? (
+				<LoadResultLayer
+					onDone={handleDone}
+					onNewLoad={handleNewLoad}
+					result={loadResult}
+				/>
+			) : (
 			<form className="form-panel production-action-form" onSubmit={handleSubmit}>
 				<LoadFormHeading title="Детали загрузки" />
 				<OperationProductSelect
@@ -139,7 +173,39 @@ export function CourierLoadHome({
 					</button>
 				</LoadSubmitBlock>
 			</form>
+			)}
 		</section>
+	);
+}
+
+function LoadResultLayer({
+	onDone,
+	onNewLoad,
+	result,
+}: {
+	onDone: () => void;
+	onNewLoad: () => void;
+	result: LoadResultSnapshot;
+}) {
+	return (
+		<PostSubmitResultLayer
+			createdAt={result.createdAt}
+			primaryAction={{ label: "Готово", onClick: onDone }}
+			rows={[
+				{ label: "Продукция", value: result.productName },
+				{ label: "Откуда", value: result.distributorName },
+				{ label: "Загружено", value: `${result.quantity} шт · ${formatRubles(result.unitPriceCents)} ₽/шт` },
+				{ label: "Итого", value: `${formatRubles(result.stockValueCents)} ₽` },
+				...(result.courierQuantityAfter === result.quantity
+					? []
+					: [{ label: "Остаток курьера", value: `${result.courierQuantityAfter} шт` }]),
+			]}
+			secondaryAction={{
+				icon: <PackagePlus aria-hidden size={16} />,
+				label: "Новая загрузка",
+				onClick: onNewLoad,
+			}}
+		/>
 	);
 }
 
@@ -202,4 +268,26 @@ function formatRubles(priceCents: number): string {
 
 function formatQuantity(quantity: number): string {
 	return Number.isInteger(quantity) && quantity > 0 ? `${quantity} шт` : "Количество не задано";
+}
+
+function createLoadResultSnapshot({
+	courierQuantityAfter,
+	distributorName,
+	load,
+	productName,
+}: {
+	courierQuantityAfter: number;
+	distributorName: string | undefined;
+	load: CourierLoad;
+	productName: string | undefined;
+}): LoadResultSnapshot {
+	return {
+		courierQuantityAfter,
+		createdAt: load.createdAt,
+		distributorName: distributorName ?? "Распределитель",
+		productName: productName ?? "Продукция",
+		quantity: load.quantity,
+		stockValueCents: load.stockValueCents,
+		unitPriceCents: load.unitPriceCents,
+	};
 }

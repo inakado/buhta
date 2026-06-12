@@ -4,7 +4,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FormEvent, type ReactNode, useState } from "react";
 import { ArrowLeft, ReceiptText, UserPlus, X } from "lucide-react";
-import type { DistributorSaleStockItem, PaymentMethod } from "@buhta/shared";
+import type { DistributorSale, DistributorSaleStockItem, PaymentMethod } from "@buhta/shared";
 import {
 	createClient,
 	createDistributorSale,
@@ -15,15 +15,27 @@ import { formatCompactMoneyCents } from "../../lib/money-format";
 import { ClientCombobox } from "../clients/ClientCombobox";
 import { PaymentMethodSegmentedControl } from "../operations/PaymentMethodSegmentedControl";
 import { OperationProductSelect } from "../operations/OperationProductSelect";
+import { PostSubmitResultLayer } from "../operations/PostSubmitResultLayer";
 import { getSaleSubmitBlockReason } from "../operations/operation-submit-reasons";
+
+type DistributorSaleResultSnapshot = {
+	clientLabel: string;
+	createdAt: string;
+	distributorName: string;
+	paymentMethod: PaymentMethod;
+	productName: string;
+	quantity: number;
+	totalCents: number;
+	unitPriceCents: number;
+};
 
 export function DistributorSaleHome({
 	onBack,
-	onSaleSuccess,
+	onDone,
 	online,
 }: {
 	onBack?: () => void;
-	onSaleSuccess: () => void;
+	onDone: () => void;
 	online: boolean;
 }) {
 	const queryClient = useQueryClient();
@@ -39,6 +51,7 @@ export function DistributorSaleHome({
 	const [newClientName, setNewClientName] = useState("");
 	const [newClientPhone, setNewClientPhone] = useState("");
 	const [newClientDescription, setNewClientDescription] = useState("");
+	const [saleResult, setSaleResult] = useState<DistributorSaleResultSnapshot | null>(null);
 	const {
 		data: clients,
 		error: clientsErrorValue,
@@ -92,7 +105,15 @@ export function DistributorSaleHome({
 			paymentMethod,
 			...(comment.trim() ? { comment: comment.trim() } : {}),
 		}),
-		onSuccess: async () => {
+		onSuccess: async (response) => {
+			setSaleResult(createSaleResultSnapshot({
+				clientName: selectedClient?.name,
+				clientPhone: selectedClient?.phone,
+				distributorName: selectedStock?.distributorName,
+				paymentMethod,
+				productName: selectedStock?.productName,
+				sale: response.sale,
+			}));
 			setSelectedClientId("");
 			setSelectedBalanceId("");
 			setQuantity("");
@@ -105,7 +126,6 @@ export function DistributorSaleHome({
 				queryClient.invalidateQueries({ queryKey: ["distributor", "cash-balances"] }),
 				queryClient.invalidateQueries({ queryKey: ["distributor", "sales", "recent"] }),
 			]);
-			onSaleSuccess();
 		},
 	});
 	const submitBlockReason = getSaleSubmitBlockReason({
@@ -182,6 +202,16 @@ export function DistributorSaleHome({
 		saleMutation.mutate();
 	}
 
+	function handleDone() {
+		setSaleResult(null);
+		onDone();
+	}
+
+	function handleNewSale() {
+		setSaleResult(null);
+		saleMutation.reset();
+	}
+
 	return (
 		<section className="screen-stack production-detail-screen">
 			{onBack ? (
@@ -196,164 +226,202 @@ export function DistributorSaleHome({
 				<h2>Продажа</h2>
 			</div>
 
-			<div className="form-panel production-action-form">
-				<SaleFormHeading title="Клиент" meta={selectedClient?.name} />
-				<ClientCombobox
-					clients={clients?.clients ?? []}
-					loading={clientsLoading}
-					onClientChange={handleClientChange}
-					onQueryChange={setActiveClientSearch}
-					query={activeClientSearch}
-					selectedClient={selectedClient}
-					selectedClientId={selectedClientId}
+			{saleResult ? (
+				<SaleResultLayer
+					onDone={handleDone}
+					onNewSale={handleNewSale}
+					result={saleResult}
 				/>
-				{clientsLoading ? <p className="muted">Загрузка клиентов</p> : null}
-				{clientsError ? <p className="form-error">{clientsErrorValue.message}</p> : null}
+			) : (
+				<>
+					<div className="form-panel production-action-form">
+						<SaleFormHeading title="Клиент" meta={selectedClient?.name} />
+						<ClientCombobox
+							clients={clients?.clients ?? []}
+							loading={clientsLoading}
+							onClientChange={handleClientChange}
+							onQueryChange={setActiveClientSearch}
+							query={activeClientSearch}
+							selectedClient={selectedClient}
+							selectedClientId={selectedClientId}
+						/>
+						{clientsLoading ? <p className="muted">Загрузка клиентов</p> : null}
+						{clientsError ? <p className="form-error">{clientsErrorValue.message}</p> : null}
 
-				{selectedClientId ? null : (
-					<button
-						className="secondary-button compact-button"
-						disabled={!online}
-						onClick={openNewClientDialog}
-						type="button"
+						{selectedClientId ? null : (
+							<button
+								className="secondary-button compact-button"
+								disabled={!online}
+								onClick={openNewClientDialog}
+								type="button"
+							>
+								<UserPlus aria-hidden size={16} />
+								Новый клиент
+							</button>
+						)}
+					</div>
+
+					<Dialog.Root
+						open={showNewClientForm && !selectedClientId}
+						onOpenChange={(open) => {
+							if (open) {
+								openNewClientDialog();
+								return;
+							}
+
+							closeNewClientDialog();
+						}}
 					>
-						<UserPlus aria-hidden size={16} />
-						Новый клиент
-					</button>
-				)}
-			</div>
+						<Dialog.Portal>
+							<Dialog.Overlay className="operation-dialog-overlay" />
+							<Dialog.Content aria-describedby={undefined} className="operation-dialog">
+								<form className="operation-dialog-form" onSubmit={handleCreateClient}>
+									<div className="operation-dialog-heading">
+										<div>
+											<Dialog.Title>Новый клиент</Dialog.Title>
+										</div>
+										<Dialog.Close
+											aria-label="Закрыть"
+											className="icon-button"
+											disabled={createClientMutation.isPending}
+											type="button"
+										>
+											<X aria-hidden size={18} />
+										</Dialog.Close>
+									</div>
+									<label className="field">
+										<span>Имя нового клиента</span>
+										<input
+											onChange={(event) => setNewClientName(event.target.value)}
+											type="text"
+											value={newClientName}
+										/>
+									</label>
+									<label className="field">
+										<span>Телефон нового клиента</span>
+										<input
+											onChange={(event) => setNewClientPhone(event.target.value)}
+											type="tel"
+											value={newClientPhone}
+										/>
+									</label>
+									<label className="field">
+										<span>Описание нового клиента</span>
+										<textarea
+											onChange={(event) => setNewClientDescription(event.target.value)}
+											rows={2}
+											value={newClientDescription}
+										/>
+									</label>
+									{createClientMutation.isError ? (
+										<p className="form-error">{createClientMutation.error.message}</p>
+									) : null}
+									{clientError ? <p className="form-error">{clientError}</p> : null}
+									<div className="form-actions">
+										<button
+											className="secondary-button"
+											disabled={createClientMutation.isPending}
+											onClick={closeNewClientDialog}
+											type="button"
+										>
+											Отмена
+										</button>
+										<button className="primary-button" disabled={!online || createClientMutation.isPending} type="submit">
+											Создать клиента
+										</button>
+									</div>
+								</form>
+							</Dialog.Content>
+						</Dialog.Portal>
+					</Dialog.Root>
 
-			<Dialog.Root
-				open={showNewClientForm && !selectedClientId}
-				onOpenChange={(open) => {
-					if (open) {
-						openNewClientDialog();
-						return;
-					}
+					<form className="form-panel production-action-form" onSubmit={handleSaleSubmit}>
+						<SaleFormHeading title="Детали продажи" meta={selectedStock?.distributorName} />
+						<OperationProductSelect
+							label="Продукция"
+							onValueChange={setSelectedBalanceId}
+							options={(saleOptions?.items ?? []).map((item) => ({
+								discounted: item.discounted,
+								id: item.distributorProductBalanceId,
+								label: item.productName,
+								meta: `${item.availableQuantity} шт · ${formatRubles(item.unitPriceCents)} ₽`,
+							}))}
+							placeholder="Выберите продукцию"
+							value={selectedBalanceId}
+						/>
+						{saleOptionsLoading ? <p className="muted">Загрузка продукции</p> : null}
+						{saleOptionsError ? <p className="form-error">{saleOptionsErrorValue.message}</p> : null}
+						{!saleOptionsLoading && !saleOptionsError && saleOptions?.items.length === 0 ? (
+							<p className="muted">Нет продукции для продажи.</p>
+						) : null}
 
-					closeNewClientDialog();
-				}}
-			>
-				<Dialog.Portal>
-					<Dialog.Overlay className="operation-dialog-overlay" />
-					<Dialog.Content aria-describedby={undefined} className="operation-dialog">
-						<form className="operation-dialog-form" onSubmit={handleCreateClient}>
-							<div className="operation-dialog-heading">
-								<div>
-									<Dialog.Title>Новый клиент</Dialog.Title>
-								</div>
-								<Dialog.Close
-									aria-label="Закрыть"
-									className="icon-button"
-									disabled={createClientMutation.isPending}
-									type="button"
-								>
-									<X aria-hidden size={18} />
-								</Dialog.Close>
-							</div>
-							<label className="field">
-								<span>Имя нового клиента</span>
-								<input
-									onChange={(event) => setNewClientName(event.target.value)}
-									type="text"
-									value={newClientName}
-								/>
-							</label>
-							<label className="field">
-								<span>Телефон нового клиента</span>
-								<input
-									onChange={(event) => setNewClientPhone(event.target.value)}
-									type="tel"
-									value={newClientPhone}
-								/>
-							</label>
-							<label className="field">
-								<span>Описание нового клиента</span>
-								<textarea
-									onChange={(event) => setNewClientDescription(event.target.value)}
-									rows={2}
-									value={newClientDescription}
-								/>
-							</label>
-							{createClientMutation.isError ? (
-								<p className="form-error">{createClientMutation.error.message}</p>
-							) : null}
-							{clientError ? <p className="form-error">{clientError}</p> : null}
-							<div className="form-actions">
-								<button
-									className="secondary-button"
-									disabled={createClientMutation.isPending}
-									onClick={closeNewClientDialog}
-									type="button"
-								>
-									Отмена
-								</button>
-								<button className="primary-button" disabled={!online || createClientMutation.isPending} type="submit">
-									Создать клиента
-								</button>
-							</div>
-						</form>
-					</Dialog.Content>
-				</Dialog.Portal>
-			</Dialog.Root>
+						{selectedStock ? <SelectedStockInfo stock={selectedStock} /> : null}
 
-			<form className="form-panel production-action-form" onSubmit={handleSaleSubmit}>
-				<SaleFormHeading title="Детали продажи" meta={selectedStock?.distributorName} />
-				<OperationProductSelect
-					label="Продукция"
-					onValueChange={setSelectedBalanceId}
-					options={(saleOptions?.items ?? []).map((item) => ({
-						discounted: item.discounted,
-						id: item.distributorProductBalanceId,
-						label: item.productName,
-						meta: `${item.availableQuantity} шт · ${formatRubles(item.unitPriceCents)} ₽`,
-					}))}
-					placeholder="Выберите продукцию"
-					value={selectedBalanceId}
-				/>
-				{saleOptionsLoading ? <p className="muted">Загрузка продукции</p> : null}
-				{saleOptionsError ? <p className="form-error">{saleOptionsErrorValue.message}</p> : null}
-				{!saleOptionsLoading && !saleOptionsError && saleOptions?.items.length === 0 ? (
-					<p className="muted">Нет продукции для продажи.</p>
-				) : null}
-
-				{selectedStock ? <SelectedStockInfo stock={selectedStock} /> : null}
-
-				<label className="field">
-					<span>Количество, шт</span>
-					<input
-						inputMode="numeric"
-						min="1"
-						onChange={(event) => setQuantity(event.target.value)}
-						type="number"
-						value={quantity}
-					/>
-				</label>
-				<PaymentMethodSegmentedControl
-					id="distributor-payment-method-label"
-					onChange={setPaymentMethod}
-					value={paymentMethod}
-				/>
-				<label className="field">
-					<span>Комментарий</span>
-					<textarea onChange={(event) => setComment(event.target.value)} rows={2} value={comment} />
-				</label>
-				<SaleInfoLedger>
-					<SaleInfoRow label="Клиент" value={selectedClient?.name ?? (selectedClientId ? "Клиент выбран" : "Не выбран")} />
-					<SaleInfoRow label="Количество" value={summaryQuantity} />
-					<SaleInfoRow label="Оплата" value={paymentMethod === "cash" ? "Наличные" : "Безнал"} />
-					<SaleInfoRow label="Итого" value={`${formatRubles(saleTotalCents)} ₽`} />
-				</SaleInfoLedger>
-				{saleError ? <p className="form-error">{saleError}</p> : null}
-				{saleMutation.isError ? <p className="form-error">{saleMutation.error.message}</p> : null}
-				<SaleSubmitBlock blockReason={submitBlockReason}>
-					<button className="primary-button" disabled={submitDisabled} type="submit">
-						<ReceiptText aria-hidden size={18} />
-						Записать продажу
-					</button>
-				</SaleSubmitBlock>
-			</form>
+						<label className="field">
+							<span>Количество, шт</span>
+							<input
+								inputMode="numeric"
+								min="1"
+								onChange={(event) => setQuantity(event.target.value)}
+								type="number"
+								value={quantity}
+							/>
+						</label>
+						<PaymentMethodSegmentedControl
+							id="distributor-payment-method-label"
+							onChange={setPaymentMethod}
+							value={paymentMethod}
+						/>
+						<label className="field">
+							<span>Комментарий</span>
+							<textarea onChange={(event) => setComment(event.target.value)} rows={2} value={comment} />
+						</label>
+						<SaleInfoLedger>
+							<SaleInfoRow label="Клиент" value={selectedClient?.name ?? (selectedClientId ? "Клиент выбран" : "Не выбран")} />
+							<SaleInfoRow label="Количество" value={summaryQuantity} />
+							<SaleInfoRow label="Оплата" value={paymentMethod === "cash" ? "Наличные" : "Безнал"} />
+							<SaleInfoRow label="Итого" value={`${formatRubles(saleTotalCents)} ₽`} />
+						</SaleInfoLedger>
+						{saleError ? <p className="form-error">{saleError}</p> : null}
+						{saleMutation.isError ? <p className="form-error">{saleMutation.error.message}</p> : null}
+						<SaleSubmitBlock blockReason={submitBlockReason}>
+							<button className="primary-button" disabled={submitDisabled} type="submit">
+								<ReceiptText aria-hidden size={18} />
+								Записать продажу
+							</button>
+						</SaleSubmitBlock>
+					</form>
+				</>
+			)}
 		</section>
+	);
+}
+
+function SaleResultLayer({
+	onDone,
+	onNewSale,
+	result,
+}: {
+	onDone: () => void;
+	onNewSale: () => void;
+	result: DistributorSaleResultSnapshot;
+}) {
+	return (
+		<PostSubmitResultLayer
+			createdAt={result.createdAt}
+			primaryAction={{ label: "Готово", onClick: onDone }}
+			rows={[
+				{ label: "Клиент", value: result.clientLabel },
+				{ label: "Продано", value: `${result.productName} · ${result.quantity} шт · ${formatRubles(result.unitPriceCents)} ₽/шт` },
+				{ label: "Оплата", value: result.paymentMethod === "cash" ? "Наличные" : "Безнал" },
+				{ label: "Итого", value: `${formatRubles(result.totalCents)} ₽` },
+			]}
+			secondaryAction={{
+				icon: <ReceiptText aria-hidden size={16} />,
+				label: "Новая продажа",
+				onClick: onNewSale,
+			}}
+		/>
 	);
 }
 
@@ -417,4 +485,33 @@ function isValidQuantity(quantity: number, stock: DistributorSaleStockItem | und
 
 function formatRubles(priceCents: number): string {
 	return formatCompactMoneyCents(priceCents);
+}
+
+function createSaleResultSnapshot({
+	clientName,
+	clientPhone,
+	distributorName,
+	paymentMethod,
+	productName,
+	sale,
+}: {
+	clientName: string | undefined;
+	clientPhone: string | undefined;
+	distributorName: string | undefined;
+	paymentMethod: PaymentMethod;
+	productName: string | undefined;
+	sale: DistributorSale;
+}): DistributorSaleResultSnapshot {
+	const clientParts = [clientName ?? "Клиент", clientPhone].filter(Boolean);
+
+	return {
+		clientLabel: clientParts.join(" · "),
+		createdAt: sale.createdAt,
+		distributorName: distributorName ?? "Распределитель",
+		paymentMethod,
+		productName: productName ?? "Продукция",
+		quantity: sale.quantity,
+		totalCents: sale.totalCents,
+		unitPriceCents: sale.unitPriceCents,
+	};
 }

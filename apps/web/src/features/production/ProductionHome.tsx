@@ -13,6 +13,7 @@ import {
 	type PackagingType,
 	type ProductBatch,
 	type ProductTemplate,
+	type ProductTransferResponse,
 	type ProductionBalanceItem,
 	type RawMaterialType,
 	type WorkshopProductBalanceItem,
@@ -31,6 +32,7 @@ import {
 	listWorkshopProductBalances,
 } from "../../lib/api-client";
 import { formatCompactMoneyCents } from "../../lib/money-format";
+import { PostSubmitResultLayer } from "../operations/PostSubmitResultLayer";
 import { ProductionHomeOverview } from "./ProductionHomeOverview";
 
 const PRODUCTION_DATE_TIME_FORMATTER = new Intl.DateTimeFormat("ru-RU", {
@@ -61,6 +63,25 @@ type ProductTransferFormState = {
 	quantity: string;
 	comment: string;
 	localError: string;
+};
+
+type ProductBatchResultSnapshot = {
+	createdAt: string;
+	packagingLine: string;
+	productName: string;
+	quantity: number;
+	rawLine: string;
+	unitPriceCents: number;
+};
+
+type ProductTransferResultSnapshot = {
+	createdAt: string;
+	distributorName: string;
+	productName: string;
+	quantity: number;
+	stockValueCents: number;
+	unitPriceCents: number;
+	workshopQuantityAfter: number;
 };
 
 type FormAction<State> =
@@ -326,7 +347,7 @@ function ProductionDetailScreen({
 			) : null}
 			{mode === "batch-release" ? (
 				<ProductBatchForm
-					onActionSuccess={onActionSuccess}
+					onDone={onBack}
 					online={online}
 					packagingBalances={packagingBalances}
 					packagingBalancesLoading={packagingBalancesLoading}
@@ -339,7 +360,7 @@ function ProductionDetailScreen({
 				<ProductTransferForm
 					distributors={transferDistributors}
 					loading={transferOptionsLoading}
-					onActionSuccess={onActionSuccess}
+					onDone={onBack}
 					online={online}
 					workshopProductBalances={transferWorkshopProductBalances}
 				/>
@@ -479,7 +500,7 @@ function IntakeForm({
 }
 
 function ProductBatchForm({
-	onActionSuccess,
+	onDone,
 	online,
 	packagingBalances,
 	packagingBalancesLoading,
@@ -487,7 +508,7 @@ function ProductBatchForm({
 	rawMaterialBalances,
 	rawMaterialBalancesLoading,
 }: {
-	onActionSuccess: (message: string) => void;
+	onDone: () => void;
 	online: boolean;
 	packagingBalances: ProductionBalanceItem[];
 	packagingBalancesLoading: boolean;
@@ -497,6 +518,7 @@ function ProductBatchForm({
 }) {
 	const queryClient = useQueryClient();
 	const [form, dispatchForm] = useReducer(productBatchFormReducer, EMPTY_PRODUCT_BATCH_FORM);
+	const [result, setResult] = useState<ProductBatchResultSnapshot | null>(null);
 	const { comment, localError, productTemplateId, quantity, rawQuantity } = form;
 	const selectedTemplate = productTemplates.find((item) => item.id === productTemplateId);
 	const selectedRawMaterialBalance = rawMaterialBalances.find((item) =>
@@ -532,10 +554,13 @@ function ProductBatchForm({
 			consumedRawMaterialQuantity: parsePositiveNumber(rawQuantity, "Расход сырья"),
 			...(comment.trim() ? { comment: comment.trim() } : {}),
 		}),
-		onSuccess: async () => {
+		onSuccess: async (response) => {
+			setResult(createProductBatchResultSnapshot({
+				productBatch: response.productBatch,
+				selectedTemplate,
+			}));
 			dispatchForm({ type: "reset" });
 			await invalidateProduction(queryClient);
-			onActionSuccess("Выпуск записан");
 		},
 	});
 
@@ -569,6 +594,33 @@ function ProductBatchForm({
 				: releaseWarning || (mutation.isPending ? "Записываем выпуск" : "");
 
 	return (
+		result ? (
+			<PostSubmitResultLayer
+				createdAt={result.createdAt}
+				primaryAction={{
+					label: "Готово",
+					onClick: () => {
+						setResult(null);
+						onDone();
+					},
+				}}
+				rows={[
+					{ label: "Продукция", value: result.productName },
+					{ label: "Количество", value: `${result.quantity} шт` },
+					{ label: "Сырье", value: result.rawLine },
+					{ label: "Тара", value: result.packagingLine },
+					{ label: "Цена", value: `${formatPriceRubles(result.unitPriceCents)} ₽/шт` },
+				]}
+				secondaryAction={{
+					icon: <Factory aria-hidden size={16} />,
+					label: "Новый выпуск",
+					onClick: () => {
+						setResult(null);
+						mutation.reset();
+					},
+				}}
+			/>
+		) : (
 		<form className="form-panel production-action-form" onSubmit={handleSubmit}>
 			<ProductionFormHeading title="Выпуск продукции" />
 			<label className="field">
@@ -633,24 +685,26 @@ function ProductBatchForm({
 				</button>
 			</ProductionSubmitBlock>
 		</form>
+		)
 	);
 }
 
 function ProductTransferForm({
 	distributors,
 	loading,
-	onActionSuccess,
+	onDone,
 	online,
 	workshopProductBalances,
 }: {
 	distributors: Distributor[];
 	loading: boolean;
-	onActionSuccess: (message: string) => void;
+	onDone: () => void;
 	online: boolean;
 	workshopProductBalances: WorkshopProductBalanceItem[];
 }) {
 	const queryClient = useQueryClient();
 	const [form, dispatchForm] = useReducer(productTransferFormReducer, EMPTY_PRODUCT_TRANSFER_FORM);
+	const [result, setResult] = useState<ProductTransferResultSnapshot | null>(null);
 	const { comment, distributorId, localError, productBatchId, quantity } = form;
 	const selectedProduct = workshopProductBalances.find((item) => item.productBatchId === productBatchId);
 	const selectedDistributor = distributors.find((item) => item.id === distributorId);
@@ -661,10 +715,14 @@ function ProductTransferForm({
 			quantity: parsePositiveInteger(quantity, "Количество продукции"),
 			...(comment.trim() ? { comment: comment.trim() } : {}),
 		}),
-		onSuccess: async () => {
+		onSuccess: async (response) => {
+			setResult(createProductTransferResultSnapshot({
+				distributorName: selectedDistributor?.name,
+				productName: selectedProduct?.productName,
+				response,
+			}));
 			dispatchForm({ type: "reset" });
 			await invalidateProduction(queryClient);
-			onActionSuccess("Передано на распределитель");
 		},
 	});
 	const parsedTransferQuantity = parseOptionalPositiveInteger(quantity);
@@ -706,6 +764,34 @@ function ProductTransferForm({
 					: transferWarning || (mutation.isPending ? "Передаем продукцию" : "");
 
 	return (
+		result ? (
+			<PostSubmitResultLayer
+				createdAt={result.createdAt}
+				primaryAction={{
+					label: "Готово",
+					onClick: () => {
+						setResult(null);
+						onDone();
+					},
+				}}
+				rows={[
+					{ label: "Продукция", value: result.productName },
+					{ label: "Распределитель", value: result.distributorName },
+					{ label: "Количество", value: `${result.quantity} шт` },
+					{ label: "Цена", value: `${formatPriceRubles(result.unitPriceCents)} ₽/шт` },
+					{ label: "Итого", value: `${formatPriceRubles(result.stockValueCents)} ₽` },
+					{ label: "Остаток в цеху", value: `${result.workshopQuantityAfter} шт` },
+				]}
+				secondaryAction={{
+					icon: <ArrowRightLeft aria-hidden size={16} />,
+					label: "Новая передача",
+					onClick: () => {
+						setResult(null);
+						mutation.reset();
+					},
+				}}
+			/>
+		) : (
 		<form className="form-panel production-action-form" onSubmit={handleSubmit}>
 			<ProductionFormHeading title="Передать" meta={selectedDistributor?.name} />
 			<label className="field">
@@ -773,6 +859,7 @@ function ProductTransferForm({
 				</button>
 			</ProductionSubmitBlock>
 		</form>
+		)
 	);
 }
 
@@ -1025,6 +1112,43 @@ function formatReleaseStockLine({
 	}
 
 	return `${formatQuantity(rawAvailable)} ${rawUnit} сырья, ${formatQuantity(packagingAvailable)} ${packagingUnit} тары`;
+}
+
+function createProductBatchResultSnapshot({
+	productBatch,
+	selectedTemplate,
+}: {
+	productBatch: ProductBatch;
+	selectedTemplate: ProductTemplate | undefined;
+}): ProductBatchResultSnapshot {
+	return {
+		createdAt: productBatch.createdAt,
+		packagingLine: `${formatQuantity(productBatch.consumedPackagingQuantity)} ${productBatch.packagingUnit}`,
+		productName: productBatch.productName,
+		quantity: productBatch.quantity,
+		rawLine: `${formatQuantity(productBatch.consumedRawMaterialQuantity)} ${productBatch.rawMaterialUnit}`,
+		unitPriceCents: selectedTemplate?.priceCents ?? productBatch.priceCents,
+	};
+}
+
+function createProductTransferResultSnapshot({
+	distributorName,
+	productName,
+	response,
+}: {
+	distributorName: string | undefined;
+	productName: string | undefined;
+	response: ProductTransferResponse;
+}): ProductTransferResultSnapshot {
+	return {
+		createdAt: response.transfer.createdAt,
+		distributorName: distributorName ?? "Распределитель",
+		productName: productName ?? "Продукция",
+		quantity: response.transfer.quantity,
+		stockValueCents: response.transfer.stockValueCents,
+		unitPriceCents: response.transfer.unitPriceCents,
+		workshopQuantityAfter: response.workshopProductBalance.quantity,
+	};
 }
 
 function ProductionSuccessNotice({ notice }: { notice: SuccessNotice }) {

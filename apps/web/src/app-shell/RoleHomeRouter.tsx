@@ -33,7 +33,6 @@ type RoleHomeRouterProps = {
 	logout: () => void;
 	logoutPending: boolean;
 	online: boolean;
-	onActionSuccess: (message: string) => void;
 	onStatusSuccess: (message: string) => void;
 	onTabChange: (tab: string) => void;
 };
@@ -44,7 +43,6 @@ export function RoleHomeRouter({
 	logout,
 	logoutPending,
 	online,
-	onActionSuccess,
 	onStatusSuccess,
 	onTabChange,
 }: RoleHomeRouterProps) {
@@ -222,7 +220,7 @@ export function RoleHomeRouter({
 		if (activeTab === "load" && actor.permissions.includes("courier.stock.load")) {
 			return (
 				<CourierLoadHome
-					onLoadSuccess={() => onActionSuccess("Загрузка записана")}
+					onDone={() => onTabChange("home")}
 					online={online}
 				/>
 			);
@@ -231,7 +229,7 @@ export function RoleHomeRouter({
 			return (
 				<DistributorSaleHome
 					onBack={() => onTabChange("home")}
-					onSaleSuccess={() => onActionSuccess("Продажа записана")}
+					onDone={() => onTabChange("home")}
 					online={online}
 				/>
 			);
@@ -239,7 +237,7 @@ export function RoleHomeRouter({
 		if (activeTab === "sale" && actor.permissions.includes("courier.sale.create")) {
 			return (
 				<CourierSaleHome
-					onSaleSuccess={() => onActionSuccess("Продажа записана")}
+					onDone={() => onTabChange("home")}
 					online={online}
 				/>
 			);
@@ -247,7 +245,7 @@ export function RoleHomeRouter({
 		if (activeTab === "unload" && actor.permissions.includes("courier.unload.create")) {
 			return (
 				<CourierUnloadHome
-					onUnloadSuccess={() => onActionSuccess("Возврат записан")}
+					onDone={() => onTabChange("home")}
 					online={online}
 				/>
 			);

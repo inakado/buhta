@@ -118,11 +118,6 @@ function AppShell({ actor }: { actor: CurrentActor }) {
 			message,
 		});
 	}
-	function showSuccessOnHome(message: string) {
-		setActiveTab("home");
-		showSuccess(message);
-	}
-
 	useEffect(() => {
 		if (!successNotice) {
 			return;
@@ -151,7 +146,6 @@ function AppShell({ actor }: { actor: CurrentActor }) {
 					logout={handleLogout}
 					logoutPending={logout.isPending}
 					online={online}
-					onActionSuccess={showSuccessOnHome}
 					onStatusSuccess={showSuccess}
 					onTabChange={setActiveTab}
 				/>
