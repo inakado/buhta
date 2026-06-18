@@ -2,6 +2,7 @@
 
 import {
 	ChevronRight,
+	Gauge,
 	ReceiptText,
 	type LucideIcon,
 } from "lucide-react";
@@ -37,6 +38,13 @@ export function CommercialMoreHome({
 	online,
 }: CommercialMoreHomeProps) {
 	const navigationRows: MenuRow[] = [
+		{
+			id: "onboarding",
+			label: "Как работают продажи",
+			detail: "Продажи, клиенты, курьеры и задачи",
+			icon: Gauge,
+			onSelect: () => onTabChange("onboarding"),
+		},
 		{
 			id: "sales-history",
 			label: "История",

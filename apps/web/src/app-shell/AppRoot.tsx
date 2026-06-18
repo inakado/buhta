@@ -269,11 +269,11 @@ function BottomNav({
 				) || (
 					actor.role === "production_manager"
 					&& item.id === "more"
-					&& activeTab === "history"
+					&& (activeTab === "history" || activeTab === "onboarding")
 				) || (
 					actor.role === "commercial_manager"
 					&& item.id === "more"
-					&& activeTab === "sales-history"
+					&& (activeTab === "sales-history" || activeTab === "onboarding")
 				) || (
 					actor.role === "courier"
 					&& item.id === "more"

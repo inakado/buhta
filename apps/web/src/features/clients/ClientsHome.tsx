@@ -126,7 +126,7 @@ export function ClientsHome({
 			<div className="section-heading compact clients-heading">
 				<h2>Клиенты</h2>
 				<div className="clients-heading-side">
-					<span>{clientsLoading ? "Загрузка" : `${clients?.clients.length ?? 0} клиентов`}</span>
+					<span>{clientsLoading ? "Загрузка" : formatClientCount(clients?.clients.length ?? 0)}</span>
 					{canManage ? (
 						<button
 							aria-label="Добавить клиента"
@@ -287,6 +287,20 @@ function ClientForm({
 			</div>
 		</form>
 	);
+}
+
+function formatClientCount(count: number): string {
+	const lastTwoDigits = Math.abs(count) % 100;
+	const lastDigit = Math.abs(count) % 10;
+	const word = lastTwoDigits >= 11 && lastTwoDigits <= 14
+		? "клиентов"
+		: lastDigit === 1
+			? "клиент"
+			: lastDigit >= 2 && lastDigit <= 4
+				? "клиента"
+				: "клиентов";
+
+	return `${count} ${word}`;
 }
 
 function ClientList({

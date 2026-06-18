@@ -25,6 +25,7 @@
 - `docs/exec-plans/deferred-roadmap.md` — отложенные идеи, которые не являются активной задачей.
 - `docs/exec-plans/tech-debt-tracker.md` — признанный техдолг после появления кода или harness.
 - `docs/exec-plans/active/2026-05-27-v1-roadmap.md` — долгоживущая roadmap/meta-plan полной v1.
+- `docs/exec-plans/active/2026-06-18-role-onboarding-demo.md` — активный план ролевого интерактивного онбординга: demo flow во вкладке `Еще` для не-admin ролей, моковые данные, перелистывание и объяснение ограничений роли.
 - `docs/exec-plans/completed/2026-06-12-post-submit-result-layers.md` — завершенный UX-план Post-Submit Result Layer для операций с деньгами, остатками, выпуском, загрузками, возвратами, списаниями, дисконтом и отменами продаж.
 - `docs/exec-plans/completed/2026-06-11-admin-user-identity-edit.md` — завершенный план: редактирование администратором имени и login пользователя через CRM users lifecycle.
 - `docs/exec-plans/completed/2026-06-11-production-deploy-cicd.md` — завершенный план первого production deploy и простого CI/CD-контура для Ubuntu + Docker Compose.

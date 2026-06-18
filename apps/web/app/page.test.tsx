@@ -1778,8 +1778,7 @@ describe("HomePage", () => {
 
 		render(<HomePage />);
 
-		expect(await screen.findByRole("heading", { name: "Продажи" })).toBeTruthy();
-		expect(screen.getByRole("heading", { name: "Распределитель" })).toBeTruthy();
+		expect(await screen.findByRole("heading", { name: "Распределитель" })).toBeTruthy();
 		const stockSummaryAction = await screen.findByRole("button", {
 			name: "Остаток распределителя: 2 шт, 1 позиция. Открыть список",
 		});
@@ -1818,23 +1817,23 @@ describe("HomePage", () => {
 		expect(screen.getByText("Икра горбуши")).toBeTruthy();
 		expect(screen.getByText("Распределитель Центральный")).toBeTruthy();
 		fireEvent.click(screen.getByRole("button", { name: "Назад" }));
-		expect(await screen.findByRole("heading", { name: "Продажи" })).toBeTruthy();
+		expect(await screen.findByRole("heading", { name: "Распределитель" })).toBeTruthy();
 
 		fireEvent.click(screen.getByRole("button", { name: "Продать" }));
 		expect(await screen.findByRole("heading", { name: "Продажа" })).toBeTruthy();
 
 		fireEvent.click(screen.getByRole("button", { name: "Главная" }));
-		expect(await screen.findByRole("heading", { name: "Продажи" })).toBeTruthy();
+		expect(await screen.findByRole("heading", { name: "Распределитель" })).toBeTruthy();
 		fireEvent.click(screen.getByRole("button", { name: "Клиенты" }));
-		expect(await screen.findByText("1 клиентов")).toBeTruthy();
+		expect(await screen.findByText("1 клиент")).toBeTruthy();
 
 		fireEvent.click(screen.getByRole("button", { name: "Главная" }));
-		expect(await screen.findByRole("heading", { name: "Продажи" })).toBeTruthy();
+		expect(await screen.findByRole("heading", { name: "Распределитель" })).toBeTruthy();
 		fireEvent.click(screen.getByRole("button", { name: "Курьеры" }));
 		expect(await screen.findByText("Балансы курьеров")).toBeTruthy();
 
 		fireEvent.click(screen.getByRole("button", { name: "Главная" }));
-		expect(await screen.findByRole("heading", { name: "Продажи" })).toBeTruthy();
+		expect(await screen.findByRole("heading", { name: "Распределитель" })).toBeTruthy();
 		fireEvent.click(screen.getByRole("button", { name: "Уведомить" }));
 		expect(await screen.findByRole("heading", { name: "Задачи производству" })).toBeTruthy();
 		expect(await screen.findByText("Сделать партию икры")).toBeTruthy();
@@ -2057,7 +2056,7 @@ describe("HomePage", () => {
 		fireEvent.click(screen.getByRole("button", { name: "Клиенты" }));
 		expect(screen.getByRole("button", { name: "Клиенты" }).getAttribute("aria-current")).toBe("page");
 		expect(await screen.findByRole("heading", { name: "Клиенты" })).toBeTruthy();
-		expect(await screen.findByText("1 клиентов")).toBeTruthy();
+		expect(await screen.findByText("1 клиент")).toBeTruthy();
 		expect(await screen.findByText("Иван Петров")).toBeTruthy();
 		expect(screen.getByRole("button", { name: "Добавить клиента" })).toBeTruthy();
 		expect(document.querySelector(".client-list-table")).toBeTruthy();
@@ -3119,7 +3118,7 @@ describe("HomePage", () => {
 		expect(screen.getByRole("button", { name: "Новая продажа" })).toBeTruthy();
 		expect(screen.queryByText("Продажа записана")).toBeNull();
 		fireEvent.click(screen.getByRole("button", { name: "Готово" }));
-		expect(await screen.findByRole("heading", { name: "Продажи" })).toBeTruthy();
+		expect(await screen.findByRole("heading", { name: "Распределитель" })).toBeTruthy();
 		expect(await screen.findByText("Остаток распределителя")).toBeTruthy();
 		expect(screen.queryByText("Детали продажи")).toBeNull();
 	});
@@ -3353,6 +3352,179 @@ describe("HomePage", () => {
 		expect(await screen.findByRole("heading", { name: "Еще" })).toBeTruthy();
 		expect(screen.getByRole("button", { name: "История" })).toBeTruthy();
 		expect(screen.getByRole("button", { name: "Сменить пароль" })).toHaveProperty("disabled", false);
+	});
+
+	it("shows production onboarding as a demo flow without write requests", async () => {
+		const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+			const url = String(input);
+			const method = init?.method ?? "GET";
+
+			if (url.endsWith("/auth/me")) {
+				return jsonResponse(productionActorResponse);
+			}
+
+			if (url.endsWith("/production/summary")) {
+				return jsonResponse({
+					summary: {
+						readyProductUnits: 0,
+						rawMaterialKinds: 0,
+						rawMaterialTotal: 0,
+						rawMaterialUnit: "кг",
+						packagingKinds: 0,
+						packagingTotal: 0,
+						packagingUnit: "шт",
+					},
+				});
+			}
+
+			if (url.endsWith("/production/raw-material-balances")) {
+				return jsonResponse({ rawMaterialBalances: [] });
+			}
+
+			if (url.endsWith("/production/packaging-balances")) {
+				return jsonResponse({ packagingBalances: [] });
+			}
+
+			if (url.endsWith("/production/workshop-product-balances")) {
+				return jsonResponse({ workshopProductBalances: [] });
+			}
+
+			if (url.endsWith("/production/transfer-options")) {
+				return jsonResponse({ distributors: [], workshopProductBalances: [] });
+			}
+
+			if (url.endsWith("/production/product-batches")) {
+				return jsonResponse({ productBatches: [] });
+			}
+
+			if (url.endsWith("/production/options")) {
+				return jsonResponse({ rawMaterialTypes: [], packagingTypes: [], productTemplates: [] });
+			}
+
+			if (url.includes("/notifications")) {
+				return jsonResponse(notificationsResponse);
+			}
+
+			if (method !== "GET") {
+				return jsonResponse({ error: { message: "Unexpected mutation" } }, 500);
+			}
+
+			return jsonResponse({ error: { message: "Unexpected request" } }, 500);
+		});
+
+		vi.stubGlobal("fetch", fetchMock);
+
+		render(<HomePage />);
+
+		fireEvent.click(await screen.findByRole("button", { name: "Еще" }));
+		fireEvent.click(await screen.findByRole("button", { name: "Как работает цех" }));
+
+		expect(screen.getByText(/В рабочем экране строки ведут к спискам/)).toBeTruthy();
+		expect(screen.getByRole("button", { name: "Еще" }).getAttribute("aria-current")).toBe("page");
+
+		fireEvent.click(screen.getByRole("button", { name: "Вперед" }));
+		expect(await screen.findByText(/Кнопка открывает форму прихода сырья/)).toBeTruthy();
+		expect(screen.getByDisplayValue("Сырье лосося")).toBeTruthy();
+		expect(screen.getByDisplayValue("12,5")).toBeTruthy();
+		fireEvent.click(screen.getByRole("button", { name: "Вперед" }));
+		expect(await screen.findByText(/Кнопка открывает форму прихода тары/)).toBeTruthy();
+		expect(screen.getByDisplayValue("Банка 250 мл")).toBeTruthy();
+		expect(screen.getByDisplayValue("240")).toBeTruthy();
+		fireEvent.click(screen.getByRole("button", { name: "Вперед" }));
+		expect(await screen.findByText(/Кнопка открывает форму выпуска продукции/)).toBeTruthy();
+		expect(screen.getByDisplayValue("Икра А")).toBeTruthy();
+		expect(screen.getByDisplayValue("6")).toBeTruthy();
+		expect(screen.getByDisplayValue("12")).toBeTruthy();
+		fireEvent.click(screen.getByRole("button", { name: "Вперед" }));
+		expect(await screen.findByText(/Кнопка открывает форму передачи продукции/)).toBeTruthy();
+		expect(screen.getByDisplayValue("Икра А · 18 шт")).toBeTruthy();
+		expect(screen.getByDisplayValue("Портовая 1")).toBeTruthy();
+		expect(screen.getByDisplayValue("5")).toBeTruthy();
+		fireEvent.click(screen.getByRole("button", { name: "Вперед" }));
+		expect(await screen.findByText(/Новые виды сырья, тара и шаблоны продукции/)).toBeTruthy();
+		expect(fetchMock.mock.calls.some(([, init]) => init?.method && init.method !== "GET")).toBe(false);
+
+		fireEvent.click(screen.getByRole("button", { name: "Еще" }));
+		expect(await screen.findByRole("heading", { name: "Еще" })).toBeTruthy();
+	});
+
+	it("shows commercial manager onboarding as a demo flow without write requests", async () => {
+		const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+			const url = String(input);
+			const method = init?.method ?? "GET";
+
+			if (url.endsWith("/auth/me")) {
+				return jsonResponse(commercialActorResponse);
+			}
+
+			if (url.endsWith("/distributor/inventory")) {
+				return jsonResponse(distributorInventoryResponse);
+			}
+
+			if (url.endsWith("/distributor/cash-balances")) {
+				return jsonResponse(distributorCashBalancesResponse);
+			}
+
+			if (method !== "GET") {
+				return jsonResponse({ error: { message: "Unexpected mutation" } }, 500);
+			}
+
+			return jsonResponse({ error: { message: "Unexpected request" } }, 500);
+		});
+
+		vi.stubGlobal("fetch", fetchMock);
+
+		render(<HomePage />);
+
+		fireEvent.click(await screen.findByRole("button", { name: "Еще" }));
+		fireEvent.click(await screen.findByRole("button", { name: "Как работают продажи" }));
+
+		expect(screen.getByText(/Перед вами сводка распределителя/)).toBeTruthy();
+		expect(screen.getByRole("button", { name: "Еще" }).getAttribute("aria-current")).toBe("page");
+
+		fireEvent.click(screen.getByRole("button", { name: "Вперед" }));
+		expect(await screen.findByText(/Кнопка открывает форму продажи/)).toBeTruthy();
+		expect(screen.getByDisplayValue("Петр Петров · 79998887766")).toBeTruthy();
+		expect(screen.getByDisplayValue("Икра А · 18 шт")).toBeTruthy();
+
+		fireEvent.click(screen.getByRole("button", { name: "Вперед" }));
+		expect(await screen.findByText(/В этом разделе находят покупателя/)).toBeTruthy();
+		expect(screen.getByDisplayValue("Петр")).toBeTruthy();
+		expect(screen.getByText("Мария Иванова")).toBeTruthy();
+
+		fireEvent.click(screen.getByRole("button", { name: "Вперед" }));
+		expect(await screen.findByText(/Вкладка курьеров показывает/)).toBeTruthy();
+		expect(screen.getByText("Антон")).toBeTruthy();
+
+		fireEvent.click(screen.getByRole("button", { name: "Вперед" }));
+		expect(await screen.findByText(/Кнопка открывает форму задачи для производства/)).toBeTruthy();
+		expect(screen.getByDisplayValue("К завтра подготовить 10 шт Икры А для распределителя.")).toBeTruthy();
+		expect(screen.getByRole("button", { name: "Вперед" })).toHaveProperty("disabled", true);
+		expect(fetchMock.mock.calls.some(([, init]) => init?.method && init.method !== "GET")).toBe(false);
+	});
+
+	it("does not show onboarding to admin", async () => {
+		const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+			const url = String(input);
+
+			if (url.endsWith("/auth/me")) {
+				return jsonResponse(adminActorResponse);
+			}
+
+			if (url.endsWith("/users")) {
+				return jsonResponse({ users: [] });
+			}
+
+			return jsonResponse({ error: { message: "Unexpected request" } }, 500);
+		});
+
+		vi.stubGlobal("fetch", fetchMock);
+
+		render(<HomePage />);
+
+		fireEvent.click(await screen.findByRole("button", { name: "Еще" }));
+		expect(await screen.findByRole("heading", { name: "Еще" })).toBeTruthy();
+		expect(screen.queryByRole("button", { name: "Как работает цех" })).toBeNull();
 	});
 
 	it("keeps client backend errors inline and disables writes offline", async () => {

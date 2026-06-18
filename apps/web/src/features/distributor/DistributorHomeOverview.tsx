@@ -18,6 +18,7 @@ type DistributorHomeOverviewProps = {
 	showStockDistributorName?: boolean;
 	showSummaryMeta?: boolean;
 	showSummaryHeading?: boolean;
+	showScreenHeading?: boolean;
 	stockListSurface?: "default" | "worker-home";
 	summaryMeta?: string;
 	summaryTitle?: string;
@@ -39,6 +40,7 @@ export function DistributorHomeOverview({
 	showStockDistributorName = true,
 	showSummaryMeta = true,
 	showSummaryHeading = true,
+	showScreenHeading = true,
 	stockListSurface = "default",
 	summaryMeta = "Сводка",
 	summaryTitle = "Распределитель",
@@ -75,10 +77,12 @@ export function DistributorHomeOverview({
 
 	return (
 		<section className="screen-stack">
-			<div className="section-heading compact">
-				<h2>{title}</h2>
-				{isFetching ? <span>Обновление</span> : null}
-			</div>
+			{showScreenHeading ? (
+				<div className="section-heading compact">
+					<h2>{title}</h2>
+					{isFetching ? <span>Обновление</span> : null}
+				</div>
+			) : null}
 
 			<section
 				aria-label={showSummaryHeading ? undefined : "Сводка распределителя"}

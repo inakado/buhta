@@ -10,6 +10,7 @@ import { CourierSaleHome } from "../features/courier/CourierSaleHome";
 import { CourierUnloadHome } from "../features/courier/CourierUnloadHome";
 import { DistributorInventoryHome } from "../features/distributor/DistributorInventoryHome";
 import { NotificationsHome } from "../features/notifications/NotificationsHome";
+import { RoleOnboardingHome } from "../features/onboarding/RoleOnboardingHome";
 import { OperationHistoryHome } from "../features/operations/OperationHistoryHome";
 import { ProductionHome } from "../features/production/ProductionHome";
 import { DistributorSaleHome } from "../features/sales/DistributorSaleHome";
@@ -163,6 +164,9 @@ export function RoleHomeRouter({
 	}
 
 	if (actor.role === "production_manager") {
+		if (activeTab === "onboarding") {
+			return <RoleOnboardingHome role="production_manager" />;
+		}
 		if (activeTab === "distributor") {
 			return (
 				<DistributorInventoryHome
@@ -204,6 +208,10 @@ export function RoleHomeRouter({
 				variant="stock-ledger"
 			/>
 		);
+	}
+
+	if (actor.role === "commercial_manager" && activeTab === "onboarding") {
+		return <RoleOnboardingHome role="commercial_manager" />;
 	}
 
 	if (activeTab !== "home") {

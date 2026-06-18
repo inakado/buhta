@@ -1,6 +1,7 @@
 "use client";
 
 import {
+	BookOpen,
 	ChevronRight,
 	ReceiptText,
 	type LucideIcon,
@@ -37,6 +38,13 @@ export function ProductionMoreHome({
 	online,
 }: ProductionMoreHomeProps) {
 	const navigationRows: MenuRow[] = [
+		{
+			id: "onboarding",
+			label: "Как работает цех",
+			detail: "Процесс и ограничения",
+			icon: BookOpen,
+			onSelect: () => onTabChange("onboarding"),
+		},
 		{
 			id: "history",
 			label: "История",

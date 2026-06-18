@@ -23,6 +23,7 @@ export function CommercialManagerHome({
 			notifyDisabled={!online}
 			saleDisabled={!online}
 			showCashBalance={showCashBalance}
+			showScreenHeading={false}
 			showStockList={false}
 			stockSummaryLabel="Остаток распределителя"
 			title="Продажи"
