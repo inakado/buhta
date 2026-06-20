@@ -39,12 +39,12 @@
 | `user.identity.update` | администратор изменил имя и/или login пользователя | нет, audit details содержат старые и новые `name/login`, без пароля |
 | `user.role.update` | администратор изменил роль пользователя | нет |
 | `user.password.reset` | администратор сбросил временный пароль пользователя | нет, audit details без пароля |
-| `catalog.raw_material_type.create` | администратор или директор создал вид сырья | нет |
-| `catalog.raw_material_type.update` | администратор или директор изменил вид сырья | нет |
-| `catalog.raw_material_type.archive` | администратор или директор отключил вид сырья через `active=false` | нет |
-| `catalog.packaging_type.create` | администратор или директор создал вид тары | нет |
-| `catalog.packaging_type.update` | администратор или директор изменил вид тары | нет |
-| `catalog.packaging_type.archive` | администратор или директор отключил вид тары через `active=false` | нет |
+| `catalog.raw_material_type.create` | администратор, директор или заведующий производством создал вид сырья | нет |
+| `catalog.raw_material_type.update` | администратор, директор или заведующий производством изменил вид сырья, включая восстановление через `active=true` | нет |
+| `catalog.raw_material_type.archive` | администратор, директор или заведующий производством отключил вид сырья через `active=false` | нет |
+| `catalog.packaging_type.create` | администратор, директор или заведующий производством создал вид тары | нет |
+| `catalog.packaging_type.update` | администратор, директор или заведующий производством изменил вид тары, включая восстановление через `active=true` | нет |
+| `catalog.packaging_type.archive` | администратор, директор или заведующий производством отключил вид тары через `active=false` | нет |
 | `catalog.distributor.create` | администратор или директор создал распределитель | нет |
 | `catalog.distributor.update` | администратор или директор изменил распределитель | нет |
 | `catalog.distributor.archive` | администратор или директор отключил распределитель через `active=false` | нет |

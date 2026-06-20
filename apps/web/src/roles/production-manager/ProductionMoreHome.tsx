@@ -2,6 +2,7 @@
 
 import {
 	BookOpen,
+	BookOpenText,
 	ChevronRight,
 	ReceiptText,
 	type LucideIcon,
@@ -44,6 +45,13 @@ export function ProductionMoreHome({
 			detail: "Процесс и ограничения",
 			icon: BookOpen,
 			onSelect: () => onTabChange("onboarding"),
+		},
+		{
+			id: "catalog",
+			label: "Справочники",
+			detail: "Сырье и тара",
+			icon: BookOpenText,
+			onSelect: () => onTabChange("catalog"),
 		},
 		{
 			id: "history",

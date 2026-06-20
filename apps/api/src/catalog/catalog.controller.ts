@@ -24,6 +24,7 @@ export class CatalogController {
 	constructor(@Inject(CatalogService) private readonly catalogService: CatalogService) {}
 
 	@Get("raw-material-types")
+	@RequirePermission("catalog.raw_material.manage")
 	async listRawMaterialTypes() {
 		return {
 			rawMaterialTypes: await this.catalogService.listRawMaterialTypes(),
@@ -31,6 +32,7 @@ export class CatalogController {
 	}
 
 	@Post("raw-material-types")
+	@RequirePermission("catalog.raw_material.manage")
 	async createRawMaterialType(@CurrentActor() actor: Actor | undefined, @Body() body: unknown) {
 		return {
 			rawMaterialType: await this.catalogService.createRawMaterialType(
@@ -41,6 +43,7 @@ export class CatalogController {
 	}
 
 	@Patch("raw-material-types/:id")
+	@RequirePermission("catalog.raw_material.manage")
 	async updateRawMaterialType(
 		@CurrentActor() actor: Actor | undefined,
 		@Param("id") id: string,
@@ -56,6 +59,7 @@ export class CatalogController {
 	}
 
 	@Patch("raw-material-types/:id/archive")
+	@RequirePermission("catalog.raw_material.manage")
 	async archiveRawMaterialType(@CurrentActor() actor: Actor | undefined, @Param("id") id: string) {
 		return {
 			rawMaterialType: await this.catalogService.archiveRawMaterialType(requireActor(actor), id),
@@ -63,6 +67,7 @@ export class CatalogController {
 	}
 
 	@Get("packaging-types")
+	@RequirePermission("catalog.packaging.manage")
 	async listPackagingTypes() {
 		return {
 			packagingTypes: await this.catalogService.listPackagingTypes(),
@@ -70,6 +75,7 @@ export class CatalogController {
 	}
 
 	@Post("packaging-types")
+	@RequirePermission("catalog.packaging.manage")
 	async createPackagingType(@CurrentActor() actor: Actor | undefined, @Body() body: unknown) {
 		return {
 			packagingType: await this.catalogService.createPackagingType(
@@ -80,6 +86,7 @@ export class CatalogController {
 	}
 
 	@Patch("packaging-types/:id")
+	@RequirePermission("catalog.packaging.manage")
 	async updatePackagingType(
 		@CurrentActor() actor: Actor | undefined,
 		@Param("id") id: string,
@@ -95,6 +102,7 @@ export class CatalogController {
 	}
 
 	@Patch("packaging-types/:id/archive")
+	@RequirePermission("catalog.packaging.manage")
 	async archivePackagingType(@CurrentActor() actor: Actor | undefined, @Param("id") id: string) {
 		return {
 			packagingType: await this.catalogService.archivePackagingType(requireActor(actor), id),

@@ -123,8 +123,8 @@ export function RoleHomeRouter({
 		);
 	}
 
-	if (activeTab === "catalog" && actor.permissions.includes("catalog.manage")) {
-		return <CatalogHome online={online} />;
+	if (activeTab === "catalog" && hasCatalogAccess(actor)) {
+		return <CatalogHome actor={actor} online={online} />;
 	}
 
 	if (activeTab === "clients" && actor.permissions.includes("client.read")) {
@@ -165,7 +165,7 @@ export function RoleHomeRouter({
 
 	if (actor.role === "production_manager") {
 		if (activeTab === "onboarding") {
-			return <RoleOnboardingHome role="production_manager" />;
+			return <RoleOnboardingHome targetRole="production_manager" />;
 		}
 		if (activeTab === "distributor") {
 			return (
@@ -211,7 +211,7 @@ export function RoleHomeRouter({
 	}
 
 	if (actor.role === "commercial_manager" && activeTab === "onboarding") {
-		return <RoleOnboardingHome role="commercial_manager" />;
+		return <RoleOnboardingHome targetRole="commercial_manager" />;
 	}
 
 	if (activeTab !== "home") {
@@ -322,4 +322,10 @@ function PlaceholderScreen({
 
 function isProductionTab(tab: string): tab is "home" | "history" {
 	return tab === "home" || tab === "history";
+}
+
+function hasCatalogAccess(actor: CurrentActor): boolean {
+	return actor.permissions.includes("catalog.manage")
+		|| actor.permissions.includes("catalog.raw_material.manage")
+		|| actor.permissions.includes("catalog.packaging.manage");
 }

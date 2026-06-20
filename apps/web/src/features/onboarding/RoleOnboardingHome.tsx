@@ -23,7 +23,7 @@ import {
 import { useState } from "react";
 
 type RoleOnboardingHomeProps = {
-	role: "commercial_manager" | "production_manager";
+	targetRole: "commercial_manager" | "production_manager";
 };
 
 type OnboardingStep = {
@@ -63,7 +63,7 @@ const PRODUCTION_STEPS: OnboardingStep[] = [
 	},
 	{
 		id: "limits",
-		body: "Новые виды сырья, тара и шаблоны продукции заводятся директором или администратором. Заведующий производством работает с уже заведенными позициями: принимает, выпускает и передает.",
+		body: "Новые виды сырья и тары заведующий производством ведет в справочниках. Шаблоны продукции заводятся директором или администратором. В цеху заведующий принимает, выпускает и передает уже заведенные позиции.",
 		focus: "limits",
 	},
 ];
@@ -96,8 +96,8 @@ const COMMERCIAL_STEPS: OnboardingStep[] = [
 	},
 ];
 
-export function RoleOnboardingHome({ role }: RoleOnboardingHomeProps) {
-	const steps = role === "commercial_manager" ? COMMERCIAL_STEPS : PRODUCTION_STEPS;
+export function RoleOnboardingHome({ targetRole }: RoleOnboardingHomeProps) {
+	const steps = targetRole === "commercial_manager" ? COMMERCIAL_STEPS : PRODUCTION_STEPS;
 	const [stepIndex, setStepIndex] = useState(0);
 	const step = steps[stepIndex];
 	if (!step) {
@@ -106,7 +106,7 @@ export function RoleOnboardingHome({ role }: RoleOnboardingHomeProps) {
 	const isFirstStep = stepIndex === 0;
 	const isLastStep = stepIndex === steps.length - 1;
 	const hasVisual = step.focus !== "limits";
-	const label = role === "commercial_manager" ? "Подсказки по продажам" : "Подсказки по цеху";
+	const label = targetRole === "commercial_manager" ? "Подсказки по продажам" : "Подсказки по цеху";
 
 	return (
 		<section className="screen-stack onboarding-home" aria-label={label}>

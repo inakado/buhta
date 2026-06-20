@@ -29,7 +29,14 @@ const productionActorResponse = {
 		login: "production-manager",
 		displayName: "Production Manager",
 		role: "production_manager",
-		permissions: ["production.manage", "distributor.stock.read", "notification.read", "notification.complete"],
+		permissions: [
+			"production.manage",
+			"distributor.stock.read",
+			"notification.read",
+			"notification.complete",
+			"catalog.raw_material.manage",
+			"catalog.packaging.manage",
+		],
 	},
 };
 
@@ -1018,6 +1025,253 @@ describe("HomePage", () => {
 		expect(await screen.findByText("В архиве пока пусто")).toBeTruthy();
 		fireEvent.click(screen.getByRole("button", { name: "Показать активные" }));
 		expect(await screen.findByText("Активных записей пока нет")).toBeTruthy();
+	});
+
+	it("lets production manager manage raw and packaging catalog entries from more menu", async () => {
+		const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+			const url = String(input);
+			const method = init?.method ?? "GET";
+
+			if (url.endsWith("/auth/me")) {
+				return jsonResponse(productionActorResponse);
+			}
+
+			if (url.endsWith("/notifications")) {
+				return jsonResponse(notificationsResponse);
+			}
+
+			if (url.endsWith("/catalog/raw-material-types/raw1/archive") && method === "PATCH") {
+				return jsonResponse({
+					rawMaterialType: {
+						id: "raw1",
+						name: "Горбуша",
+						unit: "кг",
+						active: false,
+						createdAt: new Date(0).toISOString(),
+						updatedAt: new Date(0).toISOString(),
+					},
+				});
+			}
+
+			if (url.endsWith("/catalog/raw-material-types/raw1") && method === "PATCH") {
+				const body = JSON.parse(String(init?.body ?? "{}")) as { active?: boolean; name?: string; unit?: string };
+
+				return jsonResponse({
+					rawMaterialType: {
+						id: "raw1",
+						name: body.name ?? "Горбуша",
+						unit: body.unit ?? "кг",
+						active: body.active ?? true,
+						createdAt: new Date(0).toISOString(),
+						updatedAt: new Date(0).toISOString(),
+					},
+				});
+			}
+
+			if (url.endsWith("/catalog/raw-material-types") && method === "POST") {
+				return jsonResponse({
+					rawMaterialType: {
+						id: "raw3",
+						name: "Кета",
+						unit: "кг",
+						active: true,
+						createdAt: new Date(0).toISOString(),
+						updatedAt: new Date(0).toISOString(),
+					},
+				});
+			}
+
+			if (url.endsWith("/catalog/raw-material-types")) {
+				return jsonResponse({
+					rawMaterialTypes: [{
+						id: "raw1",
+						name: "Горбуша",
+						unit: "кг",
+						active: true,
+						createdAt: new Date(0).toISOString(),
+						updatedAt: new Date(0).toISOString(),
+					}, {
+						id: "raw2",
+						name: "Архивная горбуша",
+						unit: "кг",
+						active: false,
+						createdAt: new Date(0).toISOString(),
+						updatedAt: new Date(0).toISOString(),
+					}],
+				});
+			}
+
+			if (url.endsWith("/catalog/packaging-types/pack1/archive") && method === "PATCH") {
+				return jsonResponse({
+					packagingType: {
+						id: "pack1",
+						name: "Банка",
+						unit: "шт",
+						active: false,
+						createdAt: new Date(0).toISOString(),
+						updatedAt: new Date(0).toISOString(),
+					},
+				});
+			}
+
+			if (url.endsWith("/catalog/packaging-types/pack1") && method === "PATCH") {
+				const body = JSON.parse(String(init?.body ?? "{}")) as { active?: boolean; name?: string; unit?: string };
+
+				return jsonResponse({
+					packagingType: {
+						id: "pack1",
+						name: body.name ?? "Банка",
+						unit: body.unit ?? "шт",
+						active: body.active ?? true,
+						createdAt: new Date(0).toISOString(),
+						updatedAt: new Date(0).toISOString(),
+					},
+				});
+			}
+
+			if (url.endsWith("/catalog/packaging-types") && method === "POST") {
+				return jsonResponse({
+					packagingType: {
+						id: "pack2",
+						name: "Коробка",
+						unit: "шт",
+						active: true,
+						createdAt: new Date(0).toISOString(),
+						updatedAt: new Date(0).toISOString(),
+					},
+				});
+			}
+
+			if (url.endsWith("/catalog/packaging-types")) {
+				return jsonResponse({
+					packagingTypes: [{
+						id: "pack1",
+						name: "Банка",
+						unit: "шт",
+						active: true,
+						createdAt: new Date(0).toISOString(),
+						updatedAt: new Date(0).toISOString(),
+					}],
+				});
+			}
+
+			return jsonResponse({ error: { message: "Unexpected request" } }, 500);
+		});
+
+		vi.stubGlobal("fetch", fetchMock);
+
+		render(<HomePage />);
+
+		fireEvent.click(await screen.findByRole("button", { name: "Еще" }));
+		expect(await screen.findByRole("heading", { name: "Еще" })).toBeTruthy();
+		fireEvent.click(screen.getByRole("button", { name: "Справочники" }));
+
+		expect(await screen.findByRole("heading", { name: "Справочники" })).toBeTruthy();
+		expect(screen.getByRole("button", { name: "Еще" }).getAttribute("aria-current")).toBe("page");
+		expect(screen.getByRole("tab", { name: "Сырье" })).toBeTruthy();
+		expect(screen.getByRole("tab", { name: "Тара" })).toBeTruthy();
+		expect(screen.queryByRole("tab", { name: "Распределители" })).toBeNull();
+		expect(screen.queryByRole("tab", { name: "Шаблоны" })).toBeNull();
+		expect(await screen.findByText("Горбуша")).toBeTruthy();
+		expect(fetchMock.mock.calls.some(([request]) => String(request).endsWith("/catalog/distributors"))).toBe(false);
+		expect(fetchMock.mock.calls.some(([request]) => String(request).endsWith("/catalog/product-templates"))).toBe(false);
+
+		fireEvent.click(screen.getByRole("button", { name: "Добавить" }));
+		fireEvent.change(await screen.findByLabelText("Название"), { target: { value: "Кета" } });
+		fireEvent.change(screen.getByLabelText("Единица измерения"), { target: { value: "кг" } });
+		fireEvent.click(screen.getByRole("button", { name: "Добавить" }));
+		await waitFor(() => {
+			expect(fetchMock).toHaveBeenCalledWith(
+				expect.stringContaining("/catalog/raw-material-types"),
+				expect.objectContaining({
+					method: "POST",
+					body: JSON.stringify({ name: "Кета", unit: "кг" }),
+				}),
+			);
+		});
+
+		fireEvent.click(await screen.findByRole("button", { name: "Редактировать Горбуша" }));
+		fireEvent.change(await screen.findByLabelText("Название"), { target: { value: "Горбуша обновленная" } });
+		fireEvent.change(screen.getByLabelText("Единица измерения"), { target: { value: "кг" } });
+		fireEvent.click(screen.getByRole("button", { name: "Сохранить" }));
+		await waitFor(() => {
+			expect(fetchMock).toHaveBeenCalledWith(
+				expect.stringContaining("/catalog/raw-material-types/raw1"),
+				expect.objectContaining({
+					method: "PATCH",
+					body: JSON.stringify({ name: "Горбуша обновленная", unit: "кг" }),
+				}),
+			);
+		});
+
+		fireEvent.click(await screen.findByRole("button", { name: "В архив" }));
+		fireEvent.click(await screen.findByRole("button", { name: "Архив" }));
+		await waitFor(() => {
+			expect(fetchMock).toHaveBeenCalledWith(
+				expect.stringContaining("/catalog/raw-material-types/raw1/archive"),
+				expect.objectContaining({ method: "PATCH" }),
+			);
+		});
+		fireEvent.click(await screen.findByRole("button", { name: "Вернуть" }));
+		await waitFor(() => {
+			expect(fetchMock).toHaveBeenCalledWith(
+				expect.stringContaining("/catalog/raw-material-types/raw1"),
+				expect.objectContaining({
+					method: "PATCH",
+					body: JSON.stringify({ active: true }),
+				}),
+			);
+		});
+
+		fireEvent.click(screen.getByRole("tab", { name: "Тара" }));
+		expect(await screen.findByText("Банка")).toBeTruthy();
+
+		fireEvent.click(screen.getByRole("button", { name: "Добавить" }));
+		fireEvent.change(await screen.findByLabelText("Название"), { target: { value: "Коробка" } });
+		fireEvent.change(screen.getByLabelText("Единица учета"), { target: { value: "шт" } });
+		fireEvent.click(screen.getByRole("button", { name: "Добавить" }));
+		await waitFor(() => {
+			expect(fetchMock).toHaveBeenCalledWith(
+				expect.stringContaining("/catalog/packaging-types"),
+				expect.objectContaining({
+					method: "POST",
+					body: JSON.stringify({ name: "Коробка", unit: "шт" }),
+				}),
+			);
+		});
+
+		fireEvent.click(await screen.findByRole("button", { name: "Редактировать Банка" }));
+		fireEvent.change(await screen.findByLabelText("Название"), { target: { value: "Банка обновленная" } });
+		fireEvent.change(screen.getByLabelText("Единица учета"), { target: { value: "шт" } });
+		fireEvent.click(screen.getByRole("button", { name: "Сохранить" }));
+		await waitFor(() => {
+			expect(fetchMock).toHaveBeenCalledWith(
+				expect.stringContaining("/catalog/packaging-types/pack1"),
+				expect.objectContaining({
+					method: "PATCH",
+					body: JSON.stringify({ name: "Банка обновленная", unit: "шт" }),
+				}),
+			);
+		});
+
+		fireEvent.click(await screen.findByRole("button", { name: "В архив" }));
+		fireEvent.click(await screen.findByRole("button", { name: "Архив" }));
+		await waitFor(() => {
+			expect(fetchMock).toHaveBeenCalledWith(
+				expect.stringContaining("/catalog/packaging-types/pack1/archive"),
+				expect.objectContaining({ method: "PATCH" }),
+			);
+		});
+		fireEvent.click(await screen.findByRole("button", { name: "Вернуть" }));
+		await waitFor(() => {
+			expect(fetchMock).toHaveBeenCalledWith(
+				expect.stringContaining("/catalog/packaging-types/pack1"),
+				expect.objectContaining({
+					method: "PATCH",
+					body: JSON.stringify({ active: true }),
+				}),
+			);
+		});
 	});
 
 	it("renders production release flow and submits product batch", async () => {
@@ -3441,7 +3695,7 @@ describe("HomePage", () => {
 		expect(screen.getByDisplayValue("Портовая 1")).toBeTruthy();
 		expect(screen.getByDisplayValue("5")).toBeTruthy();
 		fireEvent.click(screen.getByRole("button", { name: "Вперед" }));
-		expect(await screen.findByText(/Новые виды сырья, тара и шаблоны продукции/)).toBeTruthy();
+		expect(await screen.findByText(/Новые виды сырья и тары заведующий производством ведет в справочниках/)).toBeTruthy();
 		expect(fetchMock.mock.calls.some(([, init]) => init?.method && init.method !== "GET")).toBe(false);
 
 		fireEvent.click(screen.getByRole("button", { name: "Еще" }));

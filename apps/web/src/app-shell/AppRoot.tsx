@@ -6,7 +6,6 @@ import {
 	QueryCache,
 	QueryClient,
 	QueryClientProvider,
-	useMutation,
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
@@ -100,16 +99,18 @@ function AppShell({ actor }: { actor: CurrentActor }) {
 	const queryClient = useQueryClient();
 	const [activeTab, setActiveTab] = useState(actor.role === "admin" ? "people" : "home");
 	const [successNotice, setSuccessNotice] = useState<{ id: number; message: string } | null>(null);
+	const [logoutPending, setLogoutPending] = useState(false);
 	const successNoticeId = useRef(0);
-	const logout = useMutation({
-		mutationFn: signOut,
-		onSettled: async () => {
-			completeLocalSignOut(queryClient);
-		},
-	});
 	function handleLogout() {
+		if (logoutPending) {
+			return;
+		}
+		setLogoutPending(true);
 		completeLocalSignOut(queryClient);
-		logout.mutate();
+		void signOut().finally(() => {
+			completeLocalSignOut(queryClient);
+			setLogoutPending(false);
+		});
 	}
 	function showSuccess(message: string) {
 		successNoticeId.current += 1;
@@ -140,14 +141,14 @@ function AppShell({ actor }: { actor: CurrentActor }) {
 					</div>
 				)}
 
-				<RoleHomeRouter
-					actor={actor}
-					activeTab={activeTab}
-					logout={handleLogout}
-					logoutPending={logout.isPending}
-					online={online}
-					onStatusSuccess={showSuccess}
-					onTabChange={setActiveTab}
+					<RoleHomeRouter
+						actor={actor}
+						activeTab={activeTab}
+						logout={handleLogout}
+						logoutPending={logoutPending}
+						online={online}
+						onStatusSuccess={showSuccess}
+						onTabChange={setActiveTab}
 				/>
 				{successNotice ? (
 					<output className="success-notice" aria-live="polite">
@@ -269,7 +270,7 @@ function BottomNav({
 				) || (
 					actor.role === "production_manager"
 					&& item.id === "more"
-					&& (activeTab === "history" || activeTab === "onboarding")
+					&& (activeTab === "history" || activeTab === "onboarding" || activeTab === "catalog")
 				) || (
 					actor.role === "commercial_manager"
 					&& item.id === "more"

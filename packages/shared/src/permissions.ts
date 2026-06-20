@@ -3,6 +3,8 @@ import { ROLES, type Role } from "./roles";
 export const PERMISSIONS = [
 	"users.manage",
 	"catalog.manage",
+	"catalog.raw_material.manage",
+	"catalog.packaging.manage",
 	"production.manage",
 	"distributor.stock.read",
 	"distributor.cash.read",
@@ -34,6 +36,8 @@ export const ROLE_PERMISSIONS = {
 	admin: PERMISSIONS,
 	director: [
 		"catalog.manage",
+		"catalog.raw_material.manage",
+		"catalog.packaging.manage",
 		"distributor.stock.read",
 		"distributor.cash.read",
 		"courier.stock.read",
@@ -49,6 +53,8 @@ export const ROLE_PERMISSIONS = {
 		"reports.read",
 	],
 	production_manager: [
+		"catalog.raw_material.manage",
+		"catalog.packaging.manage",
 		"production.manage",
 		"distributor.stock.read",
 		"notification.read",

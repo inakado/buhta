@@ -44,7 +44,7 @@ describe("PolicyRegistry", () => {
 		expect(actor?.permissions).not.toContain("users.manage");
 	});
 
-	it("gives production manager production access without catalog management", () => {
+	it("gives production manager production and granular catalog access without broad catalog management", () => {
 		const actor = registry.buildActor({
 			id: "pm1",
 			username: "production-manager",
@@ -53,6 +53,8 @@ describe("PolicyRegistry", () => {
 		});
 
 		expect(actor?.permissions).toContain("production.manage");
+		expect(actor?.permissions).toContain("catalog.raw_material.manage");
+		expect(actor?.permissions).toContain("catalog.packaging.manage");
 		expect(actor?.permissions).not.toContain("catalog.manage");
 	});
 
@@ -456,6 +458,50 @@ describe("PolicyGuard", () => {
 		expect(() => productionReadGuard.canActivate(contextWithRequest(productionManagerRequest))).toThrow(
 			ForbiddenException,
 		);
+	});
+
+	it("allows production manager granular catalog permissions but rejects broad catalog management", () => {
+		const productionManagerRequest = (): RequestWithActor => ({
+			user: {
+				id: "pm",
+				username: "pm",
+				name: "Production Manager",
+				role: "production_manager",
+			},
+		});
+
+		expect(
+			new PolicyGuard(reflectorWithPermission("catalog.raw_material.manage"), registry)
+				.canActivate(contextWithRequest(productionManagerRequest())),
+		).toBe(true);
+		expect(
+			new PolicyGuard(reflectorWithPermission("catalog.packaging.manage"), registry)
+				.canActivate(contextWithRequest(productionManagerRequest())),
+		).toBe(true);
+		expect(() =>
+			new PolicyGuard(reflectorWithPermission("catalog.manage"), registry)
+				.canActivate(contextWithRequest(productionManagerRequest())),
+		).toThrow(ForbiddenException);
+	});
+
+	it("rejects raw material and packaging catalog permissions for roles without catalog access", () => {
+		const courierRequest = (): RequestWithActor => ({
+			user: {
+				id: "courier",
+				username: "courier",
+				name: "Courier",
+				role: "courier",
+			},
+		});
+
+		expect(() =>
+			new PolicyGuard(reflectorWithPermission("catalog.raw_material.manage"), registry)
+				.canActivate(contextWithRequest(courierRequest())),
+		).toThrow(ForbiddenException);
+		expect(() =>
+			new PolicyGuard(reflectorWithPermission("catalog.packaging.manage"), registry)
+				.canActivate(contextWithRequest(courierRequest())),
+		).toThrow(ForbiddenException);
 	});
 
 	it("rejects distributor sale and cash permissions for wrong roles", () => {

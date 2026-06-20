@@ -21,6 +21,7 @@ import {
 	createPackagingType,
 	createProductTemplate,
 	createRawMaterialType,
+	type CurrentActor,
 	listDistributors,
 	listPackagingTypes,
 	listProductTemplates,
@@ -124,14 +125,34 @@ function catalogSectionReducer<Item>(
 	return { ...state, ...action.values };
 }
 
-export function CatalogHome({ online }: { online: boolean }) {
-	const [activeTab, setActiveTab] = useState<CatalogTab>("raw");
+export function CatalogHome({ actor, online }: { actor: CurrentActor; online: boolean }) {
+	const canManageFullCatalog = actor.permissions.includes("catalog.manage");
+	const canManageRawMaterials = canManageFullCatalog || actor.permissions.includes("catalog.raw_material.manage");
+	const canManagePackaging = canManageFullCatalog || actor.permissions.includes("catalog.packaging.manage");
+	const availableTabs = useMemo(
+		() => tabs.filter((tab) => {
+			if (tab.value === "raw") {
+				return canManageRawMaterials;
+			}
+			if (tab.value === "packaging") {
+				return canManagePackaging;
+			}
+
+			return canManageFullCatalog;
+		}),
+		[canManageFullCatalog, canManagePackaging, canManageRawMaterials],
+	);
+	const [requestedTab, setRequestedTab] = useState<CatalogTab>("raw");
+	const activeTab = availableTabs.some((tab) => tab.value === requestedTab)
+		? requestedTab
+		: availableTabs[0]?.value ?? "raw";
 	const {
 		data: rawMaterialTypes,
 		isLoading: rawMaterialTypesLoading,
 	} = useQuery({
 		queryKey: ["catalog", "raw-material-types"],
 		queryFn: listRawMaterialTypes,
+		enabled: canManageRawMaterials,
 	});
 	const {
 		data: packagingTypes,
@@ -139,6 +160,7 @@ export function CatalogHome({ online }: { online: boolean }) {
 	} = useQuery({
 		queryKey: ["catalog", "packaging-types"],
 		queryFn: listPackagingTypes,
+		enabled: canManagePackaging,
 	});
 	const {
 		data: distributors,
@@ -146,6 +168,7 @@ export function CatalogHome({ online }: { online: boolean }) {
 	} = useQuery({
 		queryKey: ["catalog", "distributors"],
 		queryFn: listDistributors,
+		enabled: canManageFullCatalog,
 	});
 	const {
 		data: productTemplates,
@@ -153,6 +176,7 @@ export function CatalogHome({ online }: { online: boolean }) {
 	} = useQuery({
 		queryKey: ["catalog", "product-templates"],
 		queryFn: listProductTemplates,
+		enabled: canManageFullCatalog,
 	});
 
 	return (
@@ -164,12 +188,12 @@ export function CatalogHome({ online }: { online: boolean }) {
 			<SegmentedControl
 				ariaLabel="Разделы справочников"
 				className="catalog-tabs"
-				items={tabs}
-				onChange={setActiveTab}
+				items={availableTabs}
+				onChange={setRequestedTab}
 				value={activeTab}
 			/>
 
-			{activeTab === "raw" ? (
+			{activeTab === "raw" && canManageRawMaterials ? (
 				<SimpleCatalogSection
 					createItem={(input) => createRawMaterialType({ name: input.name, unit: input.unit ?? "" })}
 					items={rawMaterialTypes?.rawMaterialTypes ?? []}
@@ -182,7 +206,7 @@ export function CatalogHome({ online }: { online: boolean }) {
 				/>
 			) : null}
 
-			{activeTab === "packaging" ? (
+			{activeTab === "packaging" && canManagePackaging ? (
 				<SimpleCatalogSection
 					createItem={(input) => createPackagingType({ name: input.name, unit: input.unit ?? "" })}
 					items={packagingTypes?.packagingTypes ?? []}
@@ -195,7 +219,7 @@ export function CatalogHome({ online }: { online: boolean }) {
 				/>
 			) : null}
 
-			{activeTab === "distributors" ? (
+			{activeTab === "distributors" && canManageFullCatalog ? (
 				<SimpleCatalogSection
 					createItem={createDistributor}
 					items={distributors?.distributors ?? []}
@@ -207,7 +231,7 @@ export function CatalogHome({ online }: { online: boolean }) {
 				/>
 			) : null}
 
-			{activeTab === "products" ? (
+			{activeTab === "products" && canManageFullCatalog ? (
 				<ProductTemplatesSection
 					items={productTemplates?.productTemplates ?? []}
 					loading={productTemplatesLoading}

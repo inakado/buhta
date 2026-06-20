@@ -4,6 +4,7 @@ import {
 	formatMoneyCents,
 	HEALTH_RESPONSE_STATUS,
 	moneyCents,
+	PERMISSIONS,
 	permissionsForRole,
 	quantity,
 	rublePriceToCents,
@@ -80,7 +81,10 @@ describe("shared contracts", () => {
 
 	it("keeps baseline permissions explicit by role", () => {
 		expect(permissionsForRole("admin")).toContain("users.manage");
+		expect(permissionsForRole("admin")).toEqual(PERMISSIONS);
 		expect(permissionsForRole("director")).toContain("catalog.manage");
+		expect(permissionsForRole("director")).toContain("catalog.raw_material.manage");
+		expect(permissionsForRole("director")).toContain("catalog.packaging.manage");
 		expect(permissionsForRole("director")).toContain("client.read");
 		expect(permissionsForRole("director")).not.toContain("client.manage");
 		expect(permissionsForRole("director")).toContain("courier.stock.read");
@@ -124,6 +128,9 @@ describe("shared contracts", () => {
 		expect(permissionsForRole("courier")).not.toContain("director.analytics.read");
 		expect(permissionsForRole("production_manager")).not.toContain("client.read");
 		expect(permissionsForRole("production_manager")).not.toContain("client.manage");
+		expect(permissionsForRole("production_manager")).toContain("catalog.raw_material.manage");
+		expect(permissionsForRole("production_manager")).toContain("catalog.packaging.manage");
+		expect(permissionsForRole("production_manager")).not.toContain("catalog.manage");
 		expect(permissionsForRole("production_manager")).not.toContain("courier.cash.read");
 		expect(permissionsForRole("production_manager")).toContain("notification.read");
 		expect(permissionsForRole("production_manager")).toContain("notification.complete");
