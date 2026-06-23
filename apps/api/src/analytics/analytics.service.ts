@@ -92,12 +92,32 @@ export class AnalyticsService {
 					rawMaterialTypeName: true,
 					rawMaterialUnit: true,
 					consumedRawMaterialQuantity: true,
+					netWeightGrams: true,
 					quantity: true,
 					createdAt: true,
 				},
 			}),
-			prisma.productTransfer.aggregate({ where, _sum: { quantity: true } }),
-			prisma.workshopProductBalance.aggregate({ _sum: { quantity: true } }),
+			prisma.productTransfer.findMany({
+				where,
+				select: {
+					quantity: true,
+					productBatch: {
+						select: {
+							netWeightGrams: true,
+						},
+					},
+				},
+			}),
+			prisma.workshopProductBalance.findMany({
+				select: {
+					quantity: true,
+					productBatch: {
+						select: {
+							netWeightGrams: true,
+						},
+					},
+				},
+			}),
 			prisma.rawMaterialBalance.findMany({
 				include: { rawMaterialType: true },
 				orderBy: { rawMaterialType: { name: "asc" } },
@@ -134,13 +154,14 @@ export class AnalyticsService {
 				unit: batch.rawMaterialUnit,
 				quantity: batch.consumedRawMaterialQuantity,
 			});
-				addProductQuantity(productReleasedMap, {
-					productName: batch.productName,
-					quantity: batch.quantity,
-					rawMaterialConsumedQuantity: batch.consumedRawMaterialQuantity,
-					rawMaterialUnit: batch.rawMaterialUnit,
-				});
-			}
+			addProductQuantity(productReleasedMap, {
+				productName: batch.productName,
+				quantity: batch.quantity,
+				totalNetWeightGrams: batch.quantity * batch.netWeightGrams,
+				rawMaterialConsumedQuantity: batch.consumedRawMaterialQuantity,
+				rawMaterialUnit: batch.rawMaterialUnit,
+			});
+		}
 
 		const currentRawMaterialBalanceMap = new Map<string, DirectorAnalyticsRawMaterialRow>();
 		for (const balance of currentRawMaterialBalances) {
@@ -156,6 +177,17 @@ export class AnalyticsService {
 		const productReleased = sortedProductRows(productReleasedMap);
 		const rawMaterialConsumedQuantity = rawMaterialConsumed.reduce((sum, item) => sum + item.quantity, 0);
 		const productReleasedUnits = productReleased.reduce((sum, item) => sum + item.quantity, 0);
+		const productReleasedTotalNetWeightGrams = productReleased.reduce((sum, item) => sum + item.totalNetWeightGrams, 0);
+		const productTransferredToDistributorUnits = productTransfers.reduce((sum, item) => sum + item.quantity, 0);
+		const productTransferredToDistributorTotalNetWeightGrams = productTransfers.reduce(
+			(sum, item) => sum + item.quantity * item.productBatch.netWeightGrams,
+			0,
+		);
+		const currentWorkshopProductUnits = workshopProductBalance.reduce((sum, item) => sum + item.quantity, 0);
+		const currentWorkshopProductTotalNetWeightGrams = workshopProductBalance.reduce(
+			(sum, item) => sum + item.quantity * item.productBatch.netWeightGrams,
+			0,
+		);
 		const rawMaterialConsumedUnit = rawMaterialConsumed[0]?.unit ?? "кг";
 
 		return {
@@ -190,12 +222,15 @@ export class AnalyticsService {
 				rawMaterialConsumed,
 				currentRawMaterialBalances: sortedRawMaterialRows(currentRawMaterialBalanceMap),
 				productReleased,
-				productTransferredToDistributorUnits: productTransfers._sum.quantity ?? 0,
-				currentWorkshopProductUnits: workshopProductBalance._sum.quantity ?? 0,
+				productTransferredToDistributorUnits,
+				productTransferredToDistributorTotalNetWeightGrams,
+				currentWorkshopProductUnits,
+				currentWorkshopProductTotalNetWeightGrams,
 				summary: {
 					rawMaterialConsumedQuantity,
 					rawMaterialConsumedUnit,
 					productReleasedUnits,
+					productReleasedTotalNetWeightGrams,
 				},
 			},
 			charts: {

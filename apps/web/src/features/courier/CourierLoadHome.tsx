@@ -9,6 +9,15 @@ import { formatCompactMoneyCents } from "../../lib/money-format";
 import { OperationProductSelect } from "../operations/OperationProductSelect";
 import { PostSubmitResultLayer } from "../operations/PostSubmitResultLayer";
 import { getLoadSubmitBlockReason } from "../operations/operation-submit-reasons";
+import {
+	calculateProductQuantity,
+	createDefaultProductQuantityState,
+	formatKilograms,
+	formatProductQuantityLabel,
+	type ProductQuantityCalculation,
+	ProductQuantityInputField,
+	type ProductQuantityInputState,
+} from "../operations/product-quantity-input";
 
 type LoadResultSnapshot = {
 	courierQuantityAfter: number;
@@ -29,7 +38,7 @@ export function CourierLoadHome({
 }) {
 	const queryClient = useQueryClient();
 	const [selectedBalanceId, setSelectedBalanceId] = useState("");
-	const [quantity, setQuantity] = useState("");
+	const [quantity, setQuantity] = useState<ProductQuantityInputState>(createDefaultProductQuantityState);
 	const [comment, setComment] = useState("");
 	const [localError, setLocalError] = useState("");
 	const [loadResult, setLoadResult] = useState<LoadResultSnapshot | null>(null);
@@ -45,14 +54,19 @@ export function CourierLoadHome({
 	const selectedStock = loadOptions?.items.find((item) =>
 		item.distributorProductBalanceId === selectedBalanceId,
 	);
-	const parsedQuantity = Number(quantity);
-	const loadValueCents = selectedStock && Number.isInteger(parsedQuantity) && parsedQuantity > 0
-		? selectedStock.unitPriceCents * parsedQuantity
+	const productQuantity = calculateProductQuantity({
+		availableQuantity: selectedStock?.availableQuantity,
+		netWeightGrams: selectedStock?.netWeightGrams,
+		state: quantity,
+	});
+	const parsedQuantity = productQuantity.ok ? productQuantity.quantity : 0;
+	const loadValueCents = selectedStock && productQuantity.ok
+		? selectedStock.unitPriceCents * productQuantity.quantity
 		: 0;
 	const loadMutation = useMutation({
 		mutationFn: () => createCourierLoad({
 			distributorProductBalanceId: selectedBalanceId,
-			quantity: parsedQuantity,
+			quantityInput: getProductQuantityInput(productQuantity),
 			...(comment.trim() ? { comment: comment.trim() } : {}),
 		}),
 		onSuccess: async (response) => {
@@ -63,7 +77,7 @@ export function CourierLoadHome({
 				productName: selectedStock?.productName,
 			}));
 			setSelectedBalanceId("");
-			setQuantity("");
+			setQuantity(createDefaultProductQuantityState());
 			setComment("");
 			setLocalError("");
 			await Promise.all([
@@ -93,7 +107,7 @@ export function CourierLoadHome({
 			return;
 		}
 		if (!isValidQuantity(parsedQuantity, selectedStock)) {
-			setLocalError("Количество должно быть целым числом не больше доступного количества.");
+			setLocalError(productQuantity.ok ? "Количество не должно быть больше доступного остатка." : productQuantity.reason);
 			return;
 		}
 
@@ -132,7 +146,10 @@ export function CourierLoadHome({
 						discounted: item.discounted,
 						id: item.distributorProductBalanceId,
 						label: item.productName,
-						meta: `${item.availableQuantity} шт · ${formatRubles(item.unitPriceCents)} ₽`,
+						meta: `${formatProductQuantityLabel({
+							quantity: item.availableQuantity,
+							totalNetWeightGrams: item.totalNetWeightGrams,
+						})} • ${formatRubles(item.unitPriceCents)} ₽`,
 					}))}
 					placeholder="Выберите продукцию"
 					value={selectedBalanceId}
@@ -145,16 +162,13 @@ export function CourierLoadHome({
 
 				{selectedStock ? <SelectedStockInfo stock={selectedStock} /> : null}
 
-				<label className="field">
-					<span>Количество, шт</span>
-					<input
-						inputMode="numeric"
-						min="1"
-						onChange={(event) => setQuantity(event.target.value)}
-						type="number"
-						value={quantity}
-					/>
-				</label>
+				<ProductQuantityInputField
+					availableQuantity={selectedStock?.availableQuantity}
+					id="courier-load-quantity"
+					netWeightGrams={selectedStock?.netWeightGrams}
+					onChange={setQuantity}
+					state={quantity}
+				/>
 				<label className="field">
 					<span>Комментарий</span>
 					<textarea onChange={(event) => setComment(event.target.value)} rows={2} value={comment} />
@@ -194,7 +208,7 @@ function LoadResultLayer({
 			rows={[
 				{ label: "Продукция", value: result.productName },
 				{ label: "Откуда", value: result.distributorName },
-				{ label: "Загружено", value: `${result.quantity} шт · ${formatRubles(result.unitPriceCents)} ₽/шт` },
+				{ label: "Загружено", value: `${result.quantity} шт • ${formatRubles(result.unitPriceCents)} ₽/шт` },
 				{ label: "Итого", value: `${formatRubles(result.stockValueCents)} ₽` },
 				...(result.courierQuantityAfter === result.quantity
 					? []
@@ -249,7 +263,11 @@ function LoadSubmitBlock({
 function SelectedStockInfo({ stock }: { stock: CourierLoadOption }) {
 	return (
 		<LoadInfoLedger>
-			<LoadInfoRow label="Доступно" value={`${stock.availableQuantity} шт`} />
+			<LoadInfoRow label="Доступно" value={formatProductQuantityLabel({
+				quantity: stock.availableQuantity,
+				totalNetWeightGrams: stock.totalNetWeightGrams,
+			})} />
+			<LoadInfoRow label="Масса нетто" value={`${formatKilograms(stock.netWeightGrams)} кг/шт`} />
 			<LoadInfoRow label="Цена" value={`${formatRubles(stock.unitPriceCents)} ₽/шт`} />
 		</LoadInfoLedger>
 	);
@@ -260,6 +278,14 @@ function isValidQuantity(quantity: number, selectedStock: CourierLoadOption | un
 		&& quantity > 0
 		&& !!selectedStock
 		&& quantity <= selectedStock.availableQuantity;
+}
+
+function getProductQuantityInput(calculation: ProductQuantityCalculation) {
+	if (!calculation.ok) {
+		throw new Error(calculation.reason);
+	}
+
+	return calculation.input;
 }
 
 function formatRubles(priceCents: number): string {

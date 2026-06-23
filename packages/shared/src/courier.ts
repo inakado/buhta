@@ -1,5 +1,10 @@
 import { z } from "zod";
 import { PaymentMethodSchema } from "./distributor";
+import {
+	NetWeightGramsSchema,
+	ProductQuantityCommandSchema,
+	ProductQuantityInputSchema,
+} from "./product-quantity";
 
 const NonNegativeIntegerSchema = z.number().int().nonnegative();
 const PositiveIntegerSchema = z.number().int().positive();
@@ -14,9 +19,11 @@ export const CourierLoadOptionSchema = z.object({
 	productName: z.string(),
 	baseUnitPriceCents: NonNegativeIntegerSchema,
 	unitPriceCents: NonNegativeIntegerSchema,
+	netWeightGrams: NetWeightGramsSchema,
 	discounted: z.boolean(),
 	discountCentsPerUnit: NonNegativeIntegerSchema,
 	availableQuantity: NonNegativeIntegerSchema,
+	totalNetWeightGrams: NonNegativeIntegerSchema,
 	stockValueCents: NonNegativeIntegerSchema,
 	updatedAt: z.string(),
 });
@@ -29,9 +36,8 @@ export const CourierLoadOptionsResponseSchema = z.object({
 
 export type CourierLoadOptionsResponse = z.infer<typeof CourierLoadOptionsResponseSchema>;
 
-export const CreateCourierLoadRequestSchema = z.object({
+export const CreateCourierLoadRequestSchema = ProductQuantityCommandSchema.extend({
 	distributorProductBalanceId: z.string().min(1),
-	quantity: PositiveIntegerSchema,
 	courierUserId: z.string().min(1).optional(),
 	comment: OptionalCommentSchema,
 });
@@ -47,9 +53,11 @@ export const CourierProductBalanceItemSchema = z.object({
 	productName: z.string(),
 	baseUnitPriceCents: NonNegativeIntegerSchema,
 	unitPriceCents: NonNegativeIntegerSchema,
+	netWeightGrams: NetWeightGramsSchema,
 	discounted: z.boolean(),
 	discountCentsPerUnit: NonNegativeIntegerSchema,
 	quantity: NonNegativeIntegerSchema,
+	totalNetWeightGrams: NonNegativeIntegerSchema,
 	stockValueCents: NonNegativeIntegerSchema,
 	updatedAt: z.string(),
 });
@@ -62,6 +70,7 @@ export const CourierProductBalancesCourierSummarySchema = z.object({
 	courierDisplayName: z.string(),
 	stockItemCount: NonNegativeIntegerSchema,
 	totalUnits: NonNegativeIntegerSchema,
+	totalNetWeightGrams: NonNegativeIntegerSchema,
 	totalStockValueCents: NonNegativeIntegerSchema,
 });
 
@@ -73,6 +82,7 @@ export const CourierProductBalancesSummarySchema = z.object({
 	courierCount: NonNegativeIntegerSchema,
 	stockItemCount: NonNegativeIntegerSchema,
 	totalUnits: NonNegativeIntegerSchema,
+	totalNetWeightGrams: NonNegativeIntegerSchema,
 	totalStockValueCents: NonNegativeIntegerSchema,
 });
 
@@ -93,6 +103,8 @@ export const CourierLoadSchema = z.object({
 	distributorId: z.string(),
 	productBatchId: z.string(),
 	quantity: PositiveIntegerSchema,
+	netWeightGrams: NetWeightGramsSchema,
+	totalNetWeightGrams: NonNegativeIntegerSchema,
 	baseUnitPriceCents: NonNegativeIntegerSchema,
 	unitPriceCents: NonNegativeIntegerSchema,
 	discountCentsPerUnit: NonNegativeIntegerSchema,
@@ -115,9 +127,11 @@ export const CourierLoadResponseSchema = z.object({
 		productName: z.string(),
 		baseUnitPriceCents: NonNegativeIntegerSchema,
 		unitPriceCents: NonNegativeIntegerSchema,
+		netWeightGrams: NetWeightGramsSchema,
 		discounted: z.boolean(),
 		discountCentsPerUnit: NonNegativeIntegerSchema,
 		quantity: NonNegativeIntegerSchema,
+		totalNetWeightGrams: NonNegativeIntegerSchema,
 		stockValueCents: NonNegativeIntegerSchema,
 		updatedAt: z.string(),
 	}),
@@ -135,9 +149,11 @@ export const CourierSaleOptionSchema = z.object({
 	productName: z.string(),
 	baseUnitPriceCents: NonNegativeIntegerSchema,
 	unitPriceCents: NonNegativeIntegerSchema,
+	netWeightGrams: NetWeightGramsSchema,
 	discounted: z.boolean(),
 	discountCentsPerUnit: NonNegativeIntegerSchema,
 	availableQuantity: NonNegativeIntegerSchema,
+	totalNetWeightGrams: NonNegativeIntegerSchema,
 	stockValueCents: NonNegativeIntegerSchema,
 	updatedAt: z.string(),
 });
@@ -150,10 +166,9 @@ export const CourierSaleOptionsResponseSchema = z.object({
 
 export type CourierSaleOptionsResponse = z.infer<typeof CourierSaleOptionsResponseSchema>;
 
-export const CreateCourierSaleRequestSchema = z.object({
+export const CreateCourierSaleRequestSchema = ProductQuantityCommandSchema.extend({
 	courierProductBalanceId: z.string().min(1),
 	clientId: z.string().min(1),
-	quantity: PositiveIntegerSchema,
 	paymentMethod: PaymentMethodSchema,
 	courierUserId: z.string().min(1).optional(),
 	comment: OptionalCommentSchema,
@@ -192,6 +207,8 @@ export const CourierSaleSchema = z.object({
 	productBatchId: z.string(),
 	clientId: z.string(),
 	quantity: PositiveIntegerSchema,
+	netWeightGrams: NetWeightGramsSchema,
+	totalNetWeightGrams: NonNegativeIntegerSchema,
 	baseUnitPriceCents: NonNegativeIntegerSchema,
 	unitPriceCents: NonNegativeIntegerSchema,
 	discountCentsPerUnit: NonNegativeIntegerSchema,
@@ -222,6 +239,8 @@ export const CourierSaleCancellationSchema = z.object({
 	productBatchId: z.string(),
 	clientId: z.string(),
 	quantity: PositiveIntegerSchema,
+	netWeightGrams: NetWeightGramsSchema,
+	totalNetWeightGrams: NonNegativeIntegerSchema,
 	baseUnitPriceCents: PositiveIntegerSchema,
 	unitPriceCents: PositiveIntegerSchema,
 	discountCentsPerUnit: NonNegativeIntegerSchema,
@@ -252,6 +271,8 @@ export const CourierRecentSaleItemSchema = z.object({
 	clientName: z.string(),
 	clientPhone: z.string(),
 	quantity: PositiveIntegerSchema,
+	netWeightGrams: NetWeightGramsSchema,
+	totalNetWeightGrams: NonNegativeIntegerSchema,
 	baseUnitPriceCents: NonNegativeIntegerSchema,
 	unitPriceCents: NonNegativeIntegerSchema,
 	discountCentsPerUnit: NonNegativeIntegerSchema,
@@ -307,9 +328,11 @@ export const CourierUnloadProductOptionSchema = z.object({
 	productName: z.string(),
 	baseUnitPriceCents: NonNegativeIntegerSchema,
 	unitPriceCents: NonNegativeIntegerSchema,
+	netWeightGrams: NetWeightGramsSchema,
 	discounted: z.boolean(),
 	discountCentsPerUnit: NonNegativeIntegerSchema,
 	availableQuantity: NonNegativeIntegerSchema,
+	totalNetWeightGrams: NonNegativeIntegerSchema,
 	stockValueCents: NonNegativeIntegerSchema,
 	updatedAt: z.string(),
 });
@@ -326,7 +349,16 @@ export type CourierUnloadOptionsResponse = z.infer<typeof CourierUnloadOptionsRe
 
 export const CourierUnloadRequestItemSchema = z.object({
 	courierProductBalanceId: z.string().min(1),
-	quantity: PositiveIntegerSchema,
+	quantity: PositiveIntegerSchema.optional(),
+	quantityInput: ProductQuantityInputSchema.optional(),
+}).superRefine((value, context) => {
+	if (value.quantity === undefined && value.quantityInput === undefined) {
+		context.addIssue({
+			code: z.ZodIssueCode.custom,
+			message: "Product quantity is required",
+			path: ["quantityInput"],
+		});
+	}
 });
 
 export type CourierUnloadRequestItem = z.infer<typeof CourierUnloadRequestItemSchema>;
@@ -381,6 +413,8 @@ export const CourierUnloadItemSchema = z.object({
 	distributorProductBalanceId: z.string(),
 	productBatchId: z.string(),
 	quantity: PositiveIntegerSchema,
+	netWeightGrams: NetWeightGramsSchema,
+	totalNetWeightGrams: NonNegativeIntegerSchema,
 	baseUnitPriceCents: NonNegativeIntegerSchema,
 	unitPriceCents: NonNegativeIntegerSchema,
 	discountCentsPerUnit: NonNegativeIntegerSchema,
@@ -397,9 +431,11 @@ export const CourierUnloadDistributorProductBalanceSchema = z.object({
 	productName: z.string(),
 	baseUnitPriceCents: NonNegativeIntegerSchema,
 	unitPriceCents: NonNegativeIntegerSchema,
+	netWeightGrams: NetWeightGramsSchema,
 	discounted: z.boolean(),
 	discountCentsPerUnit: NonNegativeIntegerSchema,
 	quantity: NonNegativeIntegerSchema,
+	totalNetWeightGrams: NonNegativeIntegerSchema,
 	stockValueCents: NonNegativeIntegerSchema,
 	updatedAt: z.string(),
 });

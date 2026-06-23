@@ -60,6 +60,7 @@ export type DirectorAnalyticsRawMaterialRow = z.infer<typeof DirectorAnalyticsRa
 export const DirectorAnalyticsProductOutputRowSchema = z.object({
 	productName: z.string(),
 	quantity: NonNegativeIntegerSchema,
+	totalNetWeightGrams: NonNegativeIntegerSchema,
 	rawMaterialConsumedQuantity: NonNegativeNumberSchema,
 	rawMaterialUnit: z.string(),
 });
@@ -72,11 +73,14 @@ export const DirectorAnalyticsProductionSchema = z.object({
 	currentRawMaterialBalances: z.array(DirectorAnalyticsRawMaterialRowSchema),
 	productReleased: z.array(DirectorAnalyticsProductOutputRowSchema),
 	productTransferredToDistributorUnits: NonNegativeIntegerSchema,
+	productTransferredToDistributorTotalNetWeightGrams: NonNegativeIntegerSchema,
 	currentWorkshopProductUnits: NonNegativeIntegerSchema,
+	currentWorkshopProductTotalNetWeightGrams: NonNegativeIntegerSchema,
 	summary: z.object({
 		rawMaterialConsumedQuantity: NonNegativeNumberSchema,
 		rawMaterialConsumedUnit: z.string(),
 		productReleasedUnits: NonNegativeIntegerSchema,
+		productReleasedTotalNetWeightGrams: NonNegativeIntegerSchema,
 	}),
 });
 

@@ -237,6 +237,7 @@ model ProductTemplate {
   rawMaterialTypeId String
   packagingTypeId   String
   priceCents        Int             @default(0)
+  netWeightGrams    Int             @default(200)
   active            Boolean         @default(true)
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
@@ -312,6 +313,7 @@ model ProductBatch {
   packagingTypeName           String
   packagingUnit               String
   priceCents                  Int
+  netWeightGrams              Int                         @default(200)
   quantity                    Int
   consumedRawMaterialQuantity Decimal                     @db.Decimal(12, 3)
   consumedPackagingQuantity   Decimal                     @db.Decimal(12, 3)

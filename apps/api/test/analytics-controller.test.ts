@@ -38,11 +38,14 @@ describe("AnalyticsController", () => {
 				currentRawMaterialBalances: [],
 				productReleased: [],
 				productTransferredToDistributorUnits: 0,
+				productTransferredToDistributorTotalNetWeightGrams: 0,
 				currentWorkshopProductUnits: 0,
+				currentWorkshopProductTotalNetWeightGrams: 0,
 				summary: {
 					rawMaterialConsumedQuantity: 0,
 					rawMaterialConsumedUnit: "кг",
 					productReleasedUnits: 0,
+					productReleasedTotalNetWeightGrams: 0,
 				},
 			},
 			charts: {

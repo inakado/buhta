@@ -5,9 +5,9 @@ import {
 	ProductTemplateSchema,
 	RawMaterialTypeSchema,
 } from "./catalog";
+import { NetWeightGramsSchema, ProductQuantityCommandSchema } from "./product-quantity";
 
 const QuantityValueSchema = z.number().positive();
-const PositiveIntegerSchema = z.number().int().positive();
 const OptionalCommentSchema = z.string().trim().max(500).optional();
 
 export const ProductionBalanceItemSchema = z.object({
@@ -90,7 +90,9 @@ export const ProductBatchSchema = z.object({
 	packagingTypeName: z.string(),
 	packagingUnit: z.string(),
 	priceCents: z.number().int().nonnegative(),
+	netWeightGrams: NetWeightGramsSchema,
 	quantity: z.number().int().positive(),
+	totalNetWeightGrams: NetWeightGramsSchema,
 	consumedRawMaterialQuantity: z.number().positive(),
 	consumedPackagingQuantity: z.number().positive(),
 	status: ProductBatchStatusSchema,
@@ -110,8 +112,11 @@ export const WorkshopProductBalanceItemSchema = z.object({
 	productBatchId: z.string(),
 	productName: z.string(),
 	priceCents: z.number().int().nonnegative(),
+	netWeightGrams: NetWeightGramsSchema,
 	quantity: z.number().int().nonnegative(),
+	totalNetWeightGrams: z.number().int().nonnegative(),
 	producedQuantity: z.number().int().positive(),
+	producedTotalNetWeightGrams: NetWeightGramsSchema,
 	createdAt: z.string(),
 	updatedAt: z.string(),
 });
@@ -126,9 +131,11 @@ export const DistributorProductBalanceItemSchema = z.object({
 	productName: z.string(),
 	baseUnitPriceCents: z.number().int().nonnegative(),
 	unitPriceCents: z.number().int().nonnegative(),
+	netWeightGrams: NetWeightGramsSchema,
 	discounted: z.boolean(),
 	discountCentsPerUnit: z.number().int().nonnegative(),
 	quantity: z.number().int().nonnegative(),
+	totalNetWeightGrams: z.number().int().nonnegative(),
 	stockValueCents: z.number().int().nonnegative(),
 	updatedAt: z.string(),
 });
@@ -148,10 +155,9 @@ export const ProductionTransferOptionsResponseSchema = z.object({
 
 export type ProductionTransferOptionsResponse = z.infer<typeof ProductionTransferOptionsResponseSchema>;
 
-export const CreateProductTransferRequestSchema = z.object({
+export const CreateProductTransferRequestSchema = ProductQuantityCommandSchema.extend({
 	productBatchId: z.string().min(1),
 	distributorId: z.string().min(1),
-	quantity: PositiveIntegerSchema,
 	comment: OptionalCommentSchema,
 });
 
@@ -162,6 +168,8 @@ export const ProductTransferSchema = z.object({
 	productBatchId: z.string(),
 	distributorId: z.string(),
 	quantity: z.number().int().positive(),
+	netWeightGrams: NetWeightGramsSchema,
+	totalNetWeightGrams: NetWeightGramsSchema,
 	baseUnitPriceCents: z.number().int().positive(),
 	unitPriceCents: z.number().int().positive(),
 	discountCentsPerUnit: z.number().int().nonnegative(),
@@ -182,9 +190,8 @@ export const ProductTransferResponseSchema = z.object({
 
 export type ProductTransferResponse = z.infer<typeof ProductTransferResponseSchema>;
 
-export const CreateProductBatchRequestSchema = z.object({
+export const CreateProductBatchRequestSchema = ProductQuantityCommandSchema.extend({
 	productTemplateId: z.string().min(1),
-	quantity: PositiveIntegerSchema,
 	consumedRawMaterialQuantity: QuantityValueSchema,
 	comment: OptionalCommentSchema,
 });

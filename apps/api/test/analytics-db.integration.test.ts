@@ -34,6 +34,7 @@ const outsidePeriodDate = new Date("2036-06-06T01:00:00.000Z");
 let baselineDistributorCashCents = 0;
 let baselineCourierCashCents = 0;
 let baselineWorkshopProductUnits = 0;
+let baselineWorkshopProductTotalNetWeightGrams = 0;
 
 async function cleanup() {
 	await prisma.distributorSaleCancellation.deleteMany({
@@ -449,14 +450,24 @@ async function seedMoneyFacts() {
 describe("AnalyticsService real Postgres integration", () => {
 	beforeEach(async () => {
 		await cleanup();
-		const [distributorCash, courierCash, workshopProductBalance] = await Promise.all([
+		const [distributorCash, courierCash, workshopProductBalance, workshopProductBalanceItems] = await Promise.all([
 			prisma.distributorCashBalance.aggregate({ _sum: { amountCents: true } }),
 			prisma.courierCashBalance.aggregate({ _sum: { amountCents: true } }),
 			prisma.workshopProductBalance.aggregate({ _sum: { quantity: true } }),
+			prisma.workshopProductBalance.findMany({
+				select: {
+					quantity: true,
+					productBatch: { select: { netWeightGrams: true } },
+				},
+			}),
 		]);
 		baselineDistributorCashCents = distributorCash._sum.amountCents ?? 0;
 		baselineCourierCashCents = courierCash._sum.amountCents ?? 0;
 		baselineWorkshopProductUnits = workshopProductBalance._sum.quantity ?? 0;
+		baselineWorkshopProductTotalNetWeightGrams = workshopProductBalanceItems.reduce(
+			(sum, item) => sum + item.quantity * item.productBatch.netWeightGrams,
+			0,
+		);
 		await seedUsers();
 		await seedCatalogAndProduction();
 		await seedMoneyFacts();
@@ -551,16 +562,20 @@ describe("AnalyticsService real Postgres integration", () => {
 			expect(response.production.productReleased).toEqual([{
 				productName: "Икра горбуши аналитика 250 г",
 				quantity: 40,
+				totalNetWeightGrams: 8000,
 				rawMaterialConsumedQuantity: 10,
 				rawMaterialUnit: "кг",
 			}]);
 		expect(response.production).toMatchObject({
 			productTransferredToDistributorUnits: 30,
+			productTransferredToDistributorTotalNetWeightGrams: 6000,
 			currentWorkshopProductUnits: baselineWorkshopProductUnits + 10,
+			currentWorkshopProductTotalNetWeightGrams: baselineWorkshopProductTotalNetWeightGrams + 2000,
 			summary: {
 				rawMaterialConsumedQuantity: 10,
 				rawMaterialConsumedUnit: "кг",
 				productReleasedUnits: 40,
+				productReleasedTotalNetWeightGrams: 8000,
 			},
 		});
 	});

@@ -30,6 +30,7 @@ type ProductBatchRecord = {
 	id: string;
 	productName: string;
 	priceCents: number;
+	netWeightGrams: number;
 };
 
 type DistributorRecord = {
@@ -79,6 +80,9 @@ type CourierLoadRecord = {
 	operationId: string;
 	actorUserId: string;
 	createdAt: Date;
+	productBatch: {
+		netWeightGrams: number;
+	};
 };
 
 type CourierSaleRecord = {
@@ -98,6 +102,9 @@ type CourierSaleRecord = {
 	operationId: string;
 	actorUserId: string;
 	createdAt: Date;
+	productBatch: {
+		netWeightGrams: number;
+	};
 };
 
 type CourierSaleCancellationRecord = {
@@ -118,11 +125,15 @@ type CourierSaleCancellationRecord = {
 	operationId: string;
 	actorUserId: string;
 	createdAt: Date;
+	productBatch: {
+		netWeightGrams: number;
+	};
 };
 
 type CourierRecentSaleRecord = CourierSaleRecord & {
 	productBatch: {
 		productName: string;
+		netWeightGrams: number;
 	};
 	client: {
 		id: string;
@@ -132,7 +143,11 @@ type CourierRecentSaleRecord = CourierSaleRecord & {
 	operation: {
 		actor: UserRecord;
 	};
-	cancellation: (CourierSaleCancellationRecord & {
+	cancellation: ({
+		id: string;
+		reason: string;
+		actorUserId: string;
+		createdAt: Date;
 		actor: UserRecord;
 	}) | null;
 };
@@ -159,6 +174,9 @@ type CourierUnloadItemRecord = {
 	unitPriceCents: number;
 	discountCentsPerUnit: number;
 	stockValueCents: number;
+	productBatch: {
+		netWeightGrams: number;
+	};
 };
 
 export function mapCourierLoadOption(record: DistributorBalanceRecord): CourierLoadOption {
@@ -171,7 +189,9 @@ export function mapCourierLoadOption(record: DistributorBalanceRecord): CourierL
 		productBatchId: record.productBatchId,
 		productName: record.productBatch.productName,
 		...price,
+		netWeightGrams: record.productBatch.netWeightGrams,
 		availableQuantity: record.quantity,
+		totalNetWeightGrams: totalNetWeightGrams(record.quantity, record.productBatch.netWeightGrams),
 		stockValueCents: record.quantity * price.unitPriceCents,
 		updatedAt: record.updatedAt.toISOString(),
 	};
@@ -187,7 +207,9 @@ export function mapDistributorBalanceAfter(record: DistributorBalanceRecord) {
 		productBatchId: record.productBatchId,
 		productName: record.productBatch.productName,
 		...price,
+		netWeightGrams: record.productBatch.netWeightGrams,
 		quantity: record.quantity,
+		totalNetWeightGrams: totalNetWeightGrams(record.quantity, record.productBatch.netWeightGrams),
 		stockValueCents: record.quantity * price.unitPriceCents,
 		updatedAt: record.updatedAt.toISOString(),
 	};
@@ -205,7 +227,9 @@ export function mapCourierProductBalanceItem(record: CourierBalanceRecord): Cour
 		productBatchId: record.productBatchId,
 		productName: record.productBatch.productName,
 		...price,
+		netWeightGrams: record.productBatch.netWeightGrams,
 		quantity: record.quantity,
+		totalNetWeightGrams: totalNetWeightGrams(record.quantity, record.productBatch.netWeightGrams),
 		stockValueCents: record.quantity * price.unitPriceCents,
 		updatedAt: record.updatedAt.toISOString(),
 	};
@@ -223,7 +247,9 @@ export function mapCourierSaleOption(record: CourierBalanceRecord): CourierSaleO
 		productBatchId: record.productBatchId,
 		productName: record.productBatch.productName,
 		...price,
+		netWeightGrams: record.productBatch.netWeightGrams,
 		availableQuantity: record.quantity,
+		totalNetWeightGrams: totalNetWeightGrams(record.quantity, record.productBatch.netWeightGrams),
 		stockValueCents: record.quantity * price.unitPriceCents,
 		updatedAt: record.updatedAt.toISOString(),
 	};
@@ -237,7 +263,9 @@ export function mapCourierUnloadProductOption(record: CourierBalanceRecord): Cou
 		productBatchId: record.productBatchId,
 		productName: record.productBatch.productName,
 		...price,
+		netWeightGrams: record.productBatch.netWeightGrams,
 		availableQuantity: record.quantity,
+		totalNetWeightGrams: totalNetWeightGrams(record.quantity, record.productBatch.netWeightGrams),
 		stockValueCents: record.quantity * price.unitPriceCents,
 		updatedAt: record.updatedAt.toISOString(),
 	};
@@ -273,6 +301,8 @@ export function mapCourierLoad(record: CourierLoadRecord): CourierLoad {
 		distributorId: record.distributorId,
 		productBatchId: record.productBatchId,
 		quantity: record.quantity,
+		netWeightGrams: record.productBatch.netWeightGrams,
+		totalNetWeightGrams: totalNetWeightGrams(record.quantity, record.productBatch.netWeightGrams),
 		baseUnitPriceCents: record.baseUnitPriceCents,
 		unitPriceCents: record.unitPriceCents,
 		discountCentsPerUnit: record.discountCentsPerUnit,
@@ -292,6 +322,8 @@ export function mapCourierSale(record: CourierSaleRecord): CourierSale {
 		productBatchId: record.productBatchId,
 		clientId: record.clientId,
 		quantity: record.quantity,
+		netWeightGrams: record.productBatch.netWeightGrams,
+		totalNetWeightGrams: totalNetWeightGrams(record.quantity, record.productBatch.netWeightGrams),
 		baseUnitPriceCents: record.baseUnitPriceCents,
 		unitPriceCents: record.unitPriceCents,
 		discountCentsPerUnit: record.discountCentsPerUnit,
@@ -314,6 +346,8 @@ export function mapCourierSaleCancellation(record: CourierSaleCancellationRecord
 		productBatchId: record.productBatchId,
 		clientId: record.clientId,
 		quantity: record.quantity,
+		netWeightGrams: record.productBatch.netWeightGrams,
+		totalNetWeightGrams: totalNetWeightGrams(record.quantity, record.productBatch.netWeightGrams),
 		baseUnitPriceCents: record.baseUnitPriceCents,
 		unitPriceCents: record.unitPriceCents,
 		discountCentsPerUnit: record.discountCentsPerUnit,
@@ -339,6 +373,8 @@ export function mapCourierRecentSale(record: CourierRecentSaleRecord): CourierRe
 		clientName: record.client.name,
 		clientPhone: record.client.phone,
 		quantity: record.quantity,
+		netWeightGrams: record.productBatch.netWeightGrams,
+		totalNetWeightGrams: totalNetWeightGrams(record.quantity, record.productBatch.netWeightGrams),
 		baseUnitPriceCents: record.baseUnitPriceCents,
 		unitPriceCents: record.unitPriceCents,
 		discountCentsPerUnit: record.discountCentsPerUnit,
@@ -394,6 +430,8 @@ export function mapCourierUnloadItem(record: CourierUnloadItemRecord): CourierUn
 		distributorProductBalanceId: record.distributorProductBalanceId,
 		productBatchId: record.productBatchId,
 		quantity: record.quantity,
+		netWeightGrams: record.productBatch.netWeightGrams,
+		totalNetWeightGrams: totalNetWeightGrams(record.quantity, record.productBatch.netWeightGrams),
 		baseUnitPriceCents: record.baseUnitPriceCents,
 		unitPriceCents: record.unitPriceCents,
 		discountCentsPerUnit: record.discountCentsPerUnit,
@@ -414,6 +452,8 @@ export function mapCourierUnloadDistributorProductBalance(
 		productName: record.productBatch.productName,
 		...price,
 		quantity: record.quantity,
+		netWeightGrams: record.productBatch.netWeightGrams,
+		totalNetWeightGrams: totalNetWeightGrams(record.quantity, record.productBatch.netWeightGrams),
 		stockValueCents: record.quantity * price.unitPriceCents,
 		updatedAt: record.updatedAt.toISOString(),
 	};
@@ -444,11 +484,13 @@ export function summarizeCourierProductBalances(items: CourierProductBalanceItem
 			courierDisplayName: item.courierDisplayName,
 			stockItemCount: 0,
 			totalUnits: 0,
+			totalNetWeightGrams: 0,
 			totalStockValueCents: 0,
 		};
 
 		current.stockItemCount += 1;
 		current.totalUnits += item.quantity;
+		current.totalNetWeightGrams += item.totalNetWeightGrams;
 		current.totalStockValueCents += item.stockValueCents;
 		courierSummariesById.set(item.courierUserId, current);
 	}
@@ -462,6 +504,7 @@ export function summarizeCourierProductBalances(items: CourierProductBalanceItem
 			courierCount: courierSummaries.length,
 			stockItemCount: items.length,
 			totalUnits: items.reduce((sum, item) => sum + item.quantity, 0),
+			totalNetWeightGrams: items.reduce((sum, item) => sum + item.totalNetWeightGrams, 0),
 			totalStockValueCents: items.reduce((sum, item) => sum + item.stockValueCents, 0),
 		},
 		courierSummaries,
@@ -470,6 +513,10 @@ export function summarizeCourierProductBalances(items: CourierProductBalanceItem
 
 function loginForUser(user: UserRecord): string {
 	return user.username ?? user.displayUsername ?? user.email ?? user.id;
+}
+
+function totalNetWeightGrams(quantity: number, netWeightGrams: number): number {
+	return quantity * netWeightGrams;
 }
 
 function displayNameForUser(user: UserRecord, fallback: string): string {

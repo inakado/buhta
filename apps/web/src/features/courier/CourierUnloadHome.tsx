@@ -12,10 +12,17 @@ import {
 import { createCourierUnload, getCourierUnloadOptions } from "../../lib/api-client";
 import { formatCompactRubles } from "../../lib/money-format";
 import { PostSubmitResultLayer } from "../operations/PostSubmitResultLayer";
+import {
+	calculateProductQuantity,
+	formatKilograms,
+	formatProductQuantityLabel,
+	type ProductQuantityInputState,
+	ProductQuantityInputField,
+} from "../operations/product-quantity-input";
 
 type CourierUnloadFormState = {
 	selectedDistributorId: string;
-	quantityByBalanceId: Record<string, string>;
+	quantityByBalanceId: Record<string, ProductQuantityInputState>;
 	cashRubles: string;
 	comment: string;
 };
@@ -77,7 +84,10 @@ export function CourierUnloadHome({
 				? onlyDistributor.distributorId
 				: current.selectedDistributorId,
 			quantityByBalanceId: Object.fromEntries(
-				unloadOptions.productItems.map((item) => [item.courierProductBalanceId, String(item.availableQuantity)]),
+				unloadOptions.productItems.map((item) => [
+					item.courierProductBalanceId,
+					{ mode: "net_weight", value: formatKilograms(item.totalNetWeightGrams) },
+				]),
 			),
 			cashRubles: formatMoneyCents(moneyCents(unloadOptions.cashBalance.amountCents)),
 		}));
@@ -85,11 +95,19 @@ export function CourierUnloadHome({
 
 	const selectedDistributor = distributors.find((item) => item.distributorId === selectedDistributorId);
 	const parsedItems = useMemo(() => {
-		const nextItems: Array<{ item: CourierUnloadProductOption; quantity: number }> = [];
+		const nextItems: Array<{ item: CourierUnloadProductOption; quantity: number; quantityInput: ProductQuantityInputState }> = [];
 		for (const item of productItems) {
-			const quantity = Number(quantityByBalanceId[item.courierProductBalanceId] ?? "0");
-			if (Number.isInteger(quantity) && quantity > 0) {
-				nextItems.push({ item, quantity });
+			const quantityInput = quantityByBalanceId[item.courierProductBalanceId];
+			if (!quantityInput) {
+				continue;
+			}
+			const calculation = calculateProductQuantity({
+				availableQuantity: item.availableQuantity,
+				netWeightGrams: item.netWeightGrams,
+				state: quantityInput,
+			});
+			if (calculation.ok) {
+				nextItems.push({ item, quantity: calculation.quantity, quantityInput });
 			}
 		}
 
@@ -102,10 +120,15 @@ export function CourierUnloadHome({
 		0,
 	);
 	const hasInvalidQuantity = productItems.some((item) => {
-		const value = quantityByBalanceId[item.courierProductBalanceId] ?? "0";
-		const quantity = Number(value);
-		return value.trim() !== ""
-			&& (!Number.isInteger(quantity) || quantity < 0 || quantity > item.availableQuantity);
+		const value = quantityByBalanceId[item.courierProductBalanceId];
+		if (!value || value.value.trim() === "") {
+			return false;
+		}
+		return !calculateProductQuantity({
+			availableQuantity: item.availableQuantity,
+			netWeightGrams: item.netWeightGrams,
+			state: value,
+		}).ok;
 	});
 	const cashAvailableCents = cashBalance?.amountCents ?? 0;
 	const hasInvalidCash = cashAmountCents === null || cashAmountCents > cashAvailableCents;
@@ -114,9 +137,9 @@ export function CourierUnloadHome({
 	const unloadMutation = useMutation({
 		mutationFn: () => createCourierUnload({
 			distributorId: selectedDistributorId,
-			items: parsedItems.map(({ item, quantity }) => ({
+			items: parsedItems.map(({ item }) => ({
 				courierProductBalanceId: item.courierProductBalanceId,
-				quantity,
+				quantityInput: getUnloadQuantityInput(item, quantityByBalanceId[item.courierProductBalanceId]),
 			})),
 			cashAmountCents: cashAmountCents ?? 0,
 			...(comment.trim() ? { comment: comment.trim() } : {}),
@@ -165,7 +188,7 @@ export function CourierUnloadHome({
 		})
 		: "";
 
-	function handleQuantityChange(balanceId: string, value: string) {
+	function handleQuantityChange(balanceId: string, value: ProductQuantityInputState) {
 		setForm((current) => ({
 			...current,
 			quantityByBalanceId: {
@@ -261,11 +284,11 @@ export function CourierUnloadHome({
 							</div>
 							{productItems.map((item) => (
 								<UnloadProductRow
-									item={item}
-									key={item.courierProductBalanceId}
-									onQuantityChange={handleQuantityChange}
-									value={quantityByBalanceId[item.courierProductBalanceId] ?? ""}
-								/>
+										item={item}
+										key={item.courierProductBalanceId}
+										onQuantityChange={handleQuantityChange}
+										value={quantityByBalanceId[item.courierProductBalanceId]}
+									/>
 							))}
 						</div>
 					) : (
@@ -308,7 +331,7 @@ export function CourierUnloadHome({
 					<UnloadFormHeading title="Итого" />
 					<UnloadInfoLedger>
 						<UnloadInfoRow label="Место" value={selectedDistributor?.distributorName ?? "Не выбрано"} />
-						<UnloadInfoRow label="Товар" value={`${formatPositionCount(parsedItems.length)} · ${totalUnits} шт`} />
+						<UnloadInfoRow label="Товар" value={`${formatPositionCount(parsedItems.length)} • ${totalUnits} шт`} />
 						<UnloadInfoRow label="Наличные" value={formatRubles(cashAmountCents ?? 0)} />
 						<UnloadInfoRow label="Итого" value={formatRubles(totalStockValueCents + (cashAmountCents ?? 0))} />
 					</UnloadInfoLedger>
@@ -412,28 +435,43 @@ function UnloadProductRow({
 	value,
 }: {
 	item: CourierUnloadProductOption;
-	onQuantityChange: (balanceId: string, value: string) => void;
-	value: string;
+	onQuantityChange: (balanceId: string, value: ProductQuantityInputState) => void;
+	value: ProductQuantityInputState | undefined;
 }) {
 	return (
 		<div className="courier-unload-product-row">
 			<div>
 				<strong>{item.productName}</strong>
-				<span>{item.availableQuantity} шт · {formatRubles(item.unitPriceCents)}/шт</span>
+				<span>{formatProductQuantityLabel({
+					quantity: item.availableQuantity,
+					totalNetWeightGrams: item.totalNetWeightGrams,
+				})} • {formatRubles(item.unitPriceCents)}/шт</span>
 			</div>
-			<label className="courier-unload-quantity">
-				<span className="sr-only">Вернуть</span>
-				<input
-					inputMode="numeric"
-					max={item.availableQuantity}
-					min="0"
-					onChange={(event) => onQuantityChange(item.courierProductBalanceId, event.target.value)}
-					type="number"
-					value={value}
-				/>
-			</label>
+			<ProductQuantityInputField
+				availableQuantity={item.availableQuantity}
+				id={`courier-unload-${item.courierProductBalanceId}`}
+				label="Вернуть"
+				netWeightGrams={item.netWeightGrams}
+				onChange={(nextValue) => onQuantityChange(item.courierProductBalanceId, nextValue)}
+				state={value ?? { mode: "net_weight", value: "" }}
+			/>
 		</div>
 	);
+}
+
+function getUnloadQuantityInput(item: CourierUnloadProductOption, value: ProductQuantityInputState | undefined) {
+	const calculation = value
+		? calculateProductQuantity({
+			availableQuantity: item.availableQuantity,
+			netWeightGrams: item.netWeightGrams,
+			state: value,
+		})
+		: { ok: false as const, reason: "Укажите количество." };
+	if (!calculation.ok) {
+		throw new Error(calculation.reason);
+	}
+
+	return calculation.input;
 }
 
 function parseCashAmountCents(value: string): number | null {
@@ -542,7 +580,7 @@ function createUnloadResultSnapshot({
 		distributorCashAfterCents,
 		distributorName: distributorName ?? "Распределитель",
 		productLines: parsedItems.length
-			? parsedItems.map(({ item, quantity }) => `${item.productName} · ${quantity} шт`).join(", ")
+			? parsedItems.map(({ item, quantity }) => `${item.productName} • ${quantity} шт`).join(", ")
 			: "Без товара",
 		totalStockValueCents,
 		totalUnits,

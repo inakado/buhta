@@ -17,6 +17,7 @@ import type {
 } from "@buhta/shared";
 import type { Prisma } from "../generated/prisma/client";
 import { AppError } from "../common/errors/app-error";
+import { canonicalizeProductQuantity } from "../common/product-quantity";
 import { OPERATION_STATUS } from "../operations/operation.types";
 import type { Actor } from "../policy/actor";
 import { prisma } from "../prisma/client";
@@ -274,6 +275,8 @@ export class DistributorService {
 					id: balanceBefore.distributorId,
 				});
 			}
+			const productQuantity = canonicalizeProductQuantity(input, balanceBefore.productBatch.netWeightGrams);
+			const quantity = productQuantity.quantity;
 
 			const client = await tx.client.findUnique({ where: { id: input.clientId } });
 			if (!client) {
@@ -288,10 +291,10 @@ export class DistributorService {
 			const decrement = await tx.distributorProductBalance.updateMany({
 				where: {
 					id: input.distributorProductBalanceId,
-					quantity: { gte: input.quantity },
+					quantity: { gte: quantity },
 				},
 				data: {
-					quantity: { decrement: input.quantity },
+					quantity: { decrement: quantity },
 				},
 			});
 			if (decrement.count !== 1) {
@@ -310,8 +313,8 @@ export class DistributorService {
 			const baseUnitPriceCents = balanceBefore.productBatch.priceCents;
 			const unitPriceCents = balanceBefore.unitPriceCents;
 			const discountCentsPerUnit = Math.max(baseUnitPriceCents - unitPriceCents, 0);
-			const discountTotalCents = input.quantity * discountCentsPerUnit;
-			const totalCents = input.quantity * unitPriceCents;
+			const discountTotalCents = quantity * discountCentsPerUnit;
+			const totalCents = quantity * unitPriceCents;
 
 			const cashBalanceAfter = input.paymentMethod === "cash"
 				? await tx.distributorCashBalance.upsert({
@@ -347,7 +350,7 @@ export class DistributorService {
 				distributorId: balanceBefore.distributorId,
 				productBatchId: balanceBefore.productBatchId,
 				clientId: input.clientId,
-				quantity: input.quantity,
+				quantity,
 				baseUnitPriceCents,
 				unitPriceCents,
 				discountCentsPerUnit,
@@ -363,6 +366,7 @@ export class DistributorService {
 
 			const sale = await tx.distributorSale.create({
 				data: saleData,
+				include: { productBatch: true },
 			});
 
 			await tx.auditLog.create({
@@ -380,7 +384,12 @@ export class DistributorService {
 						productBatchId: balanceBefore.productBatchId,
 						productName: balanceBefore.productBatch.productName,
 						clientId: input.clientId,
-						quantity: input.quantity,
+						quantity,
+						quantityInputMode: productQuantity.quantityInputMode,
+						quantityInputValue: productQuantity.quantityInputValue,
+						quantityInputGrams: productQuantity.quantityInputGrams,
+						netWeightGrams: productQuantity.netWeightGrams,
+						totalNetWeightGrams: productQuantity.totalNetWeightGrams,
 						baseUnitPriceCents,
 						unitPriceCents,
 						discountCentsPerUnit,
@@ -470,6 +479,7 @@ export class DistributorService {
 						operationId: operation.id,
 						actorUserId: actor.userId,
 					},
+					include: { productBatch: true },
 				});
 
 				let cashBalanceAfter = null;
@@ -538,6 +548,8 @@ export class DistributorService {
 							productName: sale.productBatch.productName,
 							clientId: sale.clientId,
 							quantity: sale.quantity,
+							netWeightGrams: sale.productBatch.netWeightGrams,
+							totalNetWeightGrams: sale.quantity * sale.productBatch.netWeightGrams,
 							baseUnitPriceCents: sale.baseUnitPriceCents,
 							unitPriceCents: sale.unitPriceCents,
 							discountCentsPerUnit: sale.discountCentsPerUnit,
@@ -603,14 +615,16 @@ export class DistributorService {
 					discountedUnitPriceCents: input.discountedUnitPriceCents,
 				});
 			}
+			const productQuantity = canonicalizeProductQuantity(input, sourceBefore.productBatch.netWeightGrams);
+			const quantity = productQuantity.quantity;
 
 			const decrement = await tx.distributorProductBalance.updateMany({
 				where: {
 					id: input.distributorProductBalanceId,
-					quantity: { gte: input.quantity },
+					quantity: { gte: quantity },
 				},
 				data: {
-					quantity: { decrement: input.quantity },
+					quantity: { decrement: quantity },
 				},
 			});
 			if (decrement.count !== 1) {
@@ -638,10 +652,10 @@ export class DistributorService {
 					distributorId: sourceBefore.distributorId,
 					productBatchId: sourceBefore.productBatchId,
 					unitPriceCents: input.discountedUnitPriceCents,
-					quantity: input.quantity,
+					quantity,
 				},
 				update: {
-					quantity: { increment: input.quantity },
+					quantity: { increment: quantity },
 				},
 				include: {
 					distributor: true,
@@ -650,15 +664,15 @@ export class DistributorService {
 			});
 
 			const sourceQuantityAfter = sourceAfter.quantity;
-			const sourceQuantityBefore = sourceQuantityAfter + input.quantity;
+			const sourceQuantityBefore = sourceQuantityAfter + quantity;
 			const discountedQuantityAfter = discountedAfter.quantity;
-			const discountedQuantityBefore = discountedQuantityAfter - input.quantity;
+			const discountedQuantityBefore = discountedQuantityAfter - quantity;
 			const baseUnitPriceCents = sourceBefore.productBatch.priceCents;
 			const sourceUnitPriceCents = sourceBefore.unitPriceCents;
 			const discountedUnitPriceCents = input.discountedUnitPriceCents;
 			const discountCentsPerUnit = baseUnitPriceCents - discountedUnitPriceCents;
 			const stepDiscountCentsPerUnit = sourceUnitPriceCents - discountedUnitPriceCents;
-			const discountTotalCents = input.quantity * discountCentsPerUnit;
+			const discountTotalCents = quantity * discountCentsPerUnit;
 
 			const operation = await tx.operation.create({
 				data: {
@@ -675,7 +689,7 @@ export class DistributorService {
 					discountedDistributorProductBalanceId: discountedAfter.id,
 					distributorId: sourceBefore.distributorId,
 					productBatchId: sourceBefore.productBatchId,
-					quantity: input.quantity,
+					quantity,
 					baseUnitPriceCents,
 					sourceUnitPriceCents,
 					discountedUnitPriceCents,
@@ -686,6 +700,7 @@ export class DistributorService {
 					operationId: operation.id,
 					actorUserId: actor.userId,
 				},
+				include: { productBatch: true },
 			});
 
 			await tx.auditLog.create({
@@ -703,7 +718,12 @@ export class DistributorService {
 						distributorName: sourceBefore.distributor.name,
 						productBatchId: sourceBefore.productBatchId,
 						productName: sourceBefore.productBatch.productName,
-						quantity: input.quantity,
+						quantity,
+						quantityInputMode: productQuantity.quantityInputMode,
+						quantityInputValue: productQuantity.quantityInputValue,
+						quantityInputGrams: productQuantity.quantityInputGrams,
+						netWeightGrams: productQuantity.netWeightGrams,
+						totalNetWeightGrams: productQuantity.totalNetWeightGrams,
 						baseUnitPriceCents,
 						sourceUnitPriceCents,
 						discountedUnitPriceCents,

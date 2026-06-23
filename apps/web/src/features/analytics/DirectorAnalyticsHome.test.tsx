@@ -52,15 +52,19 @@ const analyticsResponse = {
 		productReleased: [{
 			productName: "Икра горбуши",
 			quantity: 12,
+			totalNetWeightGrams: 2400,
 			rawMaterialConsumedQuantity: 8,
 			rawMaterialUnit: "кг",
 		}],
 		productTransferredToDistributorUnits: 8,
+		productTransferredToDistributorTotalNetWeightGrams: 1600,
 		currentWorkshopProductUnits: 4,
+		currentWorkshopProductTotalNetWeightGrams: 800,
 		summary: {
 			rawMaterialConsumedQuantity: 8,
 			rawMaterialConsumedUnit: "кг",
 			productReleasedUnits: 12,
+			productReleasedTotalNetWeightGrams: 2400,
 		},
 	},
 	charts: {
@@ -141,7 +145,7 @@ describe("DirectorAnalyticsHome", () => {
 		expect(screen.getByText("Касса")).toBeTruthy();
 		expect(screen.getByText("1950")).toBeTruthy();
 		expect(screen.getByText("Выпуск")).toBeTruthy();
-		expect(screen.getByText("12")).toBeTruthy();
+		expect(screen.getAllByText("2,4 кг • 12 шт").length).toBeGreaterThanOrEqual(2);
 		expect(screen.getByText("Наличными")).toBeTruthy();
 		expect(screen.getAllByText("Распределитель").length).toBeGreaterThan(0);
 		expect(screen.getByText("Курьеры")).toBeTruthy();
@@ -171,6 +175,7 @@ describe("DirectorAnalyticsHome", () => {
 		expect(screen.getByText("Продукция")).toBeTruthy();
 		expect(screen.getByText("Количество")).toBeTruthy();
 		expect(screen.getByText("Сырье на 1 шт")).toBeTruthy();
+		expect(screen.getAllByText("2,4 кг • 12 шт").length).toBeGreaterThanOrEqual(2);
 		expect(screen.getByText("0,667 кг/шт")).toBeTruthy();
 		expect(screen.getAllByText("Икра горбуши сырец")).toHaveLength(1);
 		expect(fetchMock.mock.calls.some(([input]) => String(input).includes("/analytics/director?periodPreset=30d"))).toBe(true);

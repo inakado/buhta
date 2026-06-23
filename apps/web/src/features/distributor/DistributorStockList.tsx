@@ -4,6 +4,7 @@ import type { DistributorInventoryItem } from "@buhta/shared";
 import { BadgePercent } from "lucide-react";
 import { Fragment } from "react";
 import { formatCompactRubles } from "../../lib/money-format";
+import { formatProductQuantityLabel } from "../operations/product-quantity-input";
 
 export function DistributorStockList({
 	discountActionLabel = "Снизить цену",
@@ -60,7 +61,10 @@ export function DistributorStockList({
 									{showDistributorName ? <span>{item.distributorName}</span> : null}
 								</td>
 								<td className="inventory-table-quantity">
-									<strong>{item.quantity} шт</strong>
+									<strong>{formatProductQuantityLabel({
+										quantity: item.quantity,
+										totalNetWeightGrams: item.totalNetWeightGrams,
+									})}</strong>
 									<span className="inventory-price-line">
 										{formatRubles(item.unitPriceCents)}/шт
 									</span>

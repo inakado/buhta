@@ -243,8 +243,8 @@ export function SalesHistoryHome({ actor, online }: SalesHistoryHomeProps) {
 					}}
 					rows={[
 						{ label: "Клиент", value: cancellationResult.clientLabel },
-						{ label: "Отменено", value: `${cancellationResult.productName} · ${cancellationResult.quantity} шт` },
-						{ label: "Сумма", value: `${formatCompactMoneyCents(cancellationResult.totalCents)} ₽ · ${cancellationResult.paymentMethod === "cash" ? "Наличные" : "Безнал"}` },
+						{ label: "Отменено", value: `${cancellationResult.productName} • ${cancellationResult.quantity} шт` },
+						{ label: "Сумма", value: `${formatCompactMoneyCents(cancellationResult.totalCents)} ₽ • ${cancellationResult.paymentMethod === "cash" ? "Наличные" : "Безнал"}` },
 						{ label: "Причина", value: cancellationResult.reason },
 					]}
 					secondaryAction={{

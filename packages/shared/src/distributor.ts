@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { NetWeightGramsSchema, ProductQuantityCommandSchema } from "./product-quantity";
 
 const NonNegativeIntegerSchema = z.number().int().nonnegative();
 const PositiveIntegerSchema = z.number().int().positive();
@@ -17,9 +18,11 @@ export const DistributorInventoryItemSchema = z.object({
 	productName: z.string(),
 	baseUnitPriceCents: NonNegativeIntegerSchema,
 	unitPriceCents: NonNegativeIntegerSchema,
+	netWeightGrams: NetWeightGramsSchema,
 	discounted: z.boolean(),
 	discountCentsPerUnit: NonNegativeIntegerSchema,
 	quantity: NonNegativeIntegerSchema,
+	totalNetWeightGrams: NonNegativeIntegerSchema,
 	stockValueCents: NonNegativeIntegerSchema,
 	updatedAt: z.string(),
 });
@@ -31,6 +34,7 @@ export const DistributorInventoryDistributorSummarySchema = z.object({
 	distributorName: z.string(),
 	stockItemCount: NonNegativeIntegerSchema,
 	totalUnits: NonNegativeIntegerSchema,
+	totalNetWeightGrams: NonNegativeIntegerSchema,
 	totalStockValueCents: NonNegativeIntegerSchema,
 });
 
@@ -42,6 +46,7 @@ export const DistributorInventorySummarySchema = z.object({
 	distributorCount: NonNegativeIntegerSchema,
 	stockItemCount: NonNegativeIntegerSchema,
 	totalUnits: NonNegativeIntegerSchema,
+	totalNetWeightGrams: NonNegativeIntegerSchema,
 	totalStockValueCents: NonNegativeIntegerSchema,
 });
 
@@ -63,9 +68,11 @@ export const DistributorSaleStockItemSchema = z.object({
 	productName: z.string(),
 	baseUnitPriceCents: NonNegativeIntegerSchema,
 	unitPriceCents: NonNegativeIntegerSchema,
+	netWeightGrams: NetWeightGramsSchema,
 	discounted: z.boolean(),
 	discountCentsPerUnit: NonNegativeIntegerSchema,
 	availableQuantity: NonNegativeIntegerSchema,
+	totalNetWeightGrams: NonNegativeIntegerSchema,
 	stockValueCents: NonNegativeIntegerSchema,
 	updatedAt: z.string(),
 });
@@ -78,10 +85,9 @@ export const DistributorSaleOptionsResponseSchema = z.object({
 
 export type DistributorSaleOptionsResponse = z.infer<typeof DistributorSaleOptionsResponseSchema>;
 
-export const CreateDistributorSaleRequestSchema = z.object({
+export const CreateDistributorSaleRequestSchema = ProductQuantityCommandSchema.extend({
 	distributorProductBalanceId: z.string().min(1),
 	clientId: z.string().min(1),
-	quantity: PositiveIntegerSchema,
 	paymentMethod: PaymentMethodSchema,
 	comment: OptionalCommentSchema,
 });
@@ -142,9 +148,8 @@ export type DistributorCashWithdrawalResponse = z.infer<
 	typeof DistributorCashWithdrawalResponseSchema
 >;
 
-export const AssignDistributorDiscountRequestSchema = z.object({
+export const AssignDistributorDiscountRequestSchema = ProductQuantityCommandSchema.extend({
 	distributorProductBalanceId: z.string().min(1),
-	quantity: PositiveIntegerSchema,
 	discountedUnitPriceCents: PositiveIntegerSchema,
 	comment: OptionalCommentSchema,
 });
@@ -158,6 +163,8 @@ export const ProductDiscountAssignmentSchema = z.object({
 	distributorId: z.string(),
 	productBatchId: z.string(),
 	quantity: PositiveIntegerSchema,
+	netWeightGrams: NetWeightGramsSchema,
+	totalNetWeightGrams: NonNegativeIntegerSchema,
 	baseUnitPriceCents: PositiveIntegerSchema,
 	sourceUnitPriceCents: PositiveIntegerSchema,
 	discountedUnitPriceCents: PositiveIntegerSchema,
@@ -187,6 +194,8 @@ export const DistributorSaleSchema = z.object({
 	productBatchId: z.string(),
 	clientId: z.string(),
 	quantity: PositiveIntegerSchema,
+	netWeightGrams: NetWeightGramsSchema,
+	totalNetWeightGrams: NonNegativeIntegerSchema,
 	baseUnitPriceCents: NonNegativeIntegerSchema,
 	unitPriceCents: NonNegativeIntegerSchema,
 	discountCentsPerUnit: NonNegativeIntegerSchema,
@@ -217,6 +226,8 @@ export const DistributorSaleCancellationSchema = z.object({
 	productBatchId: z.string(),
 	clientId: z.string(),
 	quantity: PositiveIntegerSchema,
+	netWeightGrams: NetWeightGramsSchema,
+	totalNetWeightGrams: NonNegativeIntegerSchema,
 	baseUnitPriceCents: PositiveIntegerSchema,
 	unitPriceCents: PositiveIntegerSchema,
 	discountCentsPerUnit: NonNegativeIntegerSchema,
@@ -247,6 +258,8 @@ export const DistributorRecentSaleItemSchema = z.object({
 	clientName: z.string(),
 	clientPhone: z.string(),
 	quantity: PositiveIntegerSchema,
+	netWeightGrams: NetWeightGramsSchema,
+	totalNetWeightGrams: NonNegativeIntegerSchema,
 	baseUnitPriceCents: NonNegativeIntegerSchema,
 	unitPriceCents: NonNegativeIntegerSchema,
 	discountCentsPerUnit: NonNegativeIntegerSchema,

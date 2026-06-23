@@ -37,6 +37,7 @@ type ProductBatchRecord = {
 	packagingTypeName: string;
 	packagingUnit: string;
 	priceCents: number;
+	netWeightGrams: number;
 	quantity: number;
 	consumedRawMaterialQuantity: DecimalLike;
 	consumedPackagingQuantity: DecimalLike;
@@ -53,6 +54,7 @@ type WorkshopProductBalanceRecord = {
 		id: string;
 		productName: string;
 		priceCents: number;
+		netWeightGrams: number;
 		quantity: number;
 		createdAt: Date;
 	};
@@ -73,6 +75,7 @@ type DistributorProductBalanceRecord = {
 		id: string;
 		productName: string;
 		priceCents: number;
+		netWeightGrams: number;
 	};
 };
 
@@ -89,6 +92,9 @@ type ProductTransferRecord = {
 	operationId: string;
 	actorUserId: string;
 	createdAt: Date;
+	productBatch: {
+		netWeightGrams: number;
+	};
 };
 
 export function mapRawMaterialBalance(record: BalanceRecord): ProductionBalanceItem {
@@ -133,7 +139,9 @@ export function mapProductBatch(record: ProductBatchRecord): ProductBatch {
 		packagingTypeName: record.packagingTypeName,
 		packagingUnit: record.packagingUnit,
 		priceCents: record.priceCents,
+		netWeightGrams: record.netWeightGrams,
 		quantity: record.quantity,
+		totalNetWeightGrams: record.quantity * record.netWeightGrams,
 		consumedRawMaterialQuantity: toNumber(record.consumedRawMaterialQuantity),
 		consumedPackagingQuantity: toNumber(record.consumedPackagingQuantity),
 		status: "in_workshop",
@@ -147,8 +155,11 @@ export function mapWorkshopProductBalance(record: WorkshopProductBalanceRecord):
 		productBatchId: record.productBatchId,
 		productName: record.productBatch.productName,
 		priceCents: record.productBatch.priceCents,
+		netWeightGrams: record.productBatch.netWeightGrams,
 		quantity: record.quantity,
+		totalNetWeightGrams: record.quantity * record.productBatch.netWeightGrams,
 		producedQuantity: record.productBatch.quantity,
+		producedTotalNetWeightGrams: record.productBatch.quantity * record.productBatch.netWeightGrams,
 		createdAt: record.productBatch.createdAt.toISOString(),
 		updatedAt: record.updatedAt.toISOString(),
 	};
@@ -166,7 +177,9 @@ export function mapDistributorProductBalance(
 		productBatchId: record.productBatchId,
 		productName: record.productBatch.productName,
 		...price,
+		netWeightGrams: record.productBatch.netWeightGrams,
 		quantity: record.quantity,
+		totalNetWeightGrams: record.quantity * record.productBatch.netWeightGrams,
 		stockValueCents: record.quantity * price.unitPriceCents,
 		updatedAt: record.updatedAt.toISOString(),
 	};
@@ -178,6 +191,8 @@ export function mapProductTransfer(record: ProductTransferRecord): ProductTransf
 		productBatchId: record.productBatchId,
 		distributorId: record.distributorId,
 		quantity: record.quantity,
+		netWeightGrams: record.productBatch.netWeightGrams,
+		totalNetWeightGrams: record.quantity * record.productBatch.netWeightGrams,
 		baseUnitPriceCents: record.baseUnitPriceCents,
 		unitPriceCents: record.unitPriceCents,
 		discountCentsPerUnit: record.discountCentsPerUnit,

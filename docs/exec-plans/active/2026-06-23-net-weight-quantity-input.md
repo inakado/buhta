@@ -1,7 +1,33 @@
 # Product Net Weight Quantity Input
 
-Статус: `Draft`
+Статус: `Implemented, verification in progress`
 Дата: 2026-06-23
+
+## Текущий статус реализации
+
+Реализация внесена в DB/shared/backend/frontend и проходит финальную проверку.
+
+Фактически сделано:
+
+- добавлены `ProductTemplate.netWeightGrams` и `ProductBatch.netWeightGrams`;
+- добавлена Prisma migration `20260623090000_product_net_weight`;
+- product template create/update/list принимает и возвращает массу нетто в граммах;
+- партии продукции snapshot-ят массу нетто;
+- товарные операции принимают старое `quantity` или новый `quantityInput`;
+- kg-first UI внедрен в выпуск, перемещение, продажу с распределителя, дисконт, загрузку курьера, продажу курьера и возврат курьера;
+- read models продукции, остатков и операций возвращают `netWeightGrams` и `totalNetWeightGrams`;
+- audit details товарных операций сохраняют режим ввода, исходное значение, массу нетто и общий вес.
+
+Фактический request contract для kg-ввода:
+
+```ts
+quantityInput: {
+	mode: "net_weight";
+	netWeightKilograms: string | number;
+}
+```
+
+Вход в кг выбран для удобства пользователя. Backend переводит кг в граммы, проверяет кратность snapshot `netWeightGrams` и проводит операцию в целых `quantity`.
 
 ## Цель
 
@@ -13,7 +39,7 @@
 - пользователь вводит `20 кг`;
 - система рассчитывает `100 шт`;
 - операция проводится по `quantity = 100`;
-- UI, история и аналитика показывают оба измерения: `100 шт · 20 кг`.
+- UI, история и аналитика показывают оба измерения: `20 кг • 100 шт`.
 
 ## Scope
 
@@ -61,7 +87,7 @@
 - Масса в кг является основным языком ввода для пользователя, поэтому режим `Масса, кг` открыт по умолчанию.
 - Режим `Количество, шт` нужен для случаев, когда сотрудник считает физические единицы.
 - Некратная масса блокирует submit с понятной ошибкой, например: `Масса должна быть кратна 200 г. Для 1,9 кг получается 9,5 шт.`
-- В истории и итоговых результатах показывать оба измерения: сначала рабочее значение операции, затем учетное количество, например `20 кг · 100 шт`.
+- В истории и итоговых результатах показывать оба измерения: сначала рабочее значение операции, затем учетное количество, например `20 кг • 100 шт`.
 - Backend остается источником истины: он должен пересчитывать или валидировать ввод массы, а не полагаться только на frontend.
 
 ## Затронутые документы
@@ -167,7 +193,7 @@ Validation:
 
 - canonical `quantity` в штуках остается в response и persisted facts;
 - request принимает один из режимов:
-  - `quantityInput: { mode: "net_weight"; netWeightGrams: number }`;
+  - `quantityInput: { mode: "net_weight"; netWeightKilograms: string | number }`;
   - `quantityInput: { mode: "units"; quantity: number }`.
 
 Backend canonicalization:
@@ -226,7 +252,7 @@ UI работает в product register `$impeccable`: плотная рабоч
   - при вводе кг: `Будет списано: 100 шт`;
   - при вводе шт: `Масса нетто: 20 кг`;
 - показывать доступный остаток в обоих измерениях:
-  - `Доступно: 500 шт · 100 кг`;
+  - `Доступно: 100 кг • 500 шт`;
 - disabled/loading/error states встроить в форму рядом с submit;
 - focus states и keyboard flow обязательны;
 - mobile 320px не должен давать горизонтальный overflow.
@@ -239,7 +265,7 @@ UI работает в product register `$impeccable`: плотная рабоч
 - Field label в режиме штук: `Количество`.
 - Helper text в режиме массы: `CRM рассчитает количество единиц по массе нетто шаблона.`
 - Error copy для некратности: `Масса должна быть кратна 200 г. Сейчас получается 9,5 шт.`
-- Error copy для превышения остатка: `Доступно 20 кг · 100 шт.`
+- Error copy для превышения остатка: `Доступно 20 кг • 100 шт.`
 
 ### Screens
 
@@ -252,7 +278,7 @@ UI работает в product register `$impeccable`: плотная рабоч
   - расход тары остается `quantity`.
 - Production transfer:
   - default `Масса, кг`;
-  - показывать остаток цеха в `шт · кг`.
+  - показывать остаток цеха в `кг • шт`.
 - Distributor sale:
   - default `Масса, кг`;
   - итоговая сумма считается по штукам и `unitPriceCents`.
@@ -263,7 +289,7 @@ UI работает в product register `$impeccable`: плотная рабоч
   - default `Масса, кг`;
   - новая цена остается `₽/шт`.
 - Stock/read-only screens:
-  - показывать `шт · кг`, не заменять одно другим.
+  - показывать `кг • шт`, не заменять одно другим.
 - Operation history/details:
   - показывать `Масса нетто`, `Количество`, `Масса в единице`, `Цена за единицу`.
 
@@ -312,7 +338,7 @@ UI работает в product register `$impeccable`: плотная рабоч
 
 - Обновить product template UI.
 - Обновить product selects/options meta:
-  - `100 шт · 20 кг · 1200 ₽/шт`;
+  - `20 кг • 100 шт • 1200 ₽/шт`;
   - не скрывать цену за единицу.
 - Обновить stock lists, recent sales, post-submit result, operation history.
 - Добавить форматтеры:
@@ -477,7 +503,7 @@ Main agent performs final integration audit after all worker/auditor outputs:
 - `quantityInput.mode = "net_weight"` converts `20000 г / 200 г = 100 шт`.
 - Некратная масса fails.
 - `quantityInput.mode = "units"` accepts positive integer units.
-- Formatters display `20 кг · 100 шт`.
+- Formatters display `20 кг • 100 шт`.
 
 ### API integration
 
@@ -502,7 +528,7 @@ Main agent performs final integration audit after all worker/auditor outputs:
 - Некратная масса shows clear inline error.
 - Submit by mass sends correct `quantityInput`.
 - Result layer shows `кг` and `шт`.
-- Stock lists and product selects show `шт · кг · ₽/шт`.
+- Stock lists and product selects show `кг • шт • ₽/шт`.
 - Offline state blocks write actions without hiding read-only mass info.
 
 ### Regression

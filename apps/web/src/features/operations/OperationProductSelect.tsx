@@ -32,7 +32,7 @@ export function OperationProductSelect({
 		...option,
 		ariaLabel: `${option.label} ${option.meta}${option.discounted ? " цена снижена" : ""}`,
 		searchText: `${option.label} ${option.meta}`,
-		selectedLabel: `${option.label} · ${option.meta}`,
+		selectedLabel: `${option.label} • ${option.meta}`,
 	}));
 
 	return (

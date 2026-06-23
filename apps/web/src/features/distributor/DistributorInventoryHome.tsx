@@ -20,6 +20,15 @@ import {
 } from "../../lib/api-client";
 import { formatCompactRubles } from "../../lib/money-format";
 import { PostSubmitResultLayer } from "../operations/PostSubmitResultLayer";
+import {
+	calculateProductQuantity,
+	createDefaultProductQuantityState,
+	formatKilograms,
+	formatProductQuantityLabel,
+	type ProductQuantityCalculation,
+	ProductQuantityInputField,
+	type ProductQuantityInputState,
+} from "../operations/product-quantity-input";
 import { DistributorStockList } from "./DistributorStockList";
 
 type DistributorInventoryVariant = "default" | "stock-ledger";
@@ -73,7 +82,7 @@ export function DistributorInventoryHome({
 	const [amountRubles, setAmountRubles] = useState("");
 	const [comment, setComment] = useState("");
 	const [discountItem, setDiscountItem] = useState<DistributorInventoryItem | null>(null);
-	const [discountQuantity, setDiscountQuantity] = useState("");
+	const [discountQuantity, setDiscountQuantity] = useState<ProductQuantityInputState>(createDefaultProductQuantityState);
 	const [discountPriceRubles, setDiscountPriceRubles] = useState("");
 	const [discountComment, setDiscountComment] = useState("");
 	const [localError, setLocalError] = useState("");
@@ -99,6 +108,7 @@ export function DistributorInventoryHome({
 		enabled: showCashBalance,
 	});
 	const totalUnits = data?.summary.totalUnits ?? 0;
+	const totalNetWeightGrams = data?.summary.totalNetWeightGrams ?? 0;
 	const totalStockValueCents = data?.summary.totalStockValueCents ?? 0;
 	const totalCashCents = cashData?.totalAmountCents ?? 0;
 	const stockItemCount = data?.summary.stockItemCount ?? 0;
@@ -133,10 +143,14 @@ export function DistributorInventoryHome({
 		totalCashCents,
 	);
 	const withdrawalActionDisabled = withdrawalActionBlockReason !== "";
-	const parsedDiscountQuantity = parsePositiveInteger(discountQuantity);
+	const parsedDiscountQuantity = calculateProductQuantity({
+		availableQuantity: discountItem?.quantity,
+		netWeightGrams: discountItem?.netWeightGrams,
+		state: discountQuantity,
+	});
 	const parsedDiscountPriceCents = parseAmountCents(discountPriceRubles);
 	const discountPriceCents = parsedDiscountPriceCents.ok ? parsedDiscountPriceCents.value : 0;
-	const selectedDiscountQuantity = parsedDiscountQuantity.ok ? parsedDiscountQuantity.value : 0;
+	const selectedDiscountQuantity = parsedDiscountQuantity.ok ? parsedDiscountQuantity.quantity : 0;
 	const withdrawal = useMutation({
 		mutationFn: () => createDistributorCashWithdrawal({
 			distributorId: activeSelectedDistributorId,
@@ -163,7 +177,7 @@ export function DistributorInventoryHome({
 
 			return assignDistributorDiscount({
 				distributorProductBalanceId: discountItem.id,
-				quantity: parsedDiscountQuantity.value,
+				quantityInput: getProductQuantityInput(parsedDiscountQuantity),
 				discountedUnitPriceCents: parsedDiscountPriceCents.value,
 				...(discountComment.trim() ? { comment: discountComment } : {}),
 			});
@@ -175,7 +189,7 @@ export function DistributorInventoryHome({
 				sourceQuantityAfter: response.sourceBalance.quantity,
 			}));
 			setDiscountItem(null);
-			setDiscountQuantity("");
+			setDiscountQuantity(createDefaultProductQuantityState());
 			setDiscountPriceRubles("");
 			setDiscountComment("");
 			setDiscountError("");
@@ -245,7 +259,7 @@ export function DistributorInventoryHome({
 		const suggestedPriceCents = Math.max(item.unitPriceCents - 100, 1);
 
 		setDiscountItem(item);
-		setDiscountQuantity(String(item.quantity));
+		setDiscountQuantity({ mode: "net_weight", value: formatKilograms(item.totalNetWeightGrams) });
 		setDiscountPriceRubles(formatMoneyCents(moneyCents(suggestedPriceCents)));
 		setDiscountComment("");
 		setDiscountError("");
@@ -259,7 +273,7 @@ export function DistributorInventoryHome({
 		}
 		setDiscountItem(null);
 		setDiscountResult(null);
-		setDiscountQuantity("");
+		setDiscountQuantity(createDefaultProductQuantityState());
 		setDiscountPriceRubles("");
 		setDiscountComment("");
 		setDiscountError("");
@@ -279,7 +293,7 @@ export function DistributorInventoryHome({
 			return;
 		}
 		if (!parsedDiscountQuantity.ok || selectedDiscountQuantity <= 0) {
-			setDiscountError("Укажите количество.");
+			setDiscountError(parsedDiscountQuantity.ok ? "Укажите количество." : parsedDiscountQuantity.reason);
 			return;
 		}
 		if (selectedDiscountQuantity > discountItem.quantity) {
@@ -317,7 +331,10 @@ export function DistributorInventoryHome({
 				<div className="inventory-overview-strip">
 					<div>
 						<span>Количество</span>
-						<strong>{inventoryLoading ? "Загрузка" : `${totalUnits} шт`}</strong>
+						<strong>{inventoryLoading ? "Загрузка" : formatProductQuantityLabel({
+							quantity: totalUnits,
+							totalNetWeightGrams,
+						})}</strong>
 					</div>
 					<div>
 						<span>Продукция</span>
@@ -508,17 +525,21 @@ export function DistributorInventoryHome({
 											<BadgePercent aria-hidden size={18} />
 											<div>
 												<strong>{formatRubles(discountItem.unitPriceCents)}/шт</strong>
-												<span>{discountItem.distributorName} · доступно {discountItem.quantity} шт</span>
+												<span>
+													{discountItem.distributorName} • доступно {formatProductQuantityLabel({
+														quantity: discountItem.quantity,
+														totalNetWeightGrams: discountItem.totalNetWeightGrams,
+													})}
+												</span>
 											</div>
 										</div>
-										<label className="field">
-											<span>Количество</span>
-											<input
-												inputMode="numeric"
-												onChange={(event) => setDiscountQuantity(event.target.value)}
-												value={discountQuantity}
-											/>
-										</label>
+										<ProductQuantityInputField
+											availableQuantity={discountItem.quantity}
+											id="distributor-discount-quantity"
+											netWeightGrams={discountItem.netWeightGrams}
+											onChange={setDiscountQuantity}
+											state={discountQuantity}
+										/>
 										<label className="field">
 											<span>Новая цена, ₽</span>
 											<input
@@ -602,7 +623,10 @@ export function DistributorInventoryHome({
 								<p>{summary.stockItemCount} позиций</p>
 							</div>
 							<div className="stock-aggregate-value">
-								<strong>{summary.totalUnits} шт</strong>
+								<strong>{formatProductQuantityLabel({
+									quantity: summary.totalUnits,
+									totalNetWeightGrams: summary.totalNetWeightGrams,
+								})}</strong>
 								<span>{formatRubles(summary.totalStockValueCents)}</span>
 							</div>
 						</div>
@@ -665,8 +689,8 @@ function DiscountResultLayer({
 }) {
 	const rows = [
 		{ label: "Продукция", value: result.productName },
-		{ label: "Снижено", value: `${result.quantity} шт · ${formatRubles(result.sourceUnitPriceCents)} → ${formatRubles(result.discountedUnitPriceCents)}/шт` },
-		{ label: "Скидка", value: `${formatRubles(result.discountCentsPerUnit)}/шт · всего ${formatRubles(result.discountTotalCents)}` },
+		{ label: "Снижено", value: `${result.quantity} шт • ${formatRubles(result.sourceUnitPriceCents)} → ${formatRubles(result.discountedUnitPriceCents)}/шт` },
+		{ label: "Скидка", value: `${formatRubles(result.discountCentsPerUnit)}/шт • всего ${formatRubles(result.discountTotalCents)}` },
 		...(result.sourceQuantityAfter > 0
 			? [{ label: "Осталось по старой цене", value: `${result.sourceQuantityAfter} шт` }]
 			: []),
@@ -696,15 +720,6 @@ function parseAmountCents(value: string): { ok: true; value: number } | { ok: fa
 	} catch {
 		return { ok: false };
 	}
-}
-
-function parsePositiveInteger(value: string): { ok: true; value: number } | { ok: false } {
-	const normalized = value.trim();
-	if (!/^\d+$/.test(normalized)) {
-		return { ok: false };
-	}
-	const parsed = Number(normalized);
-	return Number.isSafeInteger(parsed) && parsed > 0 ? { ok: true, value: parsed } : { ok: false };
 }
 
 function getWithdrawalBlockReason(
@@ -758,7 +773,7 @@ function getWithdrawalActionBlockReason(
 function getDiscountBlockReason(
 	online: boolean,
 	item: DistributorInventoryItem | null,
-	quantityValue: { ok: true; value: number } | { ok: false },
+	quantityValue: ProductQuantityCalculation,
 	validPrice: boolean,
 	priceCents: number,
 	pending: boolean,
@@ -772,10 +787,10 @@ function getDiscountBlockReason(
 	if (!item) {
 		return "Выберите строку остатка.";
 	}
-	if (!quantityValue.ok || quantityValue.value <= 0) {
-		return "Укажите количество.";
+	if (!quantityValue.ok || quantityValue.quantity <= 0) {
+		return quantityValue.ok ? "Укажите количество." : quantityValue.reason;
 	}
-	if (quantityValue.value > item.quantity) {
+	if (quantityValue.quantity > item.quantity) {
 		return "Количество больше остатка.";
 	}
 	if (!validPrice || priceCents <= 0) {
@@ -786,6 +801,14 @@ function getDiscountBlockReason(
 	}
 
 	return "";
+}
+
+function getProductQuantityInput(calculation: ProductQuantityCalculation) {
+	if (!calculation.ok) {
+		throw new Error(calculation.reason);
+	}
+
+	return calculation.input;
 }
 
 function MoneyValue({ compact = false, valueCents }: { compact?: boolean; valueCents: number }) {

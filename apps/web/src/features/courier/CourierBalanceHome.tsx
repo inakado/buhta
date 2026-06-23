@@ -8,6 +8,7 @@ import {
 } from "@buhta/shared";
 import { getCourierCashBalances, getCourierProductBalances } from "../../lib/api-client";
 import { formatCompactMoneyCents, formatCompactRubles } from "../../lib/money-format";
+import { formatProductQuantityLabel } from "../operations/product-quantity-input";
 
 export function CourierBalanceHome({
 	embedded = false,
@@ -39,6 +40,7 @@ export function CourierBalanceHome({
 	});
 	const title = titleOverride ?? "Балансы курьеров";
 	const totalUnits = data?.summary.totalUnits ?? 0;
+	const totalNetWeightGrams = data?.summary.totalNetWeightGrams ?? 0;
 	const totalStockValueCents = data?.summary.totalStockValueCents ?? 0;
 	const totalCashCents = cashData?.totalAmountCents ?? 0;
 	const stockItemCount = data?.summary.stockItemCount ?? 0;
@@ -60,7 +62,10 @@ export function CourierBalanceHome({
 			<div className="inventory-overview-strip">
 				<div>
 					<span>Количество</span>
-					<strong>{balancesLoading ? "Загрузка" : `${totalUnits} шт`}</strong>
+					<strong>{balancesLoading ? "Загрузка" : formatProductQuantityLabel({
+						quantity: totalUnits,
+						totalNetWeightGrams,
+					})}</strong>
 				</div>
 				<div>
 					<span>Продукция</span>
@@ -159,7 +164,10 @@ function CourierPeopleList({
 											{variant === "director-stock" ? null : <span>{formatRubles(item.unitPriceCents)} ₽/шт</span>}
 										</td>
 										<td>
-											<strong>{item.quantity} шт</strong>
+											<strong>{formatProductQuantityLabel({
+												quantity: item.quantity,
+												totalNetWeightGrams: item.totalNetWeightGrams,
+											})}</strong>
 											{variant === "director-stock" ? <span>{formatRubles(item.unitPriceCents)} ₽/шт</span> : null}
 										</td>
 										<td>

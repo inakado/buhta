@@ -305,6 +305,7 @@ export class CatalogService {
 						rawMaterialTypeId: input.rawMaterialTypeId,
 						packagingTypeId: input.packagingTypeId,
 						priceCents: input.priceCents,
+						netWeightGrams: input.netWeightGrams,
 					},
 					include: {
 						rawMaterialType: true,
@@ -321,6 +322,7 @@ export class CatalogService {
 						rawMaterialTypeId: created.rawMaterialTypeId,
 						packagingTypeId: created.packagingTypeId,
 						priceCents: created.priceCents,
+						netWeightGrams: created.netWeightGrams,
 					},
 				});
 				return created;
@@ -530,6 +532,9 @@ function buildProductTemplateUpdateData(
 	}
 	if (input.priceCents !== undefined) {
 		data.priceCents = input.priceCents;
+	}
+	if (input.netWeightGrams !== undefined) {
+		data.netWeightGrams = input.netWeightGrams;
 	}
 	if (input.active !== undefined) {
 		data.active = input.active;

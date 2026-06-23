@@ -195,6 +195,7 @@ describe("Distributor inventory real Postgres integration", () => {
 				distributorCount: 0,
 				stockItemCount: 0,
 				totalUnits: 0,
+				totalNetWeightGrams: 0,
 				totalStockValueCents: 0,
 			},
 			distributorSummaries: [],

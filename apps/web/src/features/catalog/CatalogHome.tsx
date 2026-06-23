@@ -50,6 +50,7 @@ type ProductTemplateFormInput = {
 	rawMaterialTypeId: string;
 	packagingTypeId: string;
 	priceCents: number;
+	netWeightGrams: number;
 };
 type CatalogNoticeState = {
 	message: string;
@@ -69,8 +70,10 @@ type ProductTemplateFormState = {
 	name: string;
 	rawMaterialTypeId: string;
 	packagingTypeId: string;
+	netWeightGrams: string;
 	priceRubles: string;
 	priceError: string;
+	netWeightError: string;
 };
 type ProductTemplateFormAction =
 	| { type: "patch"; values: Partial<ProductTemplateFormState> }
@@ -88,8 +91,10 @@ function createProductTemplateFormState(item: ProductTemplate | null): ProductTe
 		name: item?.name ?? "",
 		rawMaterialTypeId: item?.rawMaterialTypeId ?? "",
 		packagingTypeId: item?.packagingTypeId ?? "",
+		netWeightGrams: item ? String(item.netWeightGrams) : "200",
 		priceRubles: item ? formatPriceRubles(item.priceCents) : "",
 		priceError: "",
+		netWeightError: "",
 	};
 }
 
@@ -702,7 +707,7 @@ function ProductTemplateListItem({
 				<p>
 					{item.rawMaterialType.name} / {item.packagingType.name}
 				</p>
-				<p>{formatCompactMoneyCents(item.priceCents)} ₽</p>
+				<p>{item.netWeightGrams} г • {formatCompactMoneyCents(item.priceCents)} ₽</p>
 			</div>
 			<div className="entity-actions">
 				<ArchiveButton
@@ -829,7 +834,7 @@ function ProductTemplateFormDialog({
 	title: string;
 }) {
 	const [form, dispatchForm] = useReducer(productTemplateFormReducer, item, createProductTemplateFormState);
-	const { name, packagingTypeId, priceError, priceRubles, rawMaterialTypeId } = form;
+	const { name, netWeightError, netWeightGrams, packagingTypeId, priceError, priceRubles, rawMaterialTypeId } = form;
 
 	function handleSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
@@ -838,13 +843,19 @@ function ProductTemplateFormDialog({
 			dispatchForm({ type: "priceError", message: parsedPrice.message });
 			return;
 		}
+		const parsedNetWeightGrams = parsePositiveInteger(netWeightGrams);
+		if (!parsedNetWeightGrams.ok) {
+			dispatchForm({ type: "patch", values: { netWeightError: "Масса нетто должна быть целым числом граммов." } });
+			return;
+		}
 
-		dispatchForm({ type: "priceError", message: "" });
+		dispatchForm({ type: "patch", values: { netWeightError: "", priceError: "" } });
 		onSubmit({
 			name,
 			rawMaterialTypeId,
 			packagingTypeId,
 			priceCents: parsedPrice.value,
+			netWeightGrams: parsedNetWeightGrams.value,
 		});
 	}
 
@@ -921,10 +932,25 @@ function ProductTemplateFormDialog({
 								value={priceRubles}
 							/>
 						</label>
+						<label className="field">
+							<span>Масса нетто, г</span>
+							<input
+								inputMode="numeric"
+								onChange={(event) => dispatchForm({
+									type: "patch",
+									values: { netWeightGrams: event.target.value },
+								})}
+								placeholder="200"
+								required
+								type="text"
+								value={netWeightGrams}
+							/>
+						</label>
 						{dependenciesReady ? null : (
 							<p className="muted">Сначала нужны активные виды сырья и тары.</p>
 						)}
 						{priceError ? <p className="form-error">{priceError}</p> : null}
+						{netWeightError ? <p className="form-error">{netWeightError}</p> : null}
 						{error ? <p className="form-error">{error}</p> : null}
 						<div className="form-actions">
 							<Dialog.Close className="secondary-button" type="button">
@@ -1110,4 +1136,14 @@ function parsePriceRubles(value: string): { ok: true; value: number } | { ok: fa
 			message: "Цена должна быть положительной суммой в рублях, максимум 2 знака после запятой.",
 		};
 	}
+}
+
+function parsePositiveInteger(value: string): { ok: true; value: number } | { ok: false } {
+	const normalized = value.trim();
+	if (!/^\d+$/.test(normalized)) {
+		return { ok: false };
+	}
+	const parsed = Number(normalized);
+
+	return Number.isSafeInteger(parsed) && parsed > 0 ? { ok: true, value: parsed } : { ok: false };
 }

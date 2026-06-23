@@ -21,6 +21,7 @@ type ProductTemplateRecord = CatalogRecord & {
 	rawMaterialTypeId: string;
 	packagingTypeId: string;
 	priceCents: number;
+	netWeightGrams: number;
 	rawMaterialType: UnitCatalogRecord;
 	packagingType: UnitCatalogRecord;
 };
@@ -64,6 +65,7 @@ export function mapProductTemplate(record: ProductTemplateRecord): ProductTempla
 		rawMaterialTypeId: record.rawMaterialTypeId,
 		packagingTypeId: record.packagingTypeId,
 		priceCents: record.priceCents,
+		netWeightGrams: record.netWeightGrams,
 		active: record.active,
 		createdAt: record.createdAt.toISOString(),
 		updatedAt: record.updatedAt.toISOString(),

@@ -17,6 +17,15 @@ import { PaymentMethodSegmentedControl } from "../operations/PaymentMethodSegmen
 import { OperationProductSelect } from "../operations/OperationProductSelect";
 import { PostSubmitResultLayer } from "../operations/PostSubmitResultLayer";
 import { getSaleSubmitBlockReason } from "../operations/operation-submit-reasons";
+import {
+	calculateProductQuantity,
+	createDefaultProductQuantityState,
+	formatKilograms,
+	formatProductQuantityLabel,
+	type ProductQuantityCalculation,
+	ProductQuantityInputField,
+	type ProductQuantityInputState,
+} from "../operations/product-quantity-input";
 
 type DistributorSaleResultSnapshot = {
 	clientLabel: string;
@@ -42,7 +51,7 @@ export function DistributorSaleHome({
 	const [activeClientSearch, setActiveClientSearch] = useState("");
 	const [selectedClientId, setSelectedClientId] = useState("");
 	const [selectedBalanceId, setSelectedBalanceId] = useState("");
-	const [quantity, setQuantity] = useState("");
+	const [quantity, setQuantity] = useState<ProductQuantityInputState>(createDefaultProductQuantityState);
 	const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
 	const [comment, setComment] = useState("");
 	const [clientError, setClientError] = useState("");
@@ -74,12 +83,17 @@ export function DistributorSaleHome({
 	const selectedStock = saleOptions?.items.find((item) =>
 		item.distributorProductBalanceId === selectedBalanceId,
 	);
-	const parsedQuantity = Number(quantity);
-	const saleTotalCents = selectedStock && Number.isInteger(parsedQuantity) && parsedQuantity > 0
-		? selectedStock.unitPriceCents * parsedQuantity
+	const productQuantity = calculateProductQuantity({
+		availableQuantity: selectedStock?.availableQuantity,
+		netWeightGrams: selectedStock?.netWeightGrams,
+		state: quantity,
+	});
+	const parsedQuantity = productQuantity.ok ? productQuantity.quantity : 0;
+	const saleTotalCents = selectedStock && productQuantity.ok
+		? selectedStock.unitPriceCents * productQuantity.quantity
 		: 0;
-	const summaryQuantity = Number.isInteger(parsedQuantity) && parsedQuantity > 0
-		? `${parsedQuantity} шт`
+	const summaryQuantity = productQuantity.ok
+		? `${productQuantity.valueLabel} • ${productQuantity.unitsLabel}`
 		: "Количество не задано";
 	const createClientMutation = useMutation({
 		mutationFn: () => createClient({
@@ -101,7 +115,7 @@ export function DistributorSaleHome({
 		mutationFn: () => createDistributorSale({
 			distributorProductBalanceId: selectedBalanceId,
 			clientId: selectedClientId,
-			quantity: parsedQuantity,
+			quantityInput: getProductQuantityInput(productQuantity),
 			paymentMethod,
 			...(comment.trim() ? { comment: comment.trim() } : {}),
 		}),
@@ -116,7 +130,7 @@ export function DistributorSaleHome({
 			}));
 			setSelectedClientId("");
 			setSelectedBalanceId("");
-			setQuantity("");
+			setQuantity(createDefaultProductQuantityState());
 			setPaymentMethod("cash");
 			setComment("");
 			setSaleError("");
@@ -195,7 +209,7 @@ export function DistributorSaleHome({
 			return;
 		}
 		if (!isValidQuantity(parsedQuantity, selectedStock)) {
-			setSaleError("Количество должно быть целым числом не больше доступного количества.");
+			setSaleError(productQuantity.ok ? "Количество не должно быть больше доступного остатка." : productQuantity.reason);
 			return;
 		}
 
@@ -344,7 +358,10 @@ export function DistributorSaleHome({
 								discounted: item.discounted,
 								id: item.distributorProductBalanceId,
 								label: item.productName,
-								meta: `${item.availableQuantity} шт · ${formatRubles(item.unitPriceCents)} ₽`,
+								meta: `${formatProductQuantityLabel({
+									quantity: item.availableQuantity,
+									totalNetWeightGrams: item.totalNetWeightGrams,
+								})} • ${formatRubles(item.unitPriceCents)} ₽`,
 							}))}
 							placeholder="Выберите продукцию"
 							value={selectedBalanceId}
@@ -357,16 +374,13 @@ export function DistributorSaleHome({
 
 						{selectedStock ? <SelectedStockInfo stock={selectedStock} /> : null}
 
-						<label className="field">
-							<span>Количество, шт</span>
-							<input
-								inputMode="numeric"
-								min="1"
-								onChange={(event) => setQuantity(event.target.value)}
-								type="number"
-								value={quantity}
-							/>
-						</label>
+						<ProductQuantityInputField
+							availableQuantity={selectedStock?.availableQuantity}
+							id="distributor-sale-quantity"
+							netWeightGrams={selectedStock?.netWeightGrams}
+							onChange={setQuantity}
+							state={quantity}
+						/>
 						<PaymentMethodSegmentedControl
 							id="distributor-payment-method-label"
 							onChange={setPaymentMethod}
@@ -412,7 +426,7 @@ function SaleResultLayer({
 			primaryAction={{ label: "Готово", onClick: onDone }}
 			rows={[
 				{ label: "Клиент", value: result.clientLabel },
-				{ label: "Продано", value: `${result.productName} · ${result.quantity} шт · ${formatRubles(result.unitPriceCents)} ₽/шт` },
+				{ label: "Продано", value: `${result.productName} • ${result.quantity} шт • ${formatRubles(result.unitPriceCents)} ₽/шт` },
 				{ label: "Оплата", value: result.paymentMethod === "cash" ? "Наличные" : "Безнал" },
 				{ label: "Итого", value: `${formatRubles(result.totalCents)} ₽` },
 			]}
@@ -469,7 +483,11 @@ function SelectedStockInfo({
 }) {
 	return (
 		<SaleInfoLedger>
-			<SaleInfoRow label="Доступно" value={`${stock.availableQuantity} шт`} />
+			<SaleInfoRow label="Доступно" value={formatProductQuantityLabel({
+				quantity: stock.availableQuantity,
+				totalNetWeightGrams: stock.totalNetWeightGrams,
+			})} />
+			<SaleInfoRow label="Масса нетто" value={`${formatKilograms(stock.netWeightGrams)} кг/шт`} />
 			<SaleInfoRow label="Цена" value={`${formatRubles(stock.unitPriceCents)} ₽/шт`} />
 		</SaleInfoLedger>
 	);
@@ -481,6 +499,14 @@ function isValidQuantity(quantity: number, stock: DistributorSaleStockItem | und
 	}
 
 	return Number.isInteger(quantity) && quantity > 0 && quantity <= stock.availableQuantity;
+}
+
+function getProductQuantityInput(calculation: ProductQuantityCalculation) {
+	if (!calculation.ok) {
+		throw new Error(calculation.reason);
+	}
+
+	return calculation.input;
 }
 
 function formatRubles(priceCents: number): string {

@@ -374,7 +374,7 @@ function DemoTransferActions() {
 				<label className="field">
 					<span>Продукция</span>
 					<select value="roe-a-batch" onChange={() => undefined} disabled>
-						<option value="roe-a-batch">Икра А · 18 шт</option>
+						<option value="roe-a-batch">Икра А • 18 шт</option>
 					</select>
 				</label>
 				<div className="production-form-ledger">
@@ -452,7 +452,7 @@ function DemoCommercialSale() {
 				<label className="field">
 					<span>Продукция</span>
 					<select value="roe-a" onChange={() => undefined} disabled>
-						<option value="roe-a">Икра А · 18 шт</option>
+						<option value="roe-a">Икра А • 18 шт</option>
 					</select>
 				</label>
 				<div className="production-form-ledger">

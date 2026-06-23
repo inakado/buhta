@@ -40,6 +40,7 @@ export function addProductQuantity(
 	input: {
 		productName: string;
 		quantity: number;
+		totalNetWeightGrams: number;
 		rawMaterialConsumedQuantity: DecimalLike;
 		rawMaterialUnit: string;
 	},
@@ -49,6 +50,7 @@ export function addProductQuantity(
 
 	if (existing) {
 		existing.quantity += input.quantity;
+		existing.totalNetWeightGrams += input.totalNetWeightGrams;
 		existing.rawMaterialConsumedQuantity += rawMaterialConsumedQuantity;
 		return;
 	}
@@ -56,6 +58,7 @@ export function addProductQuantity(
 	map.set(input.productName, {
 		productName: input.productName,
 		quantity: input.quantity,
+		totalNetWeightGrams: input.totalNetWeightGrams,
 		rawMaterialConsumedQuantity,
 		rawMaterialUnit: input.rawMaterialUnit,
 	});

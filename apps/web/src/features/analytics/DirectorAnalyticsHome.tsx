@@ -15,6 +15,7 @@ import { getDirectorAnalytics } from "../../lib/api-client";
 import { formatCompactMoneyCents } from "../../lib/money-format";
 import { DateRangePickerPanel } from "../../ui/DateRangePickerPanel";
 import { SegmentedControl } from "../../ui/SegmentedControl";
+import { formatProductQuantityLabel } from "../operations/product-quantity-input";
 
 const PERIOD_OPTIONS: Array<{ value: DirectorAnalyticsPeriodPreset; label: string }> = [
 	{ value: "today", label: "Сегодня" },
@@ -479,28 +480,34 @@ function ProductionFlowStrip({ data }: { data: DirectorAnalyticsResponse }) {
 			</div>
 			<FlowValue
 				label="Выпуск"
-				value={formatQuantity(data.production.summary.productReleasedUnits)}
+				value={formatProductQuantityLabel({
+					quantity: data.production.summary.productReleasedUnits,
+					totalNetWeightGrams: data.production.summary.productReleasedTotalNetWeightGrams,
+				})}
 			/>
 			<FlowValue
 				label="Распределитель"
-				value={formatQuantity(data.production.productTransferredToDistributorUnits)}
+				value={formatProductQuantityLabel({
+					quantity: data.production.productTransferredToDistributorUnits,
+					totalNetWeightGrams: data.production.productTransferredToDistributorTotalNetWeightGrams,
+				})}
 			/>
 			<FlowValue
 				label="Цех"
-				value={formatQuantity(data.production.currentWorkshopProductUnits)}
+				value={formatProductQuantityLabel({
+					quantity: data.production.currentWorkshopProductUnits,
+					totalNetWeightGrams: data.production.currentWorkshopProductTotalNetWeightGrams,
+				})}
 			/>
 		</div>
 	);
 }
 
-function FlowValue({ label, unit = "шт", value }: { label: string; unit?: string; value: string }) {
+function FlowValue({ label, value }: { label: string; value: string }) {
 	return (
 		<div className="director-dashboard-strip-value">
 			<span>{label}</span>
-			<strong>
-				<span>{value}</span>
-				<small>{unit}</small>
-			</strong>
+			<strong>{value}</strong>
 		</div>
 	);
 }
@@ -640,7 +647,10 @@ function ProductList({ rows }: { rows: DirectorAnalyticsProductOutputRow[] }) {
 			{rows.length ? rows.map((row) => (
 				<div className="director-dashboard-product-row" key={row.productName}>
 					<strong>{row.productName}</strong>
-					<strong>{formatQuantity(row.quantity)} шт</strong>
+					<strong>{formatProductQuantityLabel({
+						quantity: row.quantity,
+						totalNetWeightGrams: row.totalNetWeightGrams,
+					})}</strong>
 					<span>{formatRawMaterialPerUnit(row)}</span>
 				</div>
 			)) : <p className="director-dashboard-empty">Нет выпуска за период</p>}

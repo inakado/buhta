@@ -2,6 +2,7 @@ import { z } from "zod";
 
 const NameSchema = z.string().trim().min(1).max(120);
 const UnitSchema = z.string().trim().min(1).max(40);
+const NetWeightGramsSchema = z.number().int().positive().max(100000);
 
 export const CatalogEntitySchema = z.object({
 	id: z.string(),
@@ -31,6 +32,7 @@ export const ProductTemplateSchema = CatalogEntitySchema.extend({
 	rawMaterialTypeId: z.string().min(1),
 	packagingTypeId: z.string().min(1),
 	priceCents: z.number().int().nonnegative(),
+	netWeightGrams: NetWeightGramsSchema,
 	rawMaterialType: RawMaterialTypeSchema.pick({
 		id: true,
 		name: true,
@@ -126,6 +128,7 @@ export const CreateProductTemplateRequestSchema = z.object({
 	rawMaterialTypeId: z.string().min(1),
 	packagingTypeId: z.string().min(1),
 	priceCents: z.number().int().positive(),
+	netWeightGrams: NetWeightGramsSchema,
 });
 
 export type CreateProductTemplateRequest = z.infer<typeof CreateProductTemplateRequestSchema>;

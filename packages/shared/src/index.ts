@@ -8,6 +8,7 @@ export * from "./notifications";
 export * from "./operations";
 export * from "./permissions";
 export * from "./primitives";
+export * from "./product-quantity";
 export * from "./production";
 export * from "./roles";
 export * from "./users";

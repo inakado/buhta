@@ -15,6 +15,7 @@ import type {
 } from "@buhta/shared";
 import type { Prisma } from "../generated/prisma/client";
 import { AppError } from "../common/errors/app-error";
+import { canonicalizeProductQuantity } from "../common/product-quantity";
 import { OPERATION_STATUS, type BaselineOperationType } from "../operations/operation.types";
 import type { Actor } from "../policy/actor";
 import { prisma } from "../prisma/client";
@@ -281,7 +282,8 @@ export class ProductionService {
 			});
 		}
 
-		const consumedPackagingQuantity = input.quantity;
+		const productQuantity = canonicalizeProductQuantity(input, template.netWeightGrams);
+		const consumedPackagingQuantity = productQuantity.quantity;
 
 			const batch = await prisma.$transaction(async (tx) => {
 				const productBatchId = randomUUID();
@@ -330,7 +332,12 @@ export class ProductionService {
 					packagingTypeId: template.packagingTypeId,
 					packagingTypeName: template.packagingType.name,
 					packagingUnit: template.packagingType.unit,
-					quantity: input.quantity,
+					quantity: productQuantity.quantity,
+					quantityInputMode: productQuantity.quantityInputMode,
+					quantityInputValue: productQuantity.quantityInputValue,
+					quantityInputGrams: productQuantity.quantityInputGrams,
+					netWeightGrams: productQuantity.netWeightGrams,
+					totalNetWeightGrams: productQuantity.totalNetWeightGrams,
 					consumedRawMaterialQuantity: input.consumedRawMaterialQuantity,
 					consumedPackagingQuantity,
 					priceCents: template.priceCents,
@@ -350,7 +357,8 @@ export class ProductionService {
 					packagingTypeName: template.packagingType.name,
 					packagingUnit: template.packagingType.unit,
 					priceCents: template.priceCents,
-					quantity: input.quantity,
+					netWeightGrams: template.netWeightGrams,
+					quantity: productQuantity.quantity,
 					consumedRawMaterialQuantity: input.consumedRawMaterialQuantity,
 					consumedPackagingQuantity,
 					operationId: operation.id,
@@ -381,6 +389,7 @@ export class ProductionService {
 		if (!productBatch) {
 			throw new AppError("NOT_FOUND", "Product batch not found", { id: input.productBatchId });
 		}
+		const productQuantity = canonicalizeProductQuantity(input, productBatch.netWeightGrams);
 
 			const result = await prisma.$transaction(async (tx) => {
 				const productTransferId = randomUUID();
@@ -413,15 +422,15 @@ export class ProductionService {
 				include: { distributor: true, productBatch: true },
 			});
 
-			const decrement = await tx.workshopProductBalance.updateMany({
-				where: {
-					productBatchId: input.productBatchId,
-					quantity: { gte: input.quantity },
-				},
-				data: {
-					quantity: { decrement: input.quantity },
-				},
-			});
+				const decrement = await tx.workshopProductBalance.updateMany({
+					where: {
+						productBatchId: input.productBatchId,
+						quantity: { gte: productQuantity.quantity },
+					},
+					data: {
+						quantity: { decrement: productQuantity.quantity },
+					},
+				});
 			if (decrement.count !== 1) {
 				throw new AppError("DOMAIN_RULE_VIOLATION", "Not enough product balance in workshop", {
 					productBatchId: input.productBatchId,
@@ -442,14 +451,14 @@ export class ProductionService {
 					},
 				},
 				create: {
-					distributorId: input.distributorId,
-					productBatchId: input.productBatchId,
-					unitPriceCents: productBatch.priceCents,
-					quantity: input.quantity,
-				},
-				update: {
-					quantity: { increment: input.quantity },
-				},
+						distributorId: input.distributorId,
+						productBatchId: input.productBatchId,
+						unitPriceCents: productBatch.priceCents,
+						quantity: productQuantity.quantity,
+					},
+					update: {
+						quantity: { increment: productQuantity.quantity },
+					},
 				include: { distributor: true, productBatch: true },
 			});
 
@@ -463,13 +472,18 @@ export class ProductionService {
 						productBatchId: input.productBatchId,
 					productName: productBatch.productName,
 					baseUnitPriceCents: productBatch.priceCents,
-					unitPriceCents: productBatch.priceCents,
-					discountCentsPerUnit: 0,
-					stockValueCents: input.quantity * productBatch.priceCents,
-					distributorId: input.distributorId,
-					distributorName: distributor.name,
-					quantity: input.quantity,
-					workshopBalanceBefore: workshopBalanceBefore.quantity,
+						unitPriceCents: productBatch.priceCents,
+						discountCentsPerUnit: 0,
+						stockValueCents: productQuantity.quantity * productBatch.priceCents,
+						distributorId: input.distributorId,
+						distributorName: distributor.name,
+						quantity: productQuantity.quantity,
+						quantityInputMode: productQuantity.quantityInputMode,
+						quantityInputValue: productQuantity.quantityInputValue,
+						quantityInputGrams: productQuantity.quantityInputGrams,
+						netWeightGrams: productQuantity.netWeightGrams,
+						totalNetWeightGrams: productQuantity.totalNetWeightGrams,
+						workshopBalanceBefore: workshopBalanceBefore.quantity,
 					workshopBalanceAfter: workshopBalanceAfter.quantity,
 					distributorBalanceBefore: distributorBalanceBefore?.quantity ?? 0,
 					distributorBalanceAfter: distributorProductBalance.quantity,
@@ -481,11 +495,11 @@ export class ProductionService {
 					id: productTransferId,
 					productBatchId: input.productBatchId,
 				distributorId: input.distributorId,
-				quantity: input.quantity,
+				quantity: productQuantity.quantity,
 				baseUnitPriceCents: productBatch.priceCents,
 				unitPriceCents: productBatch.priceCents,
 				discountCentsPerUnit: 0,
-				stockValueCents: input.quantity * productBatch.priceCents,
+				stockValueCents: productQuantity.quantity * productBatch.priceCents,
 				operationId: operation.id,
 				actorUserId: actor.userId,
 			};
@@ -493,9 +507,10 @@ export class ProductionService {
 				transferData.comment = input.comment;
 			}
 
-			const transfer = await tx.productTransfer.create({
-				data: transferData,
-			});
+				const transfer = await tx.productTransfer.create({
+					data: transferData,
+					include: { productBatch: true },
+				});
 
 				return {
 					transfer,

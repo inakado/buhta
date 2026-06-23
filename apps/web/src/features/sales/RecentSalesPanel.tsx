@@ -75,7 +75,7 @@ export function RecentSalesPanel({
 										</span>
 									</div>
 									<p>
-										{item.clientName} · {item.quantity} шт · {formatRubles(item.unitPriceCents)} ₽/шт ·{" "}
+										{item.clientName} • {item.quantity} шт • {formatRubles(item.unitPriceCents)} ₽/шт •{" "}
 										{item.paymentMethod === "cash" ? "наличные" : "безнал"}
 									</p>
 									<p>{formatSaleDate(item.createdAt)} · {item.saleActorDisplayName}</p>
@@ -145,7 +145,7 @@ export function RecentSalesPanel({
 								<div className="recent-sale-cancel-summary">
 									<strong>{selectedSale.productName}</strong>
 									<span>
-										{selectedSale.clientName} · {selectedSale.quantity} шт ·{" "}
+										{selectedSale.clientName} • {selectedSale.quantity} шт •{" "}
 										{formatRubles(selectedSale.totalCents)} ₽
 									</span>
 								</div>

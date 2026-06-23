@@ -27,6 +27,7 @@ type DistributorInventoryRecord = {
 		id: string;
 		productName: string;
 		priceCents: number;
+		netWeightGrams: number;
 	};
 };
 
@@ -59,6 +60,9 @@ type DistributorSaleRecord = {
 	operationId: string;
 	actorUserId: string;
 	createdAt: Date;
+	productBatch: {
+		netWeightGrams: number;
+	};
 };
 
 type UserRecord = {
@@ -87,11 +91,15 @@ type DistributorSaleCancellationRecord = {
 	operationId: string;
 	actorUserId: string;
 	createdAt: Date;
+	productBatch: {
+		netWeightGrams: number;
+	};
 };
 
 type DistributorRecentSaleRecord = DistributorSaleRecord & {
 	productBatch: {
 		productName: string;
+		netWeightGrams: number;
 	};
 	client: {
 		id: string;
@@ -101,7 +109,11 @@ type DistributorRecentSaleRecord = DistributorSaleRecord & {
 	operation: {
 		actor: UserRecord;
 	};
-	cancellation: (DistributorSaleCancellationRecord & {
+	cancellation: ({
+		id: string;
+		reason: string;
+		actorUserId: string;
+		createdAt: Date;
 		actor: UserRecord;
 	}) | null;
 };
@@ -133,6 +145,9 @@ type ProductDiscountAssignmentRecord = {
 	operationId: string;
 	actorUserId: string;
 	createdAt: Date;
+	productBatch: {
+		netWeightGrams: number;
+	};
 };
 
 export function mapDistributorInventoryItem(record: DistributorInventoryRecord): DistributorInventoryItem {
@@ -146,7 +161,9 @@ export function mapDistributorInventoryItem(record: DistributorInventoryRecord):
 		productBatchId: record.productBatchId,
 		productName: record.productBatch.productName,
 		...price,
+		netWeightGrams: record.productBatch.netWeightGrams,
 		quantity: record.quantity,
+		totalNetWeightGrams: totalNetWeightGrams(record.quantity, record.productBatch.netWeightGrams),
 		stockValueCents,
 		updatedAt: record.updatedAt.toISOString(),
 	};
@@ -163,7 +180,9 @@ export function mapDistributorSaleStockItem(record: DistributorSaleOptionRecord)
 		productBatchId: record.productBatchId,
 		productName: record.productBatch.productName,
 		...price,
+		netWeightGrams: record.productBatch.netWeightGrams,
 		availableQuantity: record.quantity,
+		totalNetWeightGrams: totalNetWeightGrams(record.quantity, record.productBatch.netWeightGrams),
 		stockValueCents,
 		updatedAt: record.updatedAt.toISOString(),
 	};
@@ -212,6 +231,8 @@ export function mapDistributorSale(record: DistributorSaleRecord): DistributorSa
 		productBatchId: record.productBatchId,
 		clientId: record.clientId,
 		quantity: record.quantity,
+		netWeightGrams: record.productBatch.netWeightGrams,
+		totalNetWeightGrams: totalNetWeightGrams(record.quantity, record.productBatch.netWeightGrams),
 		baseUnitPriceCents: record.baseUnitPriceCents,
 		unitPriceCents: record.unitPriceCents,
 		discountCentsPerUnit: record.discountCentsPerUnit,
@@ -234,6 +255,8 @@ export function mapDistributorSaleCancellation(record: DistributorSaleCancellati
 		productBatchId: record.productBatchId,
 		clientId: record.clientId,
 		quantity: record.quantity,
+		netWeightGrams: record.productBatch.netWeightGrams,
+		totalNetWeightGrams: totalNetWeightGrams(record.quantity, record.productBatch.netWeightGrams),
 		baseUnitPriceCents: record.baseUnitPriceCents,
 		unitPriceCents: record.unitPriceCents,
 		discountCentsPerUnit: record.discountCentsPerUnit,
@@ -256,6 +279,8 @@ export function mapDistributorRecentSale(record: DistributorRecentSaleRecord): D
 		clientName: record.client.name,
 		clientPhone: record.client.phone,
 		quantity: record.quantity,
+		netWeightGrams: record.productBatch.netWeightGrams,
+		totalNetWeightGrams: totalNetWeightGrams(record.quantity, record.productBatch.netWeightGrams),
 		baseUnitPriceCents: record.baseUnitPriceCents,
 		unitPriceCents: record.unitPriceCents,
 		discountCentsPerUnit: record.discountCentsPerUnit,
@@ -300,6 +325,8 @@ export function mapProductDiscountAssignment(record: ProductDiscountAssignmentRe
 		distributorId: record.distributorId,
 		productBatchId: record.productBatchId,
 		quantity: record.quantity,
+		netWeightGrams: record.productBatch.netWeightGrams,
+		totalNetWeightGrams: totalNetWeightGrams(record.quantity, record.productBatch.netWeightGrams),
 		baseUnitPriceCents: record.baseUnitPriceCents,
 		sourceUnitPriceCents: record.sourceUnitPriceCents,
 		discountedUnitPriceCents: record.discountedUnitPriceCents,
@@ -325,11 +352,13 @@ export function summarizeDistributorInventory(items: DistributorInventoryItem[])
 			distributorName: item.distributorName,
 			stockItemCount: 0,
 			totalUnits: 0,
+			totalNetWeightGrams: 0,
 			totalStockValueCents: 0,
 		};
 
 		current.stockItemCount += 1;
 		current.totalUnits += item.quantity;
+		current.totalNetWeightGrams += item.totalNetWeightGrams;
 		current.totalStockValueCents += item.stockValueCents;
 		distributorSummariesById.set(item.distributorId, current);
 	}
@@ -343,6 +372,7 @@ export function summarizeDistributorInventory(items: DistributorInventoryItem[])
 			distributorCount: distributorSummaries.length,
 			stockItemCount: items.length,
 			totalUnits: items.reduce((sum, item) => sum + item.quantity, 0),
+			totalNetWeightGrams: items.reduce((sum, item) => sum + item.totalNetWeightGrams, 0),
 			totalStockValueCents: items.reduce((sum, item) => sum + item.stockValueCents, 0),
 		},
 		distributorSummaries,
@@ -363,6 +393,10 @@ function priceSnapshot(baseUnitPriceCents: number, unitPriceCents: number): {
 		discounted: discountCentsPerUnit > 0,
 		discountCentsPerUnit,
 	};
+}
+
+function totalNetWeightGrams(quantity: number, netWeightGrams: number): number {
+	return quantity * netWeightGrams;
 }
 
 function displayNameForUser(user: UserRecord): string {

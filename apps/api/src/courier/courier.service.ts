@@ -19,6 +19,7 @@ import type {
 } from "@buhta/shared";
 import type { Prisma } from "../generated/prisma/client";
 import { AppError } from "../common/errors/app-error";
+import { canonicalizeProductQuantity } from "../common/product-quantity";
 import { OPERATION_STATUS } from "../operations/operation.types";
 import type { Actor } from "../policy/actor";
 import { prisma } from "../prisma/client";
@@ -287,14 +288,16 @@ export class CourierService {
 					id: balanceBefore.distributorId,
 				});
 			}
+			const productQuantity = canonicalizeProductQuantity(input, balanceBefore.productBatch.netWeightGrams);
+			const quantity = productQuantity.quantity;
 
 			const decrement = await tx.distributorProductBalance.updateMany({
 				where: {
 					id: input.distributorProductBalanceId,
-					quantity: { gte: input.quantity },
+					quantity: { gte: quantity },
 				},
 				data: {
-					quantity: { decrement: input.quantity },
+					quantity: { decrement: quantity },
 				},
 			});
 			if (decrement.count !== 1) {
@@ -322,22 +325,22 @@ export class CourierService {
 					courierUserId: targetCourierUserId,
 					productBatchId: balanceBefore.productBatchId,
 					unitPriceCents: balanceBefore.unitPriceCents,
-					quantity: input.quantity,
+					quantity,
 				},
 				update: {
-					quantity: { increment: input.quantity },
+					quantity: { increment: quantity },
 				},
 				include: {
 					courier: true,
 					productBatch: true,
 				},
 			});
-			const distributorBalanceBefore = distributorBalanceAfter.quantity + input.quantity;
-			const courierBalanceBefore = courierBalanceAfter.quantity - input.quantity;
+			const distributorBalanceBefore = distributorBalanceAfter.quantity + quantity;
+			const courierBalanceBefore = courierBalanceAfter.quantity - quantity;
 			const baseUnitPriceCents = balanceBefore.productBatch.priceCents;
 			const unitPriceCents = balanceBefore.unitPriceCents;
 			const discountCentsPerUnit = Math.max(baseUnitPriceCents - unitPriceCents, 0);
-			const stockValueCents = input.quantity * unitPriceCents;
+			const stockValueCents = quantity * unitPriceCents;
 
 			const operation = await tx.operation.create({
 				data: {
@@ -353,7 +356,7 @@ export class CourierService {
 				distributorProductBalanceId: input.distributorProductBalanceId,
 				distributorId: balanceBefore.distributorId,
 				productBatchId: balanceBefore.productBatchId,
-				quantity: input.quantity,
+				quantity,
 				baseUnitPriceCents,
 				unitPriceCents,
 				discountCentsPerUnit,
@@ -367,6 +370,7 @@ export class CourierService {
 
 			const load = await tx.courierLoad.create({
 				data: loadData,
+				include: { productBatch: true },
 			});
 
 			await tx.auditLog.create({
@@ -389,7 +393,12 @@ export class CourierService {
 						unitPriceCents,
 						discountCentsPerUnit,
 						stockValueCents,
-						quantity: input.quantity,
+						quantity,
+						quantityInputMode: productQuantity.quantityInputMode,
+						quantityInputValue: productQuantity.quantityInputValue,
+						quantityInputGrams: productQuantity.quantityInputGrams,
+						netWeightGrams: productQuantity.netWeightGrams,
+						totalNetWeightGrams: productQuantity.totalNetWeightGrams,
 						distributorBalanceBefore,
 						distributorBalanceAfter: distributorBalanceAfter.quantity,
 						courierBalanceBefore,
@@ -453,6 +462,8 @@ export class CourierService {
 					courierUserId: targetCourierUserId,
 				});
 			}
+			const productQuantity = canonicalizeProductQuantity(input, balanceBefore.productBatch.netWeightGrams);
+			const quantity = productQuantity.quantity;
 
 			const client = await tx.client.findUnique({ where: { id: input.clientId } });
 			if (!client) {
@@ -463,10 +474,10 @@ export class CourierService {
 				where: {
 					id: input.courierProductBalanceId,
 					courierUserId: targetCourierUserId,
-					quantity: { gte: input.quantity },
+					quantity: { gte: quantity },
 				},
 				data: {
-					quantity: { decrement: input.quantity },
+					quantity: { decrement: quantity },
 				},
 			});
 			if (decrement.count !== 1) {
@@ -483,12 +494,12 @@ export class CourierService {
 				},
 			});
 			const courierStockBalanceAfter = courierBalanceAfter.quantity;
-			const courierStockBalanceBefore = courierStockBalanceAfter + input.quantity;
+			const courierStockBalanceBefore = courierStockBalanceAfter + quantity;
 			const baseUnitPriceCents = balanceBefore.productBatch.priceCents;
 			const unitPriceCents = balanceBefore.unitPriceCents;
 			const discountCentsPerUnit = Math.max(baseUnitPriceCents - unitPriceCents, 0);
-			const discountTotalCents = input.quantity * discountCentsPerUnit;
-			const totalCents = input.quantity * unitPriceCents;
+			const discountTotalCents = quantity * discountCentsPerUnit;
+			const totalCents = quantity * unitPriceCents;
 
 			const cashResult = input.paymentMethod === "cash"
 				? await incrementCourierCashBalance(tx, targetCourierUserId, totalCents)
@@ -508,7 +519,7 @@ export class CourierService {
 				courierUserId: targetCourierUserId,
 				productBatchId: balanceBefore.productBatchId,
 				clientId: input.clientId,
-				quantity: input.quantity,
+				quantity,
 				baseUnitPriceCents,
 				unitPriceCents,
 				discountCentsPerUnit,
@@ -524,6 +535,7 @@ export class CourierService {
 
 			const sale = await tx.courierSale.create({
 				data: saleData,
+				include: { productBatch: true },
 			});
 
 			await tx.auditLog.create({
@@ -541,7 +553,12 @@ export class CourierService {
 						productBatchId: balanceBefore.productBatchId,
 						productName: balanceBefore.productBatch.productName,
 						clientId: input.clientId,
-						quantity: input.quantity,
+						quantity,
+						quantityInputMode: productQuantity.quantityInputMode,
+						quantityInputValue: productQuantity.quantityInputValue,
+						quantityInputGrams: productQuantity.quantityInputGrams,
+						netWeightGrams: productQuantity.netWeightGrams,
+						totalNetWeightGrams: productQuantity.totalNetWeightGrams,
 						baseUnitPriceCents,
 						unitPriceCents,
 						discountCentsPerUnit,
@@ -636,6 +653,7 @@ export class CourierService {
 						operationId: operation.id,
 						actorUserId: actor.userId,
 					},
+					include: { productBatch: true },
 				});
 
 				let cashBalanceAfter = null;
@@ -702,6 +720,8 @@ export class CourierService {
 							productName: sale.productBatch.productName,
 							clientId: sale.clientId,
 							quantity: sale.quantity,
+							netWeightGrams: sale.productBatch.netWeightGrams,
+							totalNetWeightGrams: sale.quantity * sale.productBatch.netWeightGrams,
 							baseUnitPriceCents: sale.baseUnitPriceCents,
 							unitPriceCents: sale.unitPriceCents,
 							discountCentsPerUnit: sale.discountCentsPerUnit,
@@ -791,15 +811,17 @@ export class CourierService {
 						courierUserId: targetCourierUserId,
 					});
 				}
+				const productQuantity = canonicalizeProductQuantity(item, balanceBefore.productBatch.netWeightGrams);
+				const quantity = productQuantity.quantity;
 
 				const decrement = await tx.courierProductBalance.updateMany({
 					where: {
 						id: item.courierProductBalanceId,
 						courierUserId: targetCourierUserId,
-						quantity: { gte: item.quantity },
+						quantity: { gte: quantity },
 					},
 					data: {
-						quantity: { decrement: item.quantity },
+						quantity: { decrement: quantity },
 					},
 				});
 				if (decrement.count !== 1) {
@@ -827,10 +849,10 @@ export class CourierService {
 						distributorId: input.distributorId,
 						productBatchId: balanceBefore.productBatchId,
 						unitPriceCents: balanceBefore.unitPriceCents,
-						quantity: item.quantity,
+						quantity,
 					},
 					update: {
-						quantity: { increment: item.quantity },
+						quantity: { increment: quantity },
 					},
 					include: {
 						distributor: true,
@@ -840,19 +862,21 @@ export class CourierService {
 				const baseUnitPriceCents = balanceBefore.productBatch.priceCents;
 				const unitPriceCents = balanceBefore.unitPriceCents;
 				const discountCentsPerUnit = Math.max(baseUnitPriceCents - unitPriceCents, 0);
-				const stockValueCents = item.quantity * unitPriceCents;
+				const stockValueCents = quantity * unitPriceCents;
 
 				productResults.push({
 					inputItem: item,
+					quantity,
+					productQuantity,
 					productBatchId: balanceBefore.productBatchId,
 					productName: balanceBefore.productBatch.productName,
 					baseUnitPriceCents,
 					unitPriceCents,
 					discountCentsPerUnit,
 					stockValueCents,
-					courierBalanceBefore: courierBalanceAfter.quantity + item.quantity,
+					courierBalanceBefore: courierBalanceAfter.quantity + quantity,
 					courierBalanceAfter,
-					distributorBalanceBefore: distributorBalanceAfter.quantity - item.quantity,
+					distributorBalanceBefore: distributorBalanceAfter.quantity - quantity,
 					distributorBalanceAfter,
 				});
 			}
@@ -895,12 +919,13 @@ export class CourierService {
 						courierProductBalanceId: productResult.inputItem.courierProductBalanceId,
 						distributorProductBalanceId: productResult.distributorBalanceAfter.id,
 						productBatchId: productResult.productBatchId,
-						quantity: productResult.inputItem.quantity,
+						quantity: productResult.quantity,
 						baseUnitPriceCents: productResult.baseUnitPriceCents,
 						unitPriceCents: productResult.unitPriceCents,
 						discountCentsPerUnit: productResult.discountCentsPerUnit,
 						stockValueCents: productResult.stockValueCents,
 					},
+					include: { productBatch: true },
 				});
 				unloadItems.push(unloadItem);
 			}
@@ -923,7 +948,12 @@ export class CourierService {
 							distributorProductBalanceId: productResult.distributorBalanceAfter.id,
 							productBatchId: productResult.productBatchId,
 							productName: productResult.productName,
-							quantity: productResult.inputItem.quantity,
+							quantity: productResult.quantity,
+							quantityInputMode: productResult.productQuantity.quantityInputMode,
+							quantityInputValue: productResult.productQuantity.quantityInputValue,
+							quantityInputGrams: productResult.productQuantity.quantityInputGrams,
+							netWeightGrams: productResult.productQuantity.netWeightGrams,
+							totalNetWeightGrams: productResult.productQuantity.totalNetWeightGrams,
 							baseUnitPriceCents: productResult.baseUnitPriceCents,
 							unitPriceCents: productResult.unitPriceCents,
 							discountCentsPerUnit: productResult.discountCentsPerUnit,

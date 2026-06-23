@@ -33,6 +33,15 @@ import {
 } from "../../lib/api-client";
 import { formatCompactMoneyCents } from "../../lib/money-format";
 import { PostSubmitResultLayer } from "../operations/PostSubmitResultLayer";
+import {
+	calculateProductQuantity,
+	createDefaultProductQuantityState,
+	formatKilograms,
+	formatProductQuantityLabel,
+	type ProductQuantityCalculation,
+	ProductQuantityInputField,
+	type ProductQuantityInputState,
+} from "../operations/product-quantity-input";
 import { ProductionHomeOverview } from "./ProductionHomeOverview";
 
 const PRODUCTION_DATE_TIME_FORMATTER = new Intl.DateTimeFormat("ru-RU", {
@@ -51,7 +60,7 @@ type SuccessNotice = {
 
 type ProductBatchFormState = {
 	productTemplateId: string;
-	quantity: string;
+	quantity: ProductQuantityInputState;
 	rawQuantity: string;
 	comment: string;
 	localError: string;
@@ -60,7 +69,7 @@ type ProductBatchFormState = {
 type ProductTransferFormState = {
 	productBatchId: string;
 	distributorId: string;
-	quantity: string;
+	quantity: ProductQuantityInputState;
 	comment: string;
 	localError: string;
 };
@@ -79,9 +88,11 @@ type ProductTransferResultSnapshot = {
 	distributorName: string;
 	productName: string;
 	quantity: number;
+	totalNetWeightGrams: number;
 	stockValueCents: number;
 	unitPriceCents: number;
 	workshopQuantityAfter: number;
+	workshopTotalNetWeightGramsAfter: number;
 };
 
 type FormAction<State> =
@@ -90,7 +101,7 @@ type FormAction<State> =
 
 const EMPTY_PRODUCT_BATCH_FORM: ProductBatchFormState = {
 	productTemplateId: "",
-	quantity: "",
+	quantity: createDefaultProductQuantityState(),
 	rawQuantity: "",
 	comment: "",
 	localError: "",
@@ -99,7 +110,7 @@ const EMPTY_PRODUCT_BATCH_FORM: ProductBatchFormState = {
 const EMPTY_PRODUCT_TRANSFER_FORM: ProductTransferFormState = {
 	productBatchId: "",
 	distributorId: "",
-	quantity: "",
+	quantity: createDefaultProductQuantityState(),
 	comment: "",
 	localError: "",
 };
@@ -527,6 +538,10 @@ function ProductBatchForm({
 	const selectedPackagingBalance = packagingBalances.find((item) =>
 		item.typeId === selectedTemplate?.packagingTypeId
 	);
+	const productQuantity = calculateProductQuantity({
+		netWeightGrams: selectedTemplate?.netWeightGrams,
+		state: quantity,
+	});
 	const stockLine = selectedTemplate
 		? formatReleaseStockLine({
 			packagingAvailable: selectedPackagingBalance?.quantity ?? 0,
@@ -540,7 +555,7 @@ function ProductBatchForm({
 		? buildReleaseWarning({
 			packagingAvailable: selectedPackagingBalance?.quantity ?? 0,
 			packagingUnit: selectedTemplate.packagingType.unit,
-			productQuantity: parseOptionalPositiveInteger(quantity),
+			productQuantity: productQuantity.ok ? productQuantity.quantity : null,
 			rawAvailable: selectedRawMaterialBalance?.quantity ?? 0,
 			rawQuantity: parseOptionalPositiveNumber(rawQuantity),
 			rawUnit: selectedTemplate.rawMaterialType.unit,
@@ -550,7 +565,7 @@ function ProductBatchForm({
 	const mutation = useMutation({
 		mutationFn: () => createProductBatch({
 			productTemplateId,
-			quantity: parsePositiveInteger(quantity, "Количество продукции"),
+			quantityInput: getProductQuantityInput(productQuantity),
 			consumedRawMaterialQuantity: parsePositiveNumber(rawQuantity, "Расход сырья"),
 			...(comment.trim() ? { comment: comment.trim() } : {}),
 		}),
@@ -567,7 +582,9 @@ function ProductBatchForm({
 	function handleSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
 		try {
-			parsePositiveInteger(quantity, "Количество продукции");
+			if (!productQuantity.ok) {
+				throw new Error(productQuantity.reason);
+			}
 			parsePositiveNumber(rawQuantity, "Расход сырья");
 		} catch (error) {
 			dispatchForm({
@@ -642,21 +659,18 @@ function ProductBatchForm({
 				<ProductionInfoLedger>
 					<ProductionInfoRow label="Сырье" value={selectedTemplate.rawMaterialType.name} />
 					<ProductionInfoRow label="Тара" value={selectedTemplate.packagingType.name} />
+					<ProductionInfoRow label="Масса нетто" value={`${formatKilograms(selectedTemplate.netWeightGrams)} кг/шт`} />
 					<ProductionInfoRow label="Доступно" value={stockLine} />
 					<ProductionInfoRow label="Цена" value={`${formatPriceRubles(selectedTemplate.priceCents)} ₽`} />
 				</ProductionInfoLedger>
 			) : null}
-			<label className="field">
-				<span>Количество продукции, шт</span>
-				<input
-					inputMode="numeric"
-					onChange={(event) => dispatchForm({ type: "patch", values: { quantity: event.target.value } })}
-					placeholder="18"
-					required
-					type="text"
-					value={quantity}
+				<ProductQuantityInputField
+					id="production-batch-quantity"
+					label="Количество продукции"
+					netWeightGrams={selectedTemplate?.netWeightGrams}
+					onChange={(nextQuantity) => dispatchForm({ type: "patch", values: { quantity: nextQuantity } })}
+					state={quantity}
 				/>
-			</label>
 			<label className="field">
 				<span>Расход сырья, {selectedTemplate?.rawMaterialType.unit ?? "кг"}</span>
 				<input
@@ -708,11 +722,16 @@ function ProductTransferForm({
 	const { comment, distributorId, localError, productBatchId, quantity } = form;
 	const selectedProduct = workshopProductBalances.find((item) => item.productBatchId === productBatchId);
 	const selectedDistributor = distributors.find((item) => item.id === distributorId);
+	const productQuantity = calculateProductQuantity({
+		availableQuantity: selectedProduct?.quantity,
+		netWeightGrams: selectedProduct?.netWeightGrams,
+		state: quantity,
+	});
 	const mutation = useMutation({
 		mutationFn: () => createProductTransfer({
 			productBatchId,
 			distributorId,
-			quantity: parsePositiveInteger(quantity, "Количество продукции"),
+			quantityInput: getProductQuantityInput(productQuantity),
 			...(comment.trim() ? { comment: comment.trim() } : {}),
 		}),
 		onSuccess: async (response) => {
@@ -725,7 +744,7 @@ function ProductTransferForm({
 			await invalidateProduction(queryClient);
 		},
 	});
-	const parsedTransferQuantity = parseOptionalPositiveInteger(quantity);
+	const parsedTransferQuantity = productQuantity.ok ? productQuantity.quantity : null;
 	const transferWarning = selectedProduct && parsedTransferQuantity !== null && parsedTransferQuantity > selectedProduct.quantity
 		? "Количество продукции: нельзя передать больше доступного остатка."
 		: "";
@@ -733,8 +752,10 @@ function ProductTransferForm({
 	function handleSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
 		try {
-			const parsedQuantity = parsePositiveInteger(quantity, "Количество продукции");
-			if (selectedProduct && parsedQuantity > selectedProduct.quantity) {
+			if (!productQuantity.ok) {
+				throw new Error(productQuantity.reason);
+			}
+			if (selectedProduct && productQuantity.quantity > selectedProduct.quantity) {
 				throw new Error("Количество продукции: нельзя передать больше доступного остатка.");
 			}
 		} catch (error) {
@@ -777,10 +798,16 @@ function ProductTransferForm({
 				rows={[
 					{ label: "Продукция", value: result.productName },
 					{ label: "Распределитель", value: result.distributorName },
-					{ label: "Количество", value: `${result.quantity} шт` },
+					{ label: "Количество", value: formatProductQuantityLabel({
+						quantity: result.quantity,
+						totalNetWeightGrams: result.totalNetWeightGrams,
+					}) },
 					{ label: "Цена", value: `${formatPriceRubles(result.unitPriceCents)} ₽/шт` },
 					{ label: "Итого", value: `${formatPriceRubles(result.stockValueCents)} ₽` },
-					{ label: "Остаток в цеху", value: `${result.workshopQuantityAfter} шт` },
+					{ label: "Остаток в цеху", value: formatProductQuantityLabel({
+						quantity: result.workshopQuantityAfter,
+						totalNetWeightGrams: result.workshopTotalNetWeightGramsAfter,
+					}) },
 				]}
 				secondaryAction={{
 					icon: <ArrowRightLeft aria-hidden size={16} />,
@@ -804,14 +831,21 @@ function ProductTransferForm({
 					<option value="">Выберите продукцию</option>
 					{workshopProductBalances.map((item) => (
 						<option key={item.id} value={item.productBatchId}>
-							{item.productName} · {item.quantity} шт
+							{item.productName} • {formatProductQuantityLabel({
+								quantity: item.quantity,
+								totalNetWeightGrams: item.totalNetWeightGrams,
+							})}
 						</option>
 					))}
 				</select>
 			</label>
 			{selectedProduct ? (
 				<ProductionInfoLedger>
-					<ProductionInfoRow label="Доступно" value={`${selectedProduct.quantity} шт`} />
+					<ProductionInfoRow label="Доступно" value={formatProductQuantityLabel({
+						quantity: selectedProduct.quantity,
+						totalNetWeightGrams: selectedProduct.totalNetWeightGrams,
+					})} />
+					<ProductionInfoRow label="Масса нетто" value={`${formatKilograms(selectedProduct.netWeightGrams)} кг/шт`} />
 					<ProductionInfoRow label="Цена" value={`${formatPriceRubles(selectedProduct.priceCents)} ₽`} />
 					<ProductionInfoRow label="Выпуск" value={formatDateTime(selectedProduct.createdAt)} />
 				</ProductionInfoLedger>
@@ -831,17 +865,13 @@ function ProductTransferForm({
 					))}
 				</select>
 			</label>
-			<label className="field">
-				<span>Количество, шт</span>
-				<input
-					inputMode="numeric"
-					onChange={(event) => dispatchForm({ type: "patch", values: { quantity: event.target.value } })}
-					placeholder="4"
-					required
-					type="text"
-					value={quantity}
-				/>
-			</label>
+			<ProductQuantityInputField
+				availableQuantity={selectedProduct?.quantity}
+				id="production-transfer-quantity"
+				netWeightGrams={selectedProduct?.netWeightGrams}
+				onChange={(nextQuantity) => dispatchForm({ type: "patch", values: { quantity: nextQuantity } })}
+				state={quantity}
+			/>
 			<label className="field">
 				<span>Комментарий</span>
 				<input
@@ -900,6 +930,14 @@ function ProductionSubmitBlock({
 			{children}
 		</div>
 	);
+}
+
+function getProductQuantityInput(calculation: ProductQuantityCalculation) {
+	if (!calculation.ok) {
+		throw new Error(calculation.reason);
+	}
+
+	return calculation.input;
 }
 
 function ProductionHistory({
@@ -990,7 +1028,7 @@ function WorkshopProductBalanceList({
 			<thead>
 				<tr className="inventory-table-head">
 					<th scope="col">Наименование</th>
-					<th scope="col">Количество</th>
+					<th scope="col">Остаток</th>
 					<th scope="col">Цена</th>
 				</tr>
 			</thead>
@@ -999,21 +1037,34 @@ function WorkshopProductBalanceList({
 				{!loading && workshopProductBalances.length === 0 ? (
 					<ProductionListMessage colSpan={3} text="Готовой продукции пока нет. Выпустите первую партию." />
 				) : null}
-				{workshopProductBalances.map((balance) => (
-					<tr className="inventory-table-row" key={balance.id}>
-						<td className="inventory-table-product">
-							<strong>{balance.productName}</strong>
-							<span>{formatDateTime(balance.createdAt)}</span>
-						</td>
-						<td className="inventory-table-quantity">
-							<strong>{balance.quantity} шт</strong>
-							<span>из {balance.producedQuantity} шт</span>
-						</td>
-						<td className="inventory-table-total">
-							<strong>{formatPriceRubles(balance.priceCents)} ₽</strong>
-						</td>
-					</tr>
-				))}
+				{workshopProductBalances.map((balance) => {
+					const currentQuantityLabel = formatProductQuantityLabel({
+						quantity: balance.quantity,
+						totalNetWeightGrams: balance.totalNetWeightGrams,
+					});
+					const producedQuantityLabel = formatProductQuantityLabel({
+						quantity: balance.producedQuantity,
+						totalNetWeightGrams: balance.producedTotalNetWeightGrams,
+					});
+					const showProducedQuantity = balance.quantity !== balance.producedQuantity
+						|| balance.totalNetWeightGrams !== balance.producedTotalNetWeightGrams;
+
+					return (
+						<tr className="inventory-table-row" key={balance.id}>
+							<td className="inventory-table-product">
+								<strong>{balance.productName}</strong>
+								<span>{formatDateTime(balance.createdAt)}</span>
+							</td>
+							<td className="inventory-table-quantity">
+								<strong>{currentQuantityLabel}</strong>
+								{showProducedQuantity ? <span>партия {producedQuantityLabel}</span> : null}
+							</td>
+							<td className="inventory-table-total">
+								<strong>{formatPriceRubles(balance.priceCents)} ₽</strong>
+							</td>
+						</tr>
+					);
+				})}
 			</tbody>
 		</table>
 	);
@@ -1145,9 +1196,11 @@ function createProductTransferResultSnapshot({
 		distributorName: distributorName ?? "Распределитель",
 		productName: productName ?? "Продукция",
 		quantity: response.transfer.quantity,
+		totalNetWeightGrams: response.transfer.totalNetWeightGrams,
 		stockValueCents: response.transfer.stockValueCents,
 		unitPriceCents: response.transfer.unitPriceCents,
 		workshopQuantityAfter: response.workshopProductBalance.quantity,
+		workshopTotalNetWeightGramsAfter: response.workshopProductBalance.totalNetWeightGrams,
 	};
 }
 
@@ -1170,15 +1223,6 @@ function parsePositiveNumber(value: string, label: string): number {
 	return parsed;
 }
 
-function parsePositiveInteger(value: string, label: string): number {
-	const parsed = parsePositiveNumber(value, label);
-	if (!Number.isInteger(parsed)) {
-		throw new Error(`${label}: нужно целое число.`);
-	}
-
-	return parsed;
-}
-
 function parseOptionalPositiveNumber(value: string): number | null {
 	const normalized = value.trim().replace(",", ".");
 	if (!normalized) {
@@ -1187,11 +1231,6 @@ function parseOptionalPositiveNumber(value: string): number | null {
 
 	const parsed = Number(normalized);
 	return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
-}
-
-function parseOptionalPositiveInteger(value: string): number | null {
-	const parsed = parseOptionalPositiveNumber(value);
-	return parsed !== null && Number.isInteger(parsed) ? parsed : null;
 }
 
 function buildReleaseWarning({

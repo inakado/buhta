@@ -129,6 +129,7 @@ const distributorInventoryResponse = {
 		distributorCount: 1,
 		stockItemCount: 1,
 		totalUnits: 2,
+		totalNetWeightGrams: 400,
 		totalStockValueCents: 250000,
 	},
 	distributorSummaries: [{
@@ -136,6 +137,7 @@ const distributorInventoryResponse = {
 		distributorName: "Распределитель Центральный",
 		stockItemCount: 1,
 		totalUnits: 2,
+		totalNetWeightGrams: 400,
 		totalStockValueCents: 250000,
 	}],
 	items: [{
@@ -148,7 +150,9 @@ const distributorInventoryResponse = {
 		unitPriceCents: 125000,
 		discounted: false,
 		discountCentsPerUnit: 0,
+		netWeightGrams: 200,
 		quantity: 2,
+		totalNetWeightGrams: 400,
 		stockValueCents: 250000,
 		updatedAt: new Date(0).toISOString(),
 	}],
@@ -176,7 +180,9 @@ const distributorSaleOptionsResponse = {
 		unitPriceCents: 125000,
 		discounted: false,
 		discountCentsPerUnit: 0,
+		netWeightGrams: 200,
 		availableQuantity: 2,
+		totalNetWeightGrams: 400,
 		stockValueCents: 250000,
 		updatedAt: new Date(0).toISOString(),
 	}],
@@ -191,6 +197,7 @@ const courierProductBalancesResponse = {
 		courierCount: 1,
 		stockItemCount: 1,
 		totalUnits: 2,
+		totalNetWeightGrams: 400,
 		totalStockValueCents: 250000,
 	},
 	courierSummaries: [{
@@ -199,6 +206,7 @@ const courierProductBalancesResponse = {
 		courierDisplayName: "Courier",
 		stockItemCount: 1,
 		totalUnits: 2,
+		totalNetWeightGrams: 400,
 		totalStockValueCents: 250000,
 	}],
 	items: [{
@@ -212,7 +220,9 @@ const courierProductBalancesResponse = {
 		unitPriceCents: 125000,
 		discounted: false,
 		discountCentsPerUnit: 0,
+		netWeightGrams: 200,
 		quantity: 2,
+		totalNetWeightGrams: 400,
 		stockValueCents: 250000,
 		updatedAt: new Date(0).toISOString(),
 	}],
@@ -229,7 +239,9 @@ const courierLoadOptionsResponse = {
 		unitPriceCents: 125000,
 		discounted: false,
 		discountCentsPerUnit: 0,
+		netWeightGrams: 200,
 		availableQuantity: 2,
+		totalNetWeightGrams: 400,
 		stockValueCents: 250000,
 		updatedAt: new Date(0).toISOString(),
 	}],
@@ -259,7 +271,9 @@ const courierSaleOptionsResponse = {
 		unitPriceCents: 125000,
 		discounted: false,
 		discountCentsPerUnit: 0,
+		netWeightGrams: 200,
 		availableQuantity: 2,
+		totalNetWeightGrams: 400,
 		stockValueCents: 250000,
 		updatedAt: new Date(0).toISOString(),
 	}],
@@ -282,7 +296,9 @@ const courierUnloadOptionsResponse = {
 		unitPriceCents: 125000,
 		discounted: false,
 		discountCentsPerUnit: 0,
+		netWeightGrams: 200,
 		availableQuantity: 2,
+		totalNetWeightGrams: 400,
 		stockValueCents: 250000,
 		updatedAt: new Date(0).toISOString(),
 	}],
@@ -430,15 +446,19 @@ const directorAnalyticsResponse = {
 			productReleased: [{
 				productName: "Икра горбуши",
 				quantity: 12,
+				totalNetWeightGrams: 2400,
 				rawMaterialConsumedQuantity: 8,
 				rawMaterialUnit: "кг",
 			}],
 		productTransferredToDistributorUnits: 8,
+		productTransferredToDistributorTotalNetWeightGrams: 1600,
 		currentWorkshopProductUnits: 4,
+		currentWorkshopProductTotalNetWeightGrams: 800,
 		summary: {
 			rawMaterialConsumedQuantity: 8,
 			rawMaterialConsumedUnit: "кг",
 			productReleasedUnits: 12,
+			productReleasedTotalNetWeightGrams: 2400,
 		},
 	},
 	charts: {
@@ -1356,8 +1376,11 @@ describe("HomePage", () => {
 						productBatchId: "batch1",
 						productName: "Икра горбуши",
 						priceCents: 125000,
+						netWeightGrams: 200,
 						quantity: 4,
+						totalNetWeightGrams: 800,
 						producedQuantity: 4,
+						producedTotalNetWeightGrams: 800,
 						createdAt: new Date(0).toISOString(),
 						updatedAt: new Date(0).toISOString(),
 					}],
@@ -1373,16 +1396,19 @@ describe("HomePage", () => {
 						createdAt: new Date(0).toISOString(),
 						updatedAt: new Date(0).toISOString(),
 					}],
-					workshopProductBalances: [{
-						id: "workshop-balance1",
-						productBatchId: "batch1",
-						productName: "Икра горбуши",
-						priceCents: 125000,
-						quantity: 4,
-						producedQuantity: 4,
-						createdAt: new Date(0).toISOString(),
-						updatedAt: new Date(0).toISOString(),
-					}],
+						workshopProductBalances: [{
+							id: "workshop-balance1",
+							productBatchId: "batch1",
+							productName: "Икра горбуши",
+							priceCents: 125000,
+							netWeightGrams: 200,
+							quantity: 4,
+							totalNetWeightGrams: 800,
+							producedQuantity: 4,
+							producedTotalNetWeightGrams: 800,
+							createdAt: new Date(0).toISOString(),
+							updatedAt: new Date(0).toISOString(),
+						}],
 				});
 			}
 
@@ -1399,7 +1425,9 @@ describe("HomePage", () => {
 						packagingTypeName: "Банка",
 						packagingUnit: "шт",
 						priceCents: 125000,
+						netWeightGrams: 200,
 						quantity: 4,
+						totalNetWeightGrams: 800,
 						consumedRawMaterialQuantity: 6.25,
 						consumedPackagingQuantity: 4,
 						status: "in_workshop",
@@ -1415,6 +1443,8 @@ describe("HomePage", () => {
 							productBatchId: "batch1",
 							distributorId: "dist1",
 							quantity: 2,
+							netWeightGrams: 200,
+							totalNetWeightGrams: 400,
 							baseUnitPriceCents: 125000,
 							unitPriceCents: 125000,
 							discountCentsPerUnit: 0,
@@ -1429,8 +1459,11 @@ describe("HomePage", () => {
 						productBatchId: "batch1",
 						productName: "Икра горбуши",
 						priceCents: 125000,
+						netWeightGrams: 200,
 						quantity: 2,
+						totalNetWeightGrams: 400,
 						producedQuantity: 4,
+						producedTotalNetWeightGrams: 800,
 						createdAt: new Date(0).toISOString(),
 						updatedAt: new Date(0).toISOString(),
 					},
@@ -1444,7 +1477,9 @@ describe("HomePage", () => {
 							unitPriceCents: 125000,
 							discounted: false,
 							discountCentsPerUnit: 0,
+							netWeightGrams: 200,
 							quantity: 2,
+							totalNetWeightGrams: 400,
 							stockValueCents: 250000,
 							updatedAt: new Date(0).toISOString(),
 						},
@@ -1462,12 +1497,14 @@ describe("HomePage", () => {
 						rawMaterialUnit: "кг",
 						packagingTypeId: "pack1",
 						packagingTypeName: "Банка",
-						packagingUnit: "шт",
-						priceCents: 125000,
-						quantity: 4,
-						consumedRawMaterialQuantity: 6.25,
-						consumedPackagingQuantity: 4,
-						status: "in_workshop",
+							packagingUnit: "шт",
+							priceCents: 125000,
+							netWeightGrams: 200,
+							quantity: 4,
+							totalNetWeightGrams: 800,
+							consumedRawMaterialQuantity: 6.25,
+							consumedPackagingQuantity: 4,
+							status: "in_workshop",
 						createdAt: new Date(0).toISOString(),
 					}],
 				});
@@ -1518,15 +1555,16 @@ describe("HomePage", () => {
 							updatedAt: new Date(0).toISOString(),
 						},
 						packagingTypeId: "pack1",
-						packagingType: {
-							id: "pack1",
-							name: "Банка",
-							unit: "шт",
+							packagingType: {
+								id: "pack1",
+								name: "Банка",
+								unit: "шт",
 							active: true,
 							createdAt: new Date(0).toISOString(),
 							updatedAt: new Date(0).toISOString(),
 						},
 						priceCents: 125000,
+						netWeightGrams: 200,
 						active: true,
 						createdAt: new Date(0).toISOString(),
 						updatedAt: new Date(0).toISOString(),
@@ -1609,10 +1647,10 @@ describe("HomePage", () => {
 		fireEvent.click(screen.getByRole("button", { name: /Продукция: 4 шт, В цеху/ }));
 		expect(await screen.findByRole("heading", { name: "Продукция в цеху" })).toBeTruthy();
 		expect(screen.getByText("Икра горбуши")).toBeTruthy();
-		expect(screen.getByText("Количество")).toBeTruthy();
+		expect(screen.getByText("Остаток")).toBeTruthy();
 		expect(screen.getByText("Цена")).toBeTruthy();
-		expect(screen.getByText("4 шт")).toBeTruthy();
-		expect(screen.getByText("из 4 шт")).toBeTruthy();
+		expect(screen.getByText("0,8 кг • 4 шт")).toBeTruthy();
+		expect(screen.queryByText("партия 0,8 кг • 4 шт")).toBeNull();
 		fireEvent.click(screen.getByRole("button", { name: "Назад" }));
 
 		fireEvent.click(screen.getByRole("button", { name: "Выпустить" }));
@@ -1622,13 +1660,13 @@ describe("HomePage", () => {
 		expect(screen.queryByRole("button", { name: "Тара" })).toBeNull();
 		fireEvent.change(await screen.findByLabelText("Шаблон продукции"), { target: { value: "template1" } });
 		expect(screen.getByText("12.5 кг сырья, 8 шт тары")).toBeTruthy();
-		fireEvent.change(screen.getByLabelText("Количество продукции, шт"), { target: { value: "9" } });
+		fireEvent.change(screen.getByLabelText("Количество продукции, кг"), { target: { value: "1.8" } });
 		expect(screen.getByText("Не хватает тары: нужно 9 шт, доступно 8 шт.")).toBeTruthy();
 		expect((screen.getByRole("button", { name: "Выпустить" }) as HTMLButtonElement).disabled).toBe(true);
 		const callsBeforeBlockedRelease = fetchMock.mock.calls.length;
 		fireEvent.click(screen.getByRole("button", { name: "Выпустить" }));
 		expect(fetchMock).toHaveBeenCalledTimes(callsBeforeBlockedRelease);
-		fireEvent.change(screen.getByLabelText("Количество продукции, шт"), { target: { value: "4" } });
+		fireEvent.change(screen.getByLabelText("Количество продукции, кг"), { target: { value: "0.8" } });
 		expect(screen.queryByText("Не хватает тары: нужно 9 шт, доступно 8 шт.")).toBeNull();
 		fireEvent.change(screen.getByLabelText("Расход сырья, кг"), { target: { value: "6.25" } });
 		fireEvent.click(screen.getByRole("button", { name: "Выпустить" }));
@@ -1640,7 +1678,7 @@ describe("HomePage", () => {
 					method: "POST",
 					body: JSON.stringify({
 						productTemplateId: "template1",
-						quantity: 4,
+						quantityInput: { mode: "net_weight", netWeightKilograms: "0.8" },
 						consumedRawMaterialQuantity: 6.25,
 					}),
 				}),
@@ -1657,7 +1695,7 @@ describe("HomePage", () => {
 		expect(await screen.findByRole("heading", { name: "Передать" })).toBeTruthy();
 		fireEvent.change(await screen.findByLabelText("Продукция"), { target: { value: "batch1" } });
 		fireEvent.change(screen.getByRole("combobox", { name: "Распределитель" }), { target: { value: "dist1" } });
-		fireEvent.change(screen.getByLabelText("Количество, шт"), { target: { value: "2" } });
+		fireEvent.change(screen.getByLabelText("Количество, кг"), { target: { value: "0.4" } });
 		fireEvent.change(screen.getByLabelText("Комментарий"), { target: { value: "На Центральный" } });
 		fireEvent.click(screen.getByRole("button", { name: "Передать" }));
 
@@ -1669,7 +1707,7 @@ describe("HomePage", () => {
 					body: JSON.stringify({
 						productBatchId: "batch1",
 						distributorId: "dist1",
-						quantity: 2,
+						quantityInput: { mode: "net_weight", netWeightKilograms: "0.4" },
 						comment: "На Центральный",
 					}),
 				}),
@@ -1692,7 +1730,7 @@ describe("HomePage", () => {
 		expect(await screen.findByText("Икра горбуши")).toBeTruthy();
 		expect(screen.getByText("1 позиция")).toBeTruthy();
 		expect(screen.getByText("Распределитель Центральный")).toBeTruthy();
-		expect(screen.getAllByText("2 шт").length).toBeGreaterThan(0);
+		expect(screen.getAllByText(byTextContent("0,4 кг • 2 шт")).length).toBeGreaterThan(0);
 		expect(screen.queryByRole("button", { name: "История" })).toBeNull();
 		expect(screen.queryByRole("button", { name: "Профиль" })).toBeNull();
 		fireEvent.click(screen.getByRole("button", { name: "Еще" }));
@@ -1813,11 +1851,12 @@ describe("HomePage", () => {
 							active: true,
 							createdAt: new Date(0).toISOString(),
 							updatedAt: new Date(0).toISOString(),
-						},
-						priceCents: 125000,
-						active: true,
-						createdAt: new Date(0).toISOString(),
-						updatedAt: new Date(0).toISOString(),
+							},
+							priceCents: 125000,
+							netWeightGrams: 200,
+							active: true,
+							createdAt: new Date(0).toISOString(),
+							updatedAt: new Date(0).toISOString(),
 					}],
 				});
 			}
@@ -1831,7 +1870,7 @@ describe("HomePage", () => {
 
 		fireEvent.click(await screen.findByRole("button", { name: "Выпустить" }));
 		fireEvent.change(await screen.findByLabelText("Шаблон продукции"), { target: { value: "template1" } });
-		fireEvent.change(screen.getByLabelText("Количество продукции, шт"), { target: { value: "4" } });
+		fireEvent.change(screen.getByLabelText("Количество продукции, кг"), { target: { value: "0.8" } });
 		fireEvent.change(screen.getByLabelText("Расход сырья, кг"), { target: { value: "6.25" } });
 		fireEvent.click(screen.getByRole("button", { name: "Выпустить" }));
 
@@ -2222,8 +2261,8 @@ describe("HomePage", () => {
 			);
 		});
 		expect(await screen.findByRole("heading", { name: "Продажа отменена" })).toBeTruthy();
-		expect(screen.getByText(byTextContent("Икра горбуши · 1 шт"))).toBeTruthy();
-		expect(screen.getByText(byTextContent("1250 ₽ · Наличные"))).toBeTruthy();
+		expect(screen.getByText(byTextContent("Икра горбуши • 1 шт"))).toBeTruthy();
+		expect(screen.getByText(byTextContent("1250 ₽ • Наличные"))).toBeTruthy();
 		expect(screen.queryByText("Количество")).toBeNull();
 		expect(screen.queryByText("Оплата")).toBeNull();
 		expect(screen.getByText("Ошибка клиента")).toBeTruthy();
@@ -2435,7 +2474,7 @@ describe("HomePage", () => {
 		expect(screen.getByText("Доступно")).toBeTruthy();
 		expect(screen.getByText("Цена")).toBeTruthy();
 		expect(screen.getByText("Операция")).toBeTruthy();
-		fireEvent.change(screen.getByLabelText("Количество, шт"), { target: { value: "1" } });
+		fireEvent.change(screen.getByLabelText("Количество, кг"), { target: { value: "0.2" } });
 		fireEvent.change(screen.getByLabelText("Комментарий"), { target: { value: "На доставку" } });
 		fireEvent.click(screen.getByRole("button", { name: "Записать загрузку" }));
 
@@ -2446,7 +2485,7 @@ describe("HomePage", () => {
 					method: "POST",
 					body: JSON.stringify({
 						distributorProductBalanceId: "distributor-balance1",
-						quantity: 1,
+						quantityInput: { mode: "net_weight", netWeightKilograms: "0.2" },
 						comment: "На доставку",
 					}),
 				}),
@@ -2491,13 +2530,13 @@ describe("HomePage", () => {
 
 		fireEvent.click(await screen.findByRole("button", { name: "Загрузить" }));
 		await selectOperationProduct(/Икра горбуши/);
-		fireEvent.change(screen.getByLabelText("Количество, шт"), { target: { value: "1" } });
+		fireEvent.change(screen.getByLabelText("Количество, кг"), { target: { value: "0.2" } });
 		fireEvent.change(screen.getByLabelText("Комментарий"), { target: { value: "На доставку" } });
 		fireEvent.click(screen.getByRole("button", { name: "Записать загрузку" }));
 
 		expect(await screen.findByText("Недостаточно товара на распределителе")).toBeTruthy();
 		expect((screen.getByRole("combobox", { name: "Продукция" }) as HTMLInputElement).value).toContain("Икра горбуши");
-		expect((screen.getByLabelText("Количество, шт") as HTMLInputElement).value).toBe("1");
+		expect((screen.getByLabelText("Количество, кг") as HTMLInputElement).value).toBe("0.2");
 		expect((screen.getByLabelText("Комментарий") as HTMLTextAreaElement).value).toBe("На доставку");
 		expect(screen.queryByText("Загрузка записана")).toBeNull();
 		expect(screen.getByRole("heading", { name: "Детали загрузки" })).toBeTruthy();
@@ -2613,7 +2652,7 @@ describe("HomePage", () => {
 		expect((screen.getByLabelText("Вернуть, ₽") as HTMLInputElement).value).toBe("700.00");
 		fireEvent.change(screen.getByLabelText("Вернуть, ₽"), { target: { value: "0" } });
 		expect((screen.getByRole("button", { name: "Записать" }) as HTMLButtonElement).disabled).toBe(false);
-		fireEvent.change(screen.getByLabelText("Вернуть"), { target: { value: "1" } });
+		fireEvent.change(screen.getByLabelText("Вернуть, кг"), { target: { value: "0.4" } });
 		fireEvent.change(screen.getByLabelText("Вернуть, ₽"), { target: { value: "500" } });
 		fireEvent.change(screen.getByLabelText("Комментарий, если нужно"), { target: { value: "Смена закрыта" } });
 		fireEvent.click(screen.getByRole("button", { name: "Записать" }));
@@ -2625,7 +2664,7 @@ describe("HomePage", () => {
 					method: "POST",
 					body: JSON.stringify({
 						distributorId: "dist1",
-						items: [{ courierProductBalanceId: "courier-balance1", quantity: 1 }],
+						items: [{ courierProductBalanceId: "courier-balance1", quantityInput: { mode: "net_weight", netWeightKilograms: "0.4" } }],
 						cashAmountCents: 50000,
 						comment: "Смена закрыта",
 					}),
@@ -2742,7 +2781,7 @@ describe("HomePage", () => {
 		await selectOperationProduct(/Икра горбуши/);
 		expect(screen.getByText("Доступно")).toBeTruthy();
 		expect(screen.getByText("Цена")).toBeTruthy();
-		fireEvent.change(screen.getByLabelText("Количество, шт"), { target: { value: "1" } });
+		fireEvent.change(screen.getByLabelText("Количество, кг"), { target: { value: "0.2" } });
 		fireEvent.click(screen.getByRole("button", { name: "Безнал" }));
 		expect(screen.getByRole("button", { name: "Безнал" }).getAttribute("aria-pressed")).toBe("true");
 		expect(screen.queryByText("Наличные не изменятся")).toBeNull();
@@ -2758,7 +2797,7 @@ describe("HomePage", () => {
 					body: JSON.stringify({
 						courierProductBalanceId: "courier-balance1",
 						clientId: "client1",
-						quantity: 1,
+						quantityInput: { mode: "net_weight", netWeightKilograms: "0.2" },
 						paymentMethod: "cashless",
 						comment: "Доставка",
 					}),
@@ -2767,7 +2806,7 @@ describe("HomePage", () => {
 		});
 		expect(await screen.findByRole("heading", { name: "Записано" })).toBeTruthy();
 		expect(screen.getByText("Иван Петров · +7 (999) 123-45-67")).toBeTruthy();
-		expect(screen.getByText(byTextContent("Икра горбуши · 1 шт"))).toBeTruthy();
+		expect(screen.getByText(byTextContent("Икра горбуши • 1 шт"))).toBeTruthy();
 		expect(screen.queryByText("Количество")).toBeNull();
 		expect(screen.queryByText("Продукция")).toBeNull();
 		expect(screen.getByRole("button", { name: "Новая продажа" })).toBeTruthy();
@@ -2828,7 +2867,7 @@ describe("HomePage", () => {
 		fireEvent.change(await screen.findByLabelText("Клиент"), { target: { value: "Иван" } });
 		fireEvent.click(await screen.findByRole("option", { name: "Выбрать клиента Иван Петров" }));
 		await selectOperationProduct(/Икра горбуши/);
-		fireEvent.change(screen.getByLabelText("Количество, шт"), { target: { value: "1" } });
+		fireEvent.change(screen.getByLabelText("Количество, кг"), { target: { value: "0.2" } });
 		fireEvent.click(screen.getByRole("button", { name: "Безнал" }));
 		fireEvent.change(screen.getByLabelText("Комментарий"), { target: { value: "Доставка" } });
 		fireEvent.click(screen.getByRole("button", { name: "Записать продажу" }));
@@ -2836,7 +2875,7 @@ describe("HomePage", () => {
 		expect(await screen.findByText("Недостаточно товара у курьера")).toBeTruthy();
 		expect((screen.getByLabelText("Клиент") as HTMLInputElement).value).toBe("Иван Петров · +7 (999) 123-45-67");
 		expect((screen.getByRole("combobox", { name: "Продукция" }) as HTMLInputElement).value).toContain("Икра горбуши");
-		expect((screen.getByLabelText("Количество, шт") as HTMLInputElement).value).toBe("1");
+		expect((screen.getByLabelText("Количество, кг") as HTMLInputElement).value).toBe("0.2");
 		expect(screen.getByRole("button", { name: "Безнал" }).getAttribute("aria-pressed")).toBe("true");
 		expect((screen.getByLabelText("Комментарий") as HTMLTextAreaElement).value).toBe("Доставка");
 		expect(screen.queryByText("Продажа записана")).toBeNull();
@@ -3133,6 +3172,7 @@ describe("HomePage", () => {
 		expect(screen.getAllByText("Продукция").length).toBeGreaterThan(0);
 		expect(screen.getByText("Количество")).toBeTruthy();
 		expect(screen.getByText("Сырье на 1 шт")).toBeTruthy();
+		expect(screen.getAllByText("2,4 кг • 12 шт").length).toBeGreaterThanOrEqual(2);
 		expect(screen.getByText("0,667 кг/шт")).toBeTruthy();
 		expect(screen.queryByText("Движение наличных")).toBeNull();
 		expect(fetchMock.mock.calls.some(([input]) => String(input).includes("/analytics/director?periodPreset=30d"))).toBe(true);
@@ -3190,7 +3230,7 @@ describe("HomePage", () => {
 			expect(screen.getAllByText((_, element) =>
 				element?.textContent?.replace(/\u00A0/g, " ") === "1250 ₽/шт",
 			).length).toBeGreaterThan(0);
-			fireEvent.change(screen.getByLabelText("Количество"), { target: { value: "1" } });
+			fireEvent.change(screen.getByLabelText("Количество, кг"), { target: { value: "0.2" } });
 			fireEvent.change(screen.getByLabelText("Новая цена, ₽"), { target: { value: "1000" } });
 			fireEvent.change(screen.getByLabelText("Комментарий"), { target: { value: "Сезонная цена" } });
 			fireEvent.click(screen.getByRole("button", { name: "Сохранить цену" }));
@@ -3201,7 +3241,7 @@ describe("HomePage", () => {
 						method: "POST",
 						body: JSON.stringify({
 							distributorProductBalanceId: "distributor-balance1",
-							quantity: 1,
+							quantityInput: { mode: "net_weight", netWeightKilograms: "0.2" },
 							discountedUnitPriceCents: 100000,
 							comment: "Сезонная цена",
 						}),
@@ -3209,8 +3249,8 @@ describe("HomePage", () => {
 				);
 			});
 			expect(await screen.findByRole("heading", { name: "Записано" })).toBeTruthy();
-			expect(screen.getByText(byTextContent("1 шт · 1250 ₽ → 1000 ₽/шт"))).toBeTruthy();
-			expect(screen.getByText(byTextContent("250 ₽/шт · всего 250 ₽"))).toBeTruthy();
+			expect(screen.getByText(byTextContent("1 шт • 1250 ₽ → 1000 ₽/шт"))).toBeTruthy();
+			expect(screen.getByText(byTextContent("250 ₽/шт • всего 250 ₽"))).toBeTruthy();
 			expect(screen.getByText("Осталось по старой цене")).toBeTruthy();
 			expect(screen.queryByText("Итого скидка")).toBeNull();
 			expect(screen.queryByText("Цена снижена")).toBeNull();
@@ -3338,12 +3378,12 @@ describe("HomePage", () => {
 		});
 		await selectOperationProduct(/Икра горбуши/);
 		expect(screen.getByText("Доступно")).toBeTruthy();
-		expect(screen.getByText("2 шт")).toBeTruthy();
+		expect(screen.getByText(byTextContent("0,4 кг • 2 шт"))).toBeTruthy();
 		expect(screen.getByText("Цена")).toBeTruthy();
 		expect(screen.getByText((_, element) =>
 			element?.textContent?.replace(/\u00A0/g, " ") === "1250 ₽/шт",
 		)).toBeTruthy();
-		fireEvent.change(screen.getByLabelText("Количество, шт"), { target: { value: "1" } });
+		fireEvent.change(screen.getByLabelText("Количество, кг"), { target: { value: "0.2" } });
 		fireEvent.click(screen.getByRole("button", { name: "Наличные" }));
 		expect(screen.getByRole("button", { name: "Наличные" }).getAttribute("aria-pressed")).toBe("true");
 		fireEvent.change(screen.getByLabelText("Комментарий"), { target: { value: "Первый заказ" } });
@@ -3357,7 +3397,7 @@ describe("HomePage", () => {
 					body: JSON.stringify({
 						distributorProductBalanceId: "distributor-balance1",
 						clientId: "client2",
-						quantity: 1,
+							quantityInput: { mode: "net_weight", netWeightKilograms: "0.2" },
 						paymentMethod: "cash",
 						comment: "Первый заказ",
 					}),
@@ -3366,7 +3406,7 @@ describe("HomePage", () => {
 		});
 		expect(await screen.findByRole("heading", { name: "Записано" })).toBeTruthy();
 		expect(screen.getByText("Анна · +7 (999) 888-77-66")).toBeTruthy();
-		expect(screen.getByText(byTextContent("Икра горбуши · 1 шт · 1250 ₽/шт"))).toBeTruthy();
+		expect(screen.getByText(byTextContent("Икра горбуши • 1 шт • 1250 ₽/шт"))).toBeTruthy();
 		expect(screen.queryByText("Распределитель Центральный")).toBeNull();
 		expect(screen.queryByText("Количество")).toBeNull();
 		expect(screen.getByRole("button", { name: "Новая продажа" })).toBeTruthy();
@@ -3691,7 +3731,7 @@ describe("HomePage", () => {
 		expect(screen.getByDisplayValue("12")).toBeTruthy();
 		fireEvent.click(screen.getByRole("button", { name: "Вперед" }));
 		expect(await screen.findByText(/Кнопка открывает форму передачи продукции/)).toBeTruthy();
-		expect(screen.getByDisplayValue("Икра А · 18 шт")).toBeTruthy();
+		expect(screen.getByDisplayValue("Икра А • 18 шт")).toBeTruthy();
 		expect(screen.getByDisplayValue("Портовая 1")).toBeTruthy();
 		expect(screen.getByDisplayValue("5")).toBeTruthy();
 		fireEvent.click(screen.getByRole("button", { name: "Вперед" }));
@@ -3739,7 +3779,7 @@ describe("HomePage", () => {
 		fireEvent.click(screen.getByRole("button", { name: "Вперед" }));
 		expect(await screen.findByText(/Кнопка открывает форму продажи/)).toBeTruthy();
 		expect(screen.getByDisplayValue("Петр Петров · 79998887766")).toBeTruthy();
-		expect(screen.getByDisplayValue("Икра А · 18 шт")).toBeTruthy();
+		expect(screen.getByDisplayValue("Икра А • 18 шт")).toBeTruthy();
 
 		fireEvent.click(screen.getByRole("button", { name: "Вперед" }));
 		expect(await screen.findByText(/В этом разделе находят покупателя/)).toBeTruthy();
