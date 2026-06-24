@@ -42,6 +42,7 @@
 - `docs/exec-plans/completed/2026-06-04-director-cash-withdrawal.md` — завершенный этап Director Cash Withdrawal: списание наличных с распределителя Директором без обязательного комментария.
 - `docs/exec-plans/completed/2026-06-04-production-notifications.md` — завершенный этап Production Notifications: свободные задачи от коммерческого руководителя производству без WebSocket в первом проходе.
 - `docs/exec-plans/completed/2026-06-03-courier-unload.md` — завершенный план этапа Courier Unload: сгрузка нескольких товарных строк и наличных курьером на распределитель.
+- `docs/exec-plans/completed/2026-06-24-courier-ledger-patterns.md` — завершенный frontend-план унификации курьерских summary/table паттернов и переработки таблиц остатков курьеров у Директора и коммерческого руководителя.
 - `docs/exec-plans/completed/2026-06-02-role-home-working-cards.md` — завершенный frontend этап: первые экраны ролей и read-only списки очищены от декоративных карточек, disabled action placeholders и CSS fallback.
 - `docs/exec-plans/completed/2026-05-31-frontend-role-screen-recomposition.md` — завершенный frontend этап: role screens приведены к единой mobile composition без смены текущей дизайн-системы.
 - `docs/exec-plans/completed/2026-05-31-courier-sales-and-cash-balance.md` — завершенный этап Courier Sales And Courier Cash Balance: продажа курьером и наличный баланс курьера.

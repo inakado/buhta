@@ -43,11 +43,12 @@ export function CourierBalanceHome({
 	const totalNetWeightGrams = data?.summary.totalNetWeightGrams ?? 0;
 	const totalStockValueCents = data?.summary.totalStockValueCents ?? 0;
 	const totalCashCents = cashData?.totalAmountCents ?? 0;
-	const stockItemCount = data?.summary.stockItemCount ?? 0;
+	const courierCount = data?.summary.courierCount ?? 0;
 	const Frame = embedded ? "div" : "section";
 	const frameClassName = [
 		embedded ? "embedded-screen-stack" : "screen-stack",
-		variant === "director-stock" ? "courier-ledger-surface" : "",
+		"courier-ledger-surface",
+		variant === "director-stock" ? "courier-ledger-surface--director" : "",
 	].filter(Boolean).join(" ");
 
 	return (
@@ -55,7 +56,7 @@ export function CourierBalanceHome({
 			{hideHeading ? null : (
 				<div className="section-heading">
 					<h2>{title}</h2>
-					<span>{stockItemCount} позиций</span>
+					<span>{formatCourierCount(courierCount)}</span>
 				</div>
 			)}
 
@@ -91,7 +92,6 @@ export function CourierBalanceHome({
 				cashItems={cashData?.items ?? []}
 				productItems={data?.items ?? []}
 				summaries={data?.courierSummaries ?? []}
-				variant={variant}
 			/>
 		</Frame>
 	);
@@ -101,12 +101,10 @@ function CourierPeopleList({
 	cashItems,
 	productItems,
 	summaries,
-	variant,
 }: {
 	cashItems: CourierCashBalanceItem[];
 	productItems: CourierProductBalanceItem[];
 	summaries: CourierProductBalancesCourierSummary[];
-	variant: "default" | "director-stock";
 }) {
 	if (summaries.length === 0) {
 		return null;
@@ -121,79 +119,82 @@ function CourierPeopleList({
 
 	return (
 		<div className="courier-balance-list">
-			{variant === "director-stock" ? (
-				<div className="director-courier-table-head">
-					<span>Курьер</span>
-					<span>Остаток</span>
-					<span>Наличные</span>
-				</div>
-			) : null}
-			{summaries.map((summary) => {
+			{summaries.map((summary, index) => {
 				const courierProducts = productsByCourier.get(summary.courierUserId) ?? [];
 				const courierCashCents = cashByCourier.get(summary.courierUserId) ?? 0;
+				const hasProducts = courierProducts.length > 0;
 
 				return (
-					<div className="courier-balance-card" key={summary.courierUserId}>
-						<div className="courier-balance-head">
-							<div>
+					<details
+						className={hasProducts ? "courier-balance-card" : "courier-balance-card courier-balance-card--empty"}
+						key={summary.courierUserId}
+						open={index === 0 && hasProducts}
+					>
+						<summary className="courier-balance-summary">
+							<div className="courier-balance-identity">
 								<strong>{summary.courierDisplayName}</strong>
-								<p>{summary.stockItemCount} позиций</p>
+								<span className={hasProducts ? "courier-balance-status" : "courier-balance-status courier-balance-status--empty"}>
+									{hasProducts ? formatPositionCount(summary.stockItemCount) : "нет товара"}
+								</span>
+								{hasProducts ? (
+									<span className="courier-balance-quantity">
+										<ProductQuantityDisplay
+											quantity={summary.totalUnits}
+											totalNetWeightGrams={summary.totalNetWeightGrams}
+											variant="summary-inline"
+										/>
+									</span>
+								) : null}
 							</div>
-							{variant === "director-stock" ? (
-								<div className="courier-balance-metrics">
+							<div className="courier-balance-amounts">
+								<div>
 									<strong>{formatRubles(summary.totalStockValueCents)} ₽</strong>
-									<strong>{formatRubles(courierCashCents)} ₽</strong>
+									<span>товар</span>
 								</div>
-							) : (
-								<div className="courier-cash-value">
+								<div>
 									<strong>{formatRubles(courierCashCents)} ₽</strong>
 									<span>наличные</span>
 								</div>
-							)}
-						</div>
-						<table className="courier-product-table" aria-label={`Продукция курьера ${summary.courierDisplayName}`}>
-							<thead className={variant === "director-stock" ? "sr-only" : undefined}>
-								<tr className="courier-product-table-head">
-									<th scope="col">Наименование</th>
-									<th scope="col">Количество</th>
-									<th scope="col">Итого</th>
-								</tr>
-							</thead>
-							<tbody>
-								{courierProducts.length ? courierProducts.map((item) => (
-									<tr className="courier-product-row" key={item.id}>
-										<td>
-											<strong>{item.productName}</strong>
-											{variant === "director-stock" ? null : <span>{formatRubles(item.unitPriceCents)} ₽/шт</span>}
-										</td>
-										<td>
-											<ProductQuantityDisplay
-												quantity={item.quantity}
-												totalNetWeightGrams={item.totalNetWeightGrams}
-												variant="table"
-											/>
-											{variant === "director-stock" ? (
-												<span className="inventory-price-line">{formatRubles(item.unitPriceCents)} ₽/шт</span>
-											) : null}
-										</td>
-										<td>
-											<strong>{formatRubles(item.stockValueCents)} ₽</strong>
-										</td>
-									</tr>
-								)) : (
-									<tr className="courier-product-empty">
-										<td colSpan={3}>Нет продукции</td>
-									</tr>
-								)}
-							</tbody>
-						</table>
-						{variant === "director-stock" ? null : (
-							<div className="courier-product-total">
-								<span>Всего продукции</span>
-								<strong>{formatRubles(summary.totalStockValueCents)} ₽</strong>
 							</div>
-						)}
-					</div>
+							{hasProducts ? <span className="courier-balance-disclosure" aria-hidden="true" /> : null}
+						</summary>
+						{hasProducts ? (
+							<table className="courier-balance-products" aria-label={`Продукция курьера ${summary.courierDisplayName}`}>
+								<thead className="sr-only">
+									<tr>
+										<th scope="col">Наименование</th>
+										<th scope="col">Количество</th>
+										<th scope="col">Итого</th>
+									</tr>
+								</thead>
+								<tbody>
+									{courierProducts.map((item) => (
+										<tr className="courier-balance-product-row" key={item.id}>
+											<td>
+												<strong>{item.productName}</strong>
+												{item.discounted ? (
+													<span className="courier-balance-price">
+														<span>{formatRubles(item.unitPriceCents)} ₽/шт</span>
+														<span className="courier-balance-price-before">{formatRubles(item.baseUnitPriceCents)} ₽/шт</span>
+													</span>
+												) : null}
+											</td>
+											<td>
+												<ProductQuantityDisplay
+													quantity={item.quantity}
+													totalNetWeightGrams={item.totalNetWeightGrams}
+													variant="table"
+												/>
+											</td>
+											<td>
+												<strong>{formatRubles(item.stockValueCents)} ₽</strong>
+											</td>
+										</tr>
+									))}
+								</tbody>
+							</table>
+						) : null}
+					</details>
 				);
 			})}
 		</div>
@@ -202,4 +203,30 @@ function CourierPeopleList({
 
 function formatRubles(priceCents: number): string {
 	return formatCompactMoneyCents(priceCents);
+}
+
+function formatPositionCount(count: number): string {
+	return `${count} ${formatRussianPlural(count, "позиция", "позиции", "позиций")}`;
+}
+
+function formatCourierCount(count: number): string {
+	return `${count} ${formatRussianPlural(count, "курьер", "курьера", "курьеров")}`;
+}
+
+function formatRussianPlural(count: number, one: string, few: string, many: string): string {
+	const absolute = Math.abs(count);
+	const lastTwo = absolute % 100;
+	const last = absolute % 10;
+
+	if (lastTwo >= 11 && lastTwo <= 14) {
+		return many;
+	}
+	if (last === 1) {
+		return one;
+	}
+	if (last >= 2 && last <= 4) {
+		return few;
+	}
+
+	return many;
 }

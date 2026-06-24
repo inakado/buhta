@@ -3864,50 +3864,6 @@ input[type="search"]::-webkit-search-decoration {
 	color: var(--text-muted);
 }
 
-.courier-home-stock-surface {
-	overflow: hidden;
-	border: 1px solid var(--line);
-	border-radius: 12px;
-	background: var(--base-white);
-}
-
-.courier-home-stock-surface .inventory-table-list {
-	margin-inline: 0;
-}
-
-.courier-home-stock-surface .inventory-table-head,
-.courier-home-stock-surface .inventory-table-row {
-	padding-inline: 12px;
-}
-
-.courier-home-stock-surface .inventory-table-head {
-	min-height: 34px;
-	padding-block: 8px;
-}
-
-.courier-home-stock-surface .inventory-table-row {
-	min-height: 58px;
-	padding-block: 8px;
-}
-
-.courier-home-stock-surface .inventory-table-row:last-child {
-	border-bottom: 0;
-}
-
-.courier-home-stock-surface .inventory-table-product strong,
-.courier-home-stock-surface .inventory-table-quantity strong,
-.courier-home-stock-surface .inventory-table-total strong {
-	font-size: 13px;
-	line-height: 1.12;
-}
-
-.courier-home-stock-surface .inventory-table-product span,
-.courier-home-stock-surface .inventory-table-quantity span {
-	margin-top: 3px;
-	font-size: 10px;
-	line-height: 1.12;
-}
-
 .distributor-worker-stock-surface .inventory-discount-icon {
 	width: 13px;
 	height: 13px;
@@ -5658,6 +5614,208 @@ input[type="search"]::-webkit-search-decoration {
 	white-space: nowrap;
 }
 
+.courier-ledger-surface .courier-balance-list {
+	overflow: hidden;
+	border: 1px solid var(--line);
+	border-radius: 14px;
+	background: var(--base-white);
+}
+
+.courier-ledger-surface .courier-balance-card {
+	display: block;
+	padding: 0;
+}
+
+.courier-ledger-surface .courier-balance-card + .courier-balance-card {
+	border-top: 1px solid var(--line);
+}
+
+.courier-balance-summary {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(142px, auto) 14px;
+	align-items: center;
+	gap: 10px;
+	min-width: 0;
+	padding: 12px;
+	list-style: none;
+	cursor: pointer;
+}
+
+.courier-balance-summary::-webkit-details-marker {
+	display: none;
+}
+
+.courier-balance-card--empty .courier-balance-summary {
+	grid-template-columns: minmax(0, 1fr) minmax(142px, auto);
+	cursor: default;
+}
+
+.courier-balance-identity {
+	display: grid;
+	gap: 4px;
+	min-width: 0;
+}
+
+.courier-balance-identity strong {
+	display: block;
+	overflow-wrap: anywhere;
+	color: var(--base-black);
+	font-size: 14px;
+	font-weight: var(--font-weight-emphasis);
+	line-height: 1.15;
+}
+
+.courier-balance-status,
+.courier-balance-quantity {
+	display: block;
+	color: var(--text-muted);
+	font-size: 11px;
+	font-weight: var(--font-weight-label);
+	line-height: 1.15;
+}
+
+.courier-balance-quantity .product-quantity-display {
+	margin-top: 0;
+}
+
+.courier-balance-quantity .product-quantity-display--summary-inline {
+	justify-content: flex-start;
+	width: auto;
+}
+
+.courier-balance-quantity .product-quantity-display__primary strong {
+	font-size: 11px;
+}
+
+.courier-balance-quantity .product-quantity-display__secondary {
+	margin-left: 6px;
+	font-size: 11px;
+}
+
+.courier-balance-amounts {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(62px, 1fr));
+	gap: 9px;
+	min-width: 0;
+	text-align: right;
+}
+
+.courier-balance-amounts strong,
+.courier-balance-product-row td:last-child strong {
+	display: block;
+	color: var(--base-black);
+	font-size: 13px;
+	font-weight: var(--font-weight-emphasis);
+	font-variant-numeric: tabular-nums;
+	line-height: 1.12;
+	white-space: nowrap;
+}
+
+.courier-balance-amounts span {
+	display: block;
+	margin-top: 3px;
+	color: var(--text-muted);
+	font-size: 10px;
+	line-height: 1.1;
+}
+
+.courier-balance-disclosure {
+	width: 8px;
+	height: 8px;
+	border-right: 1.5px solid var(--text-muted);
+	border-bottom: 1.5px solid var(--text-muted);
+	transform: rotate(45deg);
+	transition: transform 160ms ease-out;
+}
+
+.courier-balance-card[open] .courier-balance-disclosure {
+	transform: rotate(225deg);
+}
+
+.courier-balance-products {
+	width: 100%;
+	border-top: 1px solid var(--line);
+	border-collapse: collapse;
+}
+
+.courier-balance-products th,
+.courier-balance-products td {
+	padding: 0;
+	border: 0;
+	font: inherit;
+	text-align: left;
+	vertical-align: top;
+}
+
+.courier-balance-product-row {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(66px, .5fr) minmax(76px, .56fr);
+	align-items: center;
+	gap: 8px;
+	min-height: 54px;
+	padding: 9px 12px;
+}
+
+.courier-balance-product-row + .courier-balance-product-row {
+	border-top: 1px solid var(--line);
+}
+
+.courier-balance-product-row td {
+	display: block;
+	min-width: 0;
+}
+
+.courier-balance-product-row td:nth-child(2),
+.courier-balance-product-row td:last-child {
+	text-align: right;
+}
+
+.courier-balance-product-row td:nth-child(2) {
+	display: flex;
+	justify-content: flex-end;
+}
+
+.courier-balance-product-row .product-quantity-display--table {
+	justify-items: end;
+	row-gap: 4px;
+}
+
+.courier-balance-product-row .product-quantity-display__primary strong {
+	font-size: 13px;
+	font-weight: var(--font-weight-emphasis);
+	line-height: 1.1;
+}
+
+.courier-balance-product-row .product-quantity-display__secondary {
+	font-size: 10px;
+	font-weight: var(--font-weight-label);
+	line-height: 1.1;
+}
+
+.courier-balance-product-row td:first-child > strong {
+	display: block;
+	overflow-wrap: anywhere;
+	color: var(--base-black);
+	font-size: 13px;
+	font-weight: var(--font-weight-emphasis);
+	line-height: 1.15;
+}
+
+.courier-balance-price {
+	display: grid;
+	justify-items: start;
+	gap: 2px;
+	margin-top: 5px;
+	color: var(--text-muted);
+	font-size: 11px;
+	line-height: 1.1;
+}
+
+.courier-balance-price-before {
+	text-decoration: line-through;
+	text-decoration-thickness: 1px;
+}
+
 @media (max-width: 430px) {
 	.inventory-table-head,
 	.courier-product-table-head {
@@ -5721,13 +5879,6 @@ input[type="search"]::-webkit-search-decoration {
 		padding: 7px 10px;
 	}
 
-	.courier-home-stock-surface .inventory-table-head {
-		display: grid;
-		grid-template-columns: minmax(0, 1fr) minmax(58px, .48fr) minmax(64px, .52fr);
-		column-gap: 8px;
-		padding: 7px 10px;
-	}
-
 	.inventory-stock-table-surface .inventory-table-row {
 		display: grid;
 		grid-template-areas: none;
@@ -5738,47 +5889,28 @@ input[type="search"]::-webkit-search-decoration {
 		padding: 8px 10px;
 	}
 
-	.courier-home-stock-surface .inventory-table-row {
-		display: grid;
-		grid-template-areas: none;
-		grid-template-columns: minmax(0, 1fr) minmax(58px, .48fr) minmax(64px, .52fr);
-		align-items: center;
-		column-gap: 8px;
-		min-height: 56px;
-		padding: 8px 10px;
-	}
-
 	.inventory-stock-table-surface .inventory-table-product,
 	.inventory-stock-table-surface .inventory-table-quantity,
-	.inventory-stock-table-surface .inventory-table-total,
-	.courier-home-stock-surface .inventory-table-product,
-	.courier-home-stock-surface .inventory-table-quantity,
-	.courier-home-stock-surface .inventory-table-total {
+	.inventory-stock-table-surface .inventory-table-total {
 		grid-area: auto;
 	}
 
 	.inventory-stock-table-surface .inventory-table-quantity,
-	.inventory-stock-table-surface .inventory-table-total,
-	.courier-home-stock-surface .inventory-table-quantity,
-	.courier-home-stock-surface .inventory-table-total {
+	.inventory-stock-table-surface .inventory-table-total {
 		min-width: 0;
 		text-align: right;
 	}
 
-	.inventory-stock-table-surface .inventory-table-quantity,
-	.courier-home-stock-surface .inventory-table-quantity {
+	.inventory-stock-table-surface .inventory-table-quantity {
 		align-items: flex-end;
 	}
 
 	.inventory-stock-table-surface .inventory-table-quantity .inventory-price-line,
-	.inventory-stock-table-surface .inventory-table-quantity .inventory-price-before,
-	.courier-home-stock-surface .inventory-table-quantity .inventory-price-line,
-	.courier-home-stock-surface .inventory-table-quantity .inventory-price-before {
+	.inventory-stock-table-surface .inventory-table-quantity .inventory-price-before {
 		justify-content: flex-end;
 	}
 
-	.inventory-stock-table-surface .inventory-table-quantity .product-quantity-display--table,
-	.courier-home-stock-surface .inventory-table-quantity .product-quantity-display--table {
+	.inventory-stock-table-surface .inventory-table-quantity .product-quantity-display--table {
 		justify-items: end;
 	}
 

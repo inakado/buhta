@@ -2,8 +2,10 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { PackageMinus, PackagePlus, ReceiptText, type LucideIcon } from "lucide-react";
+import type { ReactNode } from "react";
 import { getCourierCashBalances, getCourierProductBalances } from "../../lib/api-client";
 import { formatCompactRubles } from "../../lib/money-format";
+import { ProductQuantityDisplay } from "../operations/product-quantity-input";
 import { CourierStockList } from "./CourierStockList";
 
 type CourierHomeOverviewProps = {
@@ -36,6 +38,7 @@ export function CourierHomeOverview({ onLoad, onSale, onUnload, online }: Courie
 	const ownCashBalance = cashBalances?.items[0];
 	const isFetching = balancesFetching || cashBalancesFetching;
 	const totalUnits = data?.summary.totalUnits ?? 0;
+	const totalNetWeightGrams = data?.summary.totalNetWeightGrams ?? 0;
 	const stockValueCents = data?.summary.totalStockValueCents ?? 0;
 	const cashAmountCents = ownCashBalance?.amountCents ?? 0;
 
@@ -48,7 +51,17 @@ export function CourierHomeOverview({ onLoad, onSale, onUnload, online }: Courie
 
 			<section className="production-home-surface courier-home-surface" aria-label="Сводка курьера">
 				<div className="production-summary-ledger summary-horizontal courier-home-summary">
-					<CourierSummaryCell label="Продукция" loading={balancesLoading} value={`${totalUnits} шт`} />
+					<CourierSummaryCell
+						label="Продукция"
+						loading={balancesLoading}
+						value={(
+							<ProductQuantityDisplay
+								quantity={totalUnits}
+								totalNetWeightGrams={totalNetWeightGrams}
+								variant="summary-inline"
+							/>
+						)}
+					/>
 					<CourierSummaryCell label="Стоимость" loading={balancesLoading} value={formatCompactRubles(stockValueCents)} />
 					<CourierSummaryCell
 						label="Наличные"
@@ -79,19 +92,25 @@ export function CourierHomeOverview({ onLoad, onSale, onUnload, online }: Courie
 			{!balancesLoading && !balancesError && data?.items.length === 0 ? (
 				<p className="muted">У курьера пока нет продукции.</p>
 			) : null}
-			<div className="courier-home-stock-surface">
+			<div className="inventory-stock-table-surface">
 				<CourierStockList items={data?.items ?? []} />
 			</div>
 		</section>
 	);
 }
 
-function CourierSummaryCell({ label, loading, value }: { label: string; loading: boolean; value: string }) {
+function CourierSummaryCell({ label, loading, value }: { label: string; loading: boolean; value: ReactNode }) {
+	const displayValue = loading ? "..." : value;
+
 	return (
 		<div className="production-summary-row courier-summary-cell">
 			<span className="production-summary-main">
 				<span>{label}</span>
-				<strong>{loading ? "..." : value}</strong>
+				{typeof displayValue === "string" ? (
+					<strong>{displayValue}</strong>
+				) : (
+					<span className="production-summary-value">{displayValue}</span>
+				)}
 			</span>
 		</div>
 	);

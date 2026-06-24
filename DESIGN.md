@@ -145,6 +145,14 @@ components:
     rounded: "compact panel radius"
     density: "single header, owner rows, light detail rows"
     typography: "10-15px compact labels and tabular values"
+  courier-balance-ledger:
+    backgroundColor: "{colors.base-white}"
+    textColor: "{colors.base-black}"
+    borderColor: "{colors.line}"
+    rounded: "compact panel radius"
+    density: "expandable courier rows with subordinate product rows"
+    statusTreatment: "muted text only, no badge fill or accent color for position counts or empty state"
+    typography: "compact courier identity, tabular money, kg primary and units secondary"
   bottom-nav:
     backgroundColor: "{colors.base-black}"
     textColor: "{colors.base-white}"
@@ -272,6 +280,7 @@ components:
 - **Metric summary strip:** three-column lime/green status strips use 18px radius, 8px outer padding, 7-8px cell padding, 11px labels and 16px tabular values. Money values use compact rubles without trailing `.00`. Product mass and units stay on one value line in summary strips: kg is the primary value, шт is a smaller muted suffix. Do not promote these values to display size on mobile.
 - **Director control surface:** the extracted Director home is the reference for future dashboard/control screens. Use white panels, thin ledger borders, restrained radii, dense inner padding, compact section titles, small table labels and tabular values. Do not reintroduce stacked decorative cards, oversized KPI blocks, broad shadows, arbitrary status colors or data duplicated across tabs.
 - **Director stock ledger:** `Остатки Директора` extends the control surface standard for stock screens. Keep a fixed topbar with embedded segmented tabs, one compact summary strip, then white ledger panels. Owner rows such as distributor or courier are stronger than product detail rows. Table labels appear once per panel or section, not under every entity. Use tonal separators and thin lines to separate owners instead of nested cards.
+- **Courier balance ledger:** экраны остатков курьеров у Директора и коммерческого руководителя используют один раскрывающийся ledger. Верхняя сводка остается трехчастной: `Количество`, `Продукция`, `Наличные`. В списке курьер является owner-row: имя, muted-статус позиций без фоновой плашки и без акцентного цвета, общие `кг` + `шт`, стоимость продукции и наличные. Товарные строки раскрываются внутри курьера и показывают только `Наименование`, `Количество`, `Итого`; цена `₽/шт` выводится только когда объясняет скидку или нестандартную цену.
 
 ### Inputs / Fields
 

@@ -2923,11 +2923,10 @@ describe("HomePage", () => {
 		expect(await screen.findByText("Балансы курьеров")).toBeTruthy();
 		expect(document.querySelector(".courier-ledger-surface")).toBeTruthy();
 		expect(await screen.findByText("Courier")).toBeTruthy();
-		expect(screen.getByText("Курьер")).toBeTruthy();
-		expect(screen.getByText("Остаток")).toBeTruthy();
 		expect(screen.getAllByText("Продукция").length).toBeGreaterThan(0);
 		expect(screen.getAllByText("Наличные").length).toBeGreaterThan(0);
-		expect(screen.getAllByText("1 позиций").length).toBeGreaterThan(0);
+		expect(screen.getAllByText("1 позиция").length).toBeGreaterThan(0);
+		expect(screen.getAllByLabelText("0,4 кг • 2 шт").length).toBeGreaterThan(0);
 		expect(screen.getByText("Икра горбуши")).toBeTruthy();
 		expect(screen.getByRole("table", { name: "Продукция курьера Courier" })).toBeTruthy();
 		expect(screen.queryByText("Всего продукции")).toBeNull();
@@ -2975,7 +2974,8 @@ describe("HomePage", () => {
 		expect(screen.queryByRole("heading", { name: "Курьеры" })).toBeNull();
 		expect(screen.getAllByText("Продукция").length).toBeGreaterThan(0);
 		expect(await screen.findByText("Courier")).toBeTruthy();
-		expect(screen.getAllByText("1 позиций").length).toBeGreaterThan(0);
+		expect(screen.getAllByText("1 позиция").length).toBeGreaterThan(0);
+		expect(screen.getAllByLabelText("0,4 кг • 2 шт").length).toBeGreaterThan(0);
 		expect(screen.getByRole("table", { name: "Продукция курьера Courier" })).toBeTruthy();
 		expect(screen.queryByText("Всего продукции")).toBeNull();
 		expect(screen.queryByRole("button", { name: "Записать загрузку" })).toBeNull();
