@@ -4,7 +4,7 @@ import type { DistributorInventoryItem } from "@buhta/shared";
 import { BadgePercent } from "lucide-react";
 import { Fragment } from "react";
 import { formatCompactRubles } from "../../lib/money-format";
-import { formatProductQuantityLabel } from "../operations/product-quantity-input";
+import { ProductQuantityDisplay } from "../operations/product-quantity-input";
 
 export function DistributorStockList({
 	discountActionLabel = "Снизить цену",
@@ -58,19 +58,20 @@ export function DistributorStockList({
 										) : null}
 										{item.discounted ? <span className="sr-only">Цена снижена</span> : null}
 									</div>
-									{showDistributorName ? <span>{item.distributorName}</span> : null}
-								</td>
-								<td className="inventory-table-quantity">
-									<strong>{formatProductQuantityLabel({
-										quantity: item.quantity,
-										totalNetWeightGrams: item.totalNetWeightGrams,
-									})}</strong>
 									<span className="inventory-price-line">
 										{formatRubles(item.unitPriceCents)}/шт
 									</span>
 									{item.discounted ? (
 										<span className="inventory-price-before">{formatRubles(item.baseUnitPriceCents)}/шт</span>
 									) : null}
+									{showDistributorName ? <span>{item.distributorName}</span> : null}
+								</td>
+								<td className="inventory-table-quantity">
+									<ProductQuantityDisplay
+										quantity={item.quantity}
+										totalNetWeightGrams={item.totalNetWeightGrams}
+										variant="table"
+									/>
 								</td>
 								<td className="inventory-table-total">
 									<strong>{formatRubles(item.stockValueCents)}</strong>

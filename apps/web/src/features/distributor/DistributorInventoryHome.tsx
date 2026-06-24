@@ -25,6 +25,7 @@ import {
 	createDefaultProductQuantityState,
 	formatKilograms,
 	formatProductQuantityLabel,
+	ProductQuantityDisplay,
 	type ProductQuantityCalculation,
 	ProductQuantityInputField,
 	type ProductQuantityInputState,
@@ -331,10 +332,13 @@ export function DistributorInventoryHome({
 				<div className="inventory-overview-strip">
 					<div>
 						<span>Количество</span>
-						<strong>{inventoryLoading ? "Загрузка" : formatProductQuantityLabel({
-							quantity: totalUnits,
-							totalNetWeightGrams,
-						})}</strong>
+						{inventoryLoading ? <strong>Загрузка</strong> : (
+							<ProductQuantityDisplay
+								quantity={totalUnits}
+								totalNetWeightGrams={totalNetWeightGrams}
+								variant="summary"
+							/>
+						)}
 					</div>
 					<div>
 						<span>Продукция</span>
@@ -623,10 +627,11 @@ export function DistributorInventoryHome({
 								<p>{summary.stockItemCount} позиций</p>
 							</div>
 							<div className="stock-aggregate-value">
-								<strong>{formatProductQuantityLabel({
-									quantity: summary.totalUnits,
-									totalNetWeightGrams: summary.totalNetWeightGrams,
-								})}</strong>
+								<ProductQuantityDisplay
+									quantity={summary.totalUnits}
+									totalNetWeightGrams={summary.totalNetWeightGrams}
+									variant="summary"
+								/>
 								<span>{formatRubles(summary.totalStockValueCents)}</span>
 							</div>
 						</div>

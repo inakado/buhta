@@ -8,7 +8,7 @@ import {
 } from "@buhta/shared";
 import { getCourierCashBalances, getCourierProductBalances } from "../../lib/api-client";
 import { formatCompactMoneyCents, formatCompactRubles } from "../../lib/money-format";
-import { formatProductQuantityLabel } from "../operations/product-quantity-input";
+import { ProductQuantityDisplay } from "../operations/product-quantity-input";
 
 export function CourierBalanceHome({
 	embedded = false,
@@ -62,10 +62,13 @@ export function CourierBalanceHome({
 			<div className="inventory-overview-strip">
 				<div>
 					<span>Количество</span>
-					<strong>{balancesLoading ? "Загрузка" : formatProductQuantityLabel({
-						quantity: totalUnits,
-						totalNetWeightGrams,
-					})}</strong>
+					{balancesLoading ? <strong>Загрузка</strong> : (
+						<ProductQuantityDisplay
+							quantity={totalUnits}
+							totalNetWeightGrams={totalNetWeightGrams}
+							variant="summary"
+						/>
+					)}
 				</div>
 				<div>
 					<span>Продукция</span>
@@ -164,11 +167,14 @@ function CourierPeopleList({
 											{variant === "director-stock" ? null : <span>{formatRubles(item.unitPriceCents)} ₽/шт</span>}
 										</td>
 										<td>
-											<strong>{formatProductQuantityLabel({
-												quantity: item.quantity,
-												totalNetWeightGrams: item.totalNetWeightGrams,
-											})}</strong>
-											{variant === "director-stock" ? <span>{formatRubles(item.unitPriceCents)} ₽/шт</span> : null}
+											<ProductQuantityDisplay
+												quantity={item.quantity}
+												totalNetWeightGrams={item.totalNetWeightGrams}
+												variant="table"
+											/>
+											{variant === "director-stock" ? (
+												<span className="inventory-price-line">{formatRubles(item.unitPriceCents)} ₽/шт</span>
+											) : null}
 										</td>
 										<td>
 											<strong>{formatRubles(item.stockValueCents)} ₽</strong>

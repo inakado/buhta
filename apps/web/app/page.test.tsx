@@ -1649,7 +1649,9 @@ describe("HomePage", () => {
 		expect(screen.getByText("Икра горбуши")).toBeTruthy();
 		expect(screen.getByText("Остаток")).toBeTruthy();
 		expect(screen.getByText("Цена")).toBeTruthy();
-		expect(screen.getByText("0,8 кг • 4 шт")).toBeTruthy();
+		expect(screen.getByLabelText("0,8 кг • 4 шт")).toBeTruthy();
+		expect(screen.getByText("1250 ₽/шт")).toBeTruthy();
+		expect(screen.queryByText("0,8 кг • 4 шт")).toBeNull();
 		expect(screen.queryByText("партия 0,8 кг • 4 шт")).toBeNull();
 		fireEvent.click(screen.getByRole("button", { name: "Назад" }));
 
@@ -1730,7 +1732,7 @@ describe("HomePage", () => {
 		expect(await screen.findByText("Икра горбуши")).toBeTruthy();
 		expect(screen.getByText("1 позиция")).toBeTruthy();
 		expect(screen.getByText("Распределитель Центральный")).toBeTruthy();
-		expect(screen.getAllByText(byTextContent("0,4 кг • 2 шт")).length).toBeGreaterThan(0);
+		expect(screen.getAllByLabelText("0,4 кг • 2 шт").length).toBeGreaterThan(0);
 		expect(screen.queryByRole("button", { name: "История" })).toBeNull();
 		expect(screen.queryByRole("button", { name: "Профиль" })).toBeNull();
 		fireEvent.click(screen.getByRole("button", { name: "Еще" }));

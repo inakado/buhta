@@ -1,6 +1,6 @@
 import type { CourierProductBalanceItem } from "@buhta/shared";
 import { formatCompactRubles } from "../../lib/money-format";
-import { formatProductQuantityLabel } from "../operations/product-quantity-input";
+import { ProductQuantityDisplay } from "../operations/product-quantity-input";
 
 export function CourierStockList({
 	items,
@@ -26,11 +26,12 @@ export function CourierStockList({
 							<span>{showCourier ? item.courierDisplayName : formatRubles(item.unitPriceCents) + "/шт"}</span>
 						</td>
 						<td className="inventory-table-quantity">
-							<strong>{formatProductQuantityLabel({
-								quantity: item.quantity,
-								totalNetWeightGrams: item.totalNetWeightGrams,
-							})}</strong>
-							{showCourier ? <span>{formatRubles(item.unitPriceCents)}/шт</span> : null}
+							<ProductQuantityDisplay
+								quantity={item.quantity}
+								totalNetWeightGrams={item.totalNetWeightGrams}
+								variant="table"
+							/>
+							{showCourier ? <span className="inventory-price-line">{formatRubles(item.unitPriceCents)}/шт</span> : null}
 						</td>
 						<td className="inventory-table-total">
 							<strong>{formatRubles(item.stockValueCents)}</strong>

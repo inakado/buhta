@@ -22,6 +22,7 @@ export type ProductQuantityCalculation = {
 };
 
 type ProductQuantityInputUnit = "кг" | "шт";
+type ProductQuantityDisplayVariant = "inline" | "table" | "summary";
 
 export function createDefaultProductQuantityState(): ProductQuantityInputState {
 	return {
@@ -206,6 +207,27 @@ export function formatProductQuantityLabel({
 	totalNetWeightGrams: number;
 }): string {
 	return `${formatKilograms(totalNetWeightGrams)} кг • ${quantity} шт`;
+}
+
+export function ProductQuantityDisplay({
+	quantity,
+	totalNetWeightGrams,
+	variant = "inline",
+}: {
+	quantity: number;
+	totalNetWeightGrams: number;
+	variant?: ProductQuantityDisplayVariant;
+}) {
+	const label = formatProductQuantityLabel({ quantity, totalNetWeightGrams });
+
+	return (
+		<span aria-label={label} className={`product-quantity-display product-quantity-display--${variant}`}>
+			<span className="product-quantity-display__primary">
+				<strong>{formatKilograms(totalNetWeightGrams)} кг</strong>
+			</span>
+			<span className="product-quantity-display__secondary">{quantity} шт</span>
+		</span>
+	);
 }
 
 function kilogramsToGrams(value: string): number {

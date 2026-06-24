@@ -125,6 +125,12 @@ components:
     labelTypography: "11px / 1.15"
     valueTypography: "{typography.metricStrip}"
     moneyFormat: "compact rubles, no trailing .00"
+  product-quantity-display:
+    primary: "net weight in kg"
+    secondary: "unit count in шт"
+    order: "kg first, units second"
+    tableTreatment: "vertical quantity stack: primary kg line, muted unit-count line"
+    priceTreatment: "unit price is a separate fact, not part of the quantity string"
   director-control-surface:
     backgroundColor: "{colors.base-white}"
     textColor: "{colors.base-black}"
@@ -260,6 +266,9 @@ components:
 - **Border:** `line` borders and separators are the main structure.
 - **Internal Padding:** compact default 12-14px; role summary may use 14-16px.
 - **Money formatting:** overview metrics, read-only stock lists, production read-only prices and operation summaries use compact rubles without trailing `.00`; keep kopecks when they are non-zero. Audit/detail views and money inputs keep exact two-decimal formatting.
+- **Product quantity display:** готовая продукция отображается как `кг` primary и `шт` secondary. В таблицах остатков запрещен inline-формат `кг + шт`: количество идет вертикальным стеком, где кг получает основной вес, а штуки идут отдельной muted-строкой. Цена за штуку (`₽/шт`) является отдельным фактом и не склеивается с количеством в одну равновесную meta-цепочку. Result/history surfaces должны сохранять тот же порядок `кг` → `шт`, если данные по массе доступны.
+- **Distributor stock ledger:** в таблицах `На распределителе` цена за штуку (`₽/шт`) относится к позиции и размещается под наименованием. Колонка `Количество` содержит только физическое количество (`кг` и `шт`), колонка `Итого` содержит только сумму позиции.
+- **Workshop product ledger:** экран `Продукция в цеху` использует три смысловые колонки даже на 375px: `Наименование`, `Цена`, `Остаток`. Цена за штуку занимает свободную среднюю колонку и не выводится под остатком, потому что правый блок должен отвечать только за физическое количество.
 - **Metric summary strip:** three-column lime/green status strips use 18px radius, 8px outer padding, 7-8px cell padding, 11px labels and 16px tabular values. Money values use compact rubles without trailing `.00`. Do not promote these values to display size on mobile.
 - **Director control surface:** the extracted Director home is the reference for future dashboard/control screens. Use white panels, thin ledger borders, restrained radii, dense inner padding, compact section titles, small table labels and tabular values. Do not reintroduce stacked decorative cards, oversized KPI blocks, broad shadows, arbitrary status colors or data duplicated across tabs.
 - **Director stock ledger:** `Остатки Директора` extends the control surface standard for stock screens. Keep a fixed topbar with embedded segmented tabs, one compact summary strip, then white ledger panels. Owner rows such as distributor or courier are stronger than product detail rows. Table labels appear once per panel or section, not under every entity. Use tonal separators and thin lines to separate owners instead of nested cards.

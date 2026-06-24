@@ -38,6 +38,7 @@ import {
 	createDefaultProductQuantityState,
 	formatKilograms,
 	formatProductQuantityLabel,
+	ProductQuantityDisplay,
 	type ProductQuantityCalculation,
 	ProductQuantityInputField,
 	type ProductQuantityInputState,
@@ -1021,15 +1022,15 @@ function WorkshopProductBalanceList({
 	workshopProductBalances: WorkshopProductBalanceItem[];
 }) {
 	return (
-		<table className="inventory-table-list" aria-label="Продукция в цеху">
+		<table className="inventory-table-list production-workshop-product-table" aria-label="Продукция в цеху">
 			<caption className="inventory-table-title">
 				<h2>Продукция в цеху</h2>
 			</caption>
 			<thead>
 				<tr className="inventory-table-head">
 					<th scope="col">Наименование</th>
-					<th scope="col">Остаток</th>
 					<th scope="col">Цена</th>
+					<th scope="col">Остаток</th>
 				</tr>
 			</thead>
 			<tbody>
@@ -1038,29 +1039,21 @@ function WorkshopProductBalanceList({
 					<ProductionListMessage colSpan={3} text="Готовой продукции пока нет. Выпустите первую партию." />
 				) : null}
 				{workshopProductBalances.map((balance) => {
-					const currentQuantityLabel = formatProductQuantityLabel({
-						quantity: balance.quantity,
-						totalNetWeightGrams: balance.totalNetWeightGrams,
-					});
-					const producedQuantityLabel = formatProductQuantityLabel({
-						quantity: balance.producedQuantity,
-						totalNetWeightGrams: balance.producedTotalNetWeightGrams,
-					});
-					const showProducedQuantity = balance.quantity !== balance.producedQuantity
-						|| balance.totalNetWeightGrams !== balance.producedTotalNetWeightGrams;
-
 					return (
 						<tr className="inventory-table-row" key={balance.id}>
 							<td className="inventory-table-product">
 								<strong>{balance.productName}</strong>
 								<span>{formatDateTime(balance.createdAt)}</span>
 							</td>
-							<td className="inventory-table-quantity">
-								<strong>{currentQuantityLabel}</strong>
-								{showProducedQuantity ? <span>партия {producedQuantityLabel}</span> : null}
-							</td>
 							<td className="inventory-table-total">
-								<strong>{formatPriceRubles(balance.priceCents)} ₽</strong>
+								<strong>{formatPriceRubles(balance.priceCents)} ₽/шт</strong>
+							</td>
+							<td className="inventory-table-quantity">
+								<ProductQuantityDisplay
+									quantity={balance.quantity}
+									totalNetWeightGrams={balance.totalNetWeightGrams}
+									variant="table"
+								/>
 							</td>
 						</tr>
 					);
