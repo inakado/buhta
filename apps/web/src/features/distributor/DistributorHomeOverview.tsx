@@ -2,8 +2,10 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { BadgeCheck, Banknote, ChevronRight, ClipboardList, ReceiptText, Send, type LucideIcon } from "lucide-react";
+import type { ReactNode } from "react";
 import { getDistributorCashBalances, getDistributorInventory } from "../../lib/api-client";
 import { formatCompactRubles } from "../../lib/money-format";
+import { formatProductQuantityLabel, ProductQuantityDisplay } from "../operations/product-quantity-input";
 import { DistributorStockList } from "./DistributorStockList";
 
 type DistributorHomeOverviewProps = {
@@ -71,9 +73,14 @@ export function DistributorHomeOverview({
 	});
 	const isFetching = inventoryFetching || (showCashBalance && cashBalancesFetching);
 	const stockUnits = data?.summary.totalUnits ?? 0;
+	const stockTotalNetWeightGrams = data?.summary.totalNetWeightGrams ?? 0;
 	const stockValueCents = data?.summary.totalStockValueCents ?? 0;
 	const stockItemCount = data?.summary.stockItemCount ?? 0;
 	const cashAmountCents = cashBalances?.totalAmountCents ?? 0;
+	const stockListClassName = [
+		"inventory-stock-table-surface",
+		stockListSurface === "worker-home" ? "distributor-worker-stock-surface" : "",
+	].filter(Boolean).join(" ");
 
 	return (
 		<section className="screen-stack">
@@ -102,7 +109,17 @@ export function DistributorHomeOverview({
 						loading={inventoryLoading}
 						meta={formatPositionCount(stockItemCount)}
 						showMeta={showSummaryMeta}
-						value={`${stockUnits} шт`}
+						value={(
+							<ProductQuantityDisplay
+								quantity={stockUnits}
+								totalNetWeightGrams={stockTotalNetWeightGrams}
+								variant="summary-inline"
+							/>
+						)}
+						valueLabel={formatProductQuantityLabel({
+							quantity: stockUnits,
+							totalNetWeightGrams: stockTotalNetWeightGrams,
+						})}
 						{...(onStockOpen ? { onClick: onStockOpen } : {})}
 					/>
 					<CommercialSummaryRow
@@ -159,7 +176,7 @@ export function DistributorHomeOverview({
 					{!inventoryLoading && !inventoryError && data?.items.length === 0 ? (
 						<p className="muted">На распределителе пока нет продукции.</p>
 					) : null}
-					<div className={stockListSurface === "worker-home" ? "distributor-worker-stock-surface" : undefined}>
+					<div className={stockListClassName}>
 						<DistributorStockList items={data?.items ?? []} showDistributorName={showStockDistributorName} />
 					</div>
 				</>
@@ -176,6 +193,7 @@ function CommercialSummaryRow({
 	onClick,
 	showMeta = true,
 	value,
+	valueLabel,
 }: {
 	icon: LucideIcon;
 	label: string;
@@ -183,10 +201,12 @@ function CommercialSummaryRow({
 	meta: string;
 	onClick?: () => void;
 	showMeta?: boolean;
-	value: string;
+	value: ReactNode;
+	valueLabel?: string;
 }) {
 	const displayValue = loading ? "..." : value;
 	const displayMeta = loading ? "Загрузка" : meta;
+	const displayValueLabel = loading ? "..." : valueLabel ?? (typeof value === "string" ? value : label);
 	const content = (
 		<>
 			<span className="production-summary-icon" aria-hidden>
@@ -194,7 +214,11 @@ function CommercialSummaryRow({
 			</span>
 			<span className="production-summary-main">
 				<span>{label}</span>
-				<strong>{displayValue}</strong>
+				{typeof displayValue === "string" ? (
+					<strong>{displayValue}</strong>
+				) : (
+					<span className="production-summary-value">{displayValue}</span>
+				)}
 			</span>
 			{showMeta || onClick ? (
 				<span className="production-summary-meta">
@@ -208,7 +232,7 @@ function CommercialSummaryRow({
 	if (onClick) {
 		return (
 			<button
-				aria-label={`${label}: ${displayValue}, ${displayMeta}. Открыть список`}
+				aria-label={`${label}: ${displayValueLabel}, ${displayMeta}. Открыть список`}
 				className="production-summary-row commercial-summary-row"
 				disabled={loading}
 				onClick={onClick}

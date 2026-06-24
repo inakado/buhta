@@ -1,11 +1,11 @@
 # Product Net Weight Quantity Input
 
-Статус: `Implemented, verification in progress`
+Статус: `Completed`
 Дата: 2026-06-23
 
 ## Текущий статус реализации
 
-Реализация внесена в DB/shared/backend/frontend и проходит финальную проверку.
+Реализация внесена в DB/shared/backend/frontend, UI-паттерны кг/шт очищены и унифицированы, финальная проверка пройдена.
 
 Фактически сделано:
 
@@ -17,6 +17,8 @@
 - kg-first UI внедрен в выпуск, перемещение, продажу с распределителя, дисконт, загрузку курьера, продажу курьера и возврат курьера;
 - read models продукции, остатков и операций возвращают `netWeightGrams` и `totalNetWeightGrams`;
 - audit details товарных операций сохраняют режим ввода, исходное значение, массу нетто и общий вес.
+- верхние summary strips используют единый inline-паттерн: `кг` primary и `шт` secondary в одну строку, без локальных переопределений по ролям;
+- stock ledgers заведующего производством, коммерческого руководителя и работника распределителя сведены к общему `inventory-stock-table-surface`.
 
 Фактический request contract для kg-ввода:
 
@@ -28,6 +30,20 @@ quantityInput: {
 ```
 
 Вход в кг выбран для удобства пользователя. Backend переводит кг в граммы, проверяет кратность snapshot `netWeightGrams` и проводит операцию в целых `quantity`.
+
+## Completion summary
+
+Завершено 2026-06-24.
+
+Фактически выполненная финальная проверка:
+
+- `git diff --check`;
+- `pnpm --filter @buhta/web lint`;
+- `pnpm --filter @buhta/web typecheck`;
+- `pnpm --filter @buhta/web test`;
+- `pnpm docs:check`.
+
+Полный frontend test contour по затронутой web-части прошел: 7 test files, 59 tests.
 
 ## Цель
 

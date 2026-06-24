@@ -120,8 +120,9 @@ export function DistributorInventoryHome({
 	const useStockLedger = variant === "stock-ledger";
 	const frameClassName = [
 		embedded ? "embedded-screen-stack" : "screen-stack",
+		"inventory-stock-table-surface",
 		useStockLedger ? "stock-ledger-surface" : "",
-		hideOverview ? "production-detail-screen" : "",
+		hideOverview && !useStockLedger ? "production-detail-screen" : "",
 	].filter(Boolean).join(" ");
 	const activeCashItems = useMemo(
 		() => (cashData?.items ?? []).filter((item) => item.active),
@@ -336,7 +337,7 @@ export function DistributorInventoryHome({
 							<ProductQuantityDisplay
 								quantity={totalUnits}
 								totalNetWeightGrams={totalNetWeightGrams}
-								variant="summary"
+								variant="summary-inline"
 							/>
 						)}
 					</div>
@@ -630,7 +631,7 @@ export function DistributorInventoryHome({
 								<ProductQuantityDisplay
 									quantity={summary.totalUnits}
 									totalNetWeightGrams={summary.totalNetWeightGrams}
-									variant="summary"
+									variant="summary-inline"
 								/>
 								<span>{formatRubles(summary.totalStockValueCents)}</span>
 							</div>

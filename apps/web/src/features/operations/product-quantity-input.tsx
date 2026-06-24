@@ -22,7 +22,7 @@ export type ProductQuantityCalculation = {
 };
 
 type ProductQuantityInputUnit = "кг" | "шт";
-type ProductQuantityDisplayVariant = "inline" | "table" | "summary";
+type ProductQuantityDisplayVariant = "inline" | "table" | "summary" | "summary-inline";
 
 export function createDefaultProductQuantityState(): ProductQuantityInputState {
 	return {

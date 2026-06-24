@@ -66,7 +66,7 @@ export function CourierBalanceHome({
 						<ProductQuantityDisplay
 							quantity={totalUnits}
 							totalNetWeightGrams={totalNetWeightGrams}
-							variant="summary"
+							variant="summary-inline"
 						/>
 					)}
 				</div>

@@ -2075,7 +2075,7 @@ describe("HomePage", () => {
 
 		expect(await screen.findByRole("heading", { name: "Распределитель" })).toBeTruthy();
 		const stockSummaryAction = await screen.findByRole("button", {
-			name: "Остаток распределителя: 2 шт, 1 позиция. Открыть список",
+			name: "Остаток распределителя: 0,4 кг • 2 шт, 1 позиция. Открыть список",
 		});
 		expect(stockSummaryAction).toBeTruthy();
 		expect(screen.getByText("Стоимость продукции")).toBeTruthy();
