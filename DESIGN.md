@@ -229,6 +229,14 @@ components:
 - **Metric dense** (500, 17px, line-height 1.1): значения в двухколоночных compact balance blocks and small analytics panels.
 - **Control table** (400, 11-12px, line-height 1.1): строки, подписи, даты и числовые значения в директорских, складских и read-only control surfaces. Это базовый масштаб для плотных мобильных данных.
 
+### Scaling Policy
+
+- **Multiplicative tokens:** глобальное укрупнение интерфейса задается только через `--ui-type-scale`, `--ui-table-type-scale`, `--ui-space-scale` и `--ui-control-scale` в `:root`.
+- **Current first pass:** базовые значения `1.12 / 1.08 / 1.06 / 1.08` дают более комфортную плотность без геометрического масштабирования всего shell.
+- **Rollback:** чтобы вернуть прежний базовый вид, достаточно установить все `--ui-*-scale` в `1`.
+- **Table scale:** плотные ledger/table surfaces масштабируют типографику мягче через `--ui-table-type-scale`, чтобы колонки `Количество` и `Итого` не слипались.
+- **Do not scale geometrically:** не использовать `transform: scale()` или CSS `zoom`, не умножать `grid-template-columns`, border widths, colors и radius автоматически. Shell width остается продуктовой геометрией, а не частью первого прохода масштаба.
+
 ### Named Rules
 
 **The Density Before Drama Rule.** Не увеличивать шрифт, если проблему можно решить порядком, отступом, divider или коротким текстом.
