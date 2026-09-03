@@ -95,6 +95,9 @@ const directorActorResponse = {
 			"courier.stock.read",
 			"courier.cash.read",
 			"client.read",
+			"client.manage",
+			"distributor.sale.create",
+			"distributor.sale.cancel",
 			"notification.read",
 			"cash.withdraw",
 			"discount.assign",
@@ -191,6 +194,35 @@ const distributorSaleOptionsResponse = {
 
 const distributorRecentSalesResponse = {
 	items: [],
+};
+
+const directorRecentSalesResponse = {
+	items: [{
+		id: "director-sale1",
+		sourceType: "distributor",
+		productName: "Икра горбуши",
+		clientId: "client1",
+		clientName: "Иван Петров",
+		clientPhone: "+7 (900) 111-22-33",
+		quantity: 1,
+		baseUnitPriceCents: 125000,
+		unitPriceCents: 125000,
+		discountCentsPerUnit: 0,
+		discountTotalCents: 0,
+		totalCents: 125000,
+		paymentMethod: "cash",
+		comment: null,
+		saleActorUserId: "seed-director",
+		saleActorDisplayName: "Director",
+		createdAt: new Date(0).toISOString(),
+		cancelled: false,
+		cancellationId: null,
+		cancellationReason: null,
+		cancelledByActorUserId: null,
+		cancelledByActorDisplayName: null,
+		cancelledAt: null,
+	}],
+	nextCursor: null,
 };
 
 const courierProductBalancesResponse = {
@@ -3138,6 +3170,66 @@ describe("HomePage", () => {
 		expect(screen.getAllByRole("navigation", { name: "Основная навигация" })).toHaveLength(1);
 	});
 
+	it("opens the reused distributor sales workspace for a director from more", async () => {
+		const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+			const url = String(input);
+
+			if (url.endsWith("/auth/me")) {
+				return jsonResponse(directorActorResponse);
+			}
+
+			if (url.includes("/analytics/director")) {
+				return jsonResponse(directorAnalyticsResponse);
+			}
+
+			if (url.endsWith("/distributor/inventory")) {
+				return jsonResponse(distributorInventoryResponse);
+			}
+
+			if (url.endsWith("/distributor/cash-balances")) {
+				return jsonResponse(distributorCashBalancesResponse);
+			}
+
+			if (url.endsWith("/distributor/sale-options")) {
+				return jsonResponse(distributorSaleOptionsResponse);
+			}
+
+			if (url.includes("/distributor/sales/history")) {
+				return jsonResponse(directorRecentSalesResponse);
+			}
+
+			if (url.includes("/clients")) {
+				return jsonResponse(clientsResponse);
+			}
+
+			return jsonResponse({ error: { message: "Unexpected request" } }, 500);
+		});
+
+		vi.stubGlobal("fetch", fetchMock);
+		render(<HomePage />);
+
+		fireEvent.click(await screen.findByRole("button", { name: "Еще" }));
+		fireEvent.click(await screen.findByRole("button", { name: "Продажи" }));
+
+		expect(await screen.findByRole("heading", { name: "Продажи" })).toBeTruthy();
+		expect(screen.getByRole("button", { name: "Продать" })).toBeTruthy();
+		expect(screen.getByRole("button", { name: "История продаж" })).toBeTruthy();
+		expect(screen.getByRole("button", { name: "Списать наличные" })).toBeTruthy();
+		expect(await screen.findByRole("button", { name: "Снизить цену" })).toBeTruthy();
+		expect(screen.queryByRole("button", { name: "Уведомить" })).toBeNull();
+		expect(screen.getByRole("button", { name: "Еще" }).getAttribute("aria-current")).toBe("page");
+
+		fireEvent.click(screen.getByRole("button", { name: "Продать" }));
+		expect(await screen.findByRole("heading", { name: "Продажа" })).toBeTruthy();
+		expect(screen.getByRole("button", { name: "Новый клиент" })).toBeTruthy();
+		fireEvent.click(screen.getByRole("button", { name: "Назад" }));
+
+		expect(await screen.findByRole("heading", { name: "Продажи" })).toBeTruthy();
+		fireEvent.click(screen.getByRole("button", { name: "История продаж" }));
+		expect(await screen.findByRole("heading", { name: "История продаж" })).toBeTruthy();
+		expect(await screen.findByRole("button", { name: "Отменить" })).toBeTruthy();
+	});
+
 	it("shows director work in the distilled four-tab contour", async () => {
 		const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
 			const url = String(input);
@@ -3658,7 +3750,7 @@ describe("HomePage", () => {
 		expect(await screen.findByText("Клиент обновлен")).toBeTruthy();
 	});
 
-	it("shows clients read-only for a director and hides clients for production manager", async () => {
+	it("lets a director manage clients and hides clients for production manager", async () => {
 		const directorFetch = vi.fn(async (input: RequestInfo | URL) => {
 			const url = String(input);
 
@@ -3691,8 +3783,8 @@ describe("HomePage", () => {
 		fireEvent.click(await screen.findByRole("button", { name: "Еще" }));
 		fireEvent.click(await screen.findByRole("button", { name: "Клиенты" }));
 		expect(await screen.findByText("Иван Петров")).toBeTruthy();
-		expect(screen.queryByRole("button", { name: "Добавить клиента" })).toBeNull();
-		expect(screen.queryByRole("button", { name: "Редактировать Иван Петров" })).toBeNull();
+		expect(screen.getByRole("button", { name: "Добавить клиента" })).toBeTruthy();
+		expect(screen.getByRole("button", { name: "Редактировать Иван Петров" })).toBeTruthy();
 
 		cleanup();
 		vi.unstubAllGlobals();

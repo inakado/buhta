@@ -2,7 +2,7 @@
 
 import * as Dialog from "@radix-ui/react-dialog";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, BadgePercent, Banknote, Box, X } from "lucide-react";
+import { ArrowLeft, BadgePercent, Banknote, Box, History, ReceiptText, X } from "lucide-react";
 import { FormEvent, useMemo, useState } from "react";
 import {
 	formatMoneyCents,
@@ -60,6 +60,8 @@ export function DistributorInventoryHome({
 	hideHeading = false,
 	hideOverview = false,
 	onBack,
+	onSale,
+	onSalesHistory,
 	online = true,
 	showCashBalance = false,
 	title = "Остатки",
@@ -72,6 +74,8 @@ export function DistributorInventoryHome({
 	hideHeading?: boolean;
 	hideOverview?: boolean;
 	onBack?: () => void;
+	onSale?: () => void;
+	onSalesHistory?: () => void;
 	online?: boolean;
 	showCashBalance?: boolean;
 	title?: string;
@@ -353,6 +357,31 @@ export function DistributorInventoryHome({
 					) : null}
 				</div>
 			)}
+
+			{onSale || onSalesHistory ? (
+				<div className="production-command-panel" aria-label="Действия продаж">
+					<div className="production-command-group frequent" aria-label="Частые действия">
+						{onSale ? (
+							<button
+								className="production-command-button primary"
+								disabled={!online}
+								onClick={onSale}
+								type="button"
+							>
+								<ReceiptText aria-hidden size={17} />
+								<span>Продать</span>
+							</button>
+						) : null}
+						{onSalesHistory ? (
+							<button className="production-command-button" onClick={onSalesHistory} type="button">
+								<History aria-hidden size={17} />
+								<span>История продаж</span>
+							</button>
+						) : null}
+					</div>
+					{!online && onSale ? <p className="production-command-note">Нет сети: продажа недоступна</p> : null}
+				</div>
+			) : null}
 
 			{showWithdrawalAction ? (
 				<div className="cash-withdrawal-actions">

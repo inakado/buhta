@@ -160,6 +160,24 @@ export function RoleHomeRouter({
 	}
 
 	if (
+		activeTab === "sales"
+		&& actor.role === "director"
+		&& actor.permissions.includes("distributor.sale.create")
+	) {
+		return (
+			<DistributorInventoryHome
+				canAssignDiscount={actor.permissions.includes("discount.assign")}
+				canWithdrawCash={actor.permissions.includes("cash.withdraw")}
+				onSale={() => onTabChange("sale")}
+				onSalesHistory={() => onTabChange("sales-history")}
+				online={online}
+				showCashBalance={actor.permissions.includes("distributor.cash.read")}
+				title="Продажи"
+			/>
+		);
+	}
+
+	if (
 		(activeTab === "analytics" || activeTab === "home")
 		&& actor.role === "director"
 		&& actor.permissions.includes("director.analytics.read")
@@ -236,9 +254,8 @@ export function RoleHomeRouter({
 		if (
 			activeTab === "sales-history"
 			&& (
-				(actor.role === "courier" && actor.permissions.includes("courier.sale.create"))
-				|| ((actor.role === "commercial_manager" || actor.role === "distributor_worker")
-					&& actor.permissions.includes("distributor.sale.create"))
+				actor.permissions.includes("courier.sale.create")
+				|| actor.permissions.includes("distributor.sale.create")
 			)
 		) {
 			return <SalesHistoryHome actor={actor} online={online} />;
@@ -252,10 +269,11 @@ export function RoleHomeRouter({
 			);
 		}
 		if (activeTab === "sale" && actor.permissions.includes("distributor.sale.create")) {
+			const returnTab = actor.role === "director" ? "sales" : "home";
 			return (
 				<DistributorSaleHome
-					onBack={() => onTabChange("home")}
-					onDone={() => onTabChange("home")}
+					onBack={() => onTabChange(returnTab)}
+					onDone={() => onTabChange(returnTab)}
 					online={online}
 				/>
 			);

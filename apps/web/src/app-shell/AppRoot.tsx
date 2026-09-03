@@ -273,7 +273,14 @@ function BottomNav({
 				const isActive = activeTab === item.id || (
 					actor.role === "director"
 					&& item.id === "more"
-					&& (activeTab === "catalog" || activeTab === "clients" || activeTab === "workshop")
+					&& (
+						activeTab === "catalog"
+						|| activeTab === "clients"
+						|| activeTab === "workshop"
+						|| activeTab === "sales"
+						|| activeTab === "sale"
+						|| activeTab === "sales-history"
+					)
 				) || (
 					actor.role === "production_manager"
 					&& item.id === "more"

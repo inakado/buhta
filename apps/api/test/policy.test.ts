@@ -42,6 +42,9 @@ describe("PolicyRegistry", () => {
 		expect(actor?.permissions).toContain("catalog.manage");
 		expect(actor?.permissions).toContain("cash.withdraw");
 		expect(actor?.permissions).toContain("production.manage");
+		expect(actor?.permissions).toContain("client.manage");
+		expect(actor?.permissions).toContain("distributor.sale.create");
+		expect(actor?.permissions).toContain("distributor.sale.cancel");
 		expect(actor?.permissions).not.toContain("users.manage");
 	});
 
@@ -87,7 +90,7 @@ describe("PolicyRegistry", () => {
 		});
 
 		expect(director?.permissions).toContain("client.read");
-		expect(director?.permissions).not.toContain("client.manage");
+		expect(director?.permissions).toContain("client.manage");
 		expect(productionManager?.permissions).not.toContain("client.read");
 		expect(productionManager?.permissions).not.toContain("client.manage");
 
@@ -129,7 +132,7 @@ describe("PolicyRegistry", () => {
 	});
 
 	it("keeps distributor sale and cash permissions separated", () => {
-		for (const role of ["admin", "commercial_manager", "distributor_worker"] as const) {
+		for (const role of ["admin", "director", "commercial_manager", "distributor_worker"] as const) {
 			const actor = registry.buildActor({
 				id: `sale-${role}`,
 				username: role,
@@ -141,7 +144,7 @@ describe("PolicyRegistry", () => {
 			expect(actor?.permissions).toContain("distributor.sale.cancel");
 		}
 
-		for (const role of ["director", "production_manager", "courier"] as const) {
+		for (const role of ["production_manager", "courier"] as const) {
 			const actor = registry.buildActor({
 				id: `no-sale-${role}`,
 				username: role,
@@ -435,7 +438,7 @@ describe("PolicyGuard", () => {
 		).toThrow(ForbiddenException);
 	});
 
-	it("rejects client API permissions for wrong roles", () => {
+	it("allows director client management and rejects client access for production manager", () => {
 		const directorRequest: RequestWithActor = {
 			user: {
 				id: "director",
@@ -445,7 +448,7 @@ describe("PolicyGuard", () => {
 			},
 		};
 		const directorWriteGuard = new PolicyGuard(reflectorWithPermission("client.manage"), registry);
-		expect(() => directorWriteGuard.canActivate(contextWithRequest(directorRequest))).toThrow(ForbiddenException);
+		expect(directorWriteGuard.canActivate(contextWithRequest(directorRequest))).toBe(true);
 
 		const productionManagerRequest: RequestWithActor = {
 			user: {
@@ -505,7 +508,7 @@ describe("PolicyGuard", () => {
 		).toThrow(ForbiddenException);
 	});
 
-	it("rejects distributor sale and cash permissions for wrong roles", () => {
+	it("allows director distributor sales and rejects unrelated role permissions", () => {
 		const productionManagerRequest: RequestWithActor = {
 			user: {
 				id: "pm",
@@ -539,9 +542,9 @@ describe("PolicyGuard", () => {
 			new PolicyGuard(reflectorWithPermission("distributor.cash.read"), registry)
 				.canActivate(contextWithRequest(courierRequest)),
 		).toThrow(ForbiddenException);
-		expect(() =>
+		expect(
 			new PolicyGuard(reflectorWithPermission("distributor.sale.create"), registry)
 				.canActivate(contextWithRequest(directorRequest)),
-		).toThrow(ForbiddenException);
+		).toBe(true);
 	});
 });

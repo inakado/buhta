@@ -86,7 +86,9 @@ describe("shared contracts", () => {
 		expect(permissionsForRole("director")).toContain("catalog.raw_material.manage");
 		expect(permissionsForRole("director")).toContain("catalog.packaging.manage");
 		expect(permissionsForRole("director")).toContain("client.read");
-		expect(permissionsForRole("director")).not.toContain("client.manage");
+		expect(permissionsForRole("director")).toContain("client.manage");
+		expect(permissionsForRole("director")).toContain("distributor.sale.create");
+		expect(permissionsForRole("director")).toContain("distributor.sale.cancel");
 		expect(permissionsForRole("director")).toContain("courier.stock.read");
 		expect(permissionsForRole("director")).toContain("courier.cash.read");
 		expect(permissionsForRole("director")).toContain("notification.read");

@@ -5,6 +5,7 @@ import {
 	ChevronRight,
 	Download,
 	Factory,
+	ReceiptText,
 	Users,
 	type LucideIcon,
 } from "lucide-react";
@@ -48,6 +49,16 @@ export function DirectorMoreHome({
 			detail: "Сырье, тара, выпуск и передача",
 			icon: Factory,
 			onSelect: () => onTabChange("workshop"),
+		});
+	}
+
+	if (actor.permissions.includes("distributor.sale.create")) {
+		navigationRows.push({
+			id: "sales",
+			label: "Продажи",
+			detail: "Продажа, скидки и история",
+			icon: ReceiptText,
+			onSelect: () => onTabChange("sales"),
 		});
 	}
 
