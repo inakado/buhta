@@ -66,7 +66,7 @@ export function DirectorStockHome({
 			<div className="director-stock-body">
 				{activeView === "distributor" ? (
 					<DistributorInventoryHome
-						canAssignDiscount={actor.permissions.includes("discount.assign")}
+						stockActions={getDistributorStockActions(actor)}
 						canWithdrawCash={actor.permissions.includes("cash.withdraw")}
 						discountActionLabel="Снизить"
 						embedded
@@ -80,4 +80,15 @@ export function DirectorStockHome({
 			</div>
 		</section>
 	);
+}
+
+function getDistributorStockActions(actor: CurrentActor): Array<"correct" | "discount"> {
+	const actions: Array<"correct" | "discount"> = [];
+	if (actor.permissions.includes("discount.assign")) {
+		actions.push("discount");
+	}
+	if (actor.permissions.includes("operation.correct")) {
+		actions.push("correct");
+	}
+	return actions;
 }

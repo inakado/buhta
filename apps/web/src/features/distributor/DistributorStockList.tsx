@@ -11,6 +11,7 @@ export function DistributorStockList({
 	groupByDistributor = false,
 	items,
 	onAssignDiscount,
+	onCorrectStock,
 	showDistributorName = true,
 	tableMeta,
 	tableTitle,
@@ -19,6 +20,7 @@ export function DistributorStockList({
 	groupByDistributor?: boolean;
 	items: DistributorInventoryItem[];
 	onAssignDiscount?: (item: DistributorInventoryItem) => void;
+	onCorrectStock?: (item: DistributorInventoryItem) => void;
 	showDistributorName?: boolean;
 	tableMeta?: string;
 	tableTitle?: string;
@@ -75,7 +77,9 @@ export function DistributorStockList({
 								</td>
 								<td className="inventory-table-total">
 									<strong>{formatRubles(item.stockValueCents)}</strong>
-									{onAssignDiscount ? (
+									{onAssignDiscount || onCorrectStock ? (
+										<div className="inventory-inline-actions">
+										{onAssignDiscount ? (
 										<button
 											aria-label="Снизить цену"
 											className="inventory-inline-action"
@@ -85,6 +89,19 @@ export function DistributorStockList({
 										>
 											{discountActionLabel}
 										</button>
+										) : null}
+										{onCorrectStock ? (
+											<button
+												aria-label={`Скорректировать ${item.productName}`}
+												className="inventory-inline-action"
+												disabled={item.quantity <= 0}
+												onClick={() => onCorrectStock(item)}
+												type="button"
+											>
+												Скорректировать
+											</button>
+										) : null}
+										</div>
 									) : null}
 								</td>
 							</tr>

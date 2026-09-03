@@ -172,12 +172,12 @@ export function RoleHomeRouter({
 	) {
 		return (
 			<DistributorInventoryHome
-				canAssignDiscount={actor.permissions.includes("discount.assign")}
 				canWithdrawCash={actor.permissions.includes("cash.withdraw")}
 				onSale={() => onTabChange("sale")}
 				onSalesHistory={() => onTabChange("sales-history")}
 				online={online}
 				showCashBalance={actor.permissions.includes("distributor.cash.read")}
+				stockActions={getDistributorStockActions(actor)}
 				title="Продажи"
 			/>
 		);
@@ -242,7 +242,6 @@ export function RoleHomeRouter({
 	) {
 		return (
 			<DistributorInventoryHome
-				canAssignDiscount={actor.permissions.includes("discount.assign")}
 				hideOverview
 				onBack={() => onTabChange("home")}
 				online={online}
@@ -370,4 +369,15 @@ function hasCatalogAccess(actor: CurrentActor): boolean {
 	return actor.permissions.includes("catalog.manage")
 		|| actor.permissions.includes("catalog.raw_material.manage")
 		|| actor.permissions.includes("catalog.packaging.manage");
+}
+
+function getDistributorStockActions(actor: CurrentActor): Array<"correct" | "discount"> {
+	const actions: Array<"correct" | "discount"> = [];
+	if (actor.permissions.includes("discount.assign")) {
+		actions.push("discount");
+	}
+	if (actor.permissions.includes("operation.correct")) {
+		actions.push("correct");
+	}
+	return actions;
 }

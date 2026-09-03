@@ -8,6 +8,7 @@ import type {
 	CreateCourierUnloadRequest,
 	CreateDistributorRequest,
 	CreateDistributorCashWithdrawalRequest,
+	CreateDistributorStockCorrectionRequest,
 	CreateDistributorSaleRequest,
 	CancelCourierSaleRequest,
 	CancelCourierSaleResponse,
@@ -43,6 +44,7 @@ import type {
 	DistributorCashBalancesResponse,
 	DistributorCashWithdrawalResponse,
 	DistributorInventoryResponse,
+	DistributorStockCorrectionResponse,
 	DistributorRecentSalesResponse,
 	DistributorSalesHistoryQuery,
 	DistributorSalesHistoryResponse,
@@ -527,6 +529,14 @@ export async function assignDistributorDiscount(
 	input: AssignDistributorDiscountRequest,
 ): Promise<AssignDistributorDiscountResponse> {
 	return fetchJson<AssignDistributorDiscountResponse>("/distributor/discounts", {
+		...idempotentJsonPost(input),
+	});
+}
+
+export async function createDistributorStockCorrection(
+	input: CreateDistributorStockCorrectionRequest,
+): Promise<DistributorStockCorrectionResponse> {
+	return fetchJson<DistributorStockCorrectionResponse>("/distributor/stock-corrections", {
 		...idempotentJsonPost(input),
 	});
 }

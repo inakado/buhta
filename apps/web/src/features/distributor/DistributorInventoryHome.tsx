@@ -31,8 +31,11 @@ import {
 	type ProductQuantityInputState,
 } from "../operations/product-quantity-input";
 import { DistributorStockList } from "./DistributorStockList";
+import { DistributorStockCorrectionDialog } from "./DistributorStockCorrectionDialog";
 
 type DistributorInventoryVariant = "default" | "stock-ledger";
+type DistributorStockAction = "correct" | "discount";
+const EMPTY_STOCK_ACTIONS: readonly DistributorStockAction[] = [];
 
 type WithdrawalResultSnapshot = {
 	amountCents: number;
@@ -53,7 +56,6 @@ type DiscountResultSnapshot = {
 };
 
 export function DistributorInventoryHome({
-	canAssignDiscount = false,
 	canWithdrawCash = false,
 	discountActionLabel = "Снизить цену",
 	embedded = false,
@@ -64,10 +66,10 @@ export function DistributorInventoryHome({
 	onSalesHistory,
 	online = true,
 	showCashBalance = false,
+	stockActions = EMPTY_STOCK_ACTIONS,
 	title = "Остатки",
 	variant = "default",
 }: {
-	canAssignDiscount?: boolean;
 	canWithdrawCash?: boolean;
 	discountActionLabel?: string;
 	embedded?: boolean;
@@ -78,6 +80,7 @@ export function DistributorInventoryHome({
 	onSalesHistory?: () => void;
 	online?: boolean;
 	showCashBalance?: boolean;
+	stockActions?: readonly DistributorStockAction[];
 	title?: string;
 	variant?: DistributorInventoryVariant;
 }) {
@@ -86,7 +89,10 @@ export function DistributorInventoryHome({
 	const [selectedDistributorId, setSelectedDistributorId] = useState("");
 	const [amountRubles, setAmountRubles] = useState("");
 	const [comment, setComment] = useState("");
-	const [discountItem, setDiscountItem] = useState<DistributorInventoryItem | null>(null);
+	const [selectedStockAction, setSelectedStockAction] = useState<{
+		type: DistributorStockAction;
+		item: DistributorInventoryItem;
+	} | null>(null);
 	const [discountQuantity, setDiscountQuantity] = useState<ProductQuantityInputState>(createDefaultProductQuantityState);
 	const [discountPriceRubles, setDiscountPriceRubles] = useState("");
 	const [discountComment, setDiscountComment] = useState("");
@@ -122,6 +128,10 @@ export function DistributorInventoryHome({
 	const stockTableTitle = singleDistributorName ?? (distributorCount > 1 ? formatDistributorCount(distributorCount) : "Продукция");
 	const stockTableMeta = stockItemCount > 0 ? formatPositionCount(stockItemCount) : undefined;
 	const useStockLedger = variant === "stock-ledger";
+	const canAssignDiscount = stockActions.includes("discount");
+	const canCorrectStock = stockActions.includes("correct");
+	const discountItem = selectedStockAction?.type === "discount" ? selectedStockAction.item : null;
+	const correctionItem = selectedStockAction?.type === "correct" ? selectedStockAction.item : null;
 	const frameClassName = [
 		embedded ? "embedded-screen-stack" : "screen-stack",
 		"inventory-stock-table-surface",
@@ -194,7 +204,7 @@ export function DistributorInventoryHome({
 				productName: discountItem?.productName,
 				sourceQuantityAfter: response.sourceBalance.quantity,
 			}));
-			setDiscountItem(null);
+			setSelectedStockAction(null);
 			setDiscountQuantity(createDefaultProductQuantityState());
 			setDiscountPriceRubles("");
 			setDiscountComment("");
@@ -264,7 +274,7 @@ export function DistributorInventoryHome({
 	function openDiscountForm(item: DistributorInventoryItem) {
 		const suggestedPriceCents = Math.max(item.unitPriceCents - 100, 1);
 
-		setDiscountItem(item);
+		setSelectedStockAction({ type: "discount", item });
 		setDiscountQuantity({ mode: "net_weight", value: formatKilograms(item.totalNetWeightGrams) });
 		setDiscountPriceRubles(formatMoneyCents(moneyCents(suggestedPriceCents)));
 		setDiscountComment("");
@@ -277,7 +287,7 @@ export function DistributorInventoryHome({
 		if (discountAssignment.isPending) {
 			return;
 		}
-		setDiscountItem(null);
+		setSelectedStockAction(null);
 		setDiscountResult(null);
 		setDiscountQuantity(createDefaultProductQuantityState());
 		setDiscountPriceRubles("");
@@ -674,6 +684,9 @@ export function DistributorInventoryHome({
 					groupByDistributor={distributorCount > 1}
 					items={data?.items ?? []}
 					{...(canAssignDiscount ? { onAssignDiscount: openDiscountForm } : {})}
+					{...(canCorrectStock ? {
+						onCorrectStock: (item: DistributorInventoryItem) => setSelectedStockAction({ type: "correct", item }),
+					} : {})}
 					showDistributorName={!useStockLedger && !hideHeading}
 					{...(hideHeading || useStockLedger
 						? {
@@ -682,6 +695,13 @@ export function DistributorInventoryHome({
 						}
 						: {})}
 				/>
+			{correctionItem ? (
+				<DistributorStockCorrectionDialog
+					item={correctionItem}
+					onClose={() => setSelectedStockAction(null)}
+					online={online}
+				/>
+			) : null}
 		</Frame>
 	);
 }

@@ -18,7 +18,7 @@ const directorActor: Actor = {
 	login: "distributor-sales-director",
 	displayName: "Distributor Sales Director",
 	role: "director",
-	permissions: ["cash.withdraw", "discount.assign", "distributor.cash.read"],
+	permissions: ["cash.withdraw", "discount.assign", "distributor.cash.read", "operation.correct"],
 };
 const directorEmail = "distributor-sales-director@internal.buhta.local";
 const adminActor: Actor = {
@@ -200,6 +200,14 @@ async function cleanup() {
 			],
 		},
 	});
+	await prisma.distributorStockCorrection.deleteMany({
+		where: {
+			OR: [
+				{ actorUserId: { in: actorUserIds } },
+				{ distributorProductBalance: { distributorId: { in: distributorIds } } },
+			],
+		},
+	});
 	await prisma.distributorCashBalance.deleteMany({
 		where: { distributorId: { in: distributorIds } },
 	});
@@ -285,6 +293,108 @@ describe("Distributor sales real Postgres integration", () => {
 				}),
 			]),
 		);
+	});
+
+	it("corrects a distributor product balance without creating revenue", async () => {
+		const fixture = await createSalesFixture("distributor-sales-correction", 3, 125000);
+
+		const response = await distributorService.createStockCorrection(directorActor, {
+			distributorProductBalanceId: fixture.distributorProductBalance.id,
+			quantityInput: { mode: "units", quantity: 3 },
+			reason: "Удаление тестовой продукции",
+		}, "distributor-stock-correction-success");
+
+		expect(response).toMatchObject({
+			correction: {
+				distributorProductBalanceId: fixture.distributorProductBalance.id,
+				distributorId: fixture.distributor.id,
+				productBatchId: fixture.productBatch.id,
+				quantity: 3,
+				unitPriceCents: 125000,
+				balanceBefore: 3,
+				balanceAfter: 0,
+				stockValueBeforeCents: 375000,
+				stockValueAfterCents: 0,
+				reason: "Удаление тестовой продукции",
+				actorUserId: directorActor.userId,
+			},
+			distributorProductBalance: {
+				id: fixture.distributorProductBalance.id,
+				quantity: 0,
+				stockValueCents: 0,
+			},
+		});
+		expect((await distributorService.getInventory()).items).not.toContainEqual(
+			expect.objectContaining({ id: fixture.distributorProductBalance.id }),
+		);
+		expect(await prisma.distributorSale.count({
+			where: { distributorProductBalanceId: fixture.distributorProductBalance.id },
+		})).toBe(0);
+		await expect(prisma.auditLog.findFirstOrThrow({
+			where: {
+				action: "distributor.stock.correct",
+				entityId: response.correction.id,
+			},
+		})).resolves.toMatchObject({
+			details: expect.objectContaining({
+				distributorProductBalanceId: fixture.distributorProductBalance.id,
+				balanceBefore: 3,
+				balanceAfter: 0,
+				stockValueBeforeCents: 375000,
+				stockValueAfterCents: 0,
+				reason: "Удаление тестовой продукции",
+			}),
+		});
+	});
+
+	it("rejects distributor stock correction above the available balance atomically", async () => {
+		const fixture = await createSalesFixture("distributor-sales-correction-limit", 2, 125000);
+
+		await expect(distributorService.createStockCorrection(directorActor, {
+			distributorProductBalanceId: fixture.distributorProductBalance.id,
+			quantityInput: { mode: "units", quantity: 3 },
+			reason: "Ошибочная тестовая партия",
+		}, "distributor-stock-correction-limit")).rejects.toThrow("Not enough distributor product balance");
+		expect((await prisma.distributorProductBalance.findUniqueOrThrow({
+			where: { id: fixture.distributorProductBalance.id },
+		})).quantity).toBe(2);
+		expect(await prisma.distributorStockCorrection.count({
+			where: { distributorProductBalanceId: fixture.distributorProductBalance.id },
+		})).toBe(0);
+		expect(await prisma.operation.count({
+			where: { actorUserId: directorActor.userId, type: "distributor.stock.correct" },
+		})).toBe(0);
+	});
+
+	it("corrects the selected discounted stock row without touching its base-price row", async () => {
+		const fixture = await createSalesFixture("distributor-sales-correction-discount", 4, 125000);
+		const discount = await distributorService.assignDiscount(directorActor, {
+			distributorProductBalanceId: fixture.distributorProductBalance.id,
+			quantityInput: { mode: "units", quantity: 2 },
+			discountedUnitPriceCents: 100000,
+		});
+
+		const response = await distributorService.createStockCorrection(directorActor, {
+			distributorProductBalanceId: discount.discountedBalance.id,
+			quantityInput: { mode: "net_weight", netWeightKilograms: "0.4" },
+			reason: "Тестовая продукция со скидкой",
+		});
+
+		expect(response.correction).toMatchObject({
+			distributorProductBalanceId: discount.discountedBalance.id,
+			quantity: 2,
+			unitPriceCents: 100000,
+			balanceBefore: 2,
+			balanceAfter: 0,
+			stockValueBeforeCents: 200000,
+			stockValueAfterCents: 0,
+		});
+		expect((await prisma.distributorProductBalance.findUniqueOrThrow({
+			where: { id: fixture.distributorProductBalance.id },
+		})).quantity).toBe(2);
+		expect(await prisma.distributorSale.count({
+			where: { distributorProductBalanceId: discount.discountedBalance.id },
+		})).toBe(0);
 	});
 
 	it("creates a cash sale, decrements stock and increments cash balance", async () => {

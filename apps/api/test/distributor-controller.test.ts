@@ -1,11 +1,89 @@
 import { describe, expect, it, vi } from "vitest";
+import { Reflector } from "@nestjs/core";
 import { DistributorController } from "../src/distributor/distributor.controller";
 import type { DistributorService } from "../src/distributor/distributor.service";
 import type { Actor } from "../src/policy/actor";
+import { REQUIRED_PERMISSION_METADATA } from "../src/policy/require-permission.decorator";
 
 const idempotencyKey = "controller-test-key";
 
 describe("DistributorController", () => {
+	it("requires operation.correct for distributor stock correction", () => {
+		const reflector = new Reflector();
+		expect(reflector.getAllAndOverride(REQUIRED_PERMISSION_METADATA, [
+			DistributorController.prototype.createStockCorrection,
+			DistributorController,
+		])).toBe("operation.correct");
+	});
+
+	it("validates and forwards distributor stock correction", async () => {
+		const response = {
+			correction: {
+				id: "correction1",
+				distributorProductBalanceId: "balance1",
+				distributorId: "dist1",
+				distributorName: "Распределитель Центральный",
+				productBatchId: "batch1",
+				productName: "Икра горбуши",
+				quantity: 2,
+				netWeightGrams: 200,
+				totalNetWeightGrams: 400,
+				unitPriceCents: 125000,
+				balanceBefore: 2,
+				balanceAfter: 0,
+				stockValueBeforeCents: 250000,
+				stockValueAfterCents: 0,
+				reason: "Удаление тестовой продукции",
+				operationId: "operation1",
+				actorUserId: "director1",
+				createdAt: new Date(0).toISOString(),
+			},
+			distributorProductBalance: {
+				id: "balance1",
+				distributorId: "dist1",
+				distributorName: "Распределитель Центральный",
+				productBatchId: "batch1",
+				productName: "Икра горбуши",
+				baseUnitPriceCents: 125000,
+				unitPriceCents: 125000,
+				netWeightGrams: 200,
+				discounted: false,
+				discountCentsPerUnit: 0,
+				quantity: 0,
+				totalNetWeightGrams: 0,
+				stockValueCents: 0,
+				updatedAt: new Date(0).toISOString(),
+			},
+		};
+		const actor: Actor = {
+			userId: "director1",
+			login: "director",
+			displayName: "Director",
+			role: "director",
+			permissions: ["operation.correct"],
+		};
+		const distributorService = {
+			createStockCorrection: vi.fn().mockResolvedValue(response),
+		} as unknown as DistributorService;
+		const controller = new DistributorController(distributorService);
+
+		await expect(controller.createStockCorrection(actor, {
+			distributorProductBalanceId: "balance1",
+			quantityInput: { mode: "units", quantity: 2 },
+			reason: " Удаление тестовой продукции ",
+		}, idempotencyKey)).resolves.toEqual(response);
+		expect(distributorService.createStockCorrection).toHaveBeenCalledWith(actor, {
+			distributorProductBalanceId: "balance1",
+			quantityInput: { mode: "units", quantity: 2 },
+			reason: "Удаление тестовой продукции",
+		}, idempotencyKey);
+		await expect(controller.createStockCorrection(actor, {
+			distributorProductBalanceId: "balance1",
+			quantity: 0,
+			reason: "x",
+		}, idempotencyKey)).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+	});
+
 	it("returns distributor inventory from service", async () => {
 		const inventory = {
 			summary: {

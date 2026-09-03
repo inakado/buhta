@@ -38,6 +38,7 @@ model User {
   distributorSaleCancellations DistributorSaleCancellation[] @relation("DistributorSaleCancellationActor")
   productDiscountAssignments ProductDiscountAssignment[] @relation("ProductDiscountAssignmentActor")
   rawMaterialCorrections RawMaterialCorrection[] @relation("RawMaterialCorrectionActor")
+  distributorStockCorrections DistributorStockCorrection[] @relation("DistributorStockCorrectionActor")
   createdProductionNotifications   ProductionNotification[] @relation("ProductionNotificationCreatedBy")
   completedProductionNotifications ProductionNotification[] @relation("ProductionNotificationCompletedBy")
 
@@ -111,6 +112,7 @@ model Operation {
   distributorSaleCancellations DistributorSaleCancellation[]
   distributorCashWithdrawals DistributorCashWithdrawal[]
   productDiscountAssignments ProductDiscountAssignment[]
+  distributorStockCorrections DistributorStockCorrection[]
   courierLoads       CourierLoad[]
   courierSales       CourierSale[]
   courierSaleCancellations CourierSaleCancellation[]
@@ -389,11 +391,37 @@ model DistributorProductBalance {
   unloadItems    CourierUnloadItem[]
   sourceDiscountAssignments ProductDiscountAssignment[] @relation("ProductDiscountSourceBalance")
   discountedDiscountAssignments ProductDiscountAssignment[] @relation("ProductDiscountDiscountedBalance")
+  corrections    DistributorStockCorrection[]
 
   @@unique([distributorId, productBatchId, unitPriceCents])
   @@index([distributorId])
   @@index([productBatchId])
   @@map("distributor_product_balance")
+}
+
+model DistributorStockCorrection {
+  id                          String                    @id @default(cuid())
+  distributorProductBalanceId String
+  quantity                    Int
+  netWeightGrams              Int
+  totalNetWeightGrams         Int
+  unitPriceCents              Int
+  balanceBefore               Int
+  balanceAfter                Int
+  stockValueBeforeCents       Int
+  stockValueAfterCents        Int
+  reason                      String
+  operationId                 String                    @unique
+  actorUserId                 String
+  createdAt                   DateTime                  @default(now())
+  distributorProductBalance   DistributorProductBalance @relation(fields: [distributorProductBalanceId], references: [id], onDelete: Restrict)
+  operation                   Operation                 @relation(fields: [operationId], references: [id], onDelete: Restrict)
+  actor                       User                      @relation("DistributorStockCorrectionActor", fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  @@index([distributorProductBalanceId])
+  @@index([actorUserId])
+  @@index([createdAt])
+  @@map("distributor_stock_correction")
 }
 
 model ProductTransfer {

@@ -4,6 +4,7 @@ import {
 	CancelDistributorSaleRequestSchema,
 	CreateDistributorCashWithdrawalRequestSchema,
 	CreateDistributorSaleRequestSchema,
+	CreateDistributorStockCorrectionRequestSchema,
 	DistributorSalesHistoryQuerySchema,
 } from "@buhta/shared";
 import type { z } from "zod";
@@ -90,6 +91,20 @@ export class DistributorController {
 		return this.distributorService.createCashWithdrawal(
 			requireActor(actor),
 			parseBody(CreateDistributorCashWithdrawalRequestSchema, body, "Invalid distributor cash withdrawal payload"),
+			requireIdempotencyKey(idempotencyKey),
+		);
+	}
+
+	@Post("stock-corrections")
+	@RequirePermission("operation.correct")
+	async createStockCorrection(
+		@CurrentActor() actor: Actor | undefined,
+		@Body() body: unknown,
+		@Headers("idempotency-key") idempotencyKey: string | undefined,
+	) {
+		return this.distributorService.createStockCorrection(
+			requireActor(actor),
+			parseBody(CreateDistributorStockCorrectionRequestSchema, body, "Invalid distributor stock correction payload"),
 			requireIdempotencyKey(idempotencyKey),
 		);
 	}

@@ -6,6 +6,7 @@ import type {
 	CancelDistributorSaleResponse,
 	CreateDistributorCashWithdrawalRequest,
 	CreateDistributorSaleRequest,
+	CreateDistributorStockCorrectionRequest,
 	DistributorCashBalancesResponse,
 	DistributorCashWithdrawalResponse,
 	DistributorInventoryResponse,
@@ -14,6 +15,7 @@ import type {
 	DistributorSalesHistoryResponse,
 	DistributorSaleOptionsResponse,
 	DistributorSaleResponse,
+	DistributorStockCorrectionResponse,
 } from "@buhta/shared";
 import type { Prisma } from "../generated/prisma/client";
 import { AppError } from "../common/errors/app-error";
@@ -248,6 +250,126 @@ export class DistributorService {
 		return {
 			withdrawal: mapDistributorCashWithdrawal(result.withdrawal),
 			cashBalance: mapDistributorCashBalanceRecord(result.cashBalanceAfter),
+		};
+	}
+
+	async createStockCorrection(
+		actor: Actor,
+		input: CreateDistributorStockCorrectionRequest,
+		idempotencyKey?: string,
+	): Promise<DistributorStockCorrectionResponse> {
+		const reason = input.reason.trim();
+		const result = await prisma.$transaction(async (tx) => {
+			const balanceBefore = await tx.distributorProductBalance.findUnique({
+				where: { id: input.distributorProductBalanceId },
+				include: { distributor: true, productBatch: true },
+			});
+			if (!balanceBefore) {
+				throw new AppError("NOT_FOUND", "Distributor product balance not found", {
+					id: input.distributorProductBalanceId,
+				});
+			}
+
+			const productQuantity = canonicalizeProductQuantity(input, balanceBefore.productBatch.netWeightGrams);
+			const decrement = await tx.distributorProductBalance.updateMany({
+				where: {
+					id: input.distributorProductBalanceId,
+					quantity: { gte: productQuantity.quantity },
+				},
+				data: { quantity: { decrement: productQuantity.quantity } },
+			});
+			if (decrement.count !== 1) {
+				throw new AppError("DOMAIN_RULE_VIOLATION", "Not enough distributor product balance", {
+					distributorProductBalanceId: input.distributorProductBalanceId,
+				});
+			}
+
+			const balanceAfter = await tx.distributorProductBalance.findUniqueOrThrow({
+				where: { id: input.distributorProductBalanceId },
+				include: { distributor: true, productBatch: true },
+			});
+			const stockValueBeforeCents = balanceBefore.quantity * balanceBefore.unitPriceCents;
+			const stockValueAfterCents = balanceAfter.quantity * balanceAfter.unitPriceCents;
+			const operation = await tx.operation.create({
+				data: {
+					type: "distributor.stock.correct",
+					status: OPERATION_STATUS.succeeded,
+					actorUserId: actor.userId,
+					idempotencyKey: idempotencyKey ?? null,
+				},
+			});
+			const correction = await tx.distributorStockCorrection.create({
+				data: {
+					distributorProductBalanceId: balanceBefore.id,
+					quantity: productQuantity.quantity,
+					netWeightGrams: productQuantity.netWeightGrams,
+					totalNetWeightGrams: productQuantity.totalNetWeightGrams,
+					unitPriceCents: balanceBefore.unitPriceCents,
+					balanceBefore: balanceBefore.quantity,
+					balanceAfter: balanceAfter.quantity,
+					stockValueBeforeCents,
+					stockValueAfterCents,
+					reason,
+					operationId: operation.id,
+					actorUserId: actor.userId,
+				},
+			});
+
+			await tx.auditLog.create({
+				data: {
+					operationId: operation.id,
+					actorUserId: actor.userId,
+					action: "distributor.stock.correct",
+					entityType: "distributor_stock_correction",
+					entityId: correction.id,
+					details: {
+						distributorStockCorrectionId: correction.id,
+						distributorProductBalanceId: balanceBefore.id,
+						distributorId: balanceBefore.distributorId,
+						distributorName: balanceBefore.distributor.name,
+						productBatchId: balanceBefore.productBatchId,
+						productName: balanceBefore.productBatch.productName,
+						quantity: productQuantity.quantity,
+						quantityInputMode: productQuantity.quantityInputMode,
+						quantityInputValue: productQuantity.quantityInputValue,
+						quantityInputGrams: productQuantity.quantityInputGrams,
+						netWeightGrams: productQuantity.netWeightGrams,
+						totalNetWeightGrams: productQuantity.totalNetWeightGrams,
+						unitPriceCents: balanceBefore.unitPriceCents,
+						balanceBefore: balanceBefore.quantity,
+						balanceAfter: balanceAfter.quantity,
+						stockValueBeforeCents,
+						stockValueAfterCents,
+						reason,
+					} satisfies Prisma.InputJsonValue,
+				},
+			});
+
+			return { balanceAfter, correction };
+		});
+
+		return {
+			correction: {
+				id: result.correction.id,
+				distributorProductBalanceId: result.correction.distributorProductBalanceId,
+				distributorId: result.balanceAfter.distributorId,
+				distributorName: result.balanceAfter.distributor.name,
+				productBatchId: result.balanceAfter.productBatchId,
+				productName: result.balanceAfter.productBatch.productName,
+				quantity: result.correction.quantity,
+				netWeightGrams: result.correction.netWeightGrams,
+				totalNetWeightGrams: result.correction.totalNetWeightGrams,
+				unitPriceCents: result.correction.unitPriceCents,
+				balanceBefore: result.correction.balanceBefore,
+				balanceAfter: result.correction.balanceAfter,
+				stockValueBeforeCents: result.correction.stockValueBeforeCents,
+				stockValueAfterCents: result.correction.stockValueAfterCents,
+				reason: result.correction.reason,
+				operationId: result.correction.operationId,
+				actorUserId: result.correction.actorUserId,
+				createdAt: result.correction.createdAt.toISOString(),
+			},
+			distributorProductBalance: mapDistributorInventoryItem(result.balanceAfter),
 		};
 	}
 

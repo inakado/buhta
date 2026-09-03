@@ -151,6 +151,7 @@ Production balance baseline:
 - `product_batch` — выпущенная партия в статусе `in_workshop` со snapshot названий, единиц учета и цены.
 - `workshop_product_balance` — доступный остаток готовой продукции в цеху по выпущенной партии;
 - `distributor_product_balance` — товарный остаток распределителя по тройке распределитель + партия продукции + фактическая цена строки;
+- `distributor_stock_correction` — append-only факт уменьшения конкретной priced stock row с причиной, автором, количеством, ценой, стоимостью и остатком до/после;
 - `product_transfer` — typed record факта перемещения партии из цеха на распределитель с price snapshot.
 
 Поступления, корректировка сырья и выпуск выполняются в Prisma transaction. Корректировка сырья использует conditional decrement и DB check `raw_material_balance.quantity >= 0`, создает typed fact, operation и audit, поэтому конкурентные операции не могут увести остаток в минус. Выпуск партии аналогично списывает сырье и тару только при достаточном остатке, иначе операция отклоняется и партия не создается.
@@ -158,6 +159,8 @@ Production balance baseline:
 Выпуск партии в той же transaction создает `workshop_product_balance` с количеством выпущенной продукции. Перемещение на распределитель использует conditional decrement `workshop_product_balance.quantity >= requestedQuantity` и upsert/increment `distributor_product_balance`. `ProductBatch.status` не является источником доступного остатка, потому что партия может быть перемещена частично.
 
 Distributor inventory read model строится из ненулевых строк `distributor_product_balance` с join на `product_batch` и `distributor`. API считает `stockValueCents = quantity * distributor_product_balance.unitPriceCents`, возвращает базовую цену партии (`baseUnitPriceCents`), фактическую цену строки (`unitPriceCents`), признак дисконта, общий summary и summary по распределителям. Read endpoint не создает `operation`/`audit_log` и не моделирует cash balance.
+
+Корректировка остатка распределителя создается по `distributorProductBalanceId`. Backend канонизирует ввод кг/штук по snapshot массы партии и в одной transaction выполняет conditional decrement, затем создает `Operation`, `DistributorStockCorrection` и `AuditLog`. Денежные balances и sale facts не затрагиваются; `stockValueBeforeCents` и `stockValueAfterCents` считаются по фактической цене выбранной строки. DB check и условный update защищают остаток от ухода в минус при конкуренции.
 
 Priced stock model: `ProductBatch.priceCents` остается базовой ценой партии, а `DistributorProductBalance.unitPriceCents` и `CourierProductBalance.unitPriceCents` являются фактической ценой конкретной строки остатка. Уникальность balance projections включает `unitPriceCents`, поэтому одна партия может одновременно существовать в нескольких ценовых строках. Продажи, загрузки, возвраты и перемещения хранят price snapshot: `baseUnitPriceCents`, `unitPriceCents`, `discountCentsPerUnit` и стоимость строки.
 

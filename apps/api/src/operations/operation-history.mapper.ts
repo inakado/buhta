@@ -46,6 +46,7 @@ const SUMMARY_BY_OPERATION_TYPE: Record<string, string> = {
 	"distributor.discount.assign": "Назначение дисконта",
 	"distributor.sale.cancel": "Отмена продажи с распределителя",
 	"distributor.sale.create": "Продажа с распределителя",
+	"distributor.stock.correct": "Корректировка продукции на распределителе",
 	"foundation.baseline": "Проверочная операция",
 	"production.notification.complete": "Выполнение задачи производству",
 	"production.notification.create": "Задача производству",

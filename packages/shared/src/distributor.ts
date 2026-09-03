@@ -187,6 +187,47 @@ export const AssignDistributorDiscountResponseSchema = z.object({
 
 export type AssignDistributorDiscountResponse = z.infer<typeof AssignDistributorDiscountResponseSchema>;
 
+export const CreateDistributorStockCorrectionRequestSchema = ProductQuantityCommandSchema.extend({
+	distributorProductBalanceId: z.string().min(1),
+	reason: CancellationReasonSchema,
+});
+
+export type CreateDistributorStockCorrectionRequest = z.infer<
+	typeof CreateDistributorStockCorrectionRequestSchema
+>;
+
+export const DistributorStockCorrectionSchema = z.object({
+	id: z.string(),
+	distributorProductBalanceId: z.string(),
+	distributorId: z.string(),
+	distributorName: z.string(),
+	productBatchId: z.string(),
+	productName: z.string(),
+	quantity: PositiveIntegerSchema,
+	netWeightGrams: NetWeightGramsSchema,
+	totalNetWeightGrams: NonNegativeIntegerSchema,
+	unitPriceCents: NonNegativeIntegerSchema,
+	balanceBefore: NonNegativeIntegerSchema,
+	balanceAfter: NonNegativeIntegerSchema,
+	stockValueBeforeCents: NonNegativeIntegerSchema,
+	stockValueAfterCents: NonNegativeIntegerSchema,
+	reason: z.string(),
+	operationId: z.string(),
+	actorUserId: z.string(),
+	createdAt: z.string(),
+});
+
+export type DistributorStockCorrection = z.infer<typeof DistributorStockCorrectionSchema>;
+
+export const DistributorStockCorrectionResponseSchema = z.object({
+	correction: DistributorStockCorrectionSchema,
+	distributorProductBalance: DistributorInventoryItemSchema,
+});
+
+export type DistributorStockCorrectionResponse = z.infer<
+	typeof DistributorStockCorrectionResponseSchema
+>;
+
 export const DistributorSaleSchema = z.object({
 	id: z.string(),
 	distributorProductBalanceId: z.string(),

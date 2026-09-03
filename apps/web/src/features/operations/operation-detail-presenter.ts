@@ -51,6 +51,7 @@ const OPERATION_LABELS: Record<string, string> = {
 	"distributor.discount.assign": "Назначение дисконта",
 	"distributor.sale.cancel": "Отмена продажи",
 	"distributor.sale.create": "Продажа",
+	"distributor.stock.correct": "Корректировка продукции",
 	"foundation.baseline": "Проверочная операция",
 	"production.notification.complete": "Задача выполнена",
 	"production.notification.create": "Задача производству",
@@ -75,6 +76,7 @@ const ENTITY_LABELS: Record<string, string> = {
 	distributor_cash_withdrawal: "Списание наличных",
 	distributor_sale: "Продажа",
 	distributor_sale_cancellation: "Отмена продажи",
+	distributor_stock_correction: "Корректировка продукции",
 	packaging_intake: "Прием упаковки",
 	packaging_type: "Тип упаковки",
 	product_batch: "Партия",
@@ -144,6 +146,8 @@ const DETAIL_LABELS: Record<string, string> = {
 	stockBalanceAfter: "Остаток товара после",
 	stockBalanceBefore: "Остаток товара до",
 	stockValueCents: "Стоимость",
+	stockValueAfterCents: "Стоимость после",
+	stockValueBeforeCents: "Стоимость до",
 	toRole: "Стало",
 	toLogin: "Логин стал",
 	toName: "Имя стало",
@@ -285,6 +289,8 @@ function buildMoneySection(details: Record<string, unknown>, usedKeys: Set<strin
 	addMoneyRow(rows, details, usedKeys, "totalCents", "Итого");
 	addMoneyRow(rows, details, usedKeys, "amountCents", "Сумма");
 	addMoneyRow(rows, details, usedKeys, "cashAmountCents", "Наличными");
+	addMoneyRow(rows, details, usedKeys, "stockValueBeforeCents", "Стоимость остатка до");
+	addMoneyRow(rows, details, usedKeys, "stockValueAfterCents", "Стоимость остатка после");
 	addPaymentMethodRow(rows, details, usedKeys);
 	addBalancePair(rows, details, "cashBalanceBefore", "cashBalanceAfter", "Наличные");
 	addBalancePair(rows, details, "courierCashBalanceBefore", "courierCashBalanceAfter", "Наличные курьера");
@@ -314,6 +320,7 @@ function buildBalanceSection(details: Record<string, unknown>, usedKeys: Set<str
 		["courierStockBalanceBefore", "courierStockBalanceAfter", "Остаток курьера"],
 		["courierBalanceBefore", "courierBalanceAfter", "Остаток курьера"],
 		["distributorBalanceBefore", "distributorBalanceAfter", "Остаток распределителя"],
+		["balanceBefore", "balanceAfter", "Остаток распределителя"],
 		["workshopBalanceBefore", "workshopBalanceAfter", "Остаток цеха"],
 		["rawMaterialBalanceBefore", "rawMaterialBalanceAfter", "Остаток сырья"],
 	] as const;

@@ -22,6 +22,7 @@ export const BASELINE_OPERATION_TYPES = [
 	"distributor.discount.assign",
 	"distributor.sale.cancel",
 	"distributor.sale.create",
+	"distributor.stock.correct",
 	"production.notification.complete",
 	"production.notification.create",
 	"production.packaging_intake.create",

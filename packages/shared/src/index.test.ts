@@ -19,6 +19,8 @@ import {
 	CancelDistributorSaleResponseSchema,
 	AssignDistributorDiscountRequestSchema,
 	AssignDistributorDiscountResponseSchema,
+	CreateDistributorStockCorrectionRequestSchema,
+	DistributorStockCorrectionResponseSchema,
 	CreateDistributorCashWithdrawalRequestSchema,
 	CreateCourierLoadRequestSchema,
 	CreateCourierSaleRequestSchema,
@@ -375,6 +377,67 @@ describe("shared contracts", () => {
 			ProductionTransferOptionsResponseSchema.safeParse({
 				distributors: [],
 				workshopProductBalances: [],
+			}).success,
+		).toBe(true);
+	});
+
+	it("validates distributor stock correction contracts", () => {
+		expect(
+			CreateDistributorStockCorrectionRequestSchema.parse({
+				distributorProductBalanceId: "balance-1",
+				quantityInput: { mode: "units", quantity: 2 },
+				reason: " Удаление тестовой продукции ",
+			}),
+		).toEqual({
+			distributorProductBalanceId: "balance-1",
+			quantityInput: { mode: "units", quantity: 2 },
+			reason: "Удаление тестовой продукции",
+		});
+		expect(
+			CreateDistributorStockCorrectionRequestSchema.safeParse({
+				distributorProductBalanceId: "balance-1",
+				quantity: 0,
+				reason: "x",
+			}).success,
+		).toBe(false);
+		expect(
+			DistributorStockCorrectionResponseSchema.safeParse({
+				correction: {
+					id: "correction-1",
+					distributorProductBalanceId: "balance-1",
+					distributorId: "dist-1",
+					distributorName: "Распределитель Центральный",
+					productBatchId: "batch-1",
+					productName: "Икра горбуши",
+					quantity: 2,
+					netWeightGrams: 200,
+					totalNetWeightGrams: 400,
+					unitPriceCents: 125000,
+					balanceBefore: 2,
+					balanceAfter: 0,
+					stockValueBeforeCents: 250000,
+					stockValueAfterCents: 0,
+					reason: "Удаление тестовой продукции",
+					operationId: "operation-1",
+					actorUserId: "director-1",
+					createdAt: new Date(0).toISOString(),
+				},
+				distributorProductBalance: {
+					id: "balance-1",
+					distributorId: "dist-1",
+					distributorName: "Распределитель Центральный",
+					productBatchId: "batch-1",
+					productName: "Икра горбуши",
+					baseUnitPriceCents: 125000,
+					unitPriceCents: 125000,
+					netWeightGrams: 200,
+					discounted: false,
+					discountCentsPerUnit: 0,
+					quantity: 0,
+					totalNetWeightGrams: 0,
+					stockValueCents: 0,
+					updatedAt: new Date(0).toISOString(),
+				},
 			}).success,
 		).toBe(true);
 	});

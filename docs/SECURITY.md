@@ -73,7 +73,7 @@ Policy layer отвечает за доменные разрешения. Тек
 - `POST /production/raw-material-corrections` переопределяет class-level permission и требует `operation.correct`; сейчас это только `admin` и `director`. Количество положительное, причина обязательна, а backend транзакционно запрещает списание сверх остатка.
 - Перемещение продукции из цеха на распределитель использует `production.manage`: рабочую операцию выполняют `director` и `production_manager`, `admin` имеет support-доступ. Отдельный permission для transfer пока не введен.
 - `/clients` read handlers защищены `client.read`; write handlers защищены `client.manage`.
-- `client.read` и `client.manage` разделены намеренно: директор видит клиентскую базу, но не создает и не редактирует клиентов.
+- `client.read` и `client.manage` разделены намеренно: Директор получает оба права для полного контура продаж, а заведующий производством не получает доступа к клиентской базе.
 
 Текущие baseline permissions:
 
@@ -84,11 +84,13 @@ Policy layer отвечает за доменные разрешения. Тек
 - кто может загружать и сгружать продукцию курьера;
 - кто может видеть аудит и статистику.
 
-Текущая policy для дисконта: `director` и `admin`. Отмена продажи является операционным действием продавца: продажу с распределителя отменяют роли с `distributor.sale.cancel`, курьерскую продажу отменяет курьер по своему контуру через `courier.sale.cancel`. Директор контролирует такие действия через историю операций. Администратор остается backend-суперпользователем.
+Текущая policy для дисконта: `director` и `admin`. Отмена продажи является операционным действием продавца: продажу с распределителя отменяют роли с `distributor.sale.cancel`, включая Директора в его переиспользованном контуре продаж; курьерскую продажу отменяет курьер по своему контуру через `courier.sale.cancel`. Администратор остается backend-суперпользователем.
 
 Назначение дисконта защищено `discount.assign`: `POST /distributor/discounts` доступен `director` и `admin`. Backend принимает только id строки остатка, количество, новую итоговую цену и optional комментарий; исходную цену, базовую цену партии, сумму дисконта и affected balances он рассчитывает сам в transaction. Продажи, загрузки и возвраты не принимают цену от frontend: цена берется только из выбранной priced stock row.
 
 Read-only товарные остатки распределителя защищены `distributor.stock.read`. Это право есть у всех v1 ролей, включая `admin`, но endpoint не создает операции, не меняет остатки и не раскрывает наличный денежный баланс.
+
+Корректировка ошибочного остатка защищена `operation.correct`: `POST /distributor/stock-corrections` доступен только `director` и `admin`. Backend принимает id конкретной priced stock row, количество и обязательную причину, сам определяет распределитель, партию и фактическую цену и выполняет conditional decrement. Коммерческий руководитель и работник распределителя сохраняют обычные права продажи и отмены, но не получают это действие.
 
 Продажа с распределителя разделяет права чтения, создания и отмены: `GET /distributor/sale-options`, `GET /distributor/sales/history` и `POST /distributor/sales` требуют `distributor.sale.create`, `POST /distributor/sales/:saleId/cancel` требует `distributor.sale.cancel`, а `GET /distributor/cash-balances` требует `distributor.cash.read`. Роли без `distributor.cash.read` не должны получать наличный баланс распределителя ни через API, ни через UI. Отмена требует причину, создает отдельный typed fact и не редактирует исходную продажу.
 
@@ -116,9 +118,9 @@ Read-only товарные остатки распределителя защи�
 | `distributor.stock.read` | все роли |
 | `distributor.cash.read` | `admin`, `director`, `commercial_manager`, `distributor_worker` |
 | `client.read` | `admin`, `director`, `commercial_manager`, `distributor_worker`, `courier` |
-| `client.manage` | `admin`, `commercial_manager`, `distributor_worker`, `courier` |
-| `distributor.sale.create` | `admin`, `commercial_manager`, `distributor_worker` |
-| `distributor.sale.cancel` | `admin`, `commercial_manager`, `distributor_worker` |
+| `client.manage` | `admin`, `director`, `commercial_manager`, `distributor_worker`, `courier` |
+| `distributor.sale.create` | `admin`, `director`, `commercial_manager`, `distributor_worker` |
+| `distributor.sale.cancel` | `admin`, `director`, `commercial_manager`, `distributor_worker` |
 | `courier.stock.read` | `admin`, `director`, `commercial_manager`, `courier` |
 | `courier.stock.load` | `admin`, `courier` |
 | `courier.cash.read` | `admin`, `director`, `commercial_manager`, `courier` |

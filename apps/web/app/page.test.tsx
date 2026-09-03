@@ -2146,6 +2146,7 @@ describe("HomePage", () => {
 		expect(screen.getByRole("table", { name: "Позиции на распределителе" })).toBeTruthy();
 		expect(screen.getByText("Икра горбуши")).toBeTruthy();
 		expect(screen.getByText("Распределитель Центральный")).toBeTruthy();
+		expect(screen.queryByRole("button", { name: "Скорректировать Икра горбуши" })).toBeNull();
 		fireEvent.click(screen.getByRole("button", { name: "Назад" }));
 		expect(await screen.findByRole("heading", { name: "Распределитель" })).toBeTruthy();
 
@@ -3255,6 +3256,37 @@ describe("HomePage", () => {
 				return jsonResponse(distributorSaleOptionsResponse);
 			}
 
+			if (url.endsWith("/distributor/stock-corrections")) {
+				return jsonResponse({
+					correction: {
+						id: "correction1",
+						distributorProductBalanceId: "distributor-balance1",
+						distributorId: "dist1",
+						distributorName: "Распределитель Центральный",
+						productBatchId: "batch1",
+						productName: "Икра горбуши",
+						quantity: 2,
+						netWeightGrams: 200,
+						totalNetWeightGrams: 400,
+						unitPriceCents: 125000,
+						balanceBefore: 2,
+						balanceAfter: 0,
+						stockValueBeforeCents: 250000,
+						stockValueAfterCents: 0,
+						reason: "Удаление тестовой продукции",
+						operationId: "operation1",
+						actorUserId: "seed-director",
+						createdAt: new Date(1).toISOString(),
+					},
+					distributorProductBalance: {
+						...distributorInventoryResponse.items[0],
+						quantity: 0,
+						totalNetWeightGrams: 0,
+						stockValueCents: 0,
+					},
+				});
+			}
+
 			if (url.includes("/distributor/sales/history")) {
 				return jsonResponse(directorRecentSalesResponse);
 			}
@@ -3277,8 +3309,31 @@ describe("HomePage", () => {
 		expect(screen.getByRole("button", { name: "История продаж" })).toBeTruthy();
 		expect(screen.getByRole("button", { name: "Списать наличные" })).toBeTruthy();
 		expect(await screen.findByRole("button", { name: "Снизить цену" })).toBeTruthy();
+		const correctStockAction = await screen.findByRole("button", { name: "Скорректировать Икра горбуши" });
 		expect(screen.queryByRole("button", { name: "Уведомить" })).toBeNull();
 		expect(screen.getByRole("button", { name: "Еще" }).getAttribute("aria-current")).toBe("page");
+
+		fireEvent.click(correctStockAction);
+		expect(await screen.findByRole("heading", { name: "Корректировка остатка" })).toBeTruthy();
+		expect((screen.getByLabelText("Количество, кг") as HTMLInputElement).value).toBe("0,4");
+		fireEvent.change(screen.getByLabelText("Причина"), { target: { value: "  Удаление тестовой продукции  " } });
+		fireEvent.click(screen.getByRole("button", { name: "Списать продукцию" }));
+		await waitFor(() => {
+			expect(fetchMock).toHaveBeenCalledWith(
+				expect.stringContaining("/distributor/stock-corrections"),
+				expect.objectContaining({
+					method: "POST",
+					body: JSON.stringify({
+						distributorProductBalanceId: "distributor-balance1",
+						quantityInput: { mode: "net_weight", netWeightKilograms: "0.4" },
+						reason: "Удаление тестовой продукции",
+					}),
+				}),
+			);
+		});
+		expect(await screen.findByRole("heading", { name: "Остаток скорректирован" })).toBeTruthy();
+		expect(screen.queryByRole("button", { name: "Скорректировать еще" })).toBeNull();
+		fireEvent.click(screen.getByRole("button", { name: "Готово" }));
 
 		fireEvent.click(screen.getByRole("button", { name: "Продать" }));
 		expect(await screen.findByRole("heading", { name: "Продажа" })).toBeTruthy();
