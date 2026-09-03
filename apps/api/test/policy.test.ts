@@ -41,6 +41,7 @@ describe("PolicyRegistry", () => {
 		});
 		expect(actor?.permissions).toContain("catalog.manage");
 		expect(actor?.permissions).toContain("cash.withdraw");
+		expect(actor?.permissions).toContain("production.manage");
 		expect(actor?.permissions).not.toContain("users.manage");
 	});
 

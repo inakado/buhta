@@ -98,6 +98,7 @@ describe("shared contracts", () => {
 		expect(permissionsForRole("director")).toContain("cash.withdraw");
 		expect(permissionsForRole("director")).toContain("operation.history.read");
 		expect(permissionsForRole("director")).toContain("director.analytics.read");
+		expect(permissionsForRole("director")).toContain("production.manage");
 		expect(permissionsForRole("commercial_manager")).toContain("client.read");
 		expect(permissionsForRole("commercial_manager")).toContain("client.manage");
 		expect(permissionsForRole("commercial_manager")).toContain("courier.stock.read");

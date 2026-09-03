@@ -13,6 +13,7 @@ import { Bell, Box, Check, ClipboardList, Factory, Gauge, History, LayoutDashboa
 import { useEffect, useRef, useState } from "react";
 import { LoginForm } from "../auth/LoginForm";
 import { getCurrentActor, isUnauthorizedError, listNotifications, signOut, type CurrentActor } from "../lib/api-client";
+import type { DirectorPeriodSelection } from "../features/analytics/DirectorAnalyticsHome";
 import { RoleHomeRouter } from "./RoleHomeRouter";
 import { useOnlineStatus } from "./useOnlineStatus";
 
@@ -98,6 +99,10 @@ function AppShell({ actor }: { actor: CurrentActor }) {
 	const online = useOnlineStatus();
 	const queryClient = useQueryClient();
 	const [activeTab, setActiveTab] = useState(actor.role === "admin" ? "people" : "home");
+	const [directorAnalyticsPeriodSelection, setDirectorAnalyticsPeriodSelection] = useState<DirectorPeriodSelection>({
+		mode: "preset",
+		periodPreset: "30d",
+	});
 	const [successNotice, setSuccessNotice] = useState<{ id: number; message: string } | null>(null);
 	const [logoutPending, setLogoutPending] = useState(false);
 	const successNoticeId = useRef(0);
@@ -144,10 +149,12 @@ function AppShell({ actor }: { actor: CurrentActor }) {
 					<RoleHomeRouter
 						actor={actor}
 						activeTab={activeTab}
+						directorAnalyticsPeriodSelection={directorAnalyticsPeriodSelection}
 						logout={handleLogout}
 						logoutPending={logoutPending}
 						online={online}
 						onStatusSuccess={showSuccess}
+						onDirectorAnalyticsPeriodSelectionChange={setDirectorAnalyticsPeriodSelection}
 						onTabChange={setActiveTab}
 				/>
 				{successNotice ? (
@@ -266,7 +273,7 @@ function BottomNav({
 				const isActive = activeTab === item.id || (
 					actor.role === "director"
 					&& item.id === "more"
-					&& (activeTab === "catalog" || activeTab === "clients")
+					&& (activeTab === "catalog" || activeTab === "clients" || activeTab === "workshop")
 				) || (
 					actor.role === "production_manager"
 					&& item.id === "more"

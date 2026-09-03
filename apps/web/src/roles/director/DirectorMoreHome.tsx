@@ -4,6 +4,7 @@ import {
 	BookOpenText,
 	ChevronRight,
 	Download,
+	Factory,
 	Users,
 	type LucideIcon,
 } from "lucide-react";
@@ -39,6 +40,16 @@ export function DirectorMoreHome({
 	online,
 }: DirectorMoreHomeProps) {
 	const navigationRows: MenuRow[] = [];
+
+	if (actor.permissions.includes("production.manage")) {
+		navigationRows.push({
+			id: "workshop",
+			label: "Цех",
+			detail: "Сырье, тара, выпуск и передача",
+			icon: Factory,
+			onSelect: () => onTabChange("workshop"),
+		});
+	}
 
 	if (actor.permissions.includes("client.read")) {
 		navigationRows.push({

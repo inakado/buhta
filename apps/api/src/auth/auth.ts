@@ -1,6 +1,7 @@
 import { prismaAdapter } from "@better-auth/prisma-adapter";
-import { betterAuth } from "better-auth";
-import { admin, username } from "better-auth/plugins";
+import { betterAuth } from "better-auth/minimal";
+import { admin } from "better-auth/plugins/admin";
+import { username } from "better-auth/plugins/username";
 import { prisma } from "../prisma/client";
 import { isValidLogin, normalizeLogin } from "../users/login";
 

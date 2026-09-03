@@ -38,6 +38,7 @@ export const ROLE_PERMISSIONS = {
 		"catalog.manage",
 		"catalog.raw_material.manage",
 		"catalog.packaging.manage",
+		"production.manage",
 		"distributor.stock.read",
 		"distributor.cash.read",
 		"courier.stock.read",

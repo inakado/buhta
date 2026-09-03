@@ -2,7 +2,7 @@
 
 import { Settings, type LucideIcon } from "lucide-react";
 import { CatalogHome } from "../features/catalog/CatalogHome";
-import { DirectorAnalyticsHome } from "../features/analytics/DirectorAnalyticsHome";
+import { DirectorAnalyticsHome, type DirectorPeriodSelection } from "../features/analytics/DirectorAnalyticsHome";
 import { ClientsHome } from "../features/clients/ClientsHome";
 import { CourierBalanceHome } from "../features/courier/CourierBalanceHome";
 import { CourierLoadHome } from "../features/courier/CourierLoadHome";
@@ -31,20 +31,24 @@ import { ProductionMoreHome } from "../roles/production-manager/ProductionMoreHo
 type RoleHomeRouterProps = {
 	actor: CurrentActor;
 	activeTab: string;
+	directorAnalyticsPeriodSelection: DirectorPeriodSelection;
 	logout: () => void;
 	logoutPending: boolean;
 	online: boolean;
 	onStatusSuccess: (message: string) => void;
+	onDirectorAnalyticsPeriodSelectionChange: (selection: DirectorPeriodSelection) => void;
 	onTabChange: (tab: string) => void;
 };
 
 export function RoleHomeRouter({
 	actor,
 	activeTab,
+	directorAnalyticsPeriodSelection,
 	logout,
 	logoutPending,
 	online,
 	onStatusSuccess,
+	onDirectorAnalyticsPeriodSelectionChange,
 	onTabChange,
 }: RoleHomeRouterProps) {
 	if (actor.role === "director" && activeTab === "more") {
@@ -148,11 +152,25 @@ export function RoleHomeRouter({
 	}
 
 	if (
+		activeTab === "workshop"
+		&& actor.role === "director"
+		&& actor.permissions.includes("production.manage")
+	) {
+		return <ProductionHome activeTab="home" online={online} />;
+	}
+
+	if (
 		(activeTab === "analytics" || activeTab === "home")
 		&& actor.role === "director"
 		&& actor.permissions.includes("director.analytics.read")
 	) {
-		return <DirectorAnalyticsHome title={activeTab === "home" ? "Главная" : "Аналитика"} />;
+		return (
+			<DirectorAnalyticsHome
+				initialPeriodSelection={directorAnalyticsPeriodSelection}
+				onPeriodSelectionChange={onDirectorAnalyticsPeriodSelectionChange}
+				title={activeTab === "home" ? "Главная" : "Аналитика"}
+			/>
+		);
 	}
 
 	if (

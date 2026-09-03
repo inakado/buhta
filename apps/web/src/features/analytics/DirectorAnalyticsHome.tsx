@@ -59,7 +59,7 @@ const VIEW_OPTIONS = [
 
 type AnalyticsViewMode = typeof VIEW_OPTIONS[number]["value"];
 
-type DirectorPeriodSelection =
+export type DirectorPeriodSelection =
 	| {
 		mode: "preset";
 		periodPreset: DirectorAnalyticsPeriodPreset;
@@ -175,8 +175,19 @@ function directorAnalyticsReducer(
 	}
 }
 
-export function DirectorAnalyticsHome({ title = "Аналитика" }: { title?: string } = {}) {
-	const [state, dispatch] = useReducer(directorAnalyticsReducer, INITIAL_DIRECTOR_ANALYTICS_STATE);
+export function DirectorAnalyticsHome({
+	initialPeriodSelection = INITIAL_DIRECTOR_ANALYTICS_STATE.periodSelection,
+	onPeriodSelectionChange,
+	title = "Аналитика",
+}: {
+	initialPeriodSelection?: DirectorPeriodSelection;
+	onPeriodSelectionChange?: (selection: DirectorPeriodSelection) => void;
+	title?: string;
+} = {}) {
+	const [state, dispatch] = useReducer(directorAnalyticsReducer, {
+		...INITIAL_DIRECTOR_ANALYTICS_STATE,
+		periodSelection: initialPeriodSelection,
+	});
 	const { customDateFrom, customDateTo, customPeriodError, periodPickerOpen, periodSelection, viewMode } = state;
 	const analyticsQuery = useMemo(() => {
 		if (periodSelection.mode === "custom") {
@@ -201,6 +212,7 @@ export function DirectorAnalyticsHome({ title = "Аналитика" }: { title?
 
 	function selectPresetPeriod(periodPreset: DirectorAnalyticsPeriodPreset) {
 		dispatch({ type: "selectPreset", periodPreset });
+		onPeriodSelectionChange?.({ mode: "preset", periodPreset });
 	}
 
 	function setPeriodPickerOpenState(open: boolean) {
@@ -225,6 +237,11 @@ export function DirectorAnalyticsHome({ title = "Аналитика" }: { title?
 		}
 
 		dispatch({ type: "applyCustomPeriod" });
+		onPeriodSelectionChange?.({
+			mode: "custom",
+			dateFrom: customDateFrom,
+			dateTo: customDateTo,
+		});
 	}
 
 	return (

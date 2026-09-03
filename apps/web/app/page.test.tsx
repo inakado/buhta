@@ -89,6 +89,7 @@ const directorActorResponse = {
 		role: "director",
 		permissions: [
 			"catalog.manage",
+			"production.manage",
 			"distributor.stock.read",
 			"distributor.cash.read",
 			"courier.stock.read",
@@ -3027,6 +3028,114 @@ describe("HomePage", () => {
 		fireEvent.click(await screen.findByRole("button", { name: "История" }));
 		expect(await screen.findByRole("heading", { name: "История" })).toBeTruthy();
 		expect(await screen.findByRole("button", { name: /Director.*2 500\.00 ₽/ })).toBeTruthy();
+	});
+
+	it("keeps the director analytics period after bottom navigation", async () => {
+		const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+			const url = String(input);
+
+			if (url.endsWith("/auth/me")) {
+				return jsonResponse(directorActorResponse);
+			}
+
+			if (url.includes("/analytics/director")) {
+				return jsonResponse(directorAnalyticsResponse);
+			}
+
+			if (url.endsWith("/distributor/inventory")) {
+				return jsonResponse(distributorInventoryResponse);
+			}
+
+			if (url.endsWith("/distributor/cash-balances")) {
+				return jsonResponse(distributorCashBalancesResponse);
+			}
+
+			return jsonResponse({ error: { message: "Unexpected request" } }, 500);
+		});
+
+		vi.stubGlobal("fetch", fetchMock);
+
+		render(<HomePage />);
+
+		fireEvent.click(await screen.findByRole("button", { name: "7 дней" }));
+		await waitFor(() => {
+			expect(fetchMock.mock.calls.some(([input]) => String(input).includes("/analytics/director?periodPreset=7d"))).toBe(true);
+		});
+
+		fireEvent.click(screen.getByRole("button", { name: "Остатки" }));
+		expect(await screen.findByRole("heading", { name: "Остатки" })).toBeTruthy();
+
+		fireEvent.click(screen.getByRole("button", { name: "Главная" }));
+		expect(await screen.findByRole("heading", { name: "Главная" })).toBeTruthy();
+		expect(screen.getByRole("button", { name: "7 дней" }).getAttribute("aria-pressed")).toBe("true");
+	});
+
+	it("opens the existing workshop screen for a director from more", async () => {
+		const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+			const url = String(input);
+
+			if (url.endsWith("/auth/me")) {
+				return jsonResponse(directorActorResponse);
+			}
+
+			if (url.includes("/analytics/director")) {
+				return jsonResponse(directorAnalyticsResponse);
+			}
+
+			if (url.endsWith("/production/summary")) {
+				return jsonResponse({
+					summary: {
+						readyProductUnits: 0,
+						rawMaterialKinds: 0,
+						rawMaterialTotal: 0,
+						rawMaterialUnit: "кг",
+						packagingKinds: 0,
+						packagingTotal: 0,
+						packagingUnit: "шт",
+					},
+				});
+			}
+
+			if (url.endsWith("/production/raw-material-balances")) {
+				return jsonResponse({ rawMaterialBalances: [] });
+			}
+
+			if (url.endsWith("/production/packaging-balances")) {
+				return jsonResponse({ packagingBalances: [] });
+			}
+
+			if (url.endsWith("/production/product-batches")) {
+				return jsonResponse({ productBatches: [] });
+			}
+
+			if (url.endsWith("/production/workshop-product-balances")) {
+				return jsonResponse({ workshopProductBalances: [] });
+			}
+
+			if (url.endsWith("/production/transfer-options")) {
+				return jsonResponse({ distributors: [], workshopProductBalances: [] });
+			}
+
+			if (url.endsWith("/production/options")) {
+				return jsonResponse({ packagingTypes: [], productTemplates: [], rawMaterialTypes: [] });
+			}
+
+			return jsonResponse({ error: { message: "Unexpected request" } }, 500);
+		});
+
+		vi.stubGlobal("fetch", fetchMock);
+		render(<HomePage />);
+
+		fireEvent.click(await screen.findByRole("button", { name: "Еще" }));
+		fireEvent.click(await screen.findByRole("button", { name: "Цех" }));
+
+		expect(await screen.findByRole("heading", { name: "Цех" })).toBeTruthy();
+		expect(screen.getByRole("button", { name: "Выпустить" })).toBeTruthy();
+		expect(screen.getByRole("button", { name: "Передать" })).toBeTruthy();
+		expect(screen.getByRole("button", { name: "Добавить сырье" })).toBeTruthy();
+		expect(screen.getByRole("button", { name: "Добавить тару" })).toBeTruthy();
+		expect(screen.getByRole("button", { name: "Еще" }).getAttribute("aria-current")).toBe("page");
+		expect(screen.getAllByRole("navigation", { name: "Основная навигация" })).toHaveLength(1);
 	});
 
 	it("shows director work in the distilled four-tab contour", async () => {
