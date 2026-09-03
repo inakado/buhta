@@ -101,6 +101,7 @@ const directorActorResponse = {
 			"notification.read",
 			"cash.withdraw",
 			"discount.assign",
+			"operation.correct",
 			"operation.history.read",
 			"director.analytics.read",
 		],
@@ -1666,6 +1667,7 @@ describe("HomePage", () => {
 		fireEvent.click(await screen.findByRole("button", { name: /Сырье: 12.5 кг, 1 вид/ }));
 		expect(await screen.findByRole("heading", { name: "Сырье" })).toBeTruthy();
 		expect(screen.getByText("12.5 кг")).toBeTruthy();
+		expect(screen.queryByRole("button", { name: /Скорректировать/ })).toBeNull();
 		expect(screen.queryByText("Икра осетр")).toBeNull();
 		expect(screen.queryByLabelText("Вид сырья")).toBeNull();
 		fireEvent.click(screen.getByRole("button", { name: "Назад" }));
@@ -3102,8 +3104,8 @@ describe("HomePage", () => {
 		expect(screen.getByRole("button", { name: "7 дней" }).getAttribute("aria-pressed")).toBe("true");
 	});
 
-	it("opens the existing workshop screen for a director from more", async () => {
-		const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+	it("opens the workshop and corrects a raw-material balance for a director", async () => {
+		const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
 			const url = String(input);
 
 			if (url.endsWith("/auth/me")) {
@@ -3118,8 +3120,8 @@ describe("HomePage", () => {
 				return jsonResponse({
 					summary: {
 						readyProductUnits: 0,
-						rawMaterialKinds: 0,
-						rawMaterialTotal: 0,
+						rawMaterialKinds: 1,
+						rawMaterialTotal: 12.5,
 						rawMaterialUnit: "кг",
 						packagingKinds: 0,
 						packagingTotal: 0,
@@ -3129,7 +3131,40 @@ describe("HomePage", () => {
 			}
 
 			if (url.endsWith("/production/raw-material-balances")) {
-				return jsonResponse({ rawMaterialBalances: [] });
+				return jsonResponse({
+					rawMaterialBalances: [{
+						id: "raw-balance1",
+						typeId: "raw1",
+						name: "Горбуша",
+						unit: "кг",
+						quantity: 12.5,
+					}],
+				});
+			}
+
+			if (url.endsWith("/production/raw-material-corrections") && init?.method === "POST") {
+				return jsonResponse({
+					correction: {
+						id: "correction1",
+						rawMaterialTypeId: "raw1",
+						rawMaterialTypeName: "Горбуша",
+						unit: "кг",
+						quantity: 12.5,
+						balanceBefore: 12.5,
+						balanceAfter: 0,
+						reason: "Удаление тестового остатка",
+						operationId: "operation1",
+						actorUserId: "seed-director",
+						createdAt: new Date(0).toISOString(),
+					},
+					rawMaterialBalance: {
+						id: "raw-balance1",
+						typeId: "raw1",
+						name: "Горбуша",
+						unit: "кг",
+						quantity: 0,
+					},
+				});
 			}
 
 			if (url.endsWith("/production/packaging-balances")) {
@@ -3168,6 +3203,32 @@ describe("HomePage", () => {
 		expect(screen.getByRole("button", { name: "Добавить тару" })).toBeTruthy();
 		expect(screen.getByRole("button", { name: "Еще" }).getAttribute("aria-current")).toBe("page");
 		expect(screen.getAllByRole("navigation", { name: "Основная навигация" })).toHaveLength(1);
+
+		fireEvent.click(await screen.findByRole("button", { name: /Сырье: 12.5 кг, 1 вид/ }));
+		fireEvent.click(await screen.findByRole("button", { name: "Скорректировать Горбуша" }));
+		expect(await screen.findByRole("heading", { name: "Корректировка сырья" })).toBeTruthy();
+		fireEvent.change(screen.getByLabelText("Количество списания, кг"), { target: { value: "13" } });
+		fireEvent.change(screen.getByLabelText("Причина"), { target: { value: "  Удаление тестового остатка  " } });
+		fireEvent.click(screen.getByRole("button", { name: "Подтвердить корректировку" }));
+		expect(await screen.findByText("Количество списания больше текущего остатка.")).toBeTruthy();
+
+		fireEvent.change(screen.getByLabelText("Количество списания, кг"), { target: { value: "12.5" } });
+		fireEvent.click(screen.getByRole("button", { name: "Подтвердить корректировку" }));
+		await waitFor(() => {
+			expect(fetchMock).toHaveBeenCalledWith(
+				expect.stringContaining("/production/raw-material-corrections"),
+				expect.objectContaining({
+					method: "POST",
+					body: JSON.stringify({
+						rawMaterialTypeId: "raw1",
+						quantity: 12.5,
+						reason: "Удаление тестового остатка",
+					}),
+				}),
+			);
+		});
+		expect(await screen.findByText("Остаток скорректирован")).toBeTruthy();
+		expect(screen.queryByRole("button", { name: "Скорректировать еще" })).toBeNull();
 	});
 
 	it("opens the reused distributor sales workspace for a director from more", async () => {

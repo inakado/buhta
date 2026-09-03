@@ -31,7 +31,7 @@ export function PostSubmitResultLayer({
 	createdAt: string;
 	primaryAction: PostSubmitResultAction;
 	rows: PostSubmitResultRow[];
-	secondaryAction: PostSubmitResultAction;
+	secondaryAction?: PostSubmitResultAction | undefined;
 	title?: string;
 }) {
 	return (
@@ -58,10 +58,12 @@ export function PostSubmitResultLayer({
 					{primaryAction.icon}
 					{primaryAction.label}
 				</button>
-				<button className="secondary-button" onClick={secondaryAction.onClick} type="button">
-					{secondaryAction.icon}
-					{secondaryAction.label}
-				</button>
+				{secondaryAction ? (
+					<button className="secondary-button" onClick={secondaryAction.onClick} type="button">
+						{secondaryAction.icon}
+						{secondaryAction.label}
+					</button>
+				) : null}
 			</div>
 		</section>
 	);

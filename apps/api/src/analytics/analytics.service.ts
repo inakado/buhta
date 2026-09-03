@@ -119,6 +119,7 @@ export class AnalyticsService {
 				},
 			}),
 			prisma.rawMaterialBalance.findMany({
+				where: { quantity: { gt: 0 } },
 				include: { rawMaterialType: true },
 				orderBy: { rawMaterialType: { name: "asc" } },
 			}),

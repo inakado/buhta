@@ -53,6 +53,7 @@ const SUMMARY_BY_OPERATION_TYPE: Record<string, string> = {
 	"production.product_batch.create": "Выпуск продукции",
 	"production.product_transfer.create": "Перемещение на распределитель",
 	"production.raw_material_intake.create": "Поступление сырья",
+	"production.raw_material.correct": "Корректировка сырья",
 	"user.create": "Создание пользователя",
 	"user.identity.update": "Изменение пользователя",
 	"user.password.change": "Смена пароля",

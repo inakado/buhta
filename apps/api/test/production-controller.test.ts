@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
+import { Reflector } from "@nestjs/core";
 import { ProductionController } from "../src/production/production.controller";
 import type { ProductionService } from "../src/production/production.service";
 import { AppError } from "../src/common/errors/app-error";
+import { REQUIRED_PERMISSION_METADATA } from "../src/policy/require-permission.decorator";
 
 const actor = {
 	userId: "production-manager1",
@@ -22,6 +24,62 @@ const rawMaterialBalance = {
 const idempotencyKey = "controller-test-key";
 
 describe("ProductionController", () => {
+	it("requires operation.correct only for raw material correction", () => {
+		const reflector = new Reflector();
+		const permissionFor = (handlerName: keyof ProductionController) =>
+			reflector.getAllAndOverride(REQUIRED_PERMISSION_METADATA, [
+				ProductionController.prototype[handlerName],
+				ProductionController,
+			]);
+
+		expect(permissionFor("createRawMaterialCorrection")).toBe("operation.correct");
+		expect(permissionFor("createRawMaterialIntake")).toBe("production.manage");
+	});
+
+	it("validates and forwards raw material correction", async () => {
+		const correctionResponse = {
+			correction: {
+				id: "correction1",
+				rawMaterialTypeId: "raw1",
+				rawMaterialTypeName: "Горбуша",
+				unit: "кг",
+				quantity: 2.5,
+				balanceBefore: 12.5,
+				balanceAfter: 10,
+				reason: "Удаление тестового остатка",
+				operationId: "operation1",
+				actorUserId: actor.userId,
+				createdAt: new Date(0).toISOString(),
+			},
+			rawMaterialBalance: { ...rawMaterialBalance, quantity: 10 },
+		};
+		const productionService = {
+			createRawMaterialCorrection: vi.fn().mockResolvedValue(correctionResponse),
+		} as unknown as ProductionService;
+		const controller = new ProductionController(productionService);
+
+		await expect(
+			controller.createRawMaterialCorrection(actor, {
+				rawMaterialTypeId: "raw1",
+				quantity: 2.5,
+				reason: " Удаление тестового остатка ",
+			}, idempotencyKey),
+		).resolves.toEqual(correctionResponse);
+		expect(productionService.createRawMaterialCorrection).toHaveBeenCalledWith(actor, {
+			rawMaterialTypeId: "raw1",
+			quantity: 2.5,
+			reason: "Удаление тестового остатка",
+		}, idempotencyKey);
+
+		await expect(
+			controller.createRawMaterialCorrection(actor, {
+				rawMaterialTypeId: "raw1",
+				quantity: 0,
+				reason: "x",
+			}, idempotencyKey),
+		).rejects.toThrow(AppError);
+	});
+
 	it("validates raw material intake payload before calling service", async () => {
 		const productionService = {
 			createRawMaterialIntake: vi.fn(),

@@ -43,6 +43,8 @@ import {
 	CreateProductTemplateRequestSchema,
 	CreateRawMaterialTypeRequestSchema,
 	CreateRawMaterialIntakeRequestSchema,
+	CreateRawMaterialCorrectionRequestSchema,
+	RawMaterialCorrectionResponseSchema,
 	DistributorCashBalancesResponseSchema,
 	DistributorCashWithdrawalResponseSchema,
 	DistributorInventoryResponseSchema,
@@ -270,6 +272,45 @@ describe("shared contracts", () => {
 	});
 
 	it("validates production contracts", () => {
+		expect(
+			CreateRawMaterialCorrectionRequestSchema.safeParse({
+				rawMaterialTypeId: "raw-1",
+				quantity: 12.5,
+				reason: "Удаление тестового остатка",
+			}).success,
+		).toBe(true);
+		expect(
+			CreateRawMaterialCorrectionRequestSchema.safeParse({
+				rawMaterialTypeId: "raw-1",
+				quantity: 0,
+				reason: "x",
+			}).success,
+		).toBe(false);
+		expect(
+			RawMaterialCorrectionResponseSchema.safeParse({
+				correction: {
+					id: "correction-1",
+					rawMaterialTypeId: "raw-1",
+					rawMaterialTypeName: "Горбуша",
+					unit: "кг",
+					quantity: 12.5,
+					balanceBefore: 12.5,
+					balanceAfter: 0,
+					reason: "Удаление тестового остатка",
+					operationId: "operation-1",
+					actorUserId: "director-1",
+					createdAt: new Date(0).toISOString(),
+				},
+				rawMaterialBalance: {
+					id: "balance-1",
+					typeId: "raw-1",
+					name: "Горбуша",
+					unit: "кг",
+					quantity: 0,
+					updatedAt: new Date(0).toISOString(),
+				},
+			}).success,
+		).toBe(true);
 		expect(
 			CreateRawMaterialIntakeRequestSchema.safeParse({
 				rawMaterialTypeId: "raw-1",

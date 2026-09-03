@@ -23,6 +23,7 @@ import type {
 	CreateProductTemplateRequest,
 	CreateProductTransferRequest,
 	CreateRawMaterialIntakeRequest,
+	CreateRawMaterialCorrectionRequest,
 	CreateRawMaterialTypeRequest,
 	CreateUserRequest,
 	CreateUserResponse,
@@ -68,6 +69,7 @@ import type {
 	ProductionSummaryResponse,
 	RawMaterialBalancesResponse,
 	RawMaterialIntakeResponse,
+	RawMaterialCorrectionResponse,
 	RawMaterialTypeResponse,
 	RawMaterialTypesListResponse,
 	ResetUserPasswordResponse,
@@ -384,6 +386,14 @@ export async function createRawMaterialIntake(
 	input: CreateRawMaterialIntakeRequest,
 ): Promise<RawMaterialIntakeResponse> {
 	return fetchJson<RawMaterialIntakeResponse>("/production/raw-material-intakes", {
+		...idempotentJsonPost(input),
+	});
+}
+
+export async function createRawMaterialCorrection(
+	input: CreateRawMaterialCorrectionRequest,
+): Promise<RawMaterialCorrectionResponse> {
+	return fetchJson<RawMaterialCorrectionResponse>("/production/raw-material-corrections", {
 		...idempotentJsonPost(input),
 	});
 }

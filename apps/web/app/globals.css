@@ -4526,6 +4526,12 @@ input[type="search"]::-webkit-search-decoration {
 	font-weight: var(--font-weight-emphasis);
 }
 
+.production-ledger-action {
+	margin-top: 7px;
+	padding-inline: 10px;
+	font-size: 11px;
+}
+
 .production-ledger-quantity {
 	display: block;
 	color: var(--base-black);

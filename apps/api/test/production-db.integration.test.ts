@@ -114,6 +114,11 @@ async function cleanup() {
 			OR: [{ actorUserId: actor.userId }, { rawMaterialTypeId: { in: rawMaterialTypeIds } }],
 		},
 	});
+	await prisma.rawMaterialCorrection.deleteMany({
+		where: {
+			OR: [{ actorUserId: actor.userId }, { rawMaterialTypeId: { in: rawMaterialTypeIds } }],
+		},
+	});
 	await prisma.packagingIntake.deleteMany({
 		where: {
 			OR: [{ actorUserId: actor.userId }, { packagingTypeId: { in: packagingTypeIds } }],
@@ -218,6 +223,88 @@ describe("ProductionService real Postgres integration", () => {
 				unit: "шт",
 			}),
 		});
+	});
+
+	it("corrects raw material balance as an append-only audited operation", async () => {
+		const { rawMaterialType } = await createCatalogFixture("production-integration-correction");
+		await productionService.createRawMaterialIntake(actor, {
+			rawMaterialTypeId: rawMaterialType.id,
+			quantity: 15.5,
+		});
+		await prisma.rawMaterialType.update({
+			where: { id: rawMaterialType.id },
+			data: { active: false },
+		});
+
+		const response = await productionService.createRawMaterialCorrection(actor, {
+			rawMaterialTypeId: rawMaterialType.id,
+			quantity: 15.5,
+			reason: "Удаление тестового остатка",
+		}, "production-correction-success");
+
+		expect(response).toMatchObject({
+			correction: {
+				rawMaterialTypeId: rawMaterialType.id,
+				rawMaterialTypeName: "production-integration-correction-raw",
+				unit: "кг",
+				quantity: 15.5,
+				balanceBefore: 15.5,
+				balanceAfter: 0,
+				reason: "Удаление тестового остатка",
+				actorUserId: actor.userId,
+			},
+			rawMaterialBalance: {
+				typeId: rawMaterialType.id,
+				quantity: 0,
+			},
+		});
+		const storedCorrection = await prisma.rawMaterialCorrection.findFirstOrThrow({
+			where: { rawMaterialTypeId: rawMaterialType.id },
+		});
+		expect(Number(storedCorrection.quantity)).toBe(15.5);
+		expect(Number(storedCorrection.balanceBefore)).toBe(15.5);
+		expect(Number(storedCorrection.balanceAfter)).toBe(0);
+		expect(storedCorrection.reason).toBe("Удаление тестового остатка");
+		expect(await productionService.listRawMaterialBalances()).not.toContainEqual(
+			expect.objectContaining({ typeId: rawMaterialType.id }),
+		);
+		await expect(prisma.auditLog.findFirstOrThrow({
+			where: {
+				actorUserId: actor.userId,
+				action: "production.raw_material.correct",
+				entityId: response.correction.id,
+			},
+		})).resolves.toMatchObject({
+			details: expect.objectContaining({
+				rawMaterialBalanceBefore: 15.5,
+				rawMaterialBalanceAfter: 0,
+				reason: "Удаление тестового остатка",
+			}),
+		});
+	});
+
+	it("rejects raw material correction above the available balance atomically", async () => {
+		const { rawMaterialType } = await createCatalogFixture("production-integration-correction-limit");
+		await productionService.createRawMaterialIntake(actor, {
+			rawMaterialTypeId: rawMaterialType.id,
+			quantity: 3,
+		});
+
+		await expect(productionService.createRawMaterialCorrection(actor, {
+			rawMaterialTypeId: rawMaterialType.id,
+			quantity: 4,
+			reason: "Ошибочный тестовый приход",
+		}, "production-correction-limit")).rejects.toThrow(AppError);
+		const balance = await prisma.rawMaterialBalance.findUniqueOrThrow({
+			where: { rawMaterialTypeId: rawMaterialType.id },
+		});
+		expect(Number(balance.quantity)).toBe(3);
+		await expect(prisma.rawMaterialCorrection.count({
+			where: { rawMaterialTypeId: rawMaterialType.id },
+		})).resolves.toBe(0);
+		await expect(prisma.operation.count({
+			where: { actorUserId: actor.userId, type: "production.raw_material.correct" },
+		})).resolves.toBe(0);
 	});
 
 	it("returns active production options without requiring catalog management", async () => {

@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Headers, Inject, Post, UseGuards } from "@nestjs/common";
 import {
+	CreateRawMaterialCorrectionRequestSchema,
 	CreatePackagingIntakeRequestSchema,
 	CreateProductBatchRequestSchema,
 	CreateProductTransferRequestSchema,
@@ -52,6 +53,20 @@ export class ProductionController {
 				requireIdempotencyKey(idempotencyKey),
 			),
 		};
+	}
+
+	@Post("raw-material-corrections")
+	@RequirePermission("operation.correct")
+	async createRawMaterialCorrection(
+		@CurrentActor() actor: Actor | undefined,
+		@Body() body: unknown,
+		@Headers("idempotency-key") idempotencyKey: string | undefined,
+	) {
+		return this.productionService.createRawMaterialCorrection(
+			requireActor(actor),
+			parseBody(CreateRawMaterialCorrectionRequestSchema, body, "Invalid raw material correction payload"),
+			requireIdempotencyKey(idempotencyKey),
+		);
 	}
 
 	@Get("packaging-balances")

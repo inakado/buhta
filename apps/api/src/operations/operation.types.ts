@@ -28,6 +28,7 @@ export const BASELINE_OPERATION_TYPES = [
 	"production.product_batch.create",
 	"production.product_transfer.create",
 	"production.raw_material_intake.create",
+	"production.raw_material.correct",
 	"user.create",
 	"user.identity.update",
 	"user.password.change",

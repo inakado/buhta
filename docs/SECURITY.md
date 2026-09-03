@@ -69,8 +69,9 @@ Policy layer отвечает за доменные разрешения. Тек
 - `/catalog/raw-material-types*` handlers защищены granular permission `catalog.raw_material.manage`; сейчас это `admin`, `director` и `production_manager`.
 - `/catalog/packaging-types*` handlers защищены granular permission `catalog.packaging.manage`; сейчас это `admin`, `director` и `production_manager`.
 - `/catalog/distributors*` и `/catalog/product-templates*` handlers остаются защищены широким permission `catalog.manage`; сейчас это `admin` и `director`. Шаблоны продукции, цены (`priceCents`) и распределители не становятся доступными заведующему производством.
-- `/production/*` handlers защищены permission `production.manage`; сейчас это `admin` и `production_manager`.
-- Перемещение продукции из цеха на распределитель использует тот же `production.manage`: `production_manager` выполняет рабочую операцию, `admin` имеет support-доступ. Отдельный permission для transfer пока не введен.
+- `/production/*` handlers по умолчанию защищены permission `production.manage`; сейчас это `admin`, `director` и `production_manager`.
+- `POST /production/raw-material-corrections` переопределяет class-level permission и требует `operation.correct`; сейчас это только `admin` и `director`. Количество положительное, причина обязательна, а backend транзакционно запрещает списание сверх остатка.
+- Перемещение продукции из цеха на распределитель использует `production.manage`: рабочую операцию выполняют `director` и `production_manager`, `admin` имеет support-доступ. Отдельный permission для transfer пока не введен.
 - `/clients` read handlers защищены `client.read`; write handlers защищены `client.manage`.
 - `client.read` и `client.manage` разделены намеренно: директор видит клиентскую базу, но не создает и не редактирует клиентов.
 
@@ -111,7 +112,7 @@ Read-only товарные остатки распределителя защи�
 | `catalog.manage` | `admin`, `director` |
 | `catalog.raw_material.manage` | `admin`, `director`, `production_manager` |
 | `catalog.packaging.manage` | `admin`, `director`, `production_manager` |
-| `production.manage` | `admin`, `production_manager` |
+| `production.manage` | `admin`, `director`, `production_manager` |
 | `distributor.stock.read` | все роли |
 | `distributor.cash.read` | `admin`, `director`, `commercial_manager`, `distributor_worker` |
 | `client.read` | `admin`, `director`, `commercial_manager`, `distributor_worker`, `courier` |

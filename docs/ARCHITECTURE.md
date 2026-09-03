@@ -123,6 +123,7 @@ Clients foundation пишет audit operations:
 Production baseline пишет audit operations:
 
 - `production.raw_material_intake.create`;
+- `production.raw_material.correct`;
 - `production.packaging_intake.create`;
 - `production.product_batch.create`;
 - `production.product_transfer.create`.
@@ -146,12 +147,13 @@ Production balance baseline:
 - `raw_material_balance` — текущий остаток сырья в цеху по виду сырья;
 - `packaging_balance` — текущий остаток тары в цеху по виду тары;
 - `raw_material_intake` и `packaging_intake` — факты поступления;
+- `raw_material_correction` — append-only факт уменьшения ошибочного остатка сырья с причиной, автором и snapshot остатка до/после;
 - `product_batch` — выпущенная партия в статусе `in_workshop` со snapshot названий, единиц учета и цены.
 - `workshop_product_balance` — доступный остаток готовой продукции в цеху по выпущенной партии;
 - `distributor_product_balance` — товарный остаток распределителя по тройке распределитель + партия продукции + фактическая цена строки;
 - `product_transfer` — typed record факта перемещения партии из цеха на распределитель с price snapshot.
 
-Поступления и выпуск выполняются в Prisma transaction. Выпуск партии использует conditional decrement: сырье и тара списываются только если текущего остатка достаточно, иначе операция отклоняется и партия не создается.
+Поступления, корректировка сырья и выпуск выполняются в Prisma transaction. Корректировка сырья использует conditional decrement и DB check `raw_material_balance.quantity >= 0`, создает typed fact, operation и audit, поэтому конкурентные операции не могут увести остаток в минус. Выпуск партии аналогично списывает сырье и тару только при достаточном остатке, иначе операция отклоняется и партия не создается.
 
 Выпуск партии в той же transaction создает `workshop_product_balance` с количеством выпущенной продукции. Перемещение на распределитель использует conditional decrement `workshop_product_balance.quantity >= requestedQuantity` и upsert/increment `distributor_product_balance`. `ProductBatch.status` не является источником доступного остатка, потому что партия может быть перемещена частично.
 

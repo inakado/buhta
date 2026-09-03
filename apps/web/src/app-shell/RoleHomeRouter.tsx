@@ -156,7 +156,13 @@ export function RoleHomeRouter({
 		&& actor.role === "director"
 		&& actor.permissions.includes("production.manage")
 	) {
-		return <ProductionHome activeTab="home" online={online} />;
+		return (
+			<ProductionHome
+				activeTab="home"
+				canCorrectRawMaterial={actor.permissions.includes("operation.correct")}
+				online={online}
+			/>
+		);
 	}
 
 	if (

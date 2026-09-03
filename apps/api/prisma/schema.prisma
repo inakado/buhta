@@ -37,6 +37,7 @@ model User {
   distributorCashWithdrawals DistributorCashWithdrawal[] @relation("DistributorCashWithdrawalActor")
   distributorSaleCancellations DistributorSaleCancellation[] @relation("DistributorSaleCancellationActor")
   productDiscountAssignments ProductDiscountAssignment[] @relation("ProductDiscountAssignmentActor")
+  rawMaterialCorrections RawMaterialCorrection[] @relation("RawMaterialCorrectionActor")
   createdProductionNotifications   ProductionNotification[] @relation("ProductionNotificationCreatedBy")
   completedProductionNotifications ProductionNotification[] @relation("ProductionNotificationCompletedBy")
 
@@ -102,6 +103,7 @@ model Operation {
   auditLogs          AuditLog[]
   idempotencyRecords IdempotencyRecord[]
   rawMaterialIntakes RawMaterialIntake[]
+  rawMaterialCorrections RawMaterialCorrection[]
   packagingIntakes   PackagingIntake[]
   productBatches     ProductBatch[]
   productTransfers   ProductTransfer[]
@@ -174,6 +176,7 @@ model RawMaterialType {
   productTemplates ProductTemplate[]
   balance          RawMaterialBalance?
   intakes          RawMaterialIntake[]
+  corrections      RawMaterialCorrection[]
 
   @@map("raw_material_type")
 }
@@ -284,6 +287,26 @@ model RawMaterialIntake {
   @@index([rawMaterialTypeId])
   @@index([actorUserId])
   @@map("raw_material_intake")
+}
+
+model RawMaterialCorrection {
+  id                String          @id @default(cuid())
+  rawMaterialTypeId String
+  quantity          Decimal         @db.Decimal(12, 3)
+  balanceBefore     Decimal         @db.Decimal(12, 3)
+  balanceAfter      Decimal         @db.Decimal(12, 3)
+  reason            String
+  operationId       String          @unique
+  actorUserId       String
+  createdAt         DateTime        @default(now())
+  rawMaterialType   RawMaterialType @relation(fields: [rawMaterialTypeId], references: [id], onDelete: Restrict)
+  operation         Operation       @relation(fields: [operationId], references: [id], onDelete: Restrict)
+  actor             User            @relation("RawMaterialCorrectionActor", fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  @@index([rawMaterialTypeId])
+  @@index([actorUserId])
+  @@index([createdAt])
+  @@map("raw_material_correction")
 }
 
 model PackagingIntake {

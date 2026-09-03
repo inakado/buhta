@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { Injectable } from "@nestjs/common";
 import type {
+	CreateRawMaterialCorrectionRequest,
 	CreateProductTransferRequest,
 	CreatePackagingIntakeRequest,
 	CreateProductBatchRequest,
@@ -9,6 +10,7 @@ import type {
 	ProductTransferResponse,
 	ProductionOptionsResponse,
 	ProductionBalanceItem,
+	RawMaterialCorrectionResponse,
 	ProductionSummary,
 	ProductionTransferOptionsResponse,
 	WorkshopProductBalanceItem,
@@ -92,6 +94,7 @@ export class ProductionService {
 
 	async listRawMaterialBalances(): Promise<ProductionBalanceItem[]> {
 		const balances = await prisma.rawMaterialBalance.findMany({
+			where: { quantity: { gt: 0 } },
 			include: { rawMaterialType: true },
 			orderBy: { rawMaterialType: { name: "asc" } },
 		});
@@ -192,6 +195,93 @@ export class ProductionService {
 		});
 
 		return mapRawMaterialBalance(balance);
+	}
+
+	async createRawMaterialCorrection(
+		actor: Actor,
+		input: CreateRawMaterialCorrectionRequest,
+		idempotencyKey?: string,
+	): Promise<RawMaterialCorrectionResponse> {
+		const correctionId = randomUUID();
+		const result = await prisma.$transaction(async (tx) => {
+			const balanceBefore = await tx.rawMaterialBalance.findUnique({
+				where: { rawMaterialTypeId: input.rawMaterialTypeId },
+				include: { rawMaterialType: true },
+			});
+			if (!balanceBefore) {
+				throw new AppError("NOT_FOUND", "Raw material balance not found", {
+					rawMaterialTypeId: input.rawMaterialTypeId,
+				});
+			}
+
+			const decrement = await tx.rawMaterialBalance.updateMany({
+				where: {
+					id: balanceBefore.id,
+					quantity: { gte: input.quantity },
+				},
+				data: { quantity: { decrement: input.quantity } },
+			});
+			if (decrement.count !== 1) {
+				throw new AppError("DOMAIN_RULE_VIOLATION", "Not enough raw material balance", {
+					rawMaterialTypeId: input.rawMaterialTypeId,
+				});
+			}
+
+			const balanceAfter = await tx.rawMaterialBalance.findUniqueOrThrow({
+				where: { id: balanceBefore.id },
+				include: { rawMaterialType: true },
+			});
+			const balanceBeforeQuantity = Number(balanceBefore.quantity);
+			const balanceAfterQuantity = Number(balanceAfter.quantity);
+			const operation = await this.createOperation(tx, {
+				actor,
+				type: "production.raw_material.correct",
+				entityType: "raw_material_correction",
+				entityId: correctionId,
+				idempotencyKey,
+				details: {
+					rawMaterialCorrectionId: correctionId,
+					rawMaterialTypeId: input.rawMaterialTypeId,
+					rawMaterialTypeName: balanceBefore.rawMaterialType.name,
+					unit: balanceBefore.rawMaterialType.unit,
+					quantity: input.quantity,
+					rawMaterialBalanceBefore: balanceBeforeQuantity,
+					rawMaterialBalanceAfter: balanceAfterQuantity,
+					reason: input.reason,
+				},
+			});
+			const correction = await tx.rawMaterialCorrection.create({
+				data: {
+					id: correctionId,
+					rawMaterialTypeId: input.rawMaterialTypeId,
+					quantity: input.quantity,
+					balanceBefore: balanceBefore.quantity,
+					balanceAfter: balanceAfter.quantity,
+					reason: input.reason,
+					operationId: operation.id,
+					actorUserId: actor.userId,
+				},
+			});
+
+			return { balanceAfter, correction };
+		});
+
+		return {
+			correction: {
+				id: result.correction.id,
+				rawMaterialTypeId: result.correction.rawMaterialTypeId,
+				rawMaterialTypeName: result.balanceAfter.rawMaterialType.name,
+				unit: result.balanceAfter.rawMaterialType.unit,
+				quantity: Number(result.correction.quantity),
+				balanceBefore: Number(result.correction.balanceBefore),
+				balanceAfter: Number(result.correction.balanceAfter),
+				reason: result.correction.reason,
+				operationId: result.correction.operationId,
+				actorUserId: result.correction.actorUserId,
+				createdAt: result.correction.createdAt.toISOString(),
+			},
+			rawMaterialBalance: mapRawMaterialBalance(result.balanceAfter),
+		};
 	}
 
 	async createPackagingIntake(

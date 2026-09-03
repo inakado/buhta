@@ -58,6 +58,7 @@ const OPERATION_LABELS: Record<string, string> = {
 	"production.product_batch.create": "Выпуск продукции",
 	"production.product_transfer.create": "Передача продукции",
 	"production.raw_material_intake.create": "Поступление сырья",
+	"production.raw_material.correct": "Корректировка сырья",
 	"user.create": "Создание пользователя",
 	"user.identity.update": "Изменение пользователя",
 	"user.password.reset": "Сброс пароля",
@@ -82,6 +83,7 @@ const ENTITY_LABELS: Record<string, string> = {
 	product_transfer: "Передача продукции",
 	production_notification: "Задача производству",
 	raw_material_intake: "Прием сырья",
+	raw_material_correction: "Корректировка сырья",
 	raw_material_type: "Тип сырья",
 	user: "Пользователь",
 };
@@ -127,6 +129,8 @@ const DETAIL_LABELS: Record<string, string> = {
 	productName: "Продукция",
 	quantity: "Количество",
 	rawMaterialTypeName: "Сырье",
+	rawMaterialBalanceAfter: "Остаток сырья после",
+	rawMaterialBalanceBefore: "Остаток сырья до",
 	rawMaterialUnit: "Единица сырья",
 	reason: "Причина",
 	recipientRole: "Получатель",
@@ -311,6 +315,7 @@ function buildBalanceSection(details: Record<string, unknown>, usedKeys: Set<str
 		["courierBalanceBefore", "courierBalanceAfter", "Остаток курьера"],
 		["distributorBalanceBefore", "distributorBalanceAfter", "Остаток распределителя"],
 		["workshopBalanceBefore", "workshopBalanceAfter", "Остаток цеха"],
+		["rawMaterialBalanceBefore", "rawMaterialBalanceAfter", "Остаток сырья"],
 	] as const;
 
 	pairs.forEach(([beforeKey, afterKey, label]) => {

@@ -1,5 +1,6 @@
 "use client";
 
+import * as Dialog from "@radix-ui/react-dialog";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, type ReactNode, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import {
@@ -7,6 +8,7 @@ import {
 	ArrowLeft,
 	Check,
 	Factory,
+	X,
 } from "lucide-react";
 import {
 	type Distributor,
@@ -15,12 +17,14 @@ import {
 	type ProductTemplate,
 	type ProductTransferResponse,
 	type ProductionBalanceItem,
+	type RawMaterialCorrection,
 	type RawMaterialType,
 	type WorkshopProductBalanceItem,
 } from "@buhta/shared";
 import {
 	createPackagingIntake,
 	createProductBatch,
+	createRawMaterialCorrection,
 	createProductTransfer,
 	createRawMaterialIntake,
 	getProductionOptions,
@@ -140,9 +144,11 @@ function productTransferFormReducer(
 
 export function ProductionHome({
 	activeTab,
+	canCorrectRawMaterial = false,
 	online,
 }: {
 	activeTab: ProductionTab;
+	canCorrectRawMaterial?: boolean;
 	online: boolean;
 }) {
 	const [activeScreen, setActiveScreen] = useState<ProductionScreen | null>(null);
@@ -223,6 +229,7 @@ export function ProductionHome({
 	if (activeTab === "home" && activeScreen) {
 		return (
 			<ProductionDetailScreen
+				canCorrectRawMaterial={canCorrectRawMaterial}
 				mode={activeScreen}
 				onBack={() => setActiveScreen(null)}
 				onActionSuccess={handleActionSuccess}
@@ -279,6 +286,7 @@ export function ProductionHome({
 }
 
 function ProductionDetailScreen({
+	canCorrectRawMaterial,
 	mode,
 	onActionSuccess,
 	onBack,
@@ -296,6 +304,7 @@ function ProductionDetailScreen({
 	workshopProductBalances,
 	workshopProductBalancesLoading,
 }: {
+	canCorrectRawMaterial: boolean;
 	mode: ProductionScreen;
 	onActionSuccess: (message: string) => void;
 	onBack: () => void;
@@ -320,8 +329,8 @@ function ProductionDetailScreen({
 		[productTemplates],
 	);
 	const rawStockItems = useMemo(
-		() => buildStockItems(activeRawMaterialTypes, rawMaterialBalances),
-		[activeRawMaterialTypes, rawMaterialBalances],
+		() => buildRawStockItems(rawMaterialBalances),
+		[rawMaterialBalances],
 	);
 	const packagingStockItems = useMemo(
 		() => buildStockItems(activePackagingTypes, packagingBalances),
@@ -378,10 +387,12 @@ function ProductionDetailScreen({
 				/>
 			) : null}
 			{mode === "raw-stock" ? (
-				<StockListScreen
+				<RawMaterialStockScreen
+					canCorrect={canCorrectRawMaterial}
 					emptyText="Сырья пока нет. Добавьте первый приход сырья."
 					items={rawStockItems}
 					loading={rawMaterialBalancesLoading}
+					online={online}
 					title="Сырье"
 				/>
 			) : null}
@@ -969,11 +980,15 @@ function StockListScreen({
 	emptyText,
 	items,
 	loading,
+	onCorrect,
+	online = true,
 	title,
 }: {
 	emptyText: string;
 	items: Array<{ id: string; name: string; quantity: number; unit: string }>;
 	loading: boolean;
+	onCorrect?: ((item: { id: string; name: string; quantity: number; unit: string }) => void) | undefined;
+	online?: boolean;
 	title: string;
 }) {
 	return (
@@ -992,11 +1007,222 @@ function StockListScreen({
 					{loading ? <ProductionListMessage colSpan={2} text="Загрузка списка" /> : null}
 					{!loading && items.length === 0 ? <ProductionListMessage colSpan={2} text={emptyText} /> : null}
 					{items.map((item) => (
-						<BalanceRow item={item} key={item.id} />
+						<BalanceRow item={item} key={item.id} onCorrect={onCorrect} online={online} />
 					))}
 				</tbody>
 			</table>
 		</section>
+	);
+}
+
+function RawMaterialStockScreen({
+	canCorrect,
+	emptyText,
+	items,
+	loading,
+	online,
+	title,
+}: {
+	canCorrect: boolean;
+	emptyText: string;
+	items: Array<{ id: string; name: string; quantity: number; unit: string }>;
+	loading: boolean;
+	online: boolean;
+	title: string;
+}) {
+	const queryClient = useQueryClient();
+	const [correctionState, setCorrectionState] = useState<{
+		correctionItem: (typeof items)[number] | null;
+		quantity: string;
+		reason: string;
+		localError: string;
+		result: RawMaterialCorrection | null;
+	}>({
+		correctionItem: null,
+		quantity: "",
+		reason: "",
+		localError: "",
+		result: null,
+	});
+	const { correctionItem, quantity, reason, localError, result } = correctionState;
+	const correction = useMutation({
+		mutationFn: createRawMaterialCorrection,
+		onSuccess: async (response) => {
+			setCorrectionState((current) => ({ ...current, result: response.correction }));
+			await Promise.all([
+				queryClient.invalidateQueries({ queryKey: ["production"] }),
+				queryClient.invalidateQueries({ queryKey: ["analytics", "director"] }),
+			]);
+		},
+	});
+
+	function resetForm() {
+		setCorrectionState((current) => ({
+			correctionItem: current.correctionItem,
+			quantity: "",
+			reason: "",
+			localError: "",
+			result: null,
+		}));
+		correction.reset();
+	}
+
+	function closeDialog() {
+		if (correction.isPending) {
+			return;
+		}
+		setCorrectionState({
+			correctionItem: null,
+			quantity: "",
+			reason: "",
+			localError: "",
+			result: null,
+		});
+		correction.reset();
+	}
+
+	function openDialog(item: (typeof items)[number]) {
+		setCorrectionState({
+			correctionItem: item,
+			quantity: "",
+			reason: "",
+			localError: "",
+			result: null,
+		});
+		correction.reset();
+	}
+
+	function handleSubmit(event: FormEvent<HTMLFormElement>) {
+		event.preventDefault();
+		if (!correctionItem) {
+			return;
+		}
+
+		try {
+			const parsedQuantity = parsePositiveNumber(quantity, "Количество списания");
+			if (parsedQuantity > correctionItem.quantity) {
+				throw new Error("Количество списания больше текущего остатка.");
+			}
+			const trimmedReason = reason.trim();
+			if (trimmedReason.length < 3) {
+				throw new Error("Укажите причину корректировки.");
+			}
+			setCorrectionState((current) => ({ ...current, localError: "" }));
+			correction.mutate({
+				rawMaterialTypeId: correctionItem.id,
+				quantity: parsedQuantity,
+				reason: trimmedReason,
+			});
+		} catch (error) {
+			setCorrectionState((current) => ({
+				...current,
+				localError: error instanceof Error ? error.message : "Проверьте данные корректировки.",
+			}));
+		}
+	}
+
+	const parsedQuantity = parseOptionalPositiveNumber(quantity) ?? 0;
+	const balanceAfter = Math.max((correctionItem?.quantity ?? 0) - parsedQuantity, 0);
+
+	return (
+		<>
+			<StockListScreen
+				emptyText={emptyText}
+				items={items}
+				loading={loading}
+				onCorrect={canCorrect ? openDialog : undefined}
+				online={online}
+				title={title}
+			/>
+			<Dialog.Root
+				onOpenChange={(open) => {
+					if (!open) {
+						closeDialog();
+					}
+				}}
+				open={Boolean(correctionItem)}
+			>
+				<Dialog.Portal>
+					<Dialog.Overlay className="operation-dialog-overlay" />
+					<Dialog.Content aria-describedby={undefined} className="operation-dialog">
+						{result ? (
+							<PostSubmitResultLayer
+								createdAt={result.createdAt}
+								primaryAction={{ label: "Готово", onClick: closeDialog }}
+								rows={[
+									{ label: "Сырье", value: result.rawMaterialTypeName },
+									{ label: "Списано", value: `${formatQuantity(result.quantity)} ${result.unit}` },
+									{ label: "Остаток", value: `${formatQuantity(result.balanceAfter)} ${result.unit}` },
+									{ label: "Причина", value: result.reason },
+								]}
+								secondaryAction={result.balanceAfter > 0 ? {
+									label: "Скорректировать еще",
+									onClick: resetForm,
+								} : undefined}
+								title="Остаток скорректирован"
+							/>
+						) : (
+							<form className="operation-dialog-form production-action-form" onSubmit={handleSubmit}>
+								<div className="operation-dialog-heading">
+									<div>
+										<Dialog.Title>Корректировка сырья</Dialog.Title>
+										<span>{correctionItem?.name}</span>
+									</div>
+									<Dialog.Close
+										aria-label="Закрыть"
+										className="icon-button"
+										disabled={correction.isPending}
+										type="button"
+									>
+										<X aria-hidden size={18} />
+									</Dialog.Close>
+								</div>
+								<label className="field">
+									<span>Количество списания, {correctionItem?.unit}</span>
+									<input
+										inputMode="decimal"
+										onChange={(event) => setCorrectionState((current) => ({
+											...current,
+											quantity: event.target.value,
+										}))}
+										placeholder="0"
+										value={quantity}
+									/>
+								</label>
+								<label className="field">
+									<span>Причина</span>
+									<textarea
+										onChange={(event) => setCorrectionState((current) => ({
+											...current,
+											reason: event.target.value,
+										}))}
+										placeholder="Например, удаление тестового остатка"
+										rows={2}
+										value={reason}
+									/>
+								</label>
+								<div className="production-form-ledger">
+									<ProductionInfoRow label="Текущий остаток" value={`${formatQuantity(correctionItem?.quantity ?? 0)} ${correctionItem?.unit ?? ""}`} />
+									<ProductionInfoRow label="Списать" value={`${formatQuantity(parsedQuantity)} ${correctionItem?.unit ?? ""}`} />
+									<ProductionInfoRow label="Остаток после" value={`${formatQuantity(balanceAfter)} ${correctionItem?.unit ?? ""}`} />
+								</div>
+								{localError ? <p className="form-error">{localError}</p> : null}
+								{correction.isError ? <p className="form-error">{correction.error.message}</p> : null}
+								{!online ? <p className="muted">Нет сети: корректировка недоступна.</p> : null}
+								<div className="form-actions">
+									<button className="secondary-button" disabled={correction.isPending} onClick={closeDialog} type="button">
+										Отмена
+									</button>
+									<button className="primary-button" disabled={!online || correction.isPending} type="submit">
+										Подтвердить корректировку
+									</button>
+								</div>
+							</form>
+						)}
+					</Dialog.Content>
+				</Dialog.Portal>
+			</Dialog.Root>
+		</>
 	);
 }
 
@@ -1098,13 +1324,28 @@ function ProductionListMessage({ colSpan, text }: { colSpan: number; text: strin
 
 function BalanceRow({
 	item,
+	onCorrect,
+	online = true,
 }: {
-	item: { name: string; quantity: number; unit: string };
+	item: { id: string; name: string; quantity: number; unit: string };
+	onCorrect?: ((item: { id: string; name: string; quantity: number; unit: string }) => void) | undefined;
+	online?: boolean;
 }) {
 	return (
 		<tr className="production-ledger-row">
 			<td>
 				<strong>{item.name}</strong>
+				{onCorrect ? (
+					<button
+						aria-label={`Скорректировать ${item.name}`}
+						className="secondary-button production-ledger-action"
+						disabled={!online}
+						onClick={() => onCorrect(item)}
+						type="button"
+					>
+						Скорректировать
+					</button>
+				) : null}
 			</td>
 			<td className="production-ledger-quantity">
 				{formatQuantity(item.quantity)} {item.unit}
@@ -1136,6 +1377,24 @@ function buildStockItems(
 	}
 
 	return stockItems;
+}
+
+function buildRawStockItems(
+	balances: ProductionBalanceItem[],
+): Array<{ id: string; name: string; quantity: number; unit: string }> {
+	const items: Array<{ id: string; name: string; quantity: number; unit: string }> = [];
+	for (const balance of balances) {
+		if (balance.quantity > 0) {
+			items.push({
+				id: balance.typeId,
+				name: balance.name,
+				quantity: balance.quantity,
+				unit: balance.unit,
+			});
+		}
+	}
+
+	return items;
 }
 
 function formatReleaseStockLine({
@@ -1281,5 +1540,6 @@ function formatDateTime(value: string): string {
 async function invalidateProduction(queryClient: ReturnType<typeof useQueryClient>) {
 	await Promise.all([
 		queryClient.invalidateQueries({ queryKey: ["production"] }),
+		queryClient.invalidateQueries({ queryKey: ["analytics", "director"] }),
 	]);
 }

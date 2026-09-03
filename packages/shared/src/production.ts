@@ -67,6 +67,14 @@ export const CreateRawMaterialIntakeRequestSchema = z.object({
 
 export type CreateRawMaterialIntakeRequest = z.infer<typeof CreateRawMaterialIntakeRequestSchema>;
 
+export const CreateRawMaterialCorrectionRequestSchema = z.object({
+	rawMaterialTypeId: z.string().min(1),
+	quantity: QuantityValueSchema,
+	reason: z.string().trim().min(3).max(500),
+});
+
+export type CreateRawMaterialCorrectionRequest = z.infer<typeof CreateRawMaterialCorrectionRequestSchema>;
+
 export const CreatePackagingIntakeRequestSchema = z.object({
 	packagingTypeId: z.string().min(1),
 	quantity: QuantityValueSchema,
@@ -203,6 +211,29 @@ export const RawMaterialIntakeResponseSchema = z.object({
 });
 
 export type RawMaterialIntakeResponse = z.infer<typeof RawMaterialIntakeResponseSchema>;
+
+export const RawMaterialCorrectionSchema = z.object({
+	id: z.string(),
+	rawMaterialTypeId: z.string(),
+	rawMaterialTypeName: z.string(),
+	unit: z.string(),
+	quantity: z.number().positive(),
+	balanceBefore: z.number().nonnegative(),
+	balanceAfter: z.number().nonnegative(),
+	reason: z.string(),
+	operationId: z.string(),
+	actorUserId: z.string(),
+	createdAt: z.string(),
+});
+
+export type RawMaterialCorrection = z.infer<typeof RawMaterialCorrectionSchema>;
+
+export const RawMaterialCorrectionResponseSchema = z.object({
+	correction: RawMaterialCorrectionSchema,
+	rawMaterialBalance: ProductionBalanceItemSchema,
+});
+
+export type RawMaterialCorrectionResponse = z.infer<typeof RawMaterialCorrectionResponseSchema>;
 
 export const PackagingIntakeResponseSchema = z.object({
 	packagingBalance: ProductionBalanceItemSchema,
