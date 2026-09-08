@@ -966,6 +966,436 @@ input[type="search"]::-webkit-search-decoration {
 	}
 }
 
+/* Direct accounting: dense ledger entry and correction surface. */
+.direct-accounting-home {
+	gap: 14px;
+}
+
+.direct-accounting-header,
+.direct-accounting-form-heading,
+.direct-accounting-ledger-heading,
+.direct-accounting-form-actions,
+.direct-accounting-success {
+	display: flex;
+	align-items: center;
+}
+
+.direct-accounting-header {
+	justify-content: space-between;
+	gap: 12px;
+}
+
+.direct-accounting-header h1 {
+	margin: 0;
+	font-size: 22px;
+	font-weight: var(--font-weight-emphasis);
+	line-height: 1.05;
+}
+
+.direct-accounting-day-picker {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	min-height: 38px;
+	border: 1px solid var(--line);
+	border-radius: 9px;
+	background: var(--surface-stock);
+	padding: 0 8px;
+}
+
+.direct-accounting-day-picker input {
+	min-width: 0;
+	border: 0;
+	background: transparent;
+	color: var(--base-black);
+	font-size: 12px;
+	font-weight: var(--font-weight-emphasis);
+}
+
+.direct-accounting-form {
+	display: flex;
+	flex-direction: column;
+	gap: 11px;
+	scroll-margin-top: 16px;
+	border: 1px solid var(--line);
+	border-radius: 12px;
+	background: var(--base-white);
+	padding: 13px;
+}
+
+.direct-accounting-form-heading {
+	justify-content: space-between;
+	gap: 12px;
+	min-height: 34px;
+}
+
+.direct-accounting-form-heading > div {
+	display: flex;
+	align-items: baseline;
+	gap: 9px;
+}
+
+.direct-accounting-form-heading span {
+	color: var(--text-muted);
+	font-size: 12px;
+}
+
+.direct-accounting-form-heading strong {
+	font-size: 18px;
+	font-weight: var(--font-weight-emphasis);
+	font-variant-numeric: tabular-nums;
+}
+
+.direct-accounting-reset,
+.direct-accounting-delete {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 5px;
+	min-height: 36px;
+	border: 1px solid var(--line);
+	border-radius: 9px;
+	background: var(--base-white);
+	color: var(--base-black);
+	font-size: 12px;
+}
+
+.direct-accounting-reset {
+	border-color: var(--base-black);
+	background: var(--surface-muted);
+	padding: 0 11px;
+	font-weight: var(--font-weight-emphasis);
+}
+
+.direct-accounting-name-field input,
+.direct-accounting-fields input {
+	min-height: 42px;
+	background: var(--surface-stock);
+}
+
+.direct-accounting-fields {
+	display: grid;
+	grid-template-columns: minmax(0, 1.1fr) repeat(2, minmax(0, .9fr));
+	gap: 8px;
+}
+
+.direct-accounting-fields .field {
+	gap: 5px;
+	font-size: 11px;
+}
+
+.direct-accounting-form-actions {
+	justify-content: flex-end;
+	gap: 8px;
+}
+
+.direct-accounting-delete {
+	border-color: var(--state-danger-border);
+	background: var(--state-danger-bg);
+	color: var(--state-danger-text);
+	padding: 0 11px;
+	font-weight: var(--font-weight-emphasis);
+}
+
+.primary-button.direct-accounting-submit {
+	flex: 0 1 auto;
+	min-height: 36px;
+	border-radius: 8px;
+	padding: 0 14px;
+	font-size: 13px;
+}
+
+.direct-accounting-success {
+	gap: 6px;
+	margin: 0;
+	color: var(--state-success-text);
+	font-size: 12px;
+	font-weight: var(--font-weight-emphasis);
+}
+
+.direct-accounting-ledger {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.direct-accounting-ledger-heading {
+	justify-content: space-between;
+	gap: 12px;
+	border-bottom: 1px solid var(--line);
+	padding-bottom: 8px;
+}
+
+.direct-accounting-ledger-heading h2 {
+	margin: 0;
+	font-size: 16px;
+	font-weight: var(--font-weight-emphasis);
+	line-height: 1.2;
+}
+
+.direct-accounting-ledger-heading span {
+	color: var(--text-muted);
+	font-size: 12px;
+	font-weight: var(--font-weight-label);
+}
+
+.direct-accounting-rows {
+	display: flex;
+	flex-direction: column;
+}
+
+.direct-accounting-list-controls {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(122px, .58fr);
+	gap: 6px;
+}
+
+.direct-accounting-list-period-control,
+.direct-accounting-period-control {
+	border-radius: 10px;
+	background: var(--surface-muted);
+	padding: 3px;
+}
+
+.direct-accounting-list-period-control button {
+	min-height: 32px;
+	border-radius: 7px;
+}
+
+.direct-accounting-ledger-columns {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	gap: 12px;
+	padding: 3px 24px 0 2px;
+	color: var(--text-muted);
+	font-size: 10px;
+}
+
+.direct-accounting-ledger-columns span:last-child {
+	text-align: right;
+}
+
+.direct-accounting-row {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto 18px;
+	align-items: center;
+	gap: 10px;
+	min-height: 58px;
+	border: 0;
+	border-bottom: 1px solid var(--line);
+	background: transparent;
+	color: var(--base-black);
+	padding: 8px 2px;
+	text-align: left;
+}
+
+.direct-accounting-row > strong {
+	font-size: 14px;
+	font-weight: var(--font-weight-emphasis);
+	font-variant-numeric: tabular-nums;
+	white-space: nowrap;
+}
+
+.direct-accounting-row > svg {
+	color: var(--text-muted);
+}
+
+.direct-accounting-row-main {
+	min-width: 0;
+}
+
+.direct-accounting-row-main strong,
+.direct-accounting-row-main small {
+	display: block;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.direct-accounting-row-main strong {
+	font-size: 14px;
+	font-weight: var(--font-weight-emphasis);
+}
+
+.direct-accounting-row-main small {
+	margin-top: 4px;
+	color: var(--text-muted);
+	font-size: 11px;
+}
+
+.direct-accounting-empty {
+	margin: 8px 0;
+	color: var(--text-muted);
+	font-size: 13px;
+}
+
+.direct-accounting-analytics {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	padding: 14px;
+}
+
+.direct-accounting-analytics-controls {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(122px, .58fr);
+	gap: 6px;
+}
+
+.direct-accounting-period-control {
+	border: 1px solid var(--line);
+	background: var(--surface-muted);
+}
+
+.direct-accounting-period-control button {
+	min-height: 32px;
+	border-radius: 7px;
+	font-size: 12px;
+}
+
+.direct-accounting-range-button {
+	display: inline-flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 6px;
+	width: 100%;
+	min-width: 0;
+	min-height: 38px;
+	border: 1px solid var(--line);
+	border-radius: 10px;
+	background: var(--base-white);
+	color: var(--base-black);
+	cursor: pointer;
+	font: inherit;
+	font-size: 12px;
+	font-weight: var(--font-weight-label);
+	padding: 0 12px;
+}
+
+.direct-accounting-range-button span {
+	flex: 1 1 auto;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.direct-accounting-range-button.active {
+	border-color: var(--base-black);
+}
+
+.direct-accounting-range-button:focus-visible {
+	outline: 2px solid var(--focus-ring);
+	outline-offset: 2px;
+}
+
+.direct-accounting-period-hint {
+	margin: 0;
+	color: var(--base-black);
+	font-size: 13px;
+	font-weight: var(--font-weight-emphasis);
+}
+
+.direct-accounting-summary {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	border-block: 1px solid var(--line);
+}
+
+.direct-accounting-summary > div {
+	min-width: 0;
+	padding: 13px 0;
+}
+
+.direct-accounting-summary > div + div {
+	border-left: 1px solid var(--line);
+	padding-left: 16px;
+}
+
+.direct-accounting-summary span,
+.direct-accounting-summary strong {
+	display: block;
+}
+
+.direct-accounting-summary span {
+	color: var(--text-muted);
+	font-size: 11px;
+	font-weight: var(--font-weight-label);
+}
+
+.direct-accounting-summary strong {
+	margin-top: 5px;
+	overflow: hidden;
+	font-size: 20px;
+	font-weight: var(--font-weight-emphasis);
+	font-variant-numeric: tabular-nums;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.direct-accounting-product-stats {
+	display: flex;
+	flex-direction: column;
+}
+
+.direct-accounting-product-stats-head,
+.direct-accounting-product-stat {
+	display: grid;
+	grid-template-columns: minmax(0, 1.2fr) minmax(66px, .7fr) minmax(80px, .8fr);
+	align-items: center;
+	gap: 8px;
+}
+
+.direct-accounting-product-stats-head {
+	padding: 0 0 8px;
+	color: var(--text-muted);
+	font-size: 10px;
+}
+
+.direct-accounting-product-stats-head span:not(:first-child),
+.direct-accounting-product-stat > :not(:first-child) {
+	text-align: right;
+}
+
+.direct-accounting-product-stat {
+	min-height: 40px;
+	border-top: 1px solid var(--line);
+	font-size: 12px;
+}
+
+.direct-accounting-product-stat strong {
+	min-width: 0;
+	overflow: hidden;
+	font-weight: var(--font-weight-emphasis);
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+@media (max-width: 380px) {
+
+	.direct-accounting-fields {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	.direct-accounting-fields .field:first-child {
+		grid-column: 1 / -1;
+	}
+
+	.direct-accounting-summary strong {
+		font-size: 17px;
+	}
+
+	.direct-accounting-list-controls,
+	.direct-accounting-analytics-controls {
+		grid-template-columns: minmax(0, 1fr) 108px;
+	}
+
+	.direct-accounting-list-period-control button,
+	.direct-accounting-period-control button,
+	.direct-accounting-range-button {
+		font-size: 11px;
+	}
+}
+
 .client-combobox {
 	display: flex;
 	flex-direction: column;
@@ -2329,6 +2759,47 @@ input[type="search"]::-webkit-search-decoration {
 	font-weight: var(--font-weight-emphasis);
 	letter-spacing: 0;
 	line-height: 1.1;
+}
+
+.director-dashboard-title {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.director-dashboard-direct-toggle {
+	display: inline-grid;
+	width: 36px;
+	height: 36px;
+	place-items: center;
+	border: 1px solid var(--dd-panel-border);
+	border-radius: var(--dd-radius-inner);
+	background: var(--base-white);
+	color: var(--base-black);
+	cursor: pointer;
+}
+
+.director-dashboard-direct-toggle:hover {
+	background: var(--dd-panel-muted);
+}
+
+.director-dashboard-direct-toggle.active {
+	border-color: var(--base-black);
+	background: var(--base-black);
+	color: var(--base-white);
+}
+
+.director-dashboard-direct-toggle:focus-visible {
+	outline: 2px solid var(--focus-ring);
+	outline-offset: 2px;
+}
+
+.direct-accounting-standalone {
+	flex: 0 0 auto;
+}
+
+.direct-accounting-standalone .direct-accounting-analytics {
+	padding: 0;
 }
 
 .director-dashboard-date {
