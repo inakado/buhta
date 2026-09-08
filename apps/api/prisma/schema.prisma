@@ -92,6 +92,22 @@ model Verification {
   @@map("verification")
 }
 
+model DirectAccountingSale {
+  id                    String    @id @default(cuid())
+  productName           String
+  productNameNormalized String
+  soldOn                DateTime  @db.Date
+  quantityKg            Decimal   @db.Decimal(12, 3)
+  unitPriceCents         Int
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  deletedAt             DateTime?
+
+  @@index([soldOn, deletedAt])
+  @@index([productNameNormalized, soldOn])
+  @@map("direct_accounting_sale")
+}
+
 model Operation {
   id                 String              @id @default(cuid())
   type               String

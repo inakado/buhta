@@ -15,6 +15,7 @@ type DateRangePickerPanelProps = {
 	dateTo: string;
 	error?: string | null;
 	maxDays?: number;
+	maxDate?: string;
 	onChange: (value: DateRangePickerValue) => void;
 };
 
@@ -24,9 +25,11 @@ export function DateRangePickerPanel({
 	dateTo,
 	error,
 	maxDays,
+	maxDate,
 	onChange,
 }: DateRangePickerPanelProps) {
 	const selectedRange = toCalendarDateRange(dateFrom, dateTo);
+	const maximumDate = maxDate ? parseDateInputValue(maxDate) : undefined;
 	const [defaultMonth] = useState(() => new Date());
 
 	function selectCalendarRange(range: DateRange | undefined) {
@@ -47,23 +50,24 @@ export function DateRangePickerPanel({
 				selected={selectedRange}
 				weekStartsOn={1}
 				{...(maxDays ? { max: maxDays } : {})}
+				{...(maximumDate ? { disabled: { after: maximumDate } } : {})}
 			/>
 			<div className="date-range-picker-fields">
 				<label>
 					<span>С</span>
 					<input
+						max={maxDate}
 						onChange={(event) => onChange({ dateFrom: event.target.value, dateTo })}
-						placeholder="ГГГГ-ММ-ДД"
-						type="text"
+						type="date"
 						value={dateFrom}
 					/>
 				</label>
 				<label>
 					<span>По</span>
 					<input
+						max={maxDate}
 						onChange={(event) => onChange({ dateFrom, dateTo: event.target.value })}
-						placeholder="ГГГГ-ММ-ДД"
-						type="text"
+						type="date"
 						value={dateTo}
 					/>
 				</label>

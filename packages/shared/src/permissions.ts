@@ -26,6 +26,7 @@ export const PERMISSIONS = [
 	"operation.correct",
 	"operation.history.read",
 	"director.analytics.read",
+	"direct_accounting.manage",
 	"audit.read",
 	"reports.read",
 ] as const;
@@ -53,6 +54,7 @@ export const ROLE_PERMISSIONS = {
 		"operation.correct",
 		"operation.history.read",
 		"director.analytics.read",
+		"direct_accounting.manage",
 		"audit.read",
 		"reports.read",
 	],

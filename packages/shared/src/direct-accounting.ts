@@ -1,0 +1,157 @@
+import { z } from "zod";
+
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const MAX_QUANTITY_KG = 1_000_000;
+const MAX_UNIT_PRICE_CENTS = 100_000_000;
+
+export const DirectAccountingDateSchema = z.string().regex(DATE_PATTERN).refine(isCalendarDate, {
+	message: "Date must be a valid YYYY-MM-DD calendar date",
+});
+
+export const DirectAccountingProductNameSchema = z.string().trim().min(1).max(120);
+
+export const DirectAccountingQuantityKgSchema = z.number()
+	.positive()
+	.max(MAX_QUANTITY_KG)
+	.refine((value) => Math.abs(value * 1_000 - Math.round(value * 1_000)) < Number.EPSILON * 1_000, {
+		message: "Quantity must have at most 3 decimal places",
+	});
+
+export const DirectAccountingUnitPriceCentsSchema = z.number()
+	.int()
+	.min(1)
+	.max(MAX_UNIT_PRICE_CENTS);
+
+export const DirectAccountingSaleInputSchema = z.object({
+	productName: DirectAccountingProductNameSchema,
+	soldOn: DirectAccountingDateSchema,
+	quantityKg: DirectAccountingQuantityKgSchema,
+	unitPriceCents: DirectAccountingUnitPriceCentsSchema,
+}).strict();
+
+export type DirectAccountingSaleInput = z.infer<typeof DirectAccountingSaleInputSchema>;
+
+export const DirectAccountingSaleSchema = DirectAccountingSaleInputSchema.extend({
+	id: z.string(),
+	totalCents: z.number().int().nonnegative(),
+	createdAt: z.string(),
+	updatedAt: z.string(),
+});
+
+export type DirectAccountingSale = z.infer<typeof DirectAccountingSaleSchema>;
+
+export const DirectAccountingSaleResponseSchema = z.object({
+	sale: DirectAccountingSaleSchema,
+});
+
+export type DirectAccountingSaleResponse = z.infer<typeof DirectAccountingSaleResponseSchema>;
+
+export const DirectAccountingSalesQuerySchema = z.object({
+	date: DirectAccountingDateSchema.optional(),
+	dateFrom: DirectAccountingDateSchema.optional(),
+	dateTo: DirectAccountingDateSchema.optional(),
+}).strict().superRefine((value, context) => {
+	const hasRangeBoundary = Boolean(value.dateFrom || value.dateTo);
+	if (!value.date && !hasRangeBoundary) {
+		context.addIssue({ code: "custom", message: "date or dateFrom/dateTo is required" });
+	}
+	if (value.date && hasRangeBoundary) {
+		context.addIssue({ code: "custom", message: "date cannot be combined with dateFrom/dateTo" });
+	}
+	if ((value.dateFrom && !value.dateTo) || (!value.dateFrom && value.dateTo)) {
+		context.addIssue({ code: "custom", message: "dateFrom and dateTo must be provided together" });
+	}
+	if (value.dateFrom && value.dateTo && value.dateFrom > value.dateTo) {
+		context.addIssue({ code: "custom", message: "dateFrom must not be after dateTo" });
+	}
+});
+
+export type DirectAccountingSalesQuery = z.infer<typeof DirectAccountingSalesQuerySchema>;
+
+export const DirectAccountingSalesResponseSchema = z.object({
+	sales: z.array(DirectAccountingSaleSchema),
+});
+
+export type DirectAccountingSalesResponse = z.infer<typeof DirectAccountingSalesResponseSchema>;
+
+export const DirectAccountingSuggestionsQuerySchema = z.object({
+	search: z.string().trim().max(120).optional(),
+}).strict();
+
+export type DirectAccountingSuggestionsQuery = z.infer<typeof DirectAccountingSuggestionsQuerySchema>;
+
+export const DirectAccountingSuggestionsResponseSchema = z.object({
+	suggestions: z.array(DirectAccountingProductNameSchema),
+});
+
+export type DirectAccountingSuggestionsResponse = z.infer<typeof DirectAccountingSuggestionsResponseSchema>;
+
+export const DirectAccountingDetailPeriodSchema = z.enum(["day", "week", "month"]);
+export type DirectAccountingDetailPeriod = z.infer<typeof DirectAccountingDetailPeriodSchema>;
+
+export const DirectAccountingStatisticsQuerySchema = z.object({
+	anchorDate: DirectAccountingDateSchema.optional(),
+	detailPeriod: DirectAccountingDetailPeriodSchema.optional(),
+	dateFrom: DirectAccountingDateSchema.optional(),
+	dateTo: DirectAccountingDateSchema.optional(),
+}).strict().superRefine((value, context) => {
+	if ((value.dateFrom && !value.dateTo) || (!value.dateFrom && value.dateTo)) {
+		context.addIssue({
+			code: "custom",
+			message: "dateFrom and dateTo must be provided together",
+		});
+	}
+	if (value.dateFrom && value.dateTo && value.dateFrom > value.dateTo) {
+		context.addIssue({
+			code: "custom",
+			message: "dateFrom must not be after dateTo",
+		});
+	}
+});
+
+export type DirectAccountingStatisticsQuery = z.infer<typeof DirectAccountingStatisticsQuerySchema>;
+
+export const DirectAccountingPeriodTotalSchema = z.object({
+	dateFrom: DirectAccountingDateSchema,
+	dateTo: DirectAccountingDateSchema,
+	quantityKg: z.number().nonnegative(),
+	revenueCents: z.number().int().nonnegative(),
+});
+
+export type DirectAccountingPeriodTotal = z.infer<typeof DirectAccountingPeriodTotalSchema>;
+
+export const DirectAccountingProductStatisticsSchema = z.object({
+	productName: DirectAccountingProductNameSchema,
+	quantityKg: z.number().nonnegative(),
+	revenueCents: z.number().int().nonnegative(),
+});
+
+export type DirectAccountingProductStatistics = z.infer<typeof DirectAccountingProductStatisticsSchema>;
+
+export const DirectAccountingStatisticsResponseSchema = z.object({
+	filters: z.object({
+		anchorDate: DirectAccountingDateSchema,
+		detailPeriod: DirectAccountingDetailPeriodSchema,
+		dateFrom: DirectAccountingDateSchema,
+		dateTo: DirectAccountingDateSchema,
+		timezone: z.literal("Asia/Vladivostok"),
+	}),
+	selection: DirectAccountingPeriodTotalSchema,
+	totals: z.object({
+		day: DirectAccountingPeriodTotalSchema,
+		week: DirectAccountingPeriodTotalSchema,
+		month: DirectAccountingPeriodTotalSchema,
+	}),
+	byProduct: z.array(DirectAccountingProductStatisticsSchema),
+});
+
+export type DirectAccountingStatisticsResponse = z.infer<typeof DirectAccountingStatisticsResponseSchema>;
+
+function isCalendarDate(value: string): boolean {
+	const [year, month, day] = value.split("-").map(Number);
+	const date = new Date(Date.UTC(year ?? 0, (month ?? 0) - 1, day ?? 0));
+
+	return date.getUTCFullYear() === year
+		&& date.getUTCMonth() === (month ?? 0) - 1
+		&& date.getUTCDate() === day;
+}

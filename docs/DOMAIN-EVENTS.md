@@ -69,6 +69,9 @@
 | `courier.unload.create` | курьер сгрузил одну или несколько товарных строк и/или наличные на выбранный активный распределитель; администратор может вызвать backend-команду с явным курьером | `courier_unload` + `courier_unload_item`; audit details содержат курьера, распределитель, строки товара с `courierProductBalanceId`, `distributorProductBalanceId`, snapshot продукции/цены/массы нетто, `quantity`, `quantityInput*`, `totalNetWeightGrams`, стоимость, товарные балансы курьера/распределителя до/после и cash balance курьера/распределителя до/после |
 | `production.notification.create` | коммерческий руководитель или администратор создал свободную задачу производству | `production_notification`; audit details содержат `notificationId`, текст, создателя, recipient role и статус после создания |
 | `production.notification.complete` | заведующий производством или администратор отметил задачу производству выполненной | `production_notification`; audit details содержат `notificationId`, текст, создателя, исполнителя и статус до/после |
+| `direct_accounting.sale.create` | Директор или администратор добавил строку прямого учета | `direct_accounting_sale`; audit details содержат `after` с наименованием, датой, кг, ценой за кг и итогом |
+| `direct_accounting.sale.update` | Директор или администратор исправил строку прямого учета | `direct_accounting_sale`; audit details содержат полные `before` и `after` |
+| `direct_accounting.sale.delete` | Директор или администратор мягко удалил строку прямого учета | `direct_accounting_sale`; audit details содержат `before`, `after` и время удаления |
 
 ## 4. Read Model Истории
 

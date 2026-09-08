@@ -131,6 +131,18 @@ describe("PolicyRegistry", () => {
 		}
 	});
 
+	it("limits direct accounting to director and admin", () => {
+		for (const role of ["admin", "director"] as const) {
+			const actor = registry.buildActor({ id: `direct-${role}`, username: role, name: role, role });
+			expect(actor?.permissions).toContain("direct_accounting.manage");
+		}
+
+		for (const role of ["commercial_manager", "distributor_worker", "production_manager", "courier"] as const) {
+			const actor = registry.buildActor({ id: `no-direct-${role}`, username: role, name: role, role });
+			expect(actor?.permissions).not.toContain("direct_accounting.manage");
+		}
+	});
+
 	it("keeps distributor sale and cash permissions separated", () => {
 		for (const role of ["admin", "director", "commercial_manager", "distributor_worker"] as const) {
 			const actor = registry.buildActor({

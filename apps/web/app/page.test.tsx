@@ -104,6 +104,7 @@ const directorActorResponse = {
 			"operation.correct",
 			"operation.history.read",
 			"director.analytics.read",
+			"direct_accounting.manage",
 		],
 	},
 };
@@ -3463,6 +3464,7 @@ describe("HomePage", () => {
 		expect(screen.getByText("Касса")).toBeTruthy();
 		expect(screen.getByRole("button", { name: "Главная" })).toBeTruthy();
 		expect(screen.getByRole("button", { name: "Остатки" })).toBeTruthy();
+		expect(screen.getByRole("button", { name: "Прямой учет" })).toBeTruthy();
 		expect(screen.getByRole("button", { name: "История" })).toBeTruthy();
 		expect(screen.getByRole("button", { name: "Еще" })).toBeTruthy();
 		expect(screen.queryByRole("button", { name: "Аналитика" })).toBeNull();

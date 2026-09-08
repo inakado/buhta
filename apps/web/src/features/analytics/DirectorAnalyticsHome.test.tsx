@@ -101,6 +101,28 @@ const analyticsResponse = {
 	warnings: [],
 };
 
+const directAccountingResponse = {
+	filters: {
+		anchorDate: "2026-09-08",
+		detailPeriod: "day",
+		dateFrom: "2026-09-08",
+		dateTo: "2026-09-08",
+		timezone: "Asia/Vladivostok",
+	},
+	selection: {
+		dateFrom: "2026-09-08",
+		dateTo: "2026-09-08",
+		quantityKg: 0.8,
+		revenueCents: 120_000,
+	},
+	totals: {
+		day: { dateFrom: "2026-09-08", dateTo: "2026-09-08", quantityKg: 0.8, revenueCents: 120_000 },
+		week: { dateFrom: "2026-09-02", dateTo: "2026-09-08", quantityKg: 2, revenueCents: 240_000 },
+		month: { dateFrom: "2026-08-10", dateTo: "2026-09-08", quantityKg: 4, revenueCents: 480_000 },
+	},
+	byProduct: [{ productName: "Икра кеты", quantityKg: 0.8, revenueCents: 120_000 }],
+};
+
 function jsonResponse(body: unknown, status = 200) {
 	return new Response(JSON.stringify(body), {
 		status,
@@ -215,5 +237,33 @@ describe("DirectorAnalyticsHome", () => {
 		expect(await screen.findByText("Не удалось загрузить аналитику.")).toBeTruthy();
 		expect(screen.getByRole("button", { name: "Повторить" })).toBeTruthy();
 		expect(screen.queryByText("За период")).toBeNull();
+	});
+
+	it("uses clear presets and a custom range for direct accounting", async () => {
+		const fetchMock = vi.fn(async (input: RequestInfo | URL) => String(input).includes("/direct-accounting/statistics")
+			? jsonResponse(directAccountingResponse)
+			: jsonResponse(analyticsResponse));
+		vi.stubGlobal("fetch", fetchMock);
+
+		renderAnalytics();
+		fireEvent.click(await screen.findByRole("button", { name: "Открыть статистику прямого учета" }));
+
+		expect(await screen.findByText("Икра кеты")).toBeTruthy();
+		expect(screen.getByRole("button", { name: "Сегодня" })).toBeTruthy();
+		fireEvent.click(screen.getByRole("button", { name: "7 дней" }));
+		await waitFor(() => {
+			expect(fetchMock.mock.calls.some(([input]) => String(input).includes("detailPeriod=week"))).toBe(true);
+		});
+
+		fireEvent.click(screen.getByRole("button", { name: /8 сент/i }));
+		fireEvent.change(screen.getByLabelText("С"), { target: { value: "2026-09-01" } });
+		fireEvent.change(screen.getByLabelText("По"), { target: { value: "2026-09-08" } });
+		fireEvent.click(screen.getByRole("button", { name: "Показать" }));
+		await waitFor(() => {
+			expect(fetchMock.mock.calls.some(([input]) => {
+				const url = String(input);
+				return url.includes("dateFrom=2026-09-01") && url.includes("dateTo=2026-09-08");
+			})).toBe(true);
+		});
 	});
 });

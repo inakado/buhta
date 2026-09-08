@@ -9,7 +9,7 @@ import {
 	useQuery,
 	useQueryClient,
 } from "@tanstack/react-query";
-import { Bell, Box, Check, ClipboardList, Factory, Gauge, History, LayoutDashboard, MoreHorizontal, ReceiptText, Truck, Users, type LucideIcon } from "lucide-react";
+import { Bell, Box, Check, ClipboardList, Factory, Gauge, History, LayoutDashboard, MoreHorizontal, NotebookPen, ReceiptText, Truck, Users, type LucideIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { LoginForm } from "../auth/LoginForm";
 import { getCurrentActor, isUnauthorizedError, listNotifications, signOut, type CurrentActor } from "../lib/api-client";
@@ -210,6 +210,10 @@ function BottomNav({
 	const directorMoreItem: BottomNavItem[] = actor.role === "director"
 		? [{ id: "more", label: "Еще", icon: MoreHorizontal }]
 		: [];
+	const directAccountingItem: BottomNavItem[] = actor.role === "director"
+		&& actor.permissions.includes("direct_accounting.manage")
+		? [{ id: "direct-accounting", label: "Прямой учет", icon: NotebookPen }]
+		: [];
 	const commercialMoreItem: BottomNavItem[] = actor.role === "commercial_manager"
 		? [{ id: "more", label: "Еще", icon: MoreHorizontal }]
 		: [];
@@ -239,6 +243,7 @@ function BottomNav({
 					? [
 			{ id: "home", label: "Главная", icon: Gauge },
 			...directorStockItem,
+			...directAccountingItem,
 			...operationHistoryItem,
 			...directorMoreItem,
 		]

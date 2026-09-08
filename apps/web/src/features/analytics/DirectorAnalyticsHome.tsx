@@ -2,16 +2,17 @@
 
 import { useQuery } from "@tanstack/react-query";
 import * as Popover from "@radix-ui/react-popover";
-import { AlertTriangle, Banknote, CalendarDays, ChevronDown, Clock3, Factory, RefreshCw, Vault, WalletCards } from "lucide-react";
-import { useId, useMemo, useReducer, type ReactNode } from "react";
+import { AlertTriangle, Banknote, CalendarDays, ChevronDown, Clock3, Factory, NotebookPen, RefreshCw, Vault, WalletCards } from "lucide-react";
+import { useId, useMemo, useReducer, useState, type ReactNode } from "react";
 import {
+	type DirectAccountingDetailPeriod,
 	type DirectorAnalyticsPeriodPreset,
 	type DirectorAnalyticsProductOutputRow,
 	type DirectorAnalyticsRawMaterialRow,
 	type DirectorAnalyticsRevenueByDayPoint,
 	type DirectorAnalyticsResponse,
 } from "@buhta/shared";
-import { getDirectorAnalytics } from "../../lib/api-client";
+import { getDirectAccountingStatistics, getDirectorAnalytics } from "../../lib/api-client";
 import { formatCompactMoneyCents } from "../../lib/money-format";
 import { DateRangePickerPanel } from "../../ui/DateRangePickerPanel";
 import { SegmentedControl } from "../../ui/SegmentedControl";
@@ -57,7 +58,18 @@ const VIEW_OPTIONS = [
 	{ value: "production", label: "Производство", icon: Factory },
 ] as const;
 
-type AnalyticsViewMode = typeof VIEW_OPTIONS[number]["value"];
+const DIRECT_ACCOUNTING_PERIOD_OPTIONS: Array<{ value: DirectAccountingDetailPeriod; label: string }> = [
+	{ value: "day", label: "Сегодня" },
+	{ value: "week", label: "7 дней" },
+	{ value: "month", label: "30 дней" },
+];
+
+type StandardAnalyticsViewMode = typeof VIEW_OPTIONS[number]["value"];
+type AnalyticsViewMode = StandardAnalyticsViewMode | "directAccounting";
+
+type DirectAccountingPeriodSelection =
+	| { mode: "preset"; period: DirectAccountingDetailPeriod }
+	| { mode: "custom"; dateFrom: string; dateTo: string };
 
 export type DirectorPeriodSelection =
 	| {
@@ -248,8 +260,22 @@ export function DirectorAnalyticsHome({
 		<section className="screen-stack director-home director-dashboard">
 			<div className="director-dashboard-topbar">
 				<div className="director-dashboard-header">
-					<h1>{title}</h1>
-					{analytics ? (
+					<div className="director-dashboard-title">
+						<h1>{title}</h1>
+						<button
+							aria-label={viewMode === "directAccounting" ? "Вернуться к основной аналитике" : "Открыть статистику прямого учета"}
+							aria-pressed={viewMode === "directAccounting"}
+							className={viewMode === "directAccounting" ? "director-dashboard-direct-toggle active" : "director-dashboard-direct-toggle"}
+							onClick={() => dispatch({
+								type: "setViewMode",
+								viewMode: viewMode === "directAccounting" ? "production" : "directAccounting",
+							})}
+							type="button"
+						>
+							<NotebookPen aria-hidden size={18} />
+						</button>
+					</div>
+					{analytics && viewMode !== "directAccounting" ? (
 						<Popover.Root open={periodPickerOpen} onOpenChange={setPeriodPickerOpenState}>
 							<Popover.Trigger asChild>
 								<button
@@ -296,21 +322,23 @@ export function DirectorAnalyticsHome({
 							</Popover.Content>
 						</Popover.Root>
 					) : null}
-					{analyticsFetching ? (
+					{analyticsFetching && viewMode !== "directAccounting" ? (
 						<span className="director-dashboard-sync" aria-label="Обновление">
 							<RefreshCw aria-hidden size={16} />
 						</span>
 					) : null}
 				</div>
 
-				<SegmentedControl
-					ariaLabel="Период аналитики"
-					className="director-dashboard-period-control"
-					items={PERIOD_OPTIONS}
-					onChange={selectPresetPeriod}
-					role="group"
-					value={periodSelection.mode === "preset" ? periodSelection.periodPreset : null}
-				/>
+				{viewMode !== "directAccounting" ? (
+					<SegmentedControl
+						ariaLabel="Период аналитики"
+						className="director-dashboard-period-control"
+						items={PERIOD_OPTIONS}
+						onChange={selectPresetPeriod}
+						role="group"
+						value={periodSelection.mode === "preset" ? periodSelection.periodPreset : null}
+					/>
+				) : null}
 			</div>
 
 			<div className="director-dashboard-body">
@@ -350,6 +378,13 @@ function DirectorAnalyticsView({
 		() => buildRawMaterialSummaryRows(data.production),
 		[data.production],
 	);
+	if (viewMode === "directAccounting") {
+		return (
+			<section className="direct-accounting-standalone" aria-label="Статистика прямого учета">
+				<DirectAccountingAnalytics />
+			</section>
+		);
+	}
 
 	return (
 		<>
@@ -372,9 +407,9 @@ function AnalyticsTabbedPanel({
 	viewMode,
 }: {
 	data: DirectorAnalyticsResponse;
-	onViewModeChange: (value: AnalyticsViewMode) => void;
+	onViewModeChange: (value: StandardAnalyticsViewMode) => void;
 	rawMaterialRows: RawMaterialSummaryRow[];
-	viewMode: AnalyticsViewMode;
+	viewMode: StandardAnalyticsViewMode;
 }) {
 	return (
 		<>
@@ -396,6 +431,156 @@ function AnalyticsTabbedPanel({
 				</section>
 			) : null}
 		</>
+	);
+}
+
+function DirectAccountingAnalytics() {
+	const today = formatBusinessDateInputValue(new Date().toISOString());
+	const [selection, setSelection] = useState<DirectAccountingPeriodSelection>({ mode: "preset", period: "day" });
+	const [periodPickerOpen, setPeriodPickerOpen] = useState(false);
+	const [customDateFrom, setCustomDateFrom] = useState(today);
+	const [customDateTo, setCustomDateTo] = useState(today);
+	const [customPeriodError, setCustomPeriodError] = useState<string | null>(null);
+	const statisticsQueryInput = selection.mode === "custom"
+		? { dateFrom: selection.dateFrom, dateTo: selection.dateTo }
+		: { anchorDate: today, detailPeriod: selection.period };
+	const {
+		data,
+		error: statisticsError,
+		isLoading: statisticsLoading,
+		refetch: refetchStatistics,
+	} = useQuery({
+		queryKey: ["direct-accounting", "statistics", statisticsQueryInput],
+		queryFn: () => getDirectAccountingStatistics(statisticsQueryInput),
+		placeholderData: (previousData) => previousData,
+	});
+
+	function selectPresetPeriod(period: DirectAccountingDetailPeriod) {
+		setSelection({ mode: "preset", period });
+		setPeriodPickerOpen(false);
+		setCustomPeriodError(null);
+	}
+
+	function changePeriodPickerOpen(open: boolean) {
+		if (open) {
+			setCustomDateFrom(data?.filters.dateFrom ?? today);
+			setCustomDateTo(data?.filters.dateTo ?? today);
+			setCustomPeriodError(null);
+		}
+		setPeriodPickerOpen(open);
+	}
+
+	function applyDirectAccountingRange() {
+		const effectiveDateTo = customDateTo || customDateFrom;
+		const validationError = validateCustomPeriod(customDateFrom, effectiveDateTo)
+			?? (effectiveDateTo > today ? "Будущую дату выбрать нельзя." : null);
+		if (validationError) {
+			setCustomPeriodError(validationError);
+			return;
+		}
+		setSelection({ mode: "custom", dateFrom: customDateFrom, dateTo: effectiveDateTo });
+		setCustomDateTo(effectiveDateTo);
+		setCustomPeriodError(null);
+		setPeriodPickerOpen(false);
+	}
+
+	return (
+		<div className="direct-accounting-analytics">
+			<div className="direct-accounting-analytics-controls">
+				<SegmentedControl
+					ariaLabel="Период прямого учета"
+					className="direct-accounting-period-control"
+					items={DIRECT_ACCOUNTING_PERIOD_OPTIONS}
+					onChange={selectPresetPeriod}
+					role="group"
+					value={selection.mode === "preset" ? selection.period : null}
+				/>
+				<Popover.Root open={periodPickerOpen} onOpenChange={changePeriodPickerOpen}>
+					<Popover.Trigger asChild>
+						<button
+							aria-controls="direct-accounting-period-picker"
+							aria-expanded={periodPickerOpen}
+							className={selection.mode === "custom" ? "direct-accounting-range-button active" : "direct-accounting-range-button"}
+							type="button"
+						>
+							<CalendarDays aria-hidden size={17} />
+							<span>{data ? formatDirectAccountingRange(data.filters.dateFrom, data.filters.dateTo) : "Выбрать даты"}</span>
+							<ChevronDown aria-hidden size={15} />
+						</button>
+					</Popover.Trigger>
+					<Popover.Portal>
+					<Popover.Content
+						align="end"
+						aria-label="Выбор периода прямого учета"
+						className="director-dashboard-period-picker direct-accounting-period-picker"
+						collisionPadding={12}
+						id="direct-accounting-period-picker"
+						sideOffset={8}
+					>
+						<p className="direct-accounting-period-hint">Выберите один день или диапазон</p>
+						<DateRangePickerPanel
+							ariaLabel="Календарь прямого учета"
+							dateFrom={customDateFrom}
+							dateTo={customDateTo}
+							error={customPeriodError}
+							maxDate={today}
+							maxDays={ANALYTICS_MAX_RANGE_DAYS}
+							onChange={({ dateFrom, dateTo }) => {
+								setCustomDateFrom(dateFrom);
+								setCustomDateTo(dateTo);
+								setCustomPeriodError(null);
+							}}
+						/>
+						<div className="director-dashboard-period-actions">
+							<Popover.Close asChild>
+								<button type="button">Отмена</button>
+							</Popover.Close>
+							<button type="button" onClick={applyDirectAccountingRange}>Показать</button>
+						</div>
+					</Popover.Content>
+					</Popover.Portal>
+				</Popover.Root>
+			</div>
+
+			{statisticsLoading ? <AnalyticsSkeleton /> : null}
+			{statisticsError ? (
+				<div className="director-dashboard-message error">
+					<AlertTriangle aria-hidden size={18} />
+					<span>Не удалось загрузить прямой учет.</span>
+					<button onClick={() => void refetchStatistics()} type="button">Повторить</button>
+				</div>
+			) : null}
+
+			{data ? (
+				<>
+					<section className="direct-accounting-summary" aria-label="Итоги выбранного периода">
+						<div>
+							<span>Выручка</span>
+							<strong>{formatRubles(data.selection.revenueCents)}</strong>
+						</div>
+						<div>
+							<span>Продано</span>
+							<strong>{formatQuantity(data.selection.quantityKg)} кг</strong>
+						</div>
+					</section>
+					<div className="direct-accounting-product-stats">
+						<div className="direct-accounting-product-stats-head">
+							<span>Наименование</span>
+							<span>Продано</span>
+							<span>Выручка</span>
+						</div>
+						{data.byProduct.map((row) => (
+							<div className="direct-accounting-product-stat" key={row.productName.toLocaleLowerCase("ru-RU")}>
+								<strong>{row.productName}</strong>
+								<span>{formatQuantity(row.quantityKg)} кг</span>
+								<strong>{formatRubles(row.revenueCents)}</strong>
+							</div>
+						))}
+						{data.byProduct.length === 0 ? <p className="director-dashboard-empty">Нет продаж за выбранный период</p> : null}
+					</div>
+				</>
+			) : null}
+		</div>
 	);
 }
 
@@ -721,6 +906,15 @@ function formatRawMaterialTotal(rows: DirectorAnalyticsRawMaterialRow[]): string
 function formatPeriodRange(dateFrom: string, dateTo: string): string {
 	const inclusiveDateTo = new Date(new Date(dateTo).getTime() - 1);
 	return `${ANALYTICS_PERIOD_RANGE_FORMATTER.format(new Date(dateFrom))} - ${ANALYTICS_PERIOD_RANGE_FORMATTER.format(inclusiveDateTo)}`;
+}
+
+function formatDirectAccountingRange(dateFrom: string, dateTo: string): string {
+	const formattedFrom = ANALYTICS_PERIOD_RANGE_FORMATTER.format(new Date(`${dateFrom}T00:00:00.000Z`));
+	if (dateFrom === dateTo) {
+		return formattedFrom;
+	}
+	const formattedTo = ANALYTICS_PERIOD_RANGE_FORMATTER.format(new Date(`${dateTo}T00:00:00.000Z`));
+	return `${formattedFrom} - ${formattedTo}`;
 }
 
 function formatBusinessDateInputValue(value: string): string {

@@ -39,6 +39,7 @@
   - `distributor` — read-only товарные остатки распределителя из projection table;
   - `operations` — baseline operation/idempotency services;
   - `analytics` — read-only директорская аналитика денег, сырья и выпуска продукции;
+  - `direct-accounting` — независимые ручные продажи Директора, подсказки наименований и статистика по весу/выручке;
   - `common/errors` — единый `AppError` и mapper в `{ error: { code, message, details } }`;
   - `health` — публичный health contract.
 - `packages/shared` содержит runtime contracts, которые нужны API и web:
@@ -50,6 +51,7 @@
   - production contracts для поступлений, балансов цеха и выпуска партии;
   - distributor contracts для read-only inventory summary и строк остатков;
   - analytics contracts для директорского read-only экрана денег, сырья, выпуска и простых chart datasets;
+  - direct-accounting contracts для изменяемых строк продажи, подсказок и статистики;
   - health constants.
 - Foundation data flow:
 
@@ -181,6 +183,8 @@ Distributor discount assignment добавляет typed fact `product_discount_
 Operation History — read-only query service в модуле `operations`. `GET /operations/history` строит управленческий журнал из `audit_log` с join на `operation` и actor user, поддерживает период, `operationType`, actor user/role, `entityType`, cursor pagination и не создает новые `operation`/`audit_log`. Максимальный период одного запроса — 90 дней, default — последние 7 дней. Перед выдачей `details` сервис выполняет generic redaction потенциально секретных ключей (`password`, `token`, `secret`, `accessToken`, `refreshToken`, `hash`) на любой глубине объекта. `GET /operations/history/options` возвращает варианты фильтров отдельно от текущей страницы истории.
 
 Director analytics — read-only query service в модуле `analytics`. `GET /analytics/director` доступен только по `director.analytics.read` и строит первый узкий экран аналитики из typed facts и projections: продажи и отмены, cash balances, courier unload cash movement, director cash withdrawals, raw material intakes/balances, product batches, product transfers и workshop product balances. Периоды `today`, `7d`, `30d`, `90d` считаются по бизнес-таймзоне `Asia/Vladivostok`; если переданы `dateFrom/dateTo`, они имеют приоритет над preset. Custom range директорской аналитики может покрывать до 366 дней. `revenueByDay` считает продажи дня минус отмены дня, причем отмена попадает в день отмены, а не в день исходной продажи.
+
+Direct accounting хранится отдельно в `direct_accounting_sale` и не меняет клиентов, справочники, товарные или денежные projections. Строка содержит snapshot наименования, дату, вес и цену за кг; исправление обновляет текущее состояние строки, мягкое удаление ставит `deletedAt`, а create/update/delete в той же transaction пишут отдельные `operation` и append-only `audit_log` со snapshot до/после. Статистика считает неудаленные строки за сегодня, скользящие 7/30 дней до даты-якоря или пользовательский диапазон до 366 дней в `Asia/Vladivostok`.
 
 Базовый принцип для следующих доменных операций:
 

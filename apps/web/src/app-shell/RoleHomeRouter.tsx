@@ -9,6 +9,7 @@ import { CourierLoadHome } from "../features/courier/CourierLoadHome";
 import { CourierSaleHome } from "../features/courier/CourierSaleHome";
 import { CourierUnloadHome } from "../features/courier/CourierUnloadHome";
 import { DistributorInventoryHome } from "../features/distributor/DistributorInventoryHome";
+import { DirectAccountingHome } from "../features/direct-accounting/DirectAccountingHome";
 import { NotificationsHome } from "../features/notifications/NotificationsHome";
 import { RoleOnboardingHome } from "../features/onboarding/RoleOnboardingHome";
 import { OperationHistoryHome } from "../features/operations/OperationHistoryHome";
@@ -149,6 +150,14 @@ export function RoleHomeRouter({
 
 	if (activeTab === "operation-history" && actor.permissions.includes("operation.history.read")) {
 		return <OperationHistoryHome />;
+	}
+
+	if (
+		activeTab === "direct-accounting"
+		&& actor.role === "director"
+		&& actor.permissions.includes("direct_accounting.manage")
+	) {
+		return <DirectAccountingHome online={online} />;
 	}
 
 	if (

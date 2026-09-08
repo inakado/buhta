@@ -9,6 +9,7 @@ import { ClientsModule } from "./clients/clients.module";
 import { AppErrorFilter } from "./common/errors/app-error.filter";
 import { CourierModule } from "./courier/courier.module";
 import { DistributorModule } from "./distributor/distributor.module";
+import { DirectAccountingModule } from "./direct-accounting/direct-accounting.module";
 import { HealthController } from "./health/health.controller";
 import { NotificationsModule } from "./notifications/notifications.module";
 import { OperationsModule } from "./operations/operations.module";
@@ -33,6 +34,7 @@ import { UsersModule } from "./users/users.module";
 		ClientsModule,
 		ProductionModule,
 		DistributorModule,
+		DirectAccountingModule,
 		CourierModule,
 		NotificationsModule,
 	],

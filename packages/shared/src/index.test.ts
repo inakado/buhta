@@ -56,6 +56,9 @@ import {
 	DistributorSaleOptionsResponseSchema,
 	DirectorAnalyticsQuerySchema,
 	DirectorAnalyticsResponseSchema,
+	DirectAccountingSaleInputSchema,
+	DirectAccountingSalesQuerySchema,
+	DirectAccountingStatisticsQuerySchema,
 	LoginSchema,
 	NotificationsListQuerySchema,
 	NotificationsListResponseSchema,
@@ -104,6 +107,7 @@ describe("shared contracts", () => {
 		expect(permissionsForRole("director")).toContain("cash.withdraw");
 		expect(permissionsForRole("director")).toContain("operation.history.read");
 		expect(permissionsForRole("director")).toContain("director.analytics.read");
+		expect(permissionsForRole("director")).toContain("direct_accounting.manage");
 		expect(permissionsForRole("director")).toContain("production.manage");
 		expect(permissionsForRole("commercial_manager")).toContain("client.read");
 		expect(permissionsForRole("commercial_manager")).toContain("client.manage");
@@ -143,6 +147,37 @@ describe("shared contracts", () => {
 		expect(permissionsForRole("production_manager")).toContain("notification.complete");
 		expect(permissionsForRole("production_manager")).not.toContain("notification.create");
 		expect(permissionsForRole("production_manager")).not.toContain("director.analytics.read");
+	});
+
+	it("validates direct accounting inputs", () => {
+		expect(DirectAccountingSaleInputSchema.parse({
+			productName: " Икра горбуши ",
+			soldOn: "2026-09-08",
+			quantityKg: 0.425,
+			unitPriceCents: 125_050,
+		})).toEqual({
+			productName: "Икра горбуши",
+			soldOn: "2026-09-08",
+			quantityKg: 0.425,
+			unitPriceCents: 125_050,
+		});
+		expect(DirectAccountingSaleInputSchema.safeParse({
+			productName: "Икра", soldOn: "2026-02-30", quantityKg: 1, unitPriceCents: 1,
+		}).success).toBe(false);
+		expect(DirectAccountingSaleInputSchema.safeParse({
+			productName: "Икра", soldOn: "2026-09-08", quantityKg: 1.0001, unitPriceCents: 1,
+		}).success).toBe(false);
+		expect(DirectAccountingSalesQuerySchema.parse({
+			dateFrom: "2026-09-01",
+			dateTo: "2026-09-08",
+		})).toEqual({ dateFrom: "2026-09-01", dateTo: "2026-09-08" });
+		expect(DirectAccountingSalesQuerySchema.safeParse({}).success).toBe(false);
+		expect(DirectAccountingStatisticsQuerySchema.parse({ detailPeriod: "week" })).toEqual({ detailPeriod: "week" });
+		expect(DirectAccountingStatisticsQuerySchema.parse({
+			dateFrom: "2026-09-01",
+			dateTo: "2026-09-08",
+		})).toEqual({ dateFrom: "2026-09-01", dateTo: "2026-09-08" });
+		expect(DirectAccountingStatisticsQuerySchema.safeParse({ dateFrom: "2026-09-01" }).success).toBe(false);
 	});
 
 	it("handles money only as integer cents", () => {

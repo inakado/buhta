@@ -30,6 +30,13 @@ import type {
 	CreateUserResponse,
 	DirectorAnalyticsQuery,
 	DirectorAnalyticsResponse,
+	DirectAccountingSaleInput,
+	DirectAccountingSaleResponse,
+	DirectAccountingSalesQuery,
+	DirectAccountingSalesResponse,
+	DirectAccountingStatisticsQuery,
+	DirectAccountingStatisticsResponse,
+	DirectAccountingSuggestionsResponse,
 	CourierCashBalancesResponse,
 	CourierLoadOptionsResponse,
 	CourierLoadResponse,
@@ -257,6 +264,41 @@ export async function getDirectorAnalytics(
 
 	const queryString = params.toString();
 	return fetchJson<DirectorAnalyticsResponse>(`/analytics/director${queryString ? `?${queryString}` : ""}`);
+}
+
+export async function listDirectAccountingSales(query: DirectAccountingSalesQuery): Promise<DirectAccountingSalesResponse> {
+	return fetchJson<DirectAccountingSalesResponse>(`/direct-accounting/sales${buildQueryString(query)}`);
+}
+
+export async function listDirectAccountingSuggestions(search = ""): Promise<DirectAccountingSuggestionsResponse> {
+	const query = search.trim() ? `?search=${encodeURIComponent(search.trim())}` : "";
+	return fetchJson<DirectAccountingSuggestionsResponse>(`/direct-accounting/suggestions${query}`);
+}
+
+export async function getDirectAccountingStatistics(
+	query: DirectAccountingStatisticsQuery = {},
+): Promise<DirectAccountingStatisticsResponse> {
+	return fetchJson<DirectAccountingStatisticsResponse>(`/direct-accounting/statistics${buildQueryString(query)}`);
+}
+
+export async function createDirectAccountingSale(
+	input: DirectAccountingSaleInput,
+): Promise<DirectAccountingSaleResponse> {
+	return fetchJson<DirectAccountingSaleResponse>("/direct-accounting/sales", idempotentJsonPost(input));
+}
+
+export async function updateDirectAccountingSale(
+	saleId: string,
+	input: DirectAccountingSaleInput,
+): Promise<DirectAccountingSaleResponse> {
+	return fetchJson<DirectAccountingSaleResponse>(`/direct-accounting/sales/${saleId}`, {
+		method: "PUT",
+		body: JSON.stringify(input),
+	});
+}
+
+export async function deleteDirectAccountingSale(saleId: string): Promise<void> {
+	await fetchJson<null>(`/direct-accounting/sales/${saleId}`, { method: "DELETE" });
 }
 
 export async function listRawMaterialTypes(): Promise<RawMaterialTypesListResponse> {
