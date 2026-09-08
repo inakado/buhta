@@ -109,7 +109,7 @@ export class DirectAccountingService {
 			const record = await prisma.$transaction(async (tx) => {
 				const before = await tx.directAccountingSale.findFirst({ where: { id: saleId, deletedAt: null } });
 				if (!before) {
-					throw new AppError("NOT_FOUND", "Direct accounting sale not found", { id: saleId });
+					throw new AppError("NOT_FOUND", "Продажа прямого учета не найдена", { id: saleId });
 				}
 
 				const after = await tx.directAccountingSale.update({
@@ -134,7 +134,7 @@ export class DirectAccountingService {
 			await prisma.$transaction(async (tx) => {
 				const before = await tx.directAccountingSale.findUnique({ where: { id: saleId } });
 				if (!before) {
-					throw new AppError("NOT_FOUND", "Direct accounting sale not found", { id: saleId });
+					throw new AppError("NOT_FOUND", "Продажа прямого учета не найдена", { id: saleId });
 				}
 				if (before.deletedAt) {
 					return;
@@ -319,7 +319,7 @@ function roundQuantityKg(value: number): number {
 function addRevenueCents(current: number, addition: number): number {
 	const total = current + addition;
 	if (!Number.isSafeInteger(total)) {
-		throw new RangeError("Direct accounting revenue exceeds safe integer range");
+		throw new RangeError("Выручка прямого учета вышла за допустимый числовой диапазон");
 	}
 	return total;
 }

@@ -5,6 +5,7 @@ const EXACT_ERROR_MESSAGES: Record<string, string> = {
 	"Admin cannot change own role": "Нельзя изменить собственную роль",
 	"Admin cannot reset own password": "Нельзя сбросить пароль самому себе",
 	"Current password is incorrect": "Текущий пароль указан неверно",
+	"Invalid direct accounting sale": "Проверьте данные продажи: наименование, дату, количество и цену.",
 	"Request failed: 400": "Некорректные данные. Проверьте поля и попробуйте еще раз.",
 	"Request failed: 401": "Нужно войти в систему",
 	"Request failed: 403": "Недостаточно прав для этого действия",

@@ -35,20 +35,20 @@ export class DirectAccountingController {
 
 	@Get("sales")
 	async listSales(@Query() query: unknown) {
-		const parsed = parseInput(DirectAccountingSalesQuerySchema, query, "Invalid direct accounting sales query");
+		const parsed = parseInput(DirectAccountingSalesQuerySchema, query, "Проверьте выбранный период продаж");
 		return { sales: await this.service.listSales(parsed) };
 	}
 
 	@Get("suggestions")
 	async suggestions(@Query() query: unknown) {
-		const parsed = parseInput(DirectAccountingSuggestionsQuerySchema, query, "Invalid suggestions query");
+		const parsed = parseInput(DirectAccountingSuggestionsQuerySchema, query, "Проверьте запрос поиска наименования");
 		return { suggestions: await this.service.listSuggestions(parsed) };
 	}
 
 	@Get("statistics")
 	async statistics(@Query() query: unknown) {
 		return this.service.getStatistics(
-			parseInput(DirectAccountingStatisticsQuerySchema, query, "Invalid direct accounting statistics query"),
+			parseInput(DirectAccountingStatisticsQuerySchema, query, "Проверьте выбранный период статистики"),
 		);
 	}
 
@@ -61,7 +61,7 @@ export class DirectAccountingController {
 		return {
 			sale: await this.service.createSale(
 				requireActor(actor),
-				parseInput(DirectAccountingSaleInputSchema, body, "Invalid direct accounting sale"),
+				parseSaleInput(body),
 				requireIdempotencyKey(idempotencyKey),
 			),
 		};
@@ -77,7 +77,7 @@ export class DirectAccountingController {
 			sale: await this.service.updateSale(
 				requireActor(actor),
 				saleId,
-				parseInput(DirectAccountingSaleInputSchema, body, "Invalid direct accounting sale"),
+				parseSaleInput(body),
 			),
 		};
 	}
@@ -91,7 +91,7 @@ export class DirectAccountingController {
 
 function requireActor(actor: Actor | undefined): Actor {
 	if (!actor) {
-		throw new AppError("UNAUTHENTICATED", "Authentication is required");
+		throw new AppError("UNAUTHENTICATED", "Необходимо войти в систему");
 	}
 	return actor;
 }
@@ -102,4 +102,24 @@ function parseInput<T extends z.ZodType>(schema: T, value: unknown, message: str
 		throw new AppError("VALIDATION_ERROR", message, parsed.error.flatten());
 	}
 	return parsed.data;
+}
+
+function parseSaleInput(value: unknown): z.infer<typeof DirectAccountingSaleInputSchema> {
+	const parsed = DirectAccountingSaleInputSchema.safeParse(value);
+	if (parsed.success) {
+		return parsed.data;
+	}
+
+	const invalidField = parsed.error.issues[0]?.path[0];
+	const message = invalidField === "productName"
+		? "Проверьте наименование: оно должно содержать от 1 до 120 символов"
+		: invalidField === "soldOn"
+			? "Проверьте дату продажи"
+			: invalidField === "quantityKg"
+				? "Проверьте количество: оно должно быть больше нуля, с точностью до грамма"
+				: invalidField === "unitPriceCents"
+					? "Проверьте цену: она должна быть больше нуля, с точностью до копейки"
+					: "Проверьте данные продажи: наименование, дату, количество и цену";
+
+	throw new AppError("VALIDATION_ERROR", message, parsed.error.flatten());
 }

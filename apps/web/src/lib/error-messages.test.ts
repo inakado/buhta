@@ -25,4 +25,10 @@ describe("toUserErrorMessage", () => {
 	it("keeps unknown backend messages visible", () => {
 		expect(toUserErrorMessage("Логин уже занят")).toBe("Логин уже занят");
 	});
+
+	it("localizes a direct accounting validation fallback", () => {
+		expect(toUserErrorMessage("Invalid direct accounting sale")).toBe(
+			"Проверьте данные продажи: наименование, дату, количество и цену.",
+		);
+	});
 });

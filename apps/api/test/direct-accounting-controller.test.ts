@@ -58,7 +58,7 @@ describe("DirectAccountingController", () => {
 			soldOn: "2026-09-08",
 			quantityKg: 0,
 			unitPriceCents: 120_000,
-		})).rejects.toThrow(AppError);
+		})).rejects.toThrow("Проверьте количество");
 		await expect(controller.createSale(undefined, "request-3", {
 			productName: "Икра",
 			soldOn: "2026-09-08",

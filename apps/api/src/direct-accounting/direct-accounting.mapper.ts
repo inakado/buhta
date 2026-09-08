@@ -34,7 +34,7 @@ export function calculateDirectAccountingTotalCents(
 		.toNumber();
 
 	if (!Number.isSafeInteger(total) || total < 0) {
-		throw new RangeError("Direct accounting total exceeds safe integer range");
+		throw new RangeError("Сумма продажи прямого учета вышла за допустимый числовой диапазон");
 	}
 
 	return total;

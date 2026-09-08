@@ -3,9 +3,10 @@ import { z } from "zod";
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const MAX_QUANTITY_KG = 1_000_000;
 const MAX_UNIT_PRICE_CENTS = 100_000_000;
+const GRAMS_PER_KILOGRAM = 1_000;
 
 export const DirectAccountingDateSchema = z.string().regex(DATE_PATTERN).refine(isCalendarDate, {
-	message: "Date must be a valid YYYY-MM-DD calendar date",
+	message: "Укажите существующую календарную дату в формате ГГГГ-ММ-ДД",
 });
 
 export const DirectAccountingProductNameSchema = z.string().trim().min(1).max(120);
@@ -13,8 +14,8 @@ export const DirectAccountingProductNameSchema = z.string().trim().min(1).max(12
 export const DirectAccountingQuantityKgSchema = z.number()
 	.positive()
 	.max(MAX_QUANTITY_KG)
-	.refine((value) => Math.abs(value * 1_000 - Math.round(value * 1_000)) < Number.EPSILON * 1_000, {
-		message: "Quantity must have at most 3 decimal places",
+	.refine(hasWholeGrams, {
+		message: "Количество должно содержать не более 3 знаков после запятой",
 	});
 
 export const DirectAccountingUnitPriceCentsSchema = z.number()
@@ -53,16 +54,16 @@ export const DirectAccountingSalesQuerySchema = z.object({
 }).strict().superRefine((value, context) => {
 	const hasRangeBoundary = Boolean(value.dateFrom || value.dateTo);
 	if (!value.date && !hasRangeBoundary) {
-		context.addIssue({ code: "custom", message: "date or dateFrom/dateTo is required" });
+		context.addIssue({ code: "custom", message: "Укажите дату или границы периода" });
 	}
 	if (value.date && hasRangeBoundary) {
-		context.addIssue({ code: "custom", message: "date cannot be combined with dateFrom/dateTo" });
+		context.addIssue({ code: "custom", message: "Нельзя одновременно указать дату и диапазон" });
 	}
 	if ((value.dateFrom && !value.dateTo) || (!value.dateFrom && value.dateTo)) {
-		context.addIssue({ code: "custom", message: "dateFrom and dateTo must be provided together" });
+		context.addIssue({ code: "custom", message: "Укажите обе границы периода" });
 	}
 	if (value.dateFrom && value.dateTo && value.dateFrom > value.dateTo) {
-		context.addIssue({ code: "custom", message: "dateFrom must not be after dateTo" });
+		context.addIssue({ code: "custom", message: "Начало периода не может быть позже окончания" });
 	}
 });
 
@@ -98,13 +99,13 @@ export const DirectAccountingStatisticsQuerySchema = z.object({
 	if ((value.dateFrom && !value.dateTo) || (!value.dateFrom && value.dateTo)) {
 		context.addIssue({
 			code: "custom",
-			message: "dateFrom and dateTo must be provided together",
+			message: "Укажите обе границы периода",
 		});
 	}
 	if (value.dateFrom && value.dateTo && value.dateFrom > value.dateTo) {
 		context.addIssue({
 			code: "custom",
-			message: "dateFrom must not be after dateTo",
+			message: "Начало периода не может быть позже окончания",
 		});
 	}
 });
@@ -154,4 +155,13 @@ function isCalendarDate(value: string): boolean {
 	return date.getUTCFullYear() === year
 		&& date.getUTCMonth() === (month ?? 0) - 1
 		&& date.getUTCDate() === day;
+}
+
+function hasWholeGrams(quantityKg: number): boolean {
+	const quantityGrams = quantityKg * GRAMS_PER_KILOGRAM;
+	const roundedQuantityGrams = Math.round(quantityGrams);
+	const roundingErrorTolerance = Number.EPSILON * Math.max(1, Math.abs(quantityGrams)) * 8;
+
+	return roundedQuantityGrams >= 1
+		&& Math.abs(quantityGrams - roundedQuantityGrams) <= roundingErrorTolerance;
 }
