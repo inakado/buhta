@@ -3,6 +3,7 @@ import type {
 	DirectAccountingExpense,
 	DirectAccountingReceipt,
 	DirectAccountingSale,
+	DirectAccountingTransfer,
 } from "@buhta/shared";
 import { Prisma } from "../generated/prisma/client";
 
@@ -29,6 +30,15 @@ type DirectAccountingExpenseRecord = {
 	id: string;
 	name: string;
 	spentOn: Date;
+	amountCents: number;
+	createdAt: Date;
+	updatedAt: Date;
+};
+
+type DirectAccountingTransferRecord = {
+	id: string;
+	comment: string;
+	transferredOn: Date;
 	amountCents: number;
 	createdAt: Date;
 	updatedAt: Date;
@@ -63,6 +73,17 @@ export function mapDirectAccountingExpense(record: DirectAccountingExpenseRecord
 		id: record.id,
 		name: record.name,
 		spentOn: record.spentOn.toISOString().slice(0, 10),
+		amountCents: record.amountCents,
+		createdAt: record.createdAt.toISOString(),
+		updatedAt: record.updatedAt.toISOString(),
+	};
+}
+
+export function mapDirectAccountingTransfer(record: DirectAccountingTransferRecord): DirectAccountingTransfer {
+	return {
+		id: record.id,
+		comment: record.comment,
+		transferredOn: record.transferredOn.toISOString().slice(0, 10),
 		amountCents: record.amountCents,
 		createdAt: record.createdAt.toISOString(),
 		updatedAt: record.updatedAt.toISOString(),
@@ -107,6 +128,19 @@ export function mapDirectAccountingExpenseEntry(record: DirectAccountingExpenseR
 		amountCents: expense.amountCents,
 		createdAt: expense.createdAt,
 		updatedAt: expense.updatedAt,
+	};
+}
+
+export function mapDirectAccountingTransferEntry(record: DirectAccountingTransferRecord): DirectAccountingEntry {
+	const transfer = mapDirectAccountingTransfer(record);
+	return {
+		kind: "transfer",
+		id: transfer.id,
+		comment: transfer.comment,
+		occurredOn: transfer.transferredOn,
+		amountCents: transfer.amountCents,
+		createdAt: transfer.createdAt,
+		updatedAt: transfer.updatedAt,
 	};
 }
 

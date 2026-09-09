@@ -138,6 +138,19 @@ model DirectAccountingExpense {
   @@map("direct_accounting_expense")
 }
 
+model DirectAccountingTransfer {
+  id            String    @id @default(cuid())
+  comment       String
+  transferredOn DateTime  @db.Date
+  amountCents   Int
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
+
+  @@index([transferredOn, deletedAt])
+  @@map("direct_accounting_transfer")
+}
+
 model Operation {
   id                 String              @id @default(cuid())
   type               String

@@ -78,6 +78,9 @@
 | `direct_accounting.expense.create` | Директор или администратор добавил затрату прямого учета | `direct_accounting_expense`; audit details содержат `after` с наименованием, датой и суммой |
 | `direct_accounting.expense.update` | Директор или администратор исправил затрату прямого учета | `direct_accounting_expense`; audit details содержат полные `before` и `after` |
 | `direct_accounting.expense.delete` | Директор или администратор мягко удалил затрату прямого учета | `direct_accounting_expense`; audit details содержат `before`, `after` и время удаления |
+| `direct_accounting.transfer.create` | Директор или администратор добавил передачу средств | `direct_accounting_transfer`; audit details содержат `after` с комментарием, датой и суммой |
+| `direct_accounting.transfer.update` | Директор или администратор исправил передачу средств | `direct_accounting_transfer`; audit details содержат полные `before` и `after` |
+| `direct_accounting.transfer.delete` | Директор или администратор мягко удалил передачу средств | `direct_accounting_transfer`; audit details содержат `before`, `after` и время удаления |
 
 ## 4. Read Model Истории
 

@@ -139,4 +139,40 @@ describe("DirectAccountingController", () => {
 		})).rejects.toThrow("Проверьте сумму");
 		expect(service.createExpense).not.toHaveBeenCalled();
 	});
+
+	it("validates and creates a backdated transfer", async () => {
+		const transfer = {
+			id: "transfer1",
+			comment: "Ивану на закупку",
+			transferredOn: "2026-08-15",
+			amountCents: 50_000,
+			createdAt: new Date(0).toISOString(),
+			updatedAt: new Date(0).toISOString(),
+		};
+		const service = { createTransfer: vi.fn().mockResolvedValue(transfer) } as unknown as DirectAccountingService;
+		const controller = new DirectAccountingController(service);
+
+		await expect(controller.createTransfer(actor, "transfer-request-1", {
+			comment: " Ивану на закупку ",
+			transferredOn: "2026-08-15",
+			amountCents: 50_000,
+		})).resolves.toEqual({ transfer });
+		expect(service.createTransfer).toHaveBeenCalledWith(actor, {
+			comment: "Ивану на закупку",
+			transferredOn: "2026-08-15",
+			amountCents: 50_000,
+		}, "transfer-request-1");
+	});
+
+	it("returns a Russian field error for an invalid transfer", async () => {
+		const service = { createTransfer: vi.fn() } as unknown as DirectAccountingService;
+		const controller = new DirectAccountingController(service);
+
+		await expect(controller.createTransfer(actor, "transfer-request-2", {
+			comment: "Ивану",
+			transferredOn: "2026-08-15",
+			amountCents: 0,
+		})).rejects.toThrow("Проверьте сумму");
+		expect(service.createTransfer).not.toHaveBeenCalled();
+	});
 });

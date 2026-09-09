@@ -43,6 +43,8 @@ import type {
 	DirectAccountingStatisticsQuery,
 	DirectAccountingStatisticsResponse,
 	DirectAccountingSuggestionsResponse,
+	DirectAccountingTransferInput,
+	DirectAccountingTransferResponse,
 	CourierCashBalancesResponse,
 	CourierLoadOptionsResponse,
 	CourierLoadResponse,
@@ -354,6 +356,26 @@ export async function updateDirectAccountingExpense(
 
 export async function deleteDirectAccountingExpense(expenseId: string): Promise<void> {
 	await fetchJson<null>(`/direct-accounting/expenses/${expenseId}`, { method: "DELETE" });
+}
+
+export async function createDirectAccountingTransfer(
+	input: DirectAccountingTransferInput,
+): Promise<DirectAccountingTransferResponse> {
+	return fetchJson<DirectAccountingTransferResponse>("/direct-accounting/transfers", idempotentJsonPost(input));
+}
+
+export async function updateDirectAccountingTransfer(
+	transferId: string,
+	input: DirectAccountingTransferInput,
+): Promise<DirectAccountingTransferResponse> {
+	return fetchJson<DirectAccountingTransferResponse>(`/direct-accounting/transfers/${transferId}`, {
+		method: "PUT",
+		body: JSON.stringify(input),
+	});
+}
+
+export async function deleteDirectAccountingTransfer(transferId: string): Promise<void> {
+	await fetchJson<null>(`/direct-accounting/transfers/${transferId}`, { method: "DELETE" });
 }
 
 export async function listRawMaterialTypes(): Promise<RawMaterialTypesListResponse> {

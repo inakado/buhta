@@ -73,7 +73,7 @@ Policy layer отвечает за доменные разрешения. Тек
 - `POST /production/raw-material-corrections` переопределяет class-level permission и требует `operation.correct`; сейчас это только `admin` и `director`. Количество положительное, причина обязательна, а backend транзакционно запрещает списание сверх остатка.
 - Перемещение продукции из цеха на распределитель использует `production.manage`: рабочую операцию выполняют `director` и `production_manager`, `admin` имеет support-доступ. Отдельный permission для transfer пока не введен.
 - `/clients` read handlers защищены `client.read`; write handlers защищены `client.manage`.
-- `/direct-accounting/*` защищены единым `direct_accounting.manage`; рабочий UI доступен только Директору, `admin` сохраняет backend support-доступ. Приходы, продажи и затраты изолированы от основных остатков и денег, будущая дата запрещена на backend, каждое изменение и мягкое удаление аудируется.
+- `/direct-accounting/*` защищены единым `direct_accounting.manage`; рабочий UI доступен только Директору, `admin` сохраняет backend support-доступ. Приходы, продажи, затраты и передачи средств изолированы от основных остатков и денег, будущая дата запрещена на backend, каждое изменение и мягкое удаление аудируется.
 - `client.read` и `client.manage` разделены намеренно: Директор получает оба права для полного контура продаж, а заведующий производством не получает доступа к клиентской базе.
 
 Текущие baseline permissions:

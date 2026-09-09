@@ -1,7 +1,7 @@
 // @vitest-environment node
 
 import { describe, expect, it } from "vitest";
-import { parseExpenseDraft, parseReceiptDraft, parseSaleDraft } from "./direct-accounting-input";
+import { parseExpenseDraft, parseReceiptDraft, parseSaleDraft, parseTransferDraft } from "./direct-accounting-input";
 
 describe("direct accounting input", () => {
 	it("accepts comma decimals and converts rubles to cents", () => {
@@ -61,6 +61,20 @@ describe("direct accounting input", () => {
 			name: "Доставка",
 			spentOn: "2026-09-02",
 			amountCents: 125_050,
+		});
+	});
+
+	it("parses a backdated transfer with a comment and amount", () => {
+		expect(parseTransferDraft({
+			productName: " Ивану   на закупку ",
+			occurredOn: "2026-09-01",
+			quantityKg: "",
+			unitPriceRubles: "",
+			amountRubles: "500,50",
+		}, "2026-09-08")).toEqual({
+			comment: "Ивану на закупку",
+			transferredOn: "2026-09-01",
+			amountCents: 50_050,
 		});
 	});
 });

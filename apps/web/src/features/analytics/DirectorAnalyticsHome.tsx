@@ -571,9 +571,13 @@ function DirectAccountingAnalytics() {
 							<span>Продано</span>
 							<strong>{formatQuantity(data.selection.quantityKg)} кг</strong>
 						</div>
-						<div className="direct-accounting-expenses-total">
-							<span>Затраты за период</span>
+						<div>
+							<span>Затраты</span>
 							<strong>{formatRubles(data.selection.expensesCents)}</strong>
+						</div>
+						<div>
+							<span>Передано</span>
+							<strong>{formatRubles(data.selection.transfersCents)}</strong>
 						</div>
 					</section>
 					<div className="direct-accounting-product-stats">

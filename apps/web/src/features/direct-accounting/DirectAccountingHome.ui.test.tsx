@@ -6,6 +6,7 @@ import {
 	createDirectAccountingExpense,
 	createDirectAccountingReceipt,
 	createDirectAccountingSale,
+	createDirectAccountingTransfer,
 	deleteDirectAccountingSale,
 	listDirectAccountingEntries,
 	listDirectAccountingSuggestions,
@@ -16,14 +17,17 @@ vi.mock("../../lib/api-client", () => ({
 	createDirectAccountingExpense: vi.fn(),
 	createDirectAccountingReceipt: vi.fn(),
 	createDirectAccountingSale: vi.fn(),
+	createDirectAccountingTransfer: vi.fn(),
 	deleteDirectAccountingExpense: vi.fn(),
 	deleteDirectAccountingReceipt: vi.fn(),
 	deleteDirectAccountingSale: vi.fn(),
+	deleteDirectAccountingTransfer: vi.fn(),
 	listDirectAccountingEntries: vi.fn(),
 	listDirectAccountingSuggestions: vi.fn(),
 	updateDirectAccountingExpense: vi.fn(),
 	updateDirectAccountingReceipt: vi.fn(),
 	updateDirectAccountingSale: vi.fn(),
+	updateDirectAccountingTransfer: vi.fn(),
 }));
 
 const sale = {
@@ -65,6 +69,16 @@ const expense = {
 	name: "Доставка",
 	occurredOn: "2026-09-02",
 	amountCents: 25_000,
+	createdAt: new Date(0).toISOString(),
+	updatedAt: new Date(0).toISOString(),
+};
+
+const transfer = {
+	kind: "transfer" as const,
+	id: "transfer1",
+	comment: "Ивану на закупку",
+	occurredOn: "2026-09-01",
+	amountCents: 50_000,
 	createdAt: new Date(0).toISOString(),
 	updatedAt: new Date(0).toISOString(),
 };
@@ -147,7 +161,7 @@ describe("DirectAccountingHome", () => {
 	});
 
 	it("filters the ledger and names it by the selected operation type", async () => {
-		vi.mocked(listDirectAccountingEntries).mockResolvedValue({ entries: [sale, receipt, expense] });
+		vi.mocked(listDirectAccountingEntries).mockResolvedValue({ entries: [sale, receipt, expense, transfer] });
 		vi.mocked(listDirectAccountingSuggestions).mockResolvedValue({ suggestions: [] });
 
 		renderHome();
@@ -168,6 +182,16 @@ describe("DirectAccountingHome", () => {
 		expect(screen.getByText("1 затрата")).toBeTruthy();
 		expect(screen.getByText(expense.name)).toBeTruthy();
 		expect(screen.getByText("250 ₽")).toBeTruthy();
+		expect(screen.queryByLabelText("Количество, кг")).toBeNull();
+		expect(screen.queryByLabelText("Цена за кг, ₽")).toBeNull();
+
+		fireEvent.click(screen.getByRole("button", { name: "Передача" }));
+		expect(screen.getByText("Передачи за 30 дней")).toBeTruthy();
+		expect(screen.getByText("Новая передача средств")).toBeTruthy();
+		expect(screen.getByText("1 передача")).toBeTruthy();
+		expect(screen.getByText(transfer.comment)).toBeTruthy();
+		expect(screen.getByText("500 ₽")).toBeTruthy();
+		expect(screen.getByLabelText("Кому / комментарий")).toBeTruthy();
 		expect(screen.queryByLabelText("Количество, кг")).toBeNull();
 		expect(screen.queryByLabelText("Цена за кг, ₽")).toBeNull();
 	});
@@ -195,6 +219,32 @@ describe("DirectAccountingHome", () => {
 			name: "Доставка",
 			spentOn: "2026-09-02",
 			amountCents: 25_000,
+		}));
+	});
+
+	it("creates a backdated transfer with a comment and amount", async () => {
+		vi.mocked(listDirectAccountingEntries).mockResolvedValue({ entries: [] });
+		vi.mocked(listDirectAccountingSuggestions).mockResolvedValue({ suggestions: [] });
+		vi.mocked(createDirectAccountingTransfer).mockResolvedValue({ transfer: {
+			id: transfer.id,
+			comment: transfer.comment,
+			transferredOn: transfer.occurredOn,
+			amountCents: transfer.amountCents,
+			createdAt: transfer.createdAt,
+			updatedAt: transfer.updatedAt,
+		} });
+
+		renderHome();
+		fireEvent.click(screen.getByRole("button", { name: "Передача" }));
+		fireEvent.change(screen.getByLabelText("Кому / комментарий"), { target: { value: transfer.comment } });
+		fireEvent.change(screen.getByLabelText("Дата"), { target: { value: transfer.occurredOn } });
+		fireEvent.change(screen.getByLabelText("Сумма, ₽"), { target: { value: "500" } });
+		fireEvent.click(screen.getByRole("button", { name: "Добавить передачу" }));
+
+		await waitFor(() => expect(createDirectAccountingTransfer).toHaveBeenCalledWith({
+			comment: transfer.comment,
+			transferredOn: transfer.occurredOn,
+			amountCents: transfer.amountCents,
 		}));
 	});
 });

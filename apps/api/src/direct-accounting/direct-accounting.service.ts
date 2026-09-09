@@ -15,6 +15,8 @@ import type {
 	DirectAccountingStatisticsQuery,
 	DirectAccountingStatisticsResponse,
 	DirectAccountingSuggestionsQuery,
+	DirectAccountingTransfer,
+	DirectAccountingTransferInput,
 } from "@buhta/shared";
 import type { Prisma } from "../generated/prisma/client";
 import { AppError } from "../common/errors/app-error";
@@ -29,6 +31,8 @@ import {
 	mapDirectAccountingReceiptEntry,
 	mapDirectAccountingSale,
 	mapDirectAccountingSaleEntry,
+	mapDirectAccountingTransfer,
+	mapDirectAccountingTransferEntry,
 } from "./direct-accounting.mapper";
 
 const BUSINESS_TIMEZONE = "Asia/Vladivostok" as const;
@@ -41,6 +45,7 @@ const SUGGESTION_LIMIT = 10;
 type SaleRecord = Prisma.DirectAccountingSaleGetPayload<Record<string, never>>;
 type ReceiptRecord = Prisma.DirectAccountingReceiptGetPayload<Record<string, never>>;
 type ExpenseRecord = Prisma.DirectAccountingExpenseGetPayload<Record<string, never>>;
+type TransferRecord = Prisma.DirectAccountingTransferGetPayload<Record<string, never>>;
 type DateRange = { dateFrom: string; dateTo: string; from: Date; to: Date };
 
 @Injectable()
@@ -57,7 +62,7 @@ export class DirectAccountingService {
 
 	async listEntries(query: DirectAccountingEntriesQuery): Promise<DirectAccountingEntry[]> {
 		const range = listRange(query);
-		const [sales, receipts, expenses] = await Promise.all([
+		const [sales, receipts, expenses, transfers] = await Promise.all([
 			prisma.directAccountingSale.findMany({
 				where: { soldOn: { gte: range.from, lte: range.to }, deletedAt: null },
 			}),
@@ -67,12 +72,16 @@ export class DirectAccountingService {
 			prisma.directAccountingExpense.findMany({
 				where: { spentOn: { gte: range.from, lte: range.to }, deletedAt: null },
 			}),
+			prisma.directAccountingTransfer.findMany({
+				where: { transferredOn: { gte: range.from, lte: range.to }, deletedAt: null },
+			}),
 		]);
 
 		return [
 			...sales.map(mapDirectAccountingSaleEntry),
 			...receipts.map(mapDirectAccountingReceiptEntry),
 			...expenses.map(mapDirectAccountingExpenseEntry),
+			...transfers.map(mapDirectAccountingTransferEntry),
 		].sort((left, right) =>
 			right.occurredOn.localeCompare(left.occurredOn)
 			|| right.createdAt.localeCompare(left.createdAt)
@@ -352,6 +361,79 @@ export class DirectAccountingService {
 		}
 	}
 
+	async createTransfer(
+		actor: Actor,
+		input: DirectAccountingTransferInput,
+		idempotencyKey: string,
+	): Promise<DirectAccountingTransfer> {
+		this.assertNotFutureDate(input.transferredOn);
+		const normalized = normalizeTransferInput(input);
+
+		try {
+			const record = await prisma.$transaction(async (tx) => {
+				const transfer = await tx.directAccountingTransfer.create({ data: transferData(normalized) });
+				await createAuditOperation(tx, actor, "direct_accounting.transfer.create", transfer.id, {
+					before: null,
+					after: transferSnapshot(transfer),
+				}, idempotencyKey);
+				return transfer;
+			});
+			return mapDirectAccountingTransfer(record);
+		} catch (error) {
+			throw mapWriteError(error);
+		}
+	}
+
+	async updateTransfer(
+		actor: Actor,
+		transferId: string,
+		input: DirectAccountingTransferInput,
+	): Promise<DirectAccountingTransfer> {
+		this.assertNotFutureDate(input.transferredOn);
+		const normalized = normalizeTransferInput(input);
+
+		try {
+			const record = await prisma.$transaction(async (tx) => {
+				const before = await tx.directAccountingTransfer.findFirst({ where: { id: transferId, deletedAt: null } });
+				if (!before) {
+					throw new AppError("NOT_FOUND", "Передача средств прямого учета не найдена", { id: transferId });
+				}
+				const after = await tx.directAccountingTransfer.update({
+					where: { id: transferId },
+					data: transferData(normalized),
+				});
+				await createAuditOperation(tx, actor, "direct_accounting.transfer.update", after.id, {
+					before: transferSnapshot(before),
+					after: transferSnapshot(after),
+				});
+				return after;
+			});
+			return mapDirectAccountingTransfer(record);
+		} catch (error) {
+			throw mapWriteError(error);
+		}
+	}
+
+	async deleteTransfer(actor: Actor, transferId: string): Promise<void> {
+		try {
+			await prisma.$transaction(async (tx) => {
+				const before = await tx.directAccountingTransfer.findUnique({ where: { id: transferId } });
+				if (!before) {
+					throw new AppError("NOT_FOUND", "Передача средств прямого учета не найдена", { id: transferId });
+				}
+				if (before.deletedAt) return;
+				const deletedAt = new Date();
+				const after = await tx.directAccountingTransfer.update({ where: { id: transferId }, data: { deletedAt } });
+				await createAuditOperation(tx, actor, "direct_accounting.transfer.delete", after.id, {
+					before: transferSnapshot(before),
+					after: { ...transferSnapshot(after), deletedAt: deletedAt.toISOString() },
+				});
+			});
+		} catch (error) {
+			throw mapWriteError(error);
+		}
+	}
+
 	async getStatistics(
 		query: DirectAccountingStatisticsQuery,
 		now = new Date(),
@@ -367,7 +449,7 @@ export class DirectAccountingService {
 		const overallTo = [ranges.day.to, ranges.week.to, ranges.month.to, selectedRange.to]
 			.reduce((latest, current) => current > latest ? current : latest);
 		// ponystack: aggregate the small direct ledger in memory; move this read model to SQL if volume grows.
-		const [sales, receipts, expenses] = await Promise.all([
+		const [sales, receipts, expenses, transfers] = await Promise.all([
 			prisma.directAccountingSale.findMany({
 				where: { soldOn: { lte: overallTo }, deletedAt: null },
 				orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
@@ -379,6 +461,9 @@ export class DirectAccountingService {
 			prisma.directAccountingExpense.findMany({
 				where: { spentOn: { lte: overallTo }, deletedAt: null },
 			}),
+			prisma.directAccountingTransfer.findMany({
+				where: { transferredOn: { lte: overallTo }, deletedAt: null },
+			}),
 		]);
 
 		return {
@@ -389,11 +474,11 @@ export class DirectAccountingService {
 				dateTo: selectedRange.dateTo,
 				timezone: BUSINESS_TIMEZONE,
 			},
-			selection: buildPeriodTotal(sales, receipts, expenses, selectedRange),
+			selection: buildPeriodTotal(sales, receipts, expenses, transfers, selectedRange),
 			totals: {
-				day: buildPeriodTotal(sales, receipts, expenses, ranges.day),
-				week: buildPeriodTotal(sales, receipts, expenses, ranges.week),
-				month: buildPeriodTotal(sales, receipts, expenses, ranges.month),
+				day: buildPeriodTotal(sales, receipts, expenses, transfers, ranges.day),
+				week: buildPeriodTotal(sales, receipts, expenses, transfers, ranges.week),
+				month: buildPeriodTotal(sales, receipts, expenses, transfers, ranges.month),
 			},
 			byProduct: buildProductStatistics(sales, receipts, selectedRange),
 		};
@@ -437,6 +522,10 @@ function normalizeExpenseInput(input: DirectAccountingExpenseInput): DirectAccou
 		name,
 		nameNormalized: normalizeProductName(name),
 	};
+}
+
+function normalizeTransferInput(input: DirectAccountingTransferInput): DirectAccountingTransferInput {
+	return { ...input, comment: input.comment.trim().replace(/\s+/g, " ") };
 }
 
 function normalizeProductName(value: string): string {
@@ -500,6 +589,23 @@ function expenseSnapshot(record: ExpenseRecord) {
 	};
 }
 
+function transferData(input: DirectAccountingTransferInput) {
+	return {
+		comment: input.comment,
+		transferredOn: parseDateOnly(input.transferredOn),
+		amountCents: input.amountCents,
+	};
+}
+
+function transferSnapshot(record: TransferRecord) {
+	const transfer = mapDirectAccountingTransfer(record);
+	return {
+		comment: transfer.comment,
+		transferredOn: transfer.transferredOn,
+		amountCents: transfer.amountCents,
+	};
+}
+
 type DirectAccountingWriteOperation =
 	| "direct_accounting.sale.create"
 	| "direct_accounting.sale.update"
@@ -509,7 +615,10 @@ type DirectAccountingWriteOperation =
 	| "direct_accounting.receipt.delete"
 	| "direct_accounting.expense.create"
 	| "direct_accounting.expense.update"
-	| "direct_accounting.expense.delete";
+	| "direct_accounting.expense.delete"
+	| "direct_accounting.transfer.create"
+	| "direct_accounting.transfer.update"
+	| "direct_accounting.transfer.delete";
 
 async function createAuditOperation(
 	tx: Prisma.TransactionClient,
@@ -534,7 +643,9 @@ async function createAuditOperation(
 			action: type,
 			entityType: type.includes(".receipt.")
 				? "direct_accounting_receipt"
-				: type.includes(".expense.") ? "direct_accounting_expense" : "direct_accounting_sale",
+				: type.includes(".expense.")
+					? "direct_accounting_expense"
+					: type.includes(".transfer.") ? "direct_accounting_transfer" : "direct_accounting_sale",
 			entityId,
 			details,
 		},
@@ -545,6 +656,7 @@ function buildPeriodTotal(
 	sales: SaleRecord[],
 	receipts: ReceiptRecord[],
 	expenses: ExpenseRecord[],
+	transfers: TransferRecord[],
 	range: DateRange,
 ): DirectAccountingPeriodTotal {
 	let soldQuantityKg = 0;
@@ -552,6 +664,7 @@ function buildPeriodTotal(
 	let balanceQuantityKg = 0;
 	let revenueCents = 0;
 	let expensesCents = 0;
+	let transfersCents = 0;
 	for (const sale of sales) {
 		if (sale.soldOn <= range.to) {
 			balanceQuantityKg -= Number(sale.quantityKg);
@@ -577,6 +690,11 @@ function buildPeriodTotal(
 			expensesCents = addExpenseCents(expensesCents, expense.amountCents);
 		}
 	}
+	for (const transfer of transfers) {
+		if (isInRange(transfer.transferredOn, range)) {
+			transfersCents = addTransferCents(transfersCents, transfer.amountCents);
+		}
+	}
 
 	return {
 		dateFrom: range.dateFrom,
@@ -586,6 +704,7 @@ function buildPeriodTotal(
 		balanceQuantityKg: roundQuantityKg(balanceQuantityKg),
 		revenueCents,
 		expensesCents,
+		transfersCents,
 	};
 }
 
@@ -675,6 +794,14 @@ function addExpenseCents(current: number, addition: number): number {
 	const total = current + addition;
 	if (!Number.isSafeInteger(total)) {
 		throw new RangeError("Затраты прямого учета вышли за допустимый числовой диапазон");
+	}
+	return total;
+}
+
+function addTransferCents(current: number, addition: number): number {
+	const total = current + addition;
+	if (!Number.isSafeInteger(total)) {
+		throw new RangeError("Передачи средств прямого учета вышли за допустимый числовой диапазон");
 	}
 	return total;
 }

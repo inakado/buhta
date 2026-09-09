@@ -2,6 +2,7 @@ import type {
 	DirectAccountingExpenseInput,
 	DirectAccountingReceiptInput,
 	DirectAccountingSaleInput,
+	DirectAccountingTransferInput,
 } from "@buhta/shared";
 
 export type DirectAccountingDraft = {
@@ -50,6 +51,21 @@ export function parseExpenseDraft(draft: DirectAccountingDraft, today: string): 
 	}
 
 	return { name, spentOn: draft.occurredOn, amountCents };
+}
+
+export function parseTransferDraft(draft: DirectAccountingDraft, today: string): DirectAccountingTransferInput | string {
+	const comment = normalizeProductName(draft.productName);
+	if (!comment) return "Укажите, кому или зачем переданы средства.";
+	if (comment.length > 240) return "Комментарий должен быть не длиннее 240 символов.";
+	if (!draft.occurredOn) return "Укажите дату передачи.";
+	if (draft.occurredOn > today) return "Дата передачи не может быть в будущем.";
+
+	const amountCents = parseRublesToCents(draft.amountRubles);
+	if (amountCents === null || amountCents <= 0 || amountCents > 2_147_483_647) {
+		return "Укажите сумму больше нуля, максимум 2 знака после запятой.";
+	}
+
+	return { comment, transferredOn: draft.occurredOn, amountCents };
 }
 
 function normalizeProductName(value: string): string {

@@ -20,6 +20,7 @@ import {
 	DirectAccountingSalesQuerySchema,
 	DirectAccountingStatisticsQuerySchema,
 	DirectAccountingSuggestionsQuerySchema,
+	DirectAccountingTransferInputSchema,
 } from "@buhta/shared";
 import type { z } from "zod";
 import { CurrentActor } from "../auth/actor.decorator";
@@ -160,6 +161,38 @@ export class DirectAccountingController {
 	async deleteExpense(@CurrentActor() actor: Actor | undefined, @Param("expenseId") expenseId: string) {
 		await this.service.deleteExpense(requireActor(actor), expenseId);
 	}
+
+	@Post("transfers")
+	async createTransfer(
+		@CurrentActor() actor: Actor | undefined,
+		@Headers("idempotency-key") idempotencyKey: string | undefined,
+		@Body() body: unknown,
+	) {
+		return {
+			transfer: await this.service.createTransfer(
+				requireActor(actor),
+				parseTransferInput(body),
+				requireIdempotencyKey(idempotencyKey),
+			),
+		};
+	}
+
+	@Put("transfers/:transferId")
+	async updateTransfer(
+		@CurrentActor() actor: Actor | undefined,
+		@Param("transferId") transferId: string,
+		@Body() body: unknown,
+	) {
+		return {
+			transfer: await this.service.updateTransfer(requireActor(actor), transferId, parseTransferInput(body)),
+		};
+	}
+
+	@Delete("transfers/:transferId")
+	@HttpCode(204)
+	async deleteTransfer(@CurrentActor() actor: Actor | undefined, @Param("transferId") transferId: string) {
+		await this.service.deleteTransfer(requireActor(actor), transferId);
+	}
 }
 
 function requireActor(actor: Actor | undefined): Actor {
@@ -229,6 +262,22 @@ function parseExpenseInput(value: unknown): z.infer<typeof DirectAccountingExpen
 			: invalidField === "amountCents"
 				? "Проверьте сумму: она должна быть больше нуля, с точностью до копейки"
 				: "Проверьте данные затраты: наименование, дату и сумму";
+
+	throw new AppError("VALIDATION_ERROR", message, parsed.error.flatten());
+}
+
+function parseTransferInput(value: unknown): z.infer<typeof DirectAccountingTransferInputSchema> {
+	const parsed = DirectAccountingTransferInputSchema.safeParse(value);
+	if (parsed.success) return parsed.data;
+
+	const invalidField = parsed.error.issues[0]?.path[0];
+	const message = invalidField === "comment"
+		? "Проверьте комментарий: он должен содержать от 1 до 240 символов"
+		: invalidField === "transferredOn"
+			? "Проверьте дату передачи"
+			: invalidField === "amountCents"
+				? "Проверьте сумму: она должна быть больше нуля, с точностью до копейки"
+				: "Проверьте данные передачи: комментарий, дату и сумму";
 
 	throw new AppError("VALIDATION_ERROR", message, parsed.error.flatten());
 }

@@ -6,6 +6,7 @@ import {
 	DirectAccountingReceiptInputSchema,
 	DirectAccountingSaleInputSchema,
 	DirectAccountingStatisticsResponseSchema,
+	DirectAccountingTransferInputSchema,
 } from "./direct-accounting";
 
 describe("direct accounting numeric contracts", () => {
@@ -55,6 +56,17 @@ describe("direct accounting numeric contracts", () => {
 		}).success).toBe(false);
 	});
 
+	it("validates a transfer in whole kopecks", () => {
+		expect(DirectAccountingTransferInputSchema.parse({
+			comment: " Ивану   на закупку ",
+			transferredOn: "2026-09-02",
+			amountCents: 50_000,
+		})).toMatchObject({ comment: "Ивану   на закупку", amountCents: 50_000 });
+		expect(DirectAccountingTransferInputSchema.safeParse({
+			comment: "Ивану", transferredOn: "2026-09-02", amountCents: 0,
+		}).success).toBe(false);
+	});
+
 	it("supports a mixed ledger and negative calculated balances", () => {
 		const timestamps = { createdAt: new Date(0).toISOString(), updatedAt: new Date(0).toISOString() };
 			expect(DirectAccountingEntriesResponseSchema.safeParse({
@@ -62,16 +74,17 @@ describe("direct accounting numeric contracts", () => {
 				{ kind: "receipt", id: "r1", productName: "Кета", occurredOn: "2026-09-01", quantityKg: 300, ...timestamps },
 				{ kind: "sale", id: "s1", productName: "Кета", occurredOn: "2026-09-03", quantityKg: 155, unitPriceCents: 650_000, totalCents: 100_750_000, ...timestamps },
 				{ kind: "expense", id: "e1", name: "Доставка", occurredOn: "2026-09-03", amountCents: 5_000, ...timestamps },
+				{ kind: "transfer", id: "t1", comment: "Ивану на закупку", occurredOn: "2026-09-03", amountCents: 50_000, ...timestamps },
 			],
 		}).success).toBe(true);
 
 		expect(DirectAccountingStatisticsResponseSchema.safeParse({
 			filters: { anchorDate: "2026-09-03", detailPeriod: "day", dateFrom: "2026-09-03", dateTo: "2026-09-03", timezone: "Asia/Vladivostok" },
-			selection: { dateFrom: "2026-09-03", dateTo: "2026-09-03", quantityKg: 155, receivedQuantityKg: 0, balanceQuantityKg: -5, revenueCents: 100_750_000, expensesCents: 5_000 },
+			selection: { dateFrom: "2026-09-03", dateTo: "2026-09-03", quantityKg: 155, receivedQuantityKg: 0, balanceQuantityKg: -5, revenueCents: 100_750_000, expensesCents: 5_000, transfersCents: 50_000 },
 			totals: {
-				day: { dateFrom: "2026-09-03", dateTo: "2026-09-03", quantityKg: 155, receivedQuantityKg: 0, balanceQuantityKg: -5, revenueCents: 100_750_000, expensesCents: 5_000 },
-				week: { dateFrom: "2026-08-28", dateTo: "2026-09-03", quantityKg: 155, receivedQuantityKg: 150, balanceQuantityKg: -5, revenueCents: 100_750_000, expensesCents: 5_000 },
-				month: { dateFrom: "2026-08-05", dateTo: "2026-09-03", quantityKg: 155, receivedQuantityKg: 150, balanceQuantityKg: -5, revenueCents: 100_750_000, expensesCents: 5_000 },
+				day: { dateFrom: "2026-09-03", dateTo: "2026-09-03", quantityKg: 155, receivedQuantityKg: 0, balanceQuantityKg: -5, revenueCents: 100_750_000, expensesCents: 5_000, transfersCents: 50_000 },
+				week: { dateFrom: "2026-08-28", dateTo: "2026-09-03", quantityKg: 155, receivedQuantityKg: 150, balanceQuantityKg: -5, revenueCents: 100_750_000, expensesCents: 5_000, transfersCents: 50_000 },
+				month: { dateFrom: "2026-08-05", dateTo: "2026-09-03", quantityKg: 155, receivedQuantityKg: 150, balanceQuantityKg: -5, revenueCents: 100_750_000, expensesCents: 5_000, transfersCents: 50_000 },
 			},
 			byProduct: [{ productName: "Кета", quantityKg: 155, receivedQuantityKg: 150, balanceQuantityKg: -5, revenueCents: 100_750_000 }],
 		}).success).toBe(true);

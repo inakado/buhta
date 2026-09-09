@@ -3,7 +3,7 @@ import { z } from "zod";
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const MAX_QUANTITY_KG = 1_000_000;
 const MAX_UNIT_PRICE_CENTS = 100_000_000;
-const MAX_EXPENSE_AMOUNT_CENTS = 2_147_483_647;
+const MAX_DIRECT_ACCOUNTING_AMOUNT_CENTS = 2_147_483_647;
 const GRAMS_PER_KILOGRAM = 1_000;
 
 export const DirectAccountingDateSchema = z.string().regex(DATE_PATTERN).refine(isCalendarDate, {
@@ -11,6 +11,7 @@ export const DirectAccountingDateSchema = z.string().regex(DATE_PATTERN).refine(
 });
 
 export const DirectAccountingProductNameSchema = z.string().trim().min(1).max(120);
+export const DirectAccountingTransferCommentSchema = z.string().trim().min(1).max(240);
 
 export const DirectAccountingQuantityKgSchema = z.number()
 	.positive()
@@ -44,10 +45,18 @@ export type DirectAccountingReceiptInput = z.infer<typeof DirectAccountingReceip
 export const DirectAccountingExpenseInputSchema = z.object({
 	name: DirectAccountingProductNameSchema,
 	spentOn: DirectAccountingDateSchema,
-	amountCents: z.number().int().min(1).max(MAX_EXPENSE_AMOUNT_CENTS),
+	amountCents: z.number().int().min(1).max(MAX_DIRECT_ACCOUNTING_AMOUNT_CENTS),
 }).strict();
 
 export type DirectAccountingExpenseInput = z.infer<typeof DirectAccountingExpenseInputSchema>;
+
+export const DirectAccountingTransferInputSchema = z.object({
+	comment: DirectAccountingTransferCommentSchema,
+	transferredOn: DirectAccountingDateSchema,
+	amountCents: z.number().int().min(1).max(MAX_DIRECT_ACCOUNTING_AMOUNT_CENTS),
+}).strict();
+
+export type DirectAccountingTransferInput = z.infer<typeof DirectAccountingTransferInputSchema>;
 
 export const DirectAccountingSaleSchema = DirectAccountingSaleInputSchema.extend({
 	id: z.string(),
@@ -74,6 +83,14 @@ export const DirectAccountingExpenseSchema = DirectAccountingExpenseInputSchema.
 
 export type DirectAccountingExpense = z.infer<typeof DirectAccountingExpenseSchema>;
 
+export const DirectAccountingTransferSchema = DirectAccountingTransferInputSchema.extend({
+	id: z.string(),
+	createdAt: z.string(),
+	updatedAt: z.string(),
+});
+
+export type DirectAccountingTransfer = z.infer<typeof DirectAccountingTransferSchema>;
+
 export const DirectAccountingSaleResponseSchema = z.object({
 	sale: DirectAccountingSaleSchema,
 });
@@ -91,6 +108,12 @@ export const DirectAccountingExpenseResponseSchema = z.object({
 });
 
 export type DirectAccountingExpenseResponse = z.infer<typeof DirectAccountingExpenseResponseSchema>;
+
+export const DirectAccountingTransferResponseSchema = z.object({
+	transfer: DirectAccountingTransferSchema,
+});
+
+export type DirectAccountingTransferResponse = z.infer<typeof DirectAccountingTransferResponseSchema>;
 
 export const DirectAccountingSalesQuerySchema = z.object({
 	date: DirectAccountingDateSchema.optional(),
@@ -153,6 +176,15 @@ export const DirectAccountingEntrySchema = z.discriminatedUnion("kind", [
 		createdAt: z.string(),
 		updatedAt: z.string(),
 	}),
+	z.object({
+		kind: z.literal("transfer"),
+		id: z.string(),
+		comment: DirectAccountingTransferCommentSchema,
+		occurredOn: DirectAccountingDateSchema,
+		amountCents: z.number().int().positive(),
+		createdAt: z.string(),
+		updatedAt: z.string(),
+	}),
 ]);
 
 export type DirectAccountingEntry = z.infer<typeof DirectAccountingEntrySchema>;
@@ -209,6 +241,7 @@ export const DirectAccountingPeriodTotalSchema = z.object({
 	balanceQuantityKg: z.number(),
 	revenueCents: z.number().int().nonnegative(),
 	expensesCents: z.number().int().nonnegative(),
+	transfersCents: z.number().int().nonnegative(),
 });
 
 export type DirectAccountingPeriodTotal = z.infer<typeof DirectAccountingPeriodTotalSchema>;

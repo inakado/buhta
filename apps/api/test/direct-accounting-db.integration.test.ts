@@ -21,6 +21,7 @@ async function cleanup() {
 	await prisma.directAccountingSale.deleteMany({ where: { productNameNormalized: { startsWith: normalizedPrefix } } });
 	await prisma.directAccountingReceipt.deleteMany({ where: { productNameNormalized: { startsWith: normalizedPrefix } } });
 	await prisma.directAccountingExpense.deleteMany({ where: { nameNormalized: { startsWith: normalizedPrefix } } });
+	await prisma.directAccountingTransfer.deleteMany({ where: { comment: { startsWith: prefix } } });
 	const operations = await prisma.operation.findMany({
 		where: { actorUserId: actor.userId },
 		select: { id: true },
@@ -201,6 +202,49 @@ describe("DirectAccountingService real Postgres integration", () => {
 			"direct_accounting.expense.create",
 			"direct_accounting.expense.update",
 			"direct_accounting.expense.delete",
+		]);
+	});
+
+	it("records transfers separately without changing revenue, expenses or stock balances", async () => {
+		await service.createReceipt(actor, {
+			productName: `${prefix} Нерка`, receivedOn: "2000-01-01", quantityKg: 10,
+		}, "direct-accounting-transfer-receipt");
+		await service.createSale(actor, {
+			productName: `${prefix} Нерка`, soldOn: "2000-01-03", quantityKg: 2, unitPriceCents: 100_000,
+		}, "direct-accounting-transfer-sale");
+		await service.createExpense(actor, {
+			name: `${prefix} Доставка`, spentOn: "2000-01-03", amountCents: 25_000,
+		}, "direct-accounting-transfer-expense");
+		const created = await service.createTransfer(actor, {
+			comment: `${prefix} Ивану на закупку`, transferredOn: "2000-01-03", amountCents: 50_050,
+		}, "direct-accounting-transfer-create");
+
+		const stats = await service.getStatistics({ dateFrom: "2000-01-03", dateTo: "2000-01-03" });
+		expect(stats.selection).toMatchObject({
+			transfersCents: 50_050,
+			expensesCents: 25_000,
+			revenueCents: 200_000,
+			balanceQuantityKg: 8,
+		});
+		expect(await service.listEntries({ date: "2000-01-03" })).toEqual(expect.arrayContaining([
+			expect.objectContaining({ kind: "transfer", id: created.id, comment: `${prefix} Ивану на закупку`, amountCents: 50_050 }),
+		]));
+
+		const updated = await service.updateTransfer(actor, created.id, {
+			comment: `${prefix} Петру`, transferredOn: "2000-01-02", amountCents: 60_000,
+		});
+		expect(updated).toMatchObject({ comment: `${prefix} Петру`, transferredOn: "2000-01-02", amountCents: 60_000 });
+		expect((await service.getStatistics({ dateFrom: "2000-01-03", dateTo: "2000-01-03" })).selection.transfersCents).toBe(0);
+
+		await service.deleteTransfer(actor, created.id);
+		const audit = await prisma.auditLog.findMany({
+			where: { actorUserId: actor.userId, entityId: created.id },
+			orderBy: { createdAt: "asc" },
+		});
+		expect(audit.map(({ action }) => action)).toEqual([
+			"direct_accounting.transfer.create",
+			"direct_accounting.transfer.update",
+			"direct_accounting.transfer.delete",
 		]);
 	});
 });

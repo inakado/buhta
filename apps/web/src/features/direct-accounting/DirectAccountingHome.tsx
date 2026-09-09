@@ -2,7 +2,19 @@
 
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import * as Popover from "@radix-ui/react-popover";
-import { CalendarDays, Check, ChevronDown, Pencil, Plus, RotateCcw, Trash2 } from "lucide-react";
+import {
+	CalendarDays,
+	Check,
+	ChevronDown,
+	HandCoins,
+	PackagePlus,
+	Pencil,
+	Plus,
+	ReceiptText,
+	RotateCcw,
+	ShoppingCart,
+	Trash2,
+} from "lucide-react";
 import { type FormEvent, useDeferredValue, useRef, useState } from "react";
 import type {
 	DirectAccountingDetailPeriod,
@@ -10,19 +22,23 @@ import type {
 	DirectAccountingExpenseInput,
 	DirectAccountingReceiptInput,
 	DirectAccountingSaleInput,
+	DirectAccountingTransferInput,
 } from "@buhta/shared";
 import {
 	createDirectAccountingExpense,
 	createDirectAccountingReceipt,
 	createDirectAccountingSale,
+	createDirectAccountingTransfer,
 	deleteDirectAccountingExpense,
 	deleteDirectAccountingReceipt,
 	deleteDirectAccountingSale,
+	deleteDirectAccountingTransfer,
 	listDirectAccountingEntries,
 	listDirectAccountingSuggestions,
 	updateDirectAccountingExpense,
 	updateDirectAccountingReceipt,
 	updateDirectAccountingSale,
+	updateDirectAccountingTransfer,
 } from "../../lib/api-client";
 import { formatCompactMoneyCents } from "../../lib/money-format";
 import { DateRangePickerPanel } from "../../ui/DateRangePickerPanel";
@@ -31,6 +47,7 @@ import {
 	parseExpenseDraft,
 	parseReceiptDraft,
 	parseSaleDraft,
+	parseTransferDraft,
 	type DirectAccountingDraft,
 } from "./direct-accounting-input";
 
@@ -63,7 +80,8 @@ type EntryKind = DirectAccountingEntry["kind"];
 type SaveInput =
 	| { kind: "sale"; input: DirectAccountingSaleInput }
 	| { kind: "receipt"; input: DirectAccountingReceiptInput }
-	| { kind: "expense"; input: DirectAccountingExpenseInput };
+	| { kind: "expense"; input: DirectAccountingExpenseInput }
+	| { kind: "transfer"; input: DirectAccountingTransferInput };
 
 export function DirectAccountingHome({ online }: { online: boolean }) {
 	const queryClient = useQueryClient();
@@ -96,9 +114,16 @@ export function DirectAccountingHome({ online }: { online: boolean }) {
 	const { data: suggestionsData } = useQuery({
 		queryKey: ["direct-accounting", "suggestions", entryKind, deferredProductName],
 		queryFn: () => listDirectAccountingSuggestions(deferredProductName, entryKind === "expense" ? "expense" : "stock"),
+		enabled: entryKind !== "transfer",
 	});
 	const saveMutation = useMutation({
 		mutationFn: async (save: SaveInput) => {
+			if (save.kind === "transfer") {
+				const { transfer } = await (editingEntry
+					? updateDirectAccountingTransfer(editingEntry.id, save.input)
+					: createDirectAccountingTransfer(save.input));
+				return { kind: save.kind, occurredOn: transfer.transferredOn };
+			}
 			if (save.kind === "expense") {
 				const { expense } = await (editingEntry
 					? updateDirectAccountingExpense(editingEntry.id, save.input)
@@ -124,14 +149,18 @@ export function DirectAccountingHome({ online }: { online: boolean }) {
 			setFormError(null);
 			setSuccessMessage(wasEditing
 				? "Запись обновлена"
-				: variables.kind === "sale" ? "Продажа добавлена" : variables.kind === "receipt" ? "Приход добавлен" : "Затрата добавлена");
+				: variables.kind === "sale"
+					? "Продажа добавлена"
+					: variables.kind === "receipt" ? "Приход добавлен" : variables.kind === "expense" ? "Затрата добавлена" : "Передача добавлена");
 			await invalidateDirectAccounting(queryClient);
 		},
 	});
 	const deleteMutation = useMutation({
 		mutationFn: (entry: DirectAccountingEntry) => entry.kind === "sale"
 			? deleteDirectAccountingSale(entry.id)
-			: entry.kind === "receipt" ? deleteDirectAccountingReceipt(entry.id) : deleteDirectAccountingExpense(entry.id),
+			: entry.kind === "receipt"
+				? deleteDirectAccountingReceipt(entry.id)
+				: entry.kind === "expense" ? deleteDirectAccountingExpense(entry.id) : deleteDirectAccountingTransfer(entry.id),
 		onSuccess: async () => {
 			setEditingEntry(null);
 			setDraft(emptyDraft(today));
@@ -152,9 +181,9 @@ export function DirectAccountingHome({ online }: { online: boolean }) {
 		setDraft({
 			productName: entryName(entry),
 			occurredOn: entry.occurredOn,
-			quantityKg: entry.kind === "expense" ? "" : String(entry.quantityKg).replace(".", ","),
+			quantityKg: entry.kind === "sale" || entry.kind === "receipt" ? String(entry.quantityKg).replace(".", ",") : "",
 			unitPriceRubles: entry.kind === "sale" ? centsToInput(entry.unitPriceCents) : "",
-			amountRubles: entry.kind === "expense" ? centsToInput(entry.amountCents) : "",
+			amountRubles: entry.kind === "expense" || entry.kind === "transfer" ? centsToInput(entry.amountCents) : "",
 		});
 		setFormError(null);
 		setSuccessMessage(null);
@@ -180,6 +209,12 @@ export function DirectAccountingHome({ online }: { online: boolean }) {
 		}
 		if (entryKind === "expense") {
 			const parsed = parseExpenseDraft(draft, today);
+			if (typeof parsed === "string") return setFormError(parsed);
+			saveMutation.mutate({ kind: entryKind, input: parsed });
+			return;
+		}
+		if (entryKind === "transfer") {
+			const parsed = parseTransferDraft(draft, today);
 			if (typeof parsed === "string") return setFormError(parsed);
 			saveMutation.mutate({ kind: entryKind, input: parsed });
 			return;
@@ -241,10 +276,12 @@ export function DirectAccountingHome({ online }: { online: boolean }) {
 			<SegmentedControl
 				ariaLabel="Режим прямого учета"
 				className="direct-accounting-entry-type"
+				iconSize={17}
 				items={[
-					{ value: "sale", label: "Продажа", disabled: Boolean(editingEntry) },
-					{ value: "receipt", label: "Приход", disabled: Boolean(editingEntry) },
-					{ value: "expense", label: "Затраты", disabled: Boolean(editingEntry) },
+					{ value: "sale", label: "Продажа", icon: ShoppingCart, disabled: Boolean(editingEntry) },
+					{ value: "receipt", label: "Приход", icon: PackagePlus, disabled: Boolean(editingEntry) },
+					{ value: "expense", label: "Затраты", icon: ReceiptText, disabled: Boolean(editingEntry) },
+					{ value: "transfer", label: "Передача", icon: HandCoins, disabled: Boolean(editingEntry) },
 				]}
 				onChange={(kind) => {
 					setEntryKind(kind as EntryKind);
@@ -271,13 +308,13 @@ export function DirectAccountingHome({ online }: { online: boolean }) {
 				</div>
 
 				<label className="field direct-accounting-name-field">
-					<span>Наименование</span>
+					<span>{entryKind === "transfer" ? "Кому / комментарий" : "Наименование"}</span>
 					<input
 						autoComplete="off"
-						list="direct-accounting-products"
-						maxLength={120}
+						list={entryKind === "transfer" ? undefined : "direct-accounting-products"}
+						maxLength={entryKind === "transfer" ? 240 : 120}
 						onChange={(event) => updateDraft({ productName: event.target.value })}
-						placeholder={entryKind === "expense" ? "Например, доставка" : "Например, икра кеты"}
+						placeholder={entryKind === "transfer" ? "Например, Ивану на закупку" : entryKind === "expense" ? "Например, доставка" : "Например, икра кеты"}
 						ref={productNameRef}
 						value={draft.productName}
 					/>
@@ -302,7 +339,7 @@ export function DirectAccountingHome({ online }: { online: boolean }) {
 							/>
 						</span>
 					</label>
-					{entryKind !== "expense" ? <label className="field">
+					{entryKind === "sale" || entryKind === "receipt" ? <label className="field">
 						<span>Количество, кг</span>
 						<input
 							inputMode="decimal"
@@ -319,7 +356,7 @@ export function DirectAccountingHome({ online }: { online: boolean }) {
 							placeholder="0,00"
 							value={draft.unitPriceRubles}
 						/>
-					</label> : entryKind === "expense" ? <label className="field">
+					</label> : entryKind === "expense" || entryKind === "transfer" ? <label className="field">
 						<span>Сумма, ₽</span>
 						<input
 							inputMode="decimal"
@@ -349,7 +386,7 @@ export function DirectAccountingHome({ online }: { online: boolean }) {
 					) : null}
 					<button className="primary-button direct-accounting-submit" disabled={!online || pending} type="submit">
 						{editingEntry ? <Pencil aria-hidden size={16} /> : <Plus aria-hidden size={17} />}
-						{pending ? "Сохраняем…" : editingEntry ? "Сохранить изменения" : entryKind === "sale" ? "Добавить продажу" : entryKind === "receipt" ? "Добавить приход" : "Добавить затрату"}
+						{pending ? "Сохраняем…" : editingEntry ? "Сохранить изменения" : formatCreateLabel(entryKind)}
 					</button>
 				</div>
 			</form>
@@ -417,7 +454,7 @@ export function DirectAccountingHome({ online }: { online: boolean }) {
 				{!entriesLoading && visibleEntries.length === 0 ? <p className="direct-accounting-empty">{entryKindEmpty(entryKind)} за выбранный период нет.</p> : null}
 				{visibleEntries.length ? (
 					<div className="direct-accounting-ledger-columns" aria-hidden>
-						<span>{entryKind === "sale" ? "Продажа" : entryKind === "receipt" ? "Приход" : "Затрата"}</span>
+						<span>{entryKind === "sale" ? "Продажа" : entryKind === "receipt" ? "Приход" : entryKind === "expense" ? "Затрата" : "Передача"}</span>
 						<span>{entryKind === "receipt" ? "Количество" : "Сумма"}</span>
 					</div>
 				) : null}
@@ -462,7 +499,9 @@ function formatEntryCount(count: number, kind: EntryKind): string {
 	const mod10 = count % 10;
 	const forms = kind === "sale"
 		? ["продажа", "продажи", "продаж"]
-		: kind === "receipt" ? ["приход", "прихода", "приходов"] : ["затрата", "затраты", "затрат"];
+		: kind === "receipt"
+			? ["приход", "прихода", "приходов"]
+			: kind === "expense" ? ["затрата", "затраты", "затрат"] : ["передача", "передачи", "передач"];
 	const noun = mod100 >= 11 && mod100 <= 14 ? forms[2] : mod10 === 1 ? forms[0] : mod10 >= 2 && mod10 <= 4 ? forms[1] : forms[2];
 	return `${count} ${noun}`;
 }
@@ -470,7 +509,8 @@ function formatEntryCount(count: number, kind: EntryKind): string {
 function formatEntryFormTitle(kind: EntryKind, editing: boolean): string {
 	if (kind === "sale") return editing ? "Исправление продажи" : "Новая продажа";
 	if (kind === "receipt") return editing ? "Исправление прихода" : "Новый приход";
-	return editing ? "Исправление затраты" : "Новая затрата";
+	if (kind === "expense") return editing ? "Исправление затраты" : "Новая затрата";
+	return editing ? "Исправление передачи средств" : "Новая передача средств";
 }
 
 function trailingDateRange(anchorDate: string, period: DirectAccountingDetailPeriod) {
@@ -527,22 +567,26 @@ async function invalidateDirectAccounting(queryClient: QueryClient) {
 }
 
 function entryName(entry: DirectAccountingEntry): string {
-	return entry.kind === "expense" ? entry.name : entry.productName;
+	return entry.kind === "expense" ? entry.name : entry.kind === "transfer" ? entry.comment : entry.productName;
 }
 
 function formatEntryMeta(entry: DirectAccountingEntry): string {
-	if (entry.kind === "expense") return formatDate(entry.occurredOn);
+	if (entry.kind === "expense" || entry.kind === "transfer") return formatDate(entry.occurredOn);
 	return `${formatDate(entry.occurredOn)} · ${formatQuantity(entry.quantityKg)} кг${entry.kind === "sale" ? ` × ${formatCompactMoneyCents(entry.unitPriceCents)} ₽` : ""}`;
 }
 
 function entryKindSubject(kind: EntryKind): string {
-	return kind === "sale" ? "Продажи" : kind === "receipt" ? "Приходы" : "Затраты";
+	return kind === "sale" ? "Продажи" : kind === "receipt" ? "Приходы" : kind === "expense" ? "Затраты" : "Передачи";
 }
 
 function entryKindEmpty(kind: EntryKind): string {
-	return kind === "sale" ? "Продаж" : kind === "receipt" ? "Приходов" : "Затрат";
+	return kind === "sale" ? "Продаж" : kind === "receipt" ? "Приходов" : kind === "expense" ? "Затрат" : "Передач";
 }
 
 function entryKindAccusative(kind: EntryKind): string {
-	return kind === "sale" ? "продажу" : kind === "receipt" ? "приход" : "затрату";
+	return kind === "sale" ? "продажу" : kind === "receipt" ? "приход" : kind === "expense" ? "затрату" : "передачу";
+}
+
+function formatCreateLabel(kind: EntryKind): string {
+	return kind === "sale" ? "Добавить продажу" : kind === "receipt" ? "Добавить приход" : kind === "expense" ? "Добавить затрату" : "Добавить передачу";
 }

@@ -1082,9 +1082,13 @@ input[type="search"]::-webkit-search-decoration {
 }
 
 .direct-accounting-entry-type button {
-	min-height: 36px;
+	flex-direction: column;
+	gap: 2px;
+	min-height: 48px;
 	border-radius: 6px;
-	font-size: 12px;
+	padding: 4px 2px;
+	font-size: 10px;
+	line-height: 1.1;
 }
 
 .direct-accounting-fields {
@@ -1380,12 +1384,6 @@ input[type="search"]::-webkit-search-decoration {
 
 .direct-accounting-summary > div:nth-child(n + 3) {
 	border-top: 1px solid var(--line);
-}
-
-.direct-accounting-summary > .direct-accounting-expenses-total {
-	grid-column: 1 / -1;
-	border-left: 0;
-	padding-left: 0;
 }
 
 .direct-accounting-summary span,
