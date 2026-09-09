@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DirectAccountingHome } from "./DirectAccountingHome";
 import {
+	createDirectAccountingExpense,
 	createDirectAccountingReceipt,
 	createDirectAccountingSale,
 	deleteDirectAccountingSale,
@@ -12,12 +13,15 @@ import {
 } from "../../lib/api-client";
 
 vi.mock("../../lib/api-client", () => ({
+	createDirectAccountingExpense: vi.fn(),
 	createDirectAccountingReceipt: vi.fn(),
 	createDirectAccountingSale: vi.fn(),
+	deleteDirectAccountingExpense: vi.fn(),
 	deleteDirectAccountingReceipt: vi.fn(),
 	deleteDirectAccountingSale: vi.fn(),
 	listDirectAccountingEntries: vi.fn(),
 	listDirectAccountingSuggestions: vi.fn(),
+	updateDirectAccountingExpense: vi.fn(),
 	updateDirectAccountingReceipt: vi.fn(),
 	updateDirectAccountingSale: vi.fn(),
 }));
@@ -51,6 +55,16 @@ const receipt = {
 	productName: "Приход кеты",
 	occurredOn: "2026-09-03",
 	quantityKg: 300,
+	createdAt: new Date(0).toISOString(),
+	updatedAt: new Date(0).toISOString(),
+};
+
+const expense = {
+	kind: "expense" as const,
+	id: "expense1",
+	name: "Доставка",
+	occurredOn: "2026-09-02",
+	amountCents: 25_000,
 	createdAt: new Date(0).toISOString(),
 	updatedAt: new Date(0).toISOString(),
 };
@@ -133,7 +147,7 @@ describe("DirectAccountingHome", () => {
 	});
 
 	it("filters the ledger and names it by the selected operation type", async () => {
-		vi.mocked(listDirectAccountingEntries).mockResolvedValue({ entries: [sale, receipt] });
+		vi.mocked(listDirectAccountingEntries).mockResolvedValue({ entries: [sale, receipt, expense] });
 		vi.mocked(listDirectAccountingSuggestions).mockResolvedValue({ suggestions: [] });
 
 		renderHome();
@@ -147,6 +161,41 @@ describe("DirectAccountingHome", () => {
 		expect(screen.getByText("1 приход")).toBeTruthy();
 		expect(screen.getByText(receipt.productName)).toBeTruthy();
 		expect(screen.queryByText(sale.productName)).toBeNull();
+
+		fireEvent.click(screen.getByRole("button", { name: "Затраты" }));
+		expect(screen.getByText("Затраты за 30 дней")).toBeTruthy();
+		expect(screen.getByText("Новая затрата")).toBeTruthy();
+		expect(screen.getByText("1 затрата")).toBeTruthy();
+		expect(screen.getByText(expense.name)).toBeTruthy();
+		expect(screen.getByText("250 ₽")).toBeTruthy();
+		expect(screen.queryByLabelText("Количество, кг")).toBeNull();
+		expect(screen.queryByLabelText("Цена за кг, ₽")).toBeNull();
+	});
+
+	it("creates a backdated expense with an amount only", async () => {
+		vi.mocked(listDirectAccountingEntries).mockResolvedValue({ entries: [] });
+		vi.mocked(listDirectAccountingSuggestions).mockResolvedValue({ suggestions: [] });
+		vi.mocked(createDirectAccountingExpense).mockResolvedValue({ expense: {
+			id: expense.id,
+			name: expense.name,
+			spentOn: expense.occurredOn,
+			amountCents: expense.amountCents,
+			createdAt: expense.createdAt,
+			updatedAt: expense.updatedAt,
+		} });
+
+		renderHome();
+		fireEvent.click(screen.getByRole("button", { name: "Затраты" }));
+		fireEvent.change(screen.getByLabelText("Наименование"), { target: { value: "Доставка" } });
+		fireEvent.change(screen.getByLabelText("Дата"), { target: { value: "2026-09-02" } });
+		fireEvent.change(screen.getByLabelText("Сумма, ₽"), { target: { value: "250" } });
+		fireEvent.click(screen.getByRole("button", { name: "Добавить затрату" }));
+
+		await waitFor(() => expect(createDirectAccountingExpense).toHaveBeenCalledWith({
+			name: "Доставка",
+			spentOn: "2026-09-02",
+			amountCents: 25_000,
+		}));
 	});
 });
 

@@ -20,6 +20,7 @@ const normalizedPrefix = prefix.toLocaleLowerCase("ru-RU");
 async function cleanup() {
 	await prisma.directAccountingSale.deleteMany({ where: { productNameNormalized: { startsWith: normalizedPrefix } } });
 	await prisma.directAccountingReceipt.deleteMany({ where: { productNameNormalized: { startsWith: normalizedPrefix } } });
+	await prisma.directAccountingExpense.deleteMany({ where: { nameNormalized: { startsWith: normalizedPrefix } } });
 	const operations = await prisma.operation.findMany({
 		where: { actorUserId: actor.userId },
 		select: { id: true },
@@ -160,5 +161,46 @@ describe("DirectAccountingService real Postgres integration", () => {
 		await expect(service.createSale(actor, {
 			productName: `${prefix} Будущее`, soldOn: "2099-01-01", quantityKg: 1, unitPriceCents: 1,
 		}, "direct-accounting-future")).rejects.toBeInstanceOf(AppError);
+	});
+
+	it("records expenses without changing revenue or stock balances", async () => {
+		await service.createReceipt(actor, {
+			productName: `${prefix} Нерка`, receivedOn: "2000-01-01", quantityKg: 10,
+		}, "direct-accounting-expense-receipt");
+		await service.createSale(actor, {
+			productName: `${prefix} Нерка`, soldOn: "2000-01-03", quantityKg: 2, unitPriceCents: 100_000,
+		}, "direct-accounting-expense-sale");
+		const created = await service.createExpense(actor, {
+			name: `${prefix} Доставка`, spentOn: "2000-01-03", amountCents: 25_050,
+		}, "direct-accounting-expense-create");
+
+		const stats = await service.getStatistics({ dateFrom: "2000-01-03", dateTo: "2000-01-03" });
+		expect(stats.selection).toMatchObject({
+			expensesCents: 25_050,
+			revenueCents: 200_000,
+			balanceQuantityKg: 8,
+		});
+		expect(await service.listEntries({ date: "2000-01-03" })).toEqual(expect.arrayContaining([
+			expect.objectContaining({ kind: "expense", id: created.id, name: `${prefix} Доставка`, amountCents: 25_050 }),
+		]));
+		expect(await service.listSuggestions({ search: prefix, kind: "expense" })).toEqual([`${prefix} Доставка`]);
+		expect(await service.listSuggestions({ search: `${prefix} Доставка`, kind: "stock" })).toEqual([]);
+
+		const updated = await service.updateExpense(actor, created.id, {
+			name: `${prefix} Доставка`, spentOn: "2000-01-02", amountCents: 30_000,
+		});
+		expect(updated).toMatchObject({ spentOn: "2000-01-02", amountCents: 30_000 });
+		expect((await service.getStatistics({ dateFrom: "2000-01-03", dateTo: "2000-01-03" })).selection.expensesCents).toBe(0);
+
+		await service.deleteExpense(actor, created.id);
+		const audit = await prisma.auditLog.findMany({
+			where: { actorUserId: actor.userId, entityId: created.id },
+			orderBy: { createdAt: "asc" },
+		});
+		expect(audit.map(({ action }) => action)).toEqual([
+			"direct_accounting.expense.create",
+			"direct_accounting.expense.update",
+			"direct_accounting.expense.delete",
+		]);
 	});
 });

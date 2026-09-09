@@ -116,11 +116,12 @@ const directAccountingResponse = {
 		receivedQuantityKg: 2,
 		balanceQuantityKg: 1.2,
 		revenueCents: 120_000,
+		expensesCents: 25_000,
 	},
 	totals: {
-		day: { dateFrom: "2026-09-08", dateTo: "2026-09-08", quantityKg: 0.8, receivedQuantityKg: 2, balanceQuantityKg: 1.2, revenueCents: 120_000 },
-		week: { dateFrom: "2026-09-02", dateTo: "2026-09-08", quantityKg: 2, receivedQuantityKg: 3, balanceQuantityKg: 1.2, revenueCents: 240_000 },
-		month: { dateFrom: "2026-08-10", dateTo: "2026-09-08", quantityKg: 4, receivedQuantityKg: 5.2, balanceQuantityKg: 1.2, revenueCents: 480_000 },
+		day: { dateFrom: "2026-09-08", dateTo: "2026-09-08", quantityKg: 0.8, receivedQuantityKg: 2, balanceQuantityKg: 1.2, revenueCents: 120_000, expensesCents: 25_000 },
+		week: { dateFrom: "2026-09-02", dateTo: "2026-09-08", quantityKg: 2, receivedQuantityKg: 3, balanceQuantityKg: 1.2, revenueCents: 240_000, expensesCents: 25_000 },
+		month: { dateFrom: "2026-08-10", dateTo: "2026-09-08", quantityKg: 4, receivedQuantityKg: 5.2, balanceQuantityKg: 1.2, revenueCents: 480_000, expensesCents: 25_000 },
 	},
 	byProduct: [{ productName: "Икра кеты", quantityKg: 0.8, receivedQuantityKg: 2, balanceQuantityKg: 1.2, revenueCents: 120_000 }],
 };
@@ -251,6 +252,8 @@ describe("DirectorAnalyticsHome", () => {
 		fireEvent.click(await screen.findByRole("button", { name: "Открыть статистику прямого учета" }));
 
 		expect(await screen.findByText("Икра кеты")).toBeTruthy();
+		expect(screen.getByText("Затраты за период")).toBeTruthy();
+		expect(screen.getByText("250 ₽")).toBeTruthy();
 		expect(screen.getByRole("button", { name: "Сегодня" })).toBeTruthy();
 		fireEvent.click(screen.getByRole("button", { name: "7 дней" }));
 		await waitFor(() => {

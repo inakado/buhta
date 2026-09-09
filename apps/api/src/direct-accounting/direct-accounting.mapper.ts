@@ -1,5 +1,6 @@
 import type {
 	DirectAccountingEntry,
+	DirectAccountingExpense,
 	DirectAccountingReceipt,
 	DirectAccountingSale,
 } from "@buhta/shared";
@@ -24,6 +25,15 @@ type DirectAccountingReceiptRecord = {
 	updatedAt: Date;
 };
 
+type DirectAccountingExpenseRecord = {
+	id: string;
+	name: string;
+	spentOn: Date;
+	amountCents: number;
+	createdAt: Date;
+	updatedAt: Date;
+};
+
 export function mapDirectAccountingSale(record: DirectAccountingSaleRecord): DirectAccountingSale {
 	return {
 		id: record.id,
@@ -43,6 +53,17 @@ export function mapDirectAccountingReceipt(record: DirectAccountingReceiptRecord
 		productName: record.productName,
 		receivedOn: record.receivedOn.toISOString().slice(0, 10),
 		quantityKg: Number(record.quantityKg),
+		createdAt: record.createdAt.toISOString(),
+		updatedAt: record.updatedAt.toISOString(),
+	};
+}
+
+export function mapDirectAccountingExpense(record: DirectAccountingExpenseRecord): DirectAccountingExpense {
+	return {
+		id: record.id,
+		name: record.name,
+		spentOn: record.spentOn.toISOString().slice(0, 10),
+		amountCents: record.amountCents,
 		createdAt: record.createdAt.toISOString(),
 		updatedAt: record.updatedAt.toISOString(),
 	};
@@ -73,6 +94,19 @@ export function mapDirectAccountingReceiptEntry(record: DirectAccountingReceiptR
 		quantityKg: receipt.quantityKg,
 		createdAt: receipt.createdAt,
 		updatedAt: receipt.updatedAt,
+	};
+}
+
+export function mapDirectAccountingExpenseEntry(record: DirectAccountingExpenseRecord): DirectAccountingEntry {
+	const expense = mapDirectAccountingExpense(record);
+	return {
+		kind: "expense",
+		id: expense.id,
+		name: expense.name,
+		occurredOn: expense.spentOn,
+		amountCents: expense.amountCents,
+		createdAt: expense.createdAt,
+		updatedAt: expense.updatedAt,
 	};
 }
 

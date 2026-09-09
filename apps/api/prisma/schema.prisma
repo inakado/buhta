@@ -123,6 +123,21 @@ model DirectAccountingReceipt {
   @@map("direct_accounting_receipt")
 }
 
+model DirectAccountingExpense {
+  id             String    @id @default(cuid())
+  name           String
+  nameNormalized String
+  spentOn        DateTime  @db.Date
+  amountCents    Int
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  deletedAt      DateTime?
+
+  @@index([spentOn, deletedAt])
+  @@index([nameNormalized, spentOn])
+  @@map("direct_accounting_expense")
+}
+
 model Operation {
   id                 String              @id @default(cuid())
   type               String

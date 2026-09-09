@@ -103,4 +103,40 @@ describe("DirectAccountingController", () => {
 		})).rejects.toThrow("Проверьте количество");
 		expect(service.createReceipt).not.toHaveBeenCalled();
 	});
+
+	it("validates and creates a backdated expense", async () => {
+		const expense = {
+			id: "expense1",
+			name: "Доставка",
+			spentOn: "2026-08-15",
+			amountCents: 25_050,
+			createdAt: new Date(0).toISOString(),
+			updatedAt: new Date(0).toISOString(),
+		};
+		const service = { createExpense: vi.fn().mockResolvedValue(expense) } as unknown as DirectAccountingService;
+		const controller = new DirectAccountingController(service);
+
+		await expect(controller.createExpense(actor, "expense-request-1", {
+			name: " Доставка ",
+			spentOn: "2026-08-15",
+			amountCents: 25_050,
+		})).resolves.toEqual({ expense });
+		expect(service.createExpense).toHaveBeenCalledWith(actor, {
+			name: "Доставка",
+			spentOn: "2026-08-15",
+			amountCents: 25_050,
+		}, "expense-request-1");
+	});
+
+	it("returns a Russian field error for an invalid expense", async () => {
+		const service = { createExpense: vi.fn() } as unknown as DirectAccountingService;
+		const controller = new DirectAccountingController(service);
+
+		await expect(controller.createExpense(actor, "expense-request-2", {
+			name: "Доставка",
+			spentOn: "2026-08-15",
+			amountCents: 0,
+		})).rejects.toThrow("Проверьте сумму");
+		expect(service.createExpense).not.toHaveBeenCalled();
+	});
 });

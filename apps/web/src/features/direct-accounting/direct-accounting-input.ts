@@ -1,10 +1,15 @@
-import type { DirectAccountingReceiptInput, DirectAccountingSaleInput } from "@buhta/shared";
+import type {
+	DirectAccountingExpenseInput,
+	DirectAccountingReceiptInput,
+	DirectAccountingSaleInput,
+} from "@buhta/shared";
 
 export type DirectAccountingDraft = {
 	productName: string;
 	occurredOn: string;
 	quantityKg: string;
 	unitPriceRubles: string;
+	amountRubles: string;
 };
 
 export function parseSaleDraft(draft: DirectAccountingDraft, today: string): DirectAccountingSaleInput | string {
@@ -31,6 +36,20 @@ export function parseReceiptDraft(draft: DirectAccountingDraft, today: string): 
 	if (quantityKg === null || quantityKg <= 0) return "Укажите количество больше нуля, максимум 3 знака после запятой.";
 
 	return { productName, receivedOn: draft.occurredOn, quantityKg };
+}
+
+export function parseExpenseDraft(draft: DirectAccountingDraft, today: string): DirectAccountingExpenseInput | string {
+	const name = normalizeProductName(draft.productName);
+	if (!name) return "Укажите наименование.";
+	if (!draft.occurredOn) return "Укажите дату затраты.";
+	if (draft.occurredOn > today) return "Дата затраты не может быть в будущем.";
+
+	const amountCents = parseRublesToCents(draft.amountRubles);
+	if (amountCents === null || amountCents <= 0 || amountCents > 2_147_483_647) {
+		return "Укажите сумму больше нуля, максимум 2 знака после запятой.";
+	}
+
+	return { name, spentOn: draft.occurredOn, amountCents };
 }
 
 function normalizeProductName(value: string): string {

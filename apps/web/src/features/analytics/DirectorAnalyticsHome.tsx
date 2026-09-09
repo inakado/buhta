@@ -571,6 +571,10 @@ function DirectAccountingAnalytics() {
 							<span>Продано</span>
 							<strong>{formatQuantity(data.selection.quantityKg)} кг</strong>
 						</div>
+						<div className="direct-accounting-expenses-total">
+							<span>Затраты за период</span>
+							<strong>{formatRubles(data.selection.expensesCents)}</strong>
+						</div>
 					</section>
 					<div className="direct-accounting-product-stats">
 						<div className="direct-accounting-product-stats-head">
@@ -589,7 +593,7 @@ function DirectAccountingAnalytics() {
 								</div>
 							</div>
 						))}
-						{data.byProduct.length === 0 ? <p className="director-dashboard-empty">Нет операций и остатков</p> : null}
+						{data.byProduct.length === 0 ? <p className="director-dashboard-empty">Нет товарных операций и остатков</p> : null}
 					</div>
 				</>
 			) : null}

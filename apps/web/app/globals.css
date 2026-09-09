@@ -1093,7 +1093,7 @@ input[type="search"]::-webkit-search-decoration {
 	gap: 8px;
 }
 
-.direct-accounting-fields.receipt {
+.direct-accounting-fields.compact {
 	grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
@@ -1382,6 +1382,12 @@ input[type="search"]::-webkit-search-decoration {
 	border-top: 1px solid var(--line);
 }
 
+.direct-accounting-summary > .direct-accounting-expenses-total {
+	grid-column: 1 / -1;
+	border-left: 0;
+	padding-left: 0;
+}
+
 .direct-accounting-summary span,
 .direct-accounting-summary strong {
 	display: block;
@@ -1482,7 +1488,7 @@ input[type="search"]::-webkit-search-decoration {
 		gap: 6px;
 	}
 
-	.direct-accounting-fields.receipt {
+	.direct-accounting-fields.compact {
 		grid-template-columns: repeat(2, minmax(0, 1fr));
 	}
 

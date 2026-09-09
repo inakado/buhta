@@ -3,6 +3,8 @@ import type {
 	DirectAccountingDetailPeriod,
 	DirectAccountingEntriesQuery,
 	DirectAccountingEntry,
+	DirectAccountingExpense,
+	DirectAccountingExpenseInput,
 	DirectAccountingPeriodTotal,
 	DirectAccountingProductStatistics,
 	DirectAccountingReceipt,
@@ -21,6 +23,8 @@ import type { Actor } from "../policy/actor";
 import { prisma } from "../prisma/client";
 import {
 	calculateDirectAccountingTotalCents,
+	mapDirectAccountingExpense,
+	mapDirectAccountingExpenseEntry,
 	mapDirectAccountingReceipt,
 	mapDirectAccountingReceiptEntry,
 	mapDirectAccountingSale,
@@ -36,6 +40,7 @@ const SUGGESTION_LIMIT = 10;
 
 type SaleRecord = Prisma.DirectAccountingSaleGetPayload<Record<string, never>>;
 type ReceiptRecord = Prisma.DirectAccountingReceiptGetPayload<Record<string, never>>;
+type ExpenseRecord = Prisma.DirectAccountingExpenseGetPayload<Record<string, never>>;
 type DateRange = { dateFrom: string; dateTo: string; from: Date; to: Date };
 
 @Injectable()
@@ -52,18 +57,22 @@ export class DirectAccountingService {
 
 	async listEntries(query: DirectAccountingEntriesQuery): Promise<DirectAccountingEntry[]> {
 		const range = listRange(query);
-		const [sales, receipts] = await Promise.all([
+		const [sales, receipts, expenses] = await Promise.all([
 			prisma.directAccountingSale.findMany({
 				where: { soldOn: { gte: range.from, lte: range.to }, deletedAt: null },
 			}),
 			prisma.directAccountingReceipt.findMany({
 				where: { receivedOn: { gte: range.from, lte: range.to }, deletedAt: null },
 			}),
+			prisma.directAccountingExpense.findMany({
+				where: { spentOn: { gte: range.from, lte: range.to }, deletedAt: null },
+			}),
 		]);
 
 		return [
 			...sales.map(mapDirectAccountingSaleEntry),
 			...receipts.map(mapDirectAccountingReceiptEntry),
+			...expenses.map(mapDirectAccountingExpenseEntry),
 		].sort((left, right) =>
 			right.occurredOn.localeCompare(left.occurredOn)
 			|| right.createdAt.localeCompare(left.createdAt)
@@ -73,6 +82,21 @@ export class DirectAccountingService {
 
 	async listSuggestions(query: DirectAccountingSuggestionsQuery): Promise<string[]> {
 		const normalizedSearch = normalizeProductName(query.search ?? "");
+		if (query.kind === "expense") {
+			const expenses = await prisma.directAccountingExpense.findMany({
+				where: {
+					deletedAt: null,
+					...(normalizedSearch ? { nameNormalized: { startsWith: normalizedSearch } } : {}),
+				},
+				select: { name: true, nameNormalized: true },
+				orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+				take: SUGGESTION_SCAN_LIMIT,
+			});
+			return uniqueSuggestions(expenses.map((expense) => ({
+				name: expense.name,
+				normalizedName: expense.nameNormalized,
+			})));
+		}
 		const where = {
 			deletedAt: null,
 			...(normalizedSearch ? { productNameNormalized: { startsWith: normalizedSearch } } : {}),
@@ -94,21 +118,10 @@ export class DirectAccountingService {
 		const records = [...sales, ...receipts].sort((left, right) =>
 			right.updatedAt.getTime() - left.updatedAt.getTime() || right.id.localeCompare(left.id),
 		);
-		const seen = new Set<string>();
-		const suggestions: string[] = [];
-
-		for (const record of records) {
-			if (seen.has(record.productNameNormalized)) {
-				continue;
-			}
-			seen.add(record.productNameNormalized);
-			suggestions.push(record.productName);
-			if (suggestions.length === SUGGESTION_LIMIT) {
-				break;
-			}
-		}
-
-		return suggestions;
+		return uniqueSuggestions(records.map((record) => ({
+			name: record.productName,
+			normalizedName: record.productNameNormalized,
+		})));
 	}
 
 	async createSale(
@@ -266,6 +279,79 @@ export class DirectAccountingService {
 		}
 	}
 
+	async createExpense(
+		actor: Actor,
+		input: DirectAccountingExpenseInput,
+		idempotencyKey: string,
+	): Promise<DirectAccountingExpense> {
+		this.assertNotFutureDate(input.spentOn);
+		const normalized = normalizeExpenseInput(input);
+
+		try {
+			const record = await prisma.$transaction(async (tx) => {
+				const expense = await tx.directAccountingExpense.create({ data: expenseData(normalized) });
+				await createAuditOperation(tx, actor, "direct_accounting.expense.create", expense.id, {
+					before: null,
+					after: expenseSnapshot(expense),
+				}, idempotencyKey);
+				return expense;
+			});
+			return mapDirectAccountingExpense(record);
+		} catch (error) {
+			throw mapWriteError(error);
+		}
+	}
+
+	async updateExpense(
+		actor: Actor,
+		expenseId: string,
+		input: DirectAccountingExpenseInput,
+	): Promise<DirectAccountingExpense> {
+		this.assertNotFutureDate(input.spentOn);
+		const normalized = normalizeExpenseInput(input);
+
+		try {
+			const record = await prisma.$transaction(async (tx) => {
+				const before = await tx.directAccountingExpense.findFirst({ where: { id: expenseId, deletedAt: null } });
+				if (!before) {
+					throw new AppError("NOT_FOUND", "Затрата прямого учета не найдена", { id: expenseId });
+				}
+				const after = await tx.directAccountingExpense.update({
+					where: { id: expenseId },
+					data: expenseData(normalized),
+				});
+				await createAuditOperation(tx, actor, "direct_accounting.expense.update", after.id, {
+					before: expenseSnapshot(before),
+					after: expenseSnapshot(after),
+				});
+				return after;
+			});
+			return mapDirectAccountingExpense(record);
+		} catch (error) {
+			throw mapWriteError(error);
+		}
+	}
+
+	async deleteExpense(actor: Actor, expenseId: string): Promise<void> {
+		try {
+			await prisma.$transaction(async (tx) => {
+				const before = await tx.directAccountingExpense.findUnique({ where: { id: expenseId } });
+				if (!before) {
+					throw new AppError("NOT_FOUND", "Затрата прямого учета не найдена", { id: expenseId });
+				}
+				if (before.deletedAt) return;
+				const deletedAt = new Date();
+				const after = await tx.directAccountingExpense.update({ where: { id: expenseId }, data: { deletedAt } });
+				await createAuditOperation(tx, actor, "direct_accounting.expense.delete", after.id, {
+					before: expenseSnapshot(before),
+					after: { ...expenseSnapshot(after), deletedAt: deletedAt.toISOString() },
+				});
+			});
+		} catch (error) {
+			throw mapWriteError(error);
+		}
+	}
+
 	async getStatistics(
 		query: DirectAccountingStatisticsQuery,
 		now = new Date(),
@@ -281,7 +367,7 @@ export class DirectAccountingService {
 		const overallTo = [ranges.day.to, ranges.week.to, ranges.month.to, selectedRange.to]
 			.reduce((latest, current) => current > latest ? current : latest);
 		// ponystack: aggregate the small direct ledger in memory; move this read model to SQL if volume grows.
-		const [sales, receipts] = await Promise.all([
+		const [sales, receipts, expenses] = await Promise.all([
 			prisma.directAccountingSale.findMany({
 				where: { soldOn: { lte: overallTo }, deletedAt: null },
 				orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
@@ -289,6 +375,9 @@ export class DirectAccountingService {
 			prisma.directAccountingReceipt.findMany({
 				where: { receivedOn: { lte: overallTo }, deletedAt: null },
 				orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+			}),
+			prisma.directAccountingExpense.findMany({
+				where: { spentOn: { lte: overallTo }, deletedAt: null },
 			}),
 		]);
 
@@ -300,11 +389,11 @@ export class DirectAccountingService {
 				dateTo: selectedRange.dateTo,
 				timezone: BUSINESS_TIMEZONE,
 			},
-			selection: buildPeriodTotal(sales, receipts, selectedRange),
+			selection: buildPeriodTotal(sales, receipts, expenses, selectedRange),
 			totals: {
-				day: buildPeriodTotal(sales, receipts, ranges.day),
-				week: buildPeriodTotal(sales, receipts, ranges.week),
-				month: buildPeriodTotal(sales, receipts, ranges.month),
+				day: buildPeriodTotal(sales, receipts, expenses, ranges.day),
+				week: buildPeriodTotal(sales, receipts, expenses, ranges.week),
+				month: buildPeriodTotal(sales, receipts, expenses, ranges.month),
 			},
 			byProduct: buildProductStatistics(sales, receipts, selectedRange),
 		};
@@ -336,6 +425,17 @@ function normalizeReceiptInput(input: DirectAccountingReceiptInput): DirectAccou
 		...input,
 		productName,
 		productNameNormalized: normalizeProductName(productName),
+	};
+}
+
+function normalizeExpenseInput(input: DirectAccountingExpenseInput): DirectAccountingExpenseInput & {
+	nameNormalized: string;
+} {
+	const name = input.name.trim().replace(/\s+/g, " ");
+	return {
+		...input,
+		name,
+		nameNormalized: normalizeProductName(name),
 	};
 }
 
@@ -382,13 +482,34 @@ function receiptSnapshot(record: ReceiptRecord) {
 	};
 }
 
+function expenseData(input: DirectAccountingExpenseInput & { nameNormalized: string }) {
+	return {
+		name: input.name,
+		nameNormalized: input.nameNormalized,
+		spentOn: parseDateOnly(input.spentOn),
+		amountCents: input.amountCents,
+	};
+}
+
+function expenseSnapshot(record: ExpenseRecord) {
+	const expense = mapDirectAccountingExpense(record);
+	return {
+		name: expense.name,
+		spentOn: expense.spentOn,
+		amountCents: expense.amountCents,
+	};
+}
+
 type DirectAccountingWriteOperation =
 	| "direct_accounting.sale.create"
 	| "direct_accounting.sale.update"
 	| "direct_accounting.sale.delete"
 	| "direct_accounting.receipt.create"
 	| "direct_accounting.receipt.update"
-	| "direct_accounting.receipt.delete";
+	| "direct_accounting.receipt.delete"
+	| "direct_accounting.expense.create"
+	| "direct_accounting.expense.update"
+	| "direct_accounting.expense.delete";
 
 async function createAuditOperation(
 	tx: Prisma.TransactionClient,
@@ -411,7 +532,9 @@ async function createAuditOperation(
 			operationId: operation.id,
 			actorUserId: actor.userId,
 			action: type,
-			entityType: type.includes(".receipt.") ? "direct_accounting_receipt" : "direct_accounting_sale",
+			entityType: type.includes(".receipt.")
+				? "direct_accounting_receipt"
+				: type.includes(".expense.") ? "direct_accounting_expense" : "direct_accounting_sale",
 			entityId,
 			details,
 		},
@@ -421,12 +544,14 @@ async function createAuditOperation(
 function buildPeriodTotal(
 	sales: SaleRecord[],
 	receipts: ReceiptRecord[],
+	expenses: ExpenseRecord[],
 	range: DateRange,
 ): DirectAccountingPeriodTotal {
 	let soldQuantityKg = 0;
 	let receivedQuantityKg = 0;
 	let balanceQuantityKg = 0;
 	let revenueCents = 0;
+	let expensesCents = 0;
 	for (const sale of sales) {
 		if (sale.soldOn <= range.to) {
 			balanceQuantityKg -= Number(sale.quantityKg);
@@ -447,6 +572,11 @@ function buildPeriodTotal(
 			receivedQuantityKg += Number(receipt.quantityKg);
 		}
 	}
+	for (const expense of expenses) {
+		if (isInRange(expense.spentOn, range)) {
+			expensesCents = addExpenseCents(expensesCents, expense.amountCents);
+		}
+	}
 
 	return {
 		dateFrom: range.dateFrom,
@@ -455,6 +585,7 @@ function buildPeriodTotal(
 		receivedQuantityKg: roundQuantityKg(receivedQuantityKg),
 		balanceQuantityKg: roundQuantityKg(balanceQuantityKg),
 		revenueCents,
+		expensesCents,
 	};
 }
 
@@ -538,6 +669,26 @@ function addRevenueCents(current: number, addition: number): number {
 		throw new RangeError("Выручка прямого учета вышла за допустимый числовой диапазон");
 	}
 	return total;
+}
+
+function addExpenseCents(current: number, addition: number): number {
+	const total = current + addition;
+	if (!Number.isSafeInteger(total)) {
+		throw new RangeError("Затраты прямого учета вышли за допустимый числовой диапазон");
+	}
+	return total;
+}
+
+function uniqueSuggestions(records: Array<{ name: string; normalizedName: string }>): string[] {
+	const seen = new Set<string>();
+	const suggestions: string[] = [];
+	for (const record of records) {
+		if (seen.has(record.normalizedName)) continue;
+		seen.add(record.normalizedName);
+		suggestions.push(record.name);
+		if (suggestions.length === SUGGESTION_LIMIT) break;
+	}
+	return suggestions;
 }
 
 function buildRanges(anchorDate: string): Record<DirectAccountingDetailPeriod, DateRange> {

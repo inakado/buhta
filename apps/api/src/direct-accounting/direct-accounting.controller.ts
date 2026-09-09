@@ -14,6 +14,7 @@ import {
 } from "@nestjs/common";
 import {
 	DirectAccountingEntriesQuerySchema,
+	DirectAccountingExpenseInputSchema,
 	DirectAccountingReceiptInputSchema,
 	DirectAccountingSaleInputSchema,
 	DirectAccountingSalesQuerySchema,
@@ -127,6 +128,38 @@ export class DirectAccountingController {
 	async deleteReceipt(@CurrentActor() actor: Actor | undefined, @Param("receiptId") receiptId: string) {
 		await this.service.deleteReceipt(requireActor(actor), receiptId);
 	}
+
+	@Post("expenses")
+	async createExpense(
+		@CurrentActor() actor: Actor | undefined,
+		@Headers("idempotency-key") idempotencyKey: string | undefined,
+		@Body() body: unknown,
+	) {
+		return {
+			expense: await this.service.createExpense(
+				requireActor(actor),
+				parseExpenseInput(body),
+				requireIdempotencyKey(idempotencyKey),
+			),
+		};
+	}
+
+	@Put("expenses/:expenseId")
+	async updateExpense(
+		@CurrentActor() actor: Actor | undefined,
+		@Param("expenseId") expenseId: string,
+		@Body() body: unknown,
+	) {
+		return {
+			expense: await this.service.updateExpense(requireActor(actor), expenseId, parseExpenseInput(body)),
+		};
+	}
+
+	@Delete("expenses/:expenseId")
+	@HttpCode(204)
+	async deleteExpense(@CurrentActor() actor: Actor | undefined, @Param("expenseId") expenseId: string) {
+		await this.service.deleteExpense(requireActor(actor), expenseId);
+	}
 }
 
 function requireActor(actor: Actor | undefined): Actor {
@@ -178,6 +211,24 @@ function parseReceiptInput(value: unknown): z.infer<typeof DirectAccountingRecei
 			: invalidField === "quantityKg"
 				? "Проверьте количество: оно должно быть больше нуля, с точностью до грамма"
 				: "Проверьте данные прихода: наименование, дату и количество";
+
+	throw new AppError("VALIDATION_ERROR", message, parsed.error.flatten());
+}
+
+function parseExpenseInput(value: unknown): z.infer<typeof DirectAccountingExpenseInputSchema> {
+	const parsed = DirectAccountingExpenseInputSchema.safeParse(value);
+	if (parsed.success) {
+		return parsed.data;
+	}
+
+	const invalidField = parsed.error.issues[0]?.path[0];
+	const message = invalidField === "name"
+		? "Проверьте наименование: оно должно содержать от 1 до 120 символов"
+		: invalidField === "spentOn"
+			? "Проверьте дату затраты"
+			: invalidField === "amountCents"
+				? "Проверьте сумму: она должна быть больше нуля, с точностью до копейки"
+				: "Проверьте данные затраты: наименование, дату и сумму";
 
 	throw new AppError("VALIDATION_ERROR", message, parsed.error.flatten());
 }
