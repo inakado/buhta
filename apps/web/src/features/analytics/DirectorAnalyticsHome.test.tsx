@@ -127,6 +127,22 @@ const directAccountingResponse = {
 	byProduct: [{ productName: "Икра кеты", quantityKg: 0.8, receivedQuantityKg: 2, balanceQuantityKg: 1.2, revenueCents: 120_000 }],
 };
 
+const directAccountingEntriesResponse = {
+	entries: [
+		{
+			kind: "sale",
+			id: "sale-1",
+			productName: "Икра кеты",
+			occurredOn: "2026-09-08",
+			quantityKg: 0.8,
+			unitPriceCents: 150_000,
+			totalCents: 120_000,
+			createdAt: "2026-09-08T04:30:00.000Z",
+			updatedAt: "2026-09-08T04:30:00.000Z",
+		},
+	],
+};
+
 function jsonResponse(body: unknown, status = 200) {
 	return new Response(JSON.stringify(body), {
 		status,
@@ -244,9 +260,12 @@ describe("DirectorAnalyticsHome", () => {
 	});
 
 	it("uses clear presets and a custom range for direct accounting", async () => {
-		const fetchMock = vi.fn(async (input: RequestInfo | URL) => String(input).includes("/direct-accounting/statistics")
-			? jsonResponse(directAccountingResponse)
-			: jsonResponse(analyticsResponse));
+		const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+			const url = String(input);
+			if (url.includes("/direct-accounting/statistics")) return jsonResponse(directAccountingResponse);
+			if (url.includes("/direct-accounting/entries")) return jsonResponse(directAccountingEntriesResponse);
+			return jsonResponse(analyticsResponse);
+		});
 		vi.stubGlobal("fetch", fetchMock);
 
 		renderAnalytics();
@@ -257,6 +276,11 @@ describe("DirectorAnalyticsHome", () => {
 		expect(screen.getByText("250 ₽")).toBeTruthy();
 		expect(screen.getByText("Передано")).toBeTruthy();
 		expect(screen.getByText("500 ₽")).toBeTruthy();
+		expect(screen.getByText("Остаток товара")).toBeTruthy();
+		expect(screen.getAllByText("1,2 кг").length).toBeGreaterThanOrEqual(2);
+		expect(await screen.findByText("Выручка по дням")).toBeTruthy();
+		expect(screen.getByText("08.09.2026")).toBeTruthy();
+		expect(screen.getByText("Икра кеты, 0,8 кг")).toBeTruthy();
 		expect(screen.getByRole("button", { name: "Сегодня" })).toBeTruthy();
 		fireEvent.click(screen.getByRole("button", { name: "7 дней" }));
 		await waitFor(() => {

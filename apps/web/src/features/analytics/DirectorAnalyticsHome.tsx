@@ -3,8 +3,10 @@
 import { useQuery } from "@tanstack/react-query";
 import * as Popover from "@radix-ui/react-popover";
 import { AlertTriangle, Banknote, CalendarDays, ChevronDown, Clock3, Factory, NotebookPen, RefreshCw, Vault, WalletCards } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useId, useMemo, useReducer, useState, type ReactNode } from "react";
 import {
+	type DirectAccountingEntry,
 	type DirectAccountingDetailPeriod,
 	type DirectorAnalyticsPeriodPreset,
 	type DirectorAnalyticsProductOutputRow,
@@ -12,11 +14,13 @@ import {
 	type DirectorAnalyticsRevenueByDayPoint,
 	type DirectorAnalyticsResponse,
 } from "@buhta/shared";
-import { getDirectAccountingStatistics, getDirectorAnalytics } from "../../lib/api-client";
+import { getDirectAccountingStatistics, getDirectorAnalytics, listDirectAccountingEntries } from "../../lib/api-client";
 import { formatCompactMoneyCents } from "../../lib/money-format";
 import { DateRangePickerPanel } from "../../ui/DateRangePickerPanel";
 import { SegmentedControl } from "../../ui/SegmentedControl";
 import { formatProductQuantityLabel } from "../operations/product-quantity-input";
+
+const DirectAccountingMoneyChart = dynamic(() => import("./DirectAccountingMoneyChart"), { ssr: false });
 
 const PERIOD_OPTIONS: Array<{ value: DirectorAnalyticsPeriodPreset; label: string }> = [
 	{ value: "today", label: "Сегодня" },
@@ -51,6 +55,13 @@ const ANALYTICS_CHART_DATE_FORMATTER = new Intl.DateTimeFormat("ru-RU", {
 	month: "short",
 	timeZone: "Asia/Vladivostok",
 });
+const DIRECT_ACCOUNTING_DATE_FORMATTER = new Intl.DateTimeFormat("ru-RU", {
+	day: "2-digit",
+	month: "2-digit",
+	year: "numeric",
+	timeZone: "UTC",
+});
+const EMPTY_DIRECT_ACCOUNTING_ENTRIES: DirectAccountingEntry[] = [];
 
 const VIEW_OPTIONS = [
 	{ value: "overview", label: "Обзор", icon: Clock3 },
@@ -128,6 +139,12 @@ type DirectorAnalyticsAction =
 	| { type: "applyCustomPeriod" }
 	| { type: "setViewMode"; viewMode: AnalyticsViewMode };
 
+type DirectAccountingChartPoint = {
+	date: string;
+	label: string;
+	revenueCents: number;
+};
+
 const INITIAL_DIRECTOR_ANALYTICS_STATE: DirectorAnalyticsState = {
 	periodSelection: {
 		mode: "preset",
@@ -189,10 +206,12 @@ function directorAnalyticsReducer(
 
 export function DirectorAnalyticsHome({
 	initialPeriodSelection = INITIAL_DIRECTOR_ANALYTICS_STATE.periodSelection,
+	onOpenDirectAccounting,
 	onPeriodSelectionChange,
 	title = "Аналитика",
 }: {
 	initialPeriodSelection?: DirectorPeriodSelection;
+	onOpenDirectAccounting?: () => void;
 	onPeriodSelectionChange?: (selection: DirectorPeriodSelection) => void;
 	title?: string;
 } = {}) {
@@ -273,6 +292,7 @@ export function DirectorAnalyticsHome({
 							type="button"
 						>
 							<NotebookPen aria-hidden size={18} />
+							<span className="director-dashboard-direct-toggle-label">Прямой учет</span>
 						</button>
 					</div>
 					{analytics && viewMode !== "directAccounting" ? (
@@ -330,14 +350,23 @@ export function DirectorAnalyticsHome({
 				</div>
 
 				{viewMode !== "directAccounting" ? (
-					<SegmentedControl
-						ariaLabel="Период аналитики"
-						className="director-dashboard-period-control"
-						items={PERIOD_OPTIONS}
-						onChange={selectPresetPeriod}
-						role="group"
-						value={periodSelection.mode === "preset" ? periodSelection.periodPreset : null}
-					/>
+					<div className="director-dashboard-desktop-toolbar">
+						<AccountingModeSwitch
+							directAccounting={false}
+							onChange={(directAccounting) => dispatch({
+								type: "setViewMode",
+								viewMode: directAccounting ? "directAccounting" : "production",
+							})}
+						/>
+						<SegmentedControl
+							ariaLabel="Период аналитики"
+							className="director-dashboard-period-control"
+							items={PERIOD_OPTIONS}
+							onChange={selectPresetPeriod}
+							role="group"
+							value={periodSelection.mode === "preset" ? periodSelection.periodPreset : null}
+						/>
+					</div>
 				) : null}
 			</div>
 
@@ -355,6 +384,7 @@ export function DirectorAnalyticsHome({
 				{analytics ? (
 					<DirectorAnalyticsView
 						data={analytics}
+						onOpenDirectAccounting={onOpenDirectAccounting}
 						onViewModeChange={(nextViewMode) => dispatch({ type: "setViewMode", viewMode: nextViewMode })}
 						viewMode={viewMode}
 					/>
@@ -367,10 +397,12 @@ export function DirectorAnalyticsHome({
 
 function DirectorAnalyticsView({
 	data,
+	onOpenDirectAccounting,
 	onViewModeChange,
 	viewMode,
 }: {
 	data: DirectorAnalyticsResponse;
+	onOpenDirectAccounting: (() => void) | undefined;
 	onViewModeChange: (value: AnalyticsViewMode) => void;
 	viewMode: AnalyticsViewMode;
 }) {
@@ -381,7 +413,10 @@ function DirectorAnalyticsView({
 	if (viewMode === "directAccounting") {
 		return (
 			<section className="direct-accounting-standalone" aria-label="Статистика прямого учета">
-				<DirectAccountingAnalytics />
+				<DirectAccountingAnalytics
+					onOpenAllOperations={onOpenDirectAccounting}
+					onReturnToMain={() => onViewModeChange("production")}
+				/>
 			</section>
 		);
 	}
@@ -434,7 +469,13 @@ function AnalyticsTabbedPanel({
 	);
 }
 
-function DirectAccountingAnalytics() {
+function DirectAccountingAnalytics({
+	onOpenAllOperations,
+	onReturnToMain,
+}: {
+	onOpenAllOperations: (() => void) | undefined;
+	onReturnToMain: () => void;
+}) {
 	const today = formatBusinessDateInputValue(new Date().toISOString());
 	const [selection, setSelection] = useState<DirectAccountingPeriodSelection>({ mode: "preset", period: "day" });
 	const [periodPickerOpen, setPeriodPickerOpen] = useState(false);
@@ -454,6 +495,20 @@ function DirectAccountingAnalytics() {
 		queryFn: () => getDirectAccountingStatistics(statisticsQueryInput),
 		placeholderData: (previousData) => previousData,
 	});
+	const entriesRange = data
+		? { dateFrom: data.filters.dateFrom, dateTo: data.filters.dateTo }
+		: null;
+	const { data: entriesData } = useQuery({
+		queryKey: ["direct-accounting", "analytics-entries", entriesRange],
+		queryFn: () => listDirectAccountingEntries(entriesRange!),
+		enabled: Boolean(entriesRange),
+		placeholderData: (previousData) => previousData,
+	});
+	const entries = Array.isArray(entriesData?.entries) ? entriesData.entries : EMPTY_DIRECT_ACCOUNTING_ENTRIES;
+	const chartData = useMemo(
+		() => data ? buildDirectAccountingChartData(entries, data.filters.dateFrom, data.filters.dateTo) : [],
+		[data, entries],
+	);
 
 	function selectPresetPeriod(period: DirectAccountingDetailPeriod) {
 		setSelection({ mode: "preset", period });
@@ -486,8 +541,12 @@ function DirectAccountingAnalytics() {
 
 	return (
 		<div className="direct-accounting-analytics">
-			<div className="direct-accounting-analytics-controls">
-				<SegmentedControl
+			<div className="direct-accounting-desktop-toolbar">
+				<AccountingModeSwitch directAccounting onChange={(directAccounting) => {
+					if (!directAccounting) onReturnToMain();
+				}} />
+				<div className="direct-accounting-analytics-controls">
+					<SegmentedControl
 					ariaLabel="Период прямого учета"
 					className="direct-accounting-period-control"
 					items={DIRECT_ACCOUNTING_PERIOD_OPTIONS}
@@ -495,7 +554,7 @@ function DirectAccountingAnalytics() {
 					role="group"
 					value={selection.mode === "preset" ? selection.period : null}
 				/>
-				<Popover.Root open={periodPickerOpen} onOpenChange={changePeriodPickerOpen}>
+					<Popover.Root open={periodPickerOpen} onOpenChange={changePeriodPickerOpen}>
 					<Popover.Trigger asChild>
 						<button
 							aria-controls="direct-accounting-period-picker"
@@ -539,7 +598,8 @@ function DirectAccountingAnalytics() {
 						</div>
 					</Popover.Content>
 					</Popover.Portal>
-				</Popover.Root>
+					</Popover.Root>
+				</div>
 			</div>
 
 			{statisticsLoading ? <AnalyticsSkeleton /> : null}
@@ -555,21 +615,13 @@ function DirectAccountingAnalytics() {
 				<>
 					<section className="direct-accounting-summary" aria-label="Итоги выбранного периода">
 						<div className={data.selection.balanceQuantityKg < 0 ? "negative" : ""}>
-							<span>Остаток на конец периода</span>
+							<span>Остаток товара</span>
 							<strong>{formatQuantity(data.selection.balanceQuantityKg)} кг</strong>
 							{data.selection.balanceQuantityKg < 0 ? <small>Расхождение</small> : null}
 						</div>
 						<div>
 							<span>Выручка</span>
 							<strong>{formatRubles(data.selection.revenueCents)}</strong>
-						</div>
-						<div>
-							<span>Приход за период</span>
-							<strong>{formatQuantity(data.selection.receivedQuantityKg)} кг</strong>
-						</div>
-						<div>
-							<span>Продано</span>
-							<strong>{formatQuantity(data.selection.quantityKg)} кг</strong>
 						</div>
 						<div>
 							<span>Затраты</span>
@@ -579,10 +631,32 @@ function DirectAccountingAnalytics() {
 							<span>Передано</span>
 							<strong>{formatRubles(data.selection.transfersCents)}</strong>
 						</div>
+						<div>
+							<span>Приход</span>
+							<strong>{formatQuantity(data.selection.receivedQuantityKg)} кг</strong>
+						</div>
+						<div>
+							<span>Продано</span>
+							<strong>{formatQuantity(data.selection.quantityKg)} кг</strong>
+						</div>
 					</section>
-					<div className="direct-accounting-product-stats">
+
+					<div className="direct-accounting-desktop-panels">
+						<DirectAccountingMoneyChart
+							data={chartData}
+							formatAxisMoney={formatChartAxisMoney}
+							formatMoney={formatRubles}
+						/>
+						<DirectAccountingRecentOperations entries={entries} onOpenAll={onOpenAllOperations} />
+					</div>
+
+					<section className="direct-accounting-product-stats" aria-label="Остатки по товарам">
+						<h2>Остатки по товарам</h2>
 						<div className="direct-accounting-product-stats-head">
 							<span>Наименование</span>
+							<span>Приход</span>
+							<span>Продано</span>
+							<span>Выручка</span>
 							<span>Остаток</span>
 						</div>
 						{data.byProduct.map((row) => (
@@ -591,6 +665,9 @@ function DirectAccountingAnalytics() {
 									<strong>{row.productName}</strong>
 									<small>Приход {formatQuantity(row.receivedQuantityKg)} кг · Продано {formatQuantity(row.quantityKg)} кг · {formatRubles(row.revenueCents)}</small>
 								</div>
+								<span className="direct-accounting-product-value">{formatQuantity(row.receivedQuantityKg)} кг</span>
+								<span className="direct-accounting-product-value">{formatQuantity(row.quantityKg)} кг</span>
+								<span className="direct-accounting-product-value">{formatRubles(row.revenueCents)}</span>
 								<div className={row.balanceQuantityKg < 0 ? "direct-accounting-balance negative" : "direct-accounting-balance"}>
 									<strong>{formatQuantity(row.balanceQuantityKg)} кг</strong>
 									{row.balanceQuantityKg < 0 ? <small>Расхождение</small> : null}
@@ -598,11 +675,142 @@ function DirectAccountingAnalytics() {
 							</div>
 						))}
 						{data.byProduct.length === 0 ? <p className="director-dashboard-empty">Нет товарных операций и остатков</p> : null}
-					</div>
+					</section>
 				</>
 			) : null}
 		</div>
 	);
+}
+
+function AccountingModeSwitch({
+	directAccounting,
+	onChange,
+}: {
+	directAccounting: boolean;
+	onChange: (directAccounting: boolean) => void;
+}) {
+	return (
+		<fieldset className="director-dashboard-mode-switch">
+			<legend className="sr-only">Режим учета</legend>
+			<button
+				aria-pressed={!directAccounting}
+				className={!directAccounting ? "active" : ""}
+				onClick={() => onChange(false)}
+				type="button"
+			>
+				Основной учет
+			</button>
+			<button
+				aria-pressed={directAccounting}
+				className={directAccounting ? "active" : ""}
+				onClick={() => onChange(true)}
+				type="button"
+			>
+				Прямой учет
+			</button>
+		</fieldset>
+	);
+}
+
+function DirectAccountingRecentOperations({
+	entries,
+	onOpenAll,
+}: {
+	entries: DirectAccountingEntry[];
+	onOpenAll: (() => void) | undefined;
+}) {
+	return (
+		<section className="direct-accounting-recent-panel" aria-labelledby="direct-accounting-recent-title">
+			<div className="direct-accounting-panel-heading">
+				<div>
+					<h2 id="direct-accounting-recent-title">Последние операции</h2>
+				</div>
+				{onOpenAll ? <button className="direct-accounting-open-all" onClick={onOpenAll} type="button">Все операции →</button> : null}
+			</div>
+			<div className="direct-accounting-recent-head" aria-hidden>
+				<span>Дата</span>
+				<span>Тип</span>
+				<span>Описание</span>
+				<span>Сумма / кол-во</span>
+			</div>
+			<div className="direct-accounting-recent-rows">
+				{entries.slice(0, 7).map((entry) => (
+					<div className="direct-accounting-recent-row" key={`${entry.kind}-${entry.id}`}>
+						<time dateTime={entry.createdAt}>
+							<span>{DIRECT_ACCOUNTING_DATE_FORMATTER.format(parseDateOnlyUtc(entry.occurredOn))}</span>
+						</time>
+						<strong className={entry.kind}>{directAccountingEntryLabel(entry.kind)}</strong>
+						<span className="direct-accounting-recent-description">{directAccountingEntryDescription(entry)}</span>
+						<b>{directAccountingEntryValue(entry)}</b>
+					</div>
+				))}
+				{entries.length === 0 ? <p className="director-dashboard-empty">Операций за период нет</p> : null}
+			</div>
+		</section>
+	);
+}
+
+function buildDirectAccountingChartData(
+	entries: DirectAccountingEntry[],
+	dateFrom: string,
+	dateTo: string,
+): DirectAccountingChartPoint[] {
+	const daily = new Map<string, number>();
+
+	for (const entry of entries) {
+		if (entry.kind === "sale") {
+			daily.set(entry.occurredOn, (daily.get(entry.occurredOn) ?? 0) + entry.totalCents);
+		}
+	}
+
+	const result: DirectAccountingChartPoint[] = [];
+	for (let date = parseDateOnlyUtc(dateFrom); date <= parseDateOnlyUtc(dateTo); date = addUtcDay(date)) {
+		const dateKey = date.toISOString().slice(0, 10);
+		result.push({
+			date: dateKey,
+			label: ANALYTICS_CHART_DATE_FORMATTER.format(date),
+			revenueCents: daily.get(dateKey) ?? 0,
+		});
+	}
+
+	return result;
+}
+
+function parseDateOnlyUtc(value: string): Date {
+	return new Date(`${value}T00:00:00.000Z`);
+}
+
+function addUtcDay(value: Date): Date {
+	const next = new Date(value);
+	next.setUTCDate(next.getUTCDate() + 1);
+	return next;
+}
+
+function formatChartAxisMoney(value: number): string {
+	const rubles = value / 100;
+	if (Math.abs(rubles) >= 1_000_000) return `${ANALYTICS_CHART_THOUSANDS_FORMATTER.format(rubles / 1_000_000)} млн`;
+	if (Math.abs(rubles) >= 1_000) return `${ANALYTICS_CHART_THOUSANDS_FORMATTER.format(rubles / 1_000)} тыс`;
+	return ANALYTICS_CHART_INTEGER_FORMATTER.format(rubles);
+}
+
+function directAccountingEntryLabel(kind: DirectAccountingEntry["kind"]): string {
+	if (kind === "sale") return "Продажа";
+	if (kind === "receipt") return "Приход";
+	if (kind === "expense") return "Затрата";
+	return "Передача";
+}
+
+function directAccountingEntryDescription(entry: DirectAccountingEntry): string {
+	if (entry.kind === "sale") return `${entry.productName}, ${formatQuantity(entry.quantityKg)} кг`;
+	if (entry.kind === "receipt") return entry.productName;
+	if (entry.kind === "expense") return entry.name;
+	return entry.comment;
+}
+
+function directAccountingEntryValue(entry: DirectAccountingEntry): string {
+	if (entry.kind === "sale") return formatRubles(entry.totalCents);
+	if (entry.kind === "receipt") return `+${formatQuantity(entry.quantityKg)} кг`;
+	return `−${formatRubles(entry.amountCents)}`;
 }
 
 function OverviewAnalytics({ data }: { data: DirectorAnalyticsResponse }) {

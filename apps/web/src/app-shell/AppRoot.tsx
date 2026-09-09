@@ -138,7 +138,7 @@ function AppShell({ actor }: { actor: CurrentActor }) {
 
 	return (
 		<main className="app-page">
-			<div className="mobile-shell">
+			<div className={actor.role === "director" ? "mobile-shell director-shell" : "mobile-shell"}>
 				{online ? null : (
 					<div className="connection-status offline">
 						<span />
@@ -310,6 +310,7 @@ function BottomNav({
 					key={item.id}
 				>
 					<item.icon aria-hidden className="bottom-nav-icon" size={20} />
+					<span className="bottom-nav-label">{item.label}</span>
 					{item.badgeCount ? (
 						<span className="bottom-nav-badge" aria-hidden>
 							{item.badgeCount > 9 ? "9+" : item.badgeCount}
@@ -318,8 +319,26 @@ function BottomNav({
 				</button>
 			);
 			})}
+			{actor.role === "director" ? (
+				<div className="director-sidebar-account">
+					<span aria-hidden>{getInitials(actor.displayName)}</span>
+					<div>
+						<strong>{actor.displayName}</strong>
+						<small>Директор</small>
+					</div>
+				</div>
+			) : null}
 		</nav>
 	);
+}
+
+function getInitials(displayName: string): string {
+	return displayName
+		.split(/\s+/)
+		.filter(Boolean)
+		.slice(0, 2)
+		.map((part) => part[0]?.toLocaleUpperCase("ru-RU") ?? "")
+		.join("");
 }
 
 function LoadingScreen() {

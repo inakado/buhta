@@ -1307,6 +1307,22 @@ input[type="search"]::-webkit-search-decoration {
 	padding: 14px;
 }
 
+.direct-accounting-desktop-panels {
+	display: none;
+}
+
+.director-dashboard-mode-switch {
+	display: none;
+}
+
+.director-sidebar-account {
+	display: none;
+}
+
+.direct-accounting-desktop-toolbar {
+	display: block;
+}
+
 .direct-accounting-analytics-controls {
 	display: grid;
 	grid-template-columns: minmax(0, 1fr) minmax(122px, .58fr);
@@ -1423,6 +1439,12 @@ input[type="search"]::-webkit-search-decoration {
 	flex-direction: column;
 }
 
+.direct-accounting-product-stats > h2 {
+	margin: 0 0 10px;
+	font-size: 16px;
+	font-weight: var(--font-weight-emphasis);
+}
+
 .direct-accounting-product-stats-head,
 .direct-accounting-product-stat {
 	display: grid;
@@ -1446,6 +1468,10 @@ input[type="search"]::-webkit-search-decoration {
 	min-height: 52px;
 	border-top: 1px solid var(--line);
 	font-size: 12px;
+}
+
+.direct-accounting-product-value {
+	display: none;
 }
 
 .direct-accounting-product-stat-main,
@@ -1478,6 +1504,478 @@ input[type="search"]::-webkit-search-decoration {
 .direct-accounting-balance.negative strong,
 .direct-accounting-balance.negative small {
 	color: var(--state-danger-text);
+}
+
+@media (min-width: 960px) {
+	.app-page:has(> .director-shell) {
+		background: var(--base-white);
+		padding: 0;
+	}
+
+	.mobile-shell.director-shell {
+		width: 100%;
+		height: 100dvh;
+		min-height: 100dvh;
+		padding: 20px 20px 20px 236px;
+		border: 0;
+		border-radius: 0;
+		box-shadow: none;
+	}
+
+	.director-shell .bottom-nav {
+		top: 0;
+		right: auto;
+		bottom: 0;
+		left: 0;
+		display: flex;
+		width: 216px;
+		flex-direction: column;
+		justify-content: flex-start;
+		gap: 6px;
+		border-right: 1px solid var(--line);
+		border-radius: 0;
+		background: var(--base-white);
+		padding: 82px 12px 14px;
+	}
+
+	.director-shell .bottom-nav::before {
+		position: absolute;
+		top: 22px;
+		left: 26px;
+		content: "Бухта";
+		color: var(--base-black);
+		font-size: 29px;
+		font-weight: var(--font-weight-strong);
+		letter-spacing: -0.03em;
+	}
+
+	.director-shell .bottom-nav button {
+		display: grid;
+		grid-template-columns: 24px minmax(0, 1fr);
+		align-items: center;
+		width: 100%;
+		flex: 0 0 auto;
+		gap: 12px;
+		min-height: 48px;
+		border-radius: 9px;
+		color: #46504b;
+		padding: 0 14px;
+		font-size: 13px;
+		font-weight: var(--font-weight-label);
+		text-align: left;
+	}
+
+	.director-shell .bottom-nav button:hover {
+		background: var(--surface-muted);
+		color: var(--base-black);
+	}
+
+	.director-shell .bottom-nav button.active {
+		background: var(--base-black);
+		color: var(--base-white);
+	}
+
+	.director-shell .bottom-nav button:last-of-type {
+		margin-top: auto;
+	}
+
+	.director-shell .bottom-nav-label {
+		display: block;
+	}
+
+	.director-shell .bottom-nav-icon {
+		justify-self: center;
+	}
+
+	.director-sidebar-account {
+		display: grid;
+		grid-template-columns: 38px minmax(0, 1fr);
+		align-items: center;
+		gap: 9px;
+		margin-top: 8px;
+		border-top: 1px solid var(--line);
+		padding: 14px 8px 2px;
+	}
+
+	.director-sidebar-account > span {
+		display: grid;
+		width: 38px;
+		height: 38px;
+		place-items: center;
+		border-radius: 50%;
+		background: #46504b;
+		color: var(--base-white);
+		font-size: 12px;
+	}
+
+	.director-sidebar-account > div {
+		display: flex;
+		min-width: 0;
+		flex-direction: column;
+		gap: 3px;
+	}
+
+	.director-sidebar-account strong,
+	.director-sidebar-account small {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.director-sidebar-account strong {
+		font-size: 12px;
+		font-weight: var(--font-weight-emphasis);
+	}
+
+	.director-sidebar-account small {
+		color: var(--text-muted);
+		font-size: 11px;
+	}
+
+	.director-shell .screen-stack,
+	.director-shell .director-dashboard-body {
+		padding-bottom: 0;
+	}
+
+	.director-shell .director-dashboard {
+		--dd-gap: 12px;
+		--dd-title-size: 29px;
+		--dd-body-size: 13px;
+		--dd-segmented-font-size: 12px;
+		--dd-table-row-size: 12px;
+		--dd-table-head-size: 11px;
+	}
+
+	.director-shell .director-dashboard-header {
+		min-height: 42px;
+	}
+
+	.director-shell .director-dashboard-direct-toggle {
+		display: none;
+	}
+
+	.director-dashboard-desktop-toolbar,
+	.direct-accounting-desktop-toolbar {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 20px;
+	}
+
+	.director-dashboard-mode-switch {
+		display: grid;
+		grid-template-columns: repeat(2, 1fr);
+		width: 298px;
+		height: 42px;
+		flex: 0 0 auto;
+		overflow: hidden;
+		border: 1px solid var(--line);
+		border-radius: 8px;
+		background: var(--surface-muted);
+		margin: 0;
+		padding: 0;
+	}
+
+	.director-dashboard-mode-switch button {
+		border: 0;
+		border-radius: 7px;
+		background: transparent;
+		color: #46504b;
+		font-size: 13px;
+		font-weight: var(--font-weight-label);
+	}
+
+	.director-dashboard-mode-switch button.active {
+		background: var(--base-black);
+		color: var(--base-white);
+	}
+
+	.director-dashboard-mode-switch button:focus-visible {
+		outline: 2px solid var(--focus-ring);
+		outline-offset: -3px;
+	}
+
+	.direct-accounting-standalone .direct-accounting-analytics {
+		gap: 12px;
+	}
+
+	.director-shell .director-dashboard-body {
+		overscroll-behavior: contain;
+	}
+
+	.direct-accounting-desktop-toolbar {
+		position: sticky;
+		top: 0;
+		z-index: 2;
+		background: var(--base-white);
+		padding-bottom: 4px;
+	}
+
+	.direct-accounting-analytics-controls {
+		width: min(100%, 524px);
+		grid-template-columns: minmax(260px, 1.2fr) minmax(210px, 1fr);
+		flex: 0 1 524px;
+	}
+
+	.direct-accounting-summary {
+		grid-template-columns: repeat(6, minmax(0, 1fr));
+		overflow: hidden;
+		gap: 0;
+		border: 1px solid var(--line);
+		border-radius: 12px;
+		background: var(--base-white);
+	}
+
+	.direct-accounting-summary > div {
+		min-height: 56px;
+		border: 0;
+		background: var(--base-white);
+		padding: 8px 18px;
+	}
+
+	.direct-accounting-summary > div + div,
+	.direct-accounting-summary > div:nth-child(even) {
+		border-top: 0;
+		border-left: 0;
+		padding-left: 18px;
+	}
+
+	.direct-accounting-summary > div:nth-child(n + 3) {
+		border-top: 0;
+	}
+
+	.direct-accounting-summary > div + div {
+		box-shadow: inset 1px 0 0 var(--line);
+	}
+
+	.direct-accounting-summary span {
+		font-size: 11px;
+	}
+
+	.direct-accounting-summary strong {
+		margin-top: 3px;
+		font-size: 18px;
+	}
+
+	.direct-accounting-summary small {
+		margin-top: 1px;
+		font-size: 9px;
+	}
+
+	.direct-accounting-desktop-panels {
+		display: grid;
+		grid-template-columns: minmax(0, 1.68fr) minmax(330px, 1fr);
+		gap: 12px;
+		height: clamp(330px, 46dvh, 500px);
+		min-height: 330px;
+	}
+
+	.direct-accounting-chart-panel,
+	.direct-accounting-recent-panel,
+	.direct-accounting-product-stats {
+		min-width: 0;
+		border: 1px solid var(--line);
+		border-radius: 12px;
+		background: var(--base-white);
+	}
+
+	.direct-accounting-chart-panel,
+	.direct-accounting-recent-panel {
+		display: flex;
+		min-height: 0;
+		flex-direction: column;
+		padding: 16px 14px;
+	}
+
+	.direct-accounting-panel-heading {
+		display: flex;
+		align-items: flex-start;
+		justify-content: space-between;
+		gap: 18px;
+	}
+
+	.direct-accounting-panel-heading h2 {
+		margin: 0;
+		font-size: 17px;
+		font-weight: var(--font-weight-emphasis);
+		line-height: 1.1;
+	}
+
+	.direct-accounting-open-all {
+		border: 0;
+		background: transparent;
+		color: var(--state-success-text);
+		padding: 1px 0;
+		font-size: 12px;
+		font-weight: var(--font-weight-label);
+	}
+
+	.direct-accounting-chart-legend {
+		display: flex;
+		align-items: center;
+		gap: 14px;
+		color: var(--text-muted);
+		justify-content: center;
+		font-size: 11px;
+		white-space: nowrap;
+	}
+
+	.direct-accounting-chart-legend span {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+	}
+
+	.direct-accounting-chart-legend i {
+		display: block;
+		width: 9px;
+		height: 9px;
+		border-radius: 3px;
+		background: var(--brand-green);
+	}
+
+	.direct-accounting-chart-legend i.balance {
+		width: 16px;
+		height: 2px;
+		border-radius: 0;
+		background: var(--base-black);
+	}
+
+	.direct-accounting-chart {
+		min-height: 0;
+		flex: 1 1 auto;
+		margin-top: 12px;
+	}
+
+	.direct-accounting-recent-head,
+	.direct-accounting-recent-row {
+		display: grid;
+		grid-template-columns: 82px 68px minmax(0, 1fr) 82px;
+		gap: 8px;
+	}
+
+	.direct-accounting-recent-head {
+		margin-top: 14px;
+		border-bottom: 1px solid var(--line);
+		background: var(--surface-muted);
+		padding: 8px 6px;
+		color: var(--text-muted);
+		font-size: 10px;
+	}
+
+	.direct-accounting-recent-head span {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.direct-accounting-recent-head span:last-child {
+		text-align: right;
+	}
+
+	.direct-accounting-recent-row {
+		align-items: center;
+		min-height: 54px;
+		border-bottom: 1px solid var(--line);
+		padding: 0 6px;
+		font-size: 12px;
+	}
+
+	.direct-accounting-recent-row time {
+		color: var(--text-muted);
+		font-variant-numeric: tabular-nums;
+	}
+
+	.direct-accounting-recent-row strong,
+	.direct-accounting-recent-description,
+	.direct-accounting-recent-row b {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.direct-accounting-recent-row strong {
+		font-weight: var(--font-weight-emphasis);
+	}
+
+	.direct-accounting-recent-row strong.sale,
+	.direct-accounting-recent-row strong.receipt {
+		color: var(--state-success-text);
+	}
+
+	.direct-accounting-recent-row strong.expense {
+		color: var(--state-danger-text);
+	}
+
+	.direct-accounting-recent-description {
+		color: #3d4742;
+	}
+
+	.direct-accounting-recent-row b {
+		font-weight: var(--font-weight-emphasis);
+		font-variant-numeric: tabular-nums;
+		text-align: right;
+	}
+
+	.direct-accounting-product-stats {
+		overflow: hidden;
+		padding: 0;
+	}
+
+	.direct-accounting-product-stats > h2 {
+		margin: 0;
+		padding: 15px 16px 12px;
+		font-size: 17px;
+	}
+
+	.direct-accounting-product-stats-head,
+	.direct-accounting-product-stat {
+		grid-template-columns: minmax(190px, 1.35fr) repeat(4, minmax(88px, 1fr));
+		gap: 16px;
+	}
+
+	.direct-accounting-product-stats-head {
+		border-block: 1px solid var(--line);
+		background: var(--surface-muted);
+		padding: 10px 16px;
+		font-size: 11px;
+	}
+
+	.direct-accounting-product-stats-head span:not(:first-child),
+	.direct-accounting-product-value {
+		text-align: right;
+	}
+
+	.direct-accounting-product-stat {
+		min-height: 48px;
+		border-top: 0;
+		border-bottom: 1px solid var(--line);
+		padding: 0 16px;
+		font-size: 12px;
+	}
+
+	.direct-accounting-product-stat:last-child {
+		border-bottom: 0;
+	}
+
+	.direct-accounting-product-stat-main small {
+		display: none;
+	}
+
+	.direct-accounting-product-value {
+		display: block;
+		font-variant-numeric: tabular-nums;
+		white-space: nowrap;
+	}
+
+	.direct-accounting-balance strong {
+		font-size: 13px;
+	}
+
+	.director-shell .success-notice {
+		left: 236px;
+		bottom: 24px;
+	}
 }
 
 @media (max-width: 430px) {
@@ -2930,6 +3428,10 @@ input[type="search"]::-webkit-search-decoration {
 .director-dashboard-direct-toggle:focus-visible {
 	outline: 2px solid var(--focus-ring);
 	outline-offset: 2px;
+}
+
+.director-dashboard-direct-toggle-label {
+	display: none;
 }
 
 .direct-accounting-standalone {

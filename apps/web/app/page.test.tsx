@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Client } from "@buhta/shared";
 import manifest from "./manifest";
@@ -3462,11 +3462,12 @@ describe("HomePage", () => {
 		expect(await screen.findByRole("heading", { name: "Главная" })).toBeTruthy();
 		expect(await screen.findByText("Выручка")).toBeTruthy();
 		expect(screen.getByText("Касса")).toBeTruthy();
-		expect(screen.getByRole("button", { name: "Главная" })).toBeTruthy();
-		expect(screen.getByRole("button", { name: "Остатки" })).toBeTruthy();
-		expect(screen.getByRole("button", { name: "Прямой учет" })).toBeTruthy();
-		expect(screen.getByRole("button", { name: "История" })).toBeTruthy();
-		expect(screen.getByRole("button", { name: "Еще" })).toBeTruthy();
+		const navigation = within(screen.getByRole("navigation", { name: "Основная навигация" }));
+		expect(navigation.getByRole("button", { name: "Главная" })).toBeTruthy();
+		expect(navigation.getByRole("button", { name: "Остатки" })).toBeTruthy();
+		expect(navigation.getByRole("button", { name: "Прямой учет" })).toBeTruthy();
+		expect(navigation.getByRole("button", { name: "История" })).toBeTruthy();
+		expect(navigation.getByRole("button", { name: "Еще" })).toBeTruthy();
 		expect(screen.queryByRole("button", { name: "Аналитика" })).toBeNull();
 		expect(screen.queryByRole("button", { name: "Распределитель" })).toBeNull();
 		expect(screen.queryByRole("button", { name: "Курьеры" })).toBeNull();
