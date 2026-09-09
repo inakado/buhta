@@ -209,6 +209,7 @@ export function DirectAccountingHome({ online }: { online: boolean }) {
 	const draftTotal = entryKind === "receipt" || typeof parsedSaleDraft === "string"
 		? null
 		: Math.round(parsedSaleDraft.quantityKg * parsedSaleDraft.unitPriceCents);
+	const visibleEntries = entriesData?.entries.filter((entry) => entry.kind === entryKind) ?? [];
 	const pending = saveMutation.isPending || deleteMutation.isPending;
 	const mutationError = saveMutation.error ?? deleteMutation.error;
 
@@ -218,10 +219,27 @@ export function DirectAccountingHome({ online }: { online: boolean }) {
 				<h1>Прямой учет</h1>
 			</header>
 
+			<SegmentedControl
+				ariaLabel="Режим прямого учета"
+				className="direct-accounting-entry-type"
+				items={[
+					{ value: "sale", label: "Продажа", disabled: Boolean(editingEntry) },
+					{ value: "receipt", label: "Приход", disabled: Boolean(editingEntry) },
+				]}
+				onChange={(kind) => {
+					setEntryKind(kind as EntryKind);
+					setDraft(emptyDraft(today));
+					setFormError(null);
+					setSuccessMessage(null);
+				}}
+				role="group"
+				value={entryKind}
+			/>
+
 			<form className="direct-accounting-form" onSubmit={submit} ref={formRef}>
 				<div className="direct-accounting-form-heading">
 					<div>
-						<span>{editingEntry ? "Исправление записи" : "Новая операция"}</span>
+						<span>{formatEntryFormTitle(entryKind, Boolean(editingEntry))}</span>
 						{draftTotal !== null ? <strong>{formatCompactMoneyCents(draftTotal)} ₽</strong> : null}
 					</div>
 					{editingEntry ? (
@@ -231,22 +249,6 @@ export function DirectAccountingHome({ online }: { online: boolean }) {
 						</button>
 					) : null}
 				</div>
-
-				<SegmentedControl
-					ariaLabel="Тип операции"
-					className="direct-accounting-entry-type"
-					items={[
-						{ value: "sale", label: "Продажа", disabled: Boolean(editingEntry) },
-						{ value: "receipt", label: "Приход", disabled: Boolean(editingEntry) },
-					]}
-					onChange={(kind) => {
-						setEntryKind(kind as EntryKind);
-						setFormError(null);
-						setSuccessMessage(null);
-					}}
-					role="group"
-					value={entryKind}
-				/>
 
 				<label className="field direct-accounting-name-field">
 					<span>Наименование</span>
@@ -267,14 +269,18 @@ export function DirectAccountingHome({ online }: { online: boolean }) {
 				<div className={entryKind === "receipt" ? "direct-accounting-fields receipt" : "direct-accounting-fields"}>
 					<label className="field">
 						<span>Дата</span>
-						<input
-							max={today}
-							onClick={(event) => event.currentTarget.showPicker?.()}
-							onChange={(event) => updateDraft({ occurredOn: event.target.value })}
-							required
-							type="date"
-							value={draft.occurredOn}
-						/>
+						<span className="direct-accounting-date-control">
+							<span>{formatNumericDate(draft.occurredOn)}</span>
+							<CalendarDays aria-hidden size={14} />
+							<input
+								aria-label="Дата"
+								max={today}
+								onChange={(event) => updateDraft({ occurredOn: event.target.value })}
+								required
+								type="date"
+								value={draft.occurredOn}
+							/>
+						</span>
 					</label>
 					<label className="field">
 						<span>Количество, кг</span>
@@ -320,10 +326,10 @@ export function DirectAccountingHome({ online }: { online: boolean }) {
 				</div>
 			</form>
 
-			<section className="direct-accounting-ledger" aria-label="Операции за выбранный период">
+			<section className="direct-accounting-ledger" aria-label={`${entryKind === "sale" ? "Продажи" : "Приходы"} за выбранный период`}>
 				<div className="direct-accounting-ledger-heading">
-					<h2>{formatEntriesPeriodTitle(listSelection, listRange)}</h2>
-					<span>{formatEntryCount(entriesData?.entries.length ?? 0)}</span>
+					<h2>{formatEntriesPeriodTitle(entryKind, listSelection, listRange)}</h2>
+					<span>{formatEntryCount(visibleEntries.length, entryKind)}</span>
 				</div>
 				<div className="direct-accounting-list-controls">
 					<SegmentedControl
@@ -380,20 +386,20 @@ export function DirectAccountingHome({ online }: { online: boolean }) {
 				</div>
 				{entriesLoading ? <p className="muted">Загрузка записей…</p> : null}
 				{entriesError ? <p className="form-error">{entriesError.message}</p> : null}
-				{entriesData?.entries.length === 0 ? <p className="direct-accounting-empty">Операций за выбранный период нет.</p> : null}
-				{entriesData?.entries.length ? (
+				{!entriesLoading && visibleEntries.length === 0 ? <p className="direct-accounting-empty">{entryKind === "sale" ? "Продаж" : "Приходов"} за выбранный период нет.</p> : null}
+				{visibleEntries.length ? (
 					<div className="direct-accounting-ledger-columns" aria-hidden>
-						<span>Операция</span>
-						<span>Значение</span>
+						<span>{entryKind === "sale" ? "Продажа" : "Приход"}</span>
+						<span>{entryKind === "sale" ? "Сумма" : "Количество"}</span>
 					</div>
 				) : null}
 				<div className="direct-accounting-rows">
-					{entriesData?.entries.map((entry) => (
+					{visibleEntries.map((entry) => (
 						<button className={`direct-accounting-row ${entry.kind}`} key={`${entry.kind}-${entry.id}`} onClick={() => beginEdit(entry)} type="button">
 							<span className="direct-accounting-row-main">
 								<strong>{entry.productName}</strong>
 								<small>
-									{formatDate(entry.occurredOn)} · {entry.kind === "sale" ? "Продажа" : "Приход"} · {formatQuantity(entry.quantityKg)} кг
+									{formatDate(entry.occurredOn)} · {formatQuantity(entry.quantityKg)} кг
 									{entry.kind === "sale" ? ` × ${formatCompactMoneyCents(entry.unitPriceCents)} ₽` : ""}
 								</small>
 							</span>
@@ -426,17 +432,19 @@ function formatQuantity(value: number): string {
 	return QUANTITY_FORMATTER.format(value);
 }
 
-function formatEntryCount(count: number): string {
+function formatEntryCount(count: number, kind: EntryKind): string {
 	const mod100 = count % 100;
 	const mod10 = count % 10;
-	const noun = mod100 >= 11 && mod100 <= 14
-		? "операций"
-		: mod10 === 1
-			? "операция"
-			: mod10 >= 2 && mod10 <= 4
-				? "операции"
-				: "операций";
+	const forms = kind === "sale"
+		? ["продажа", "продажи", "продаж"]
+		: ["приход", "прихода", "приходов"];
+	const noun = mod100 >= 11 && mod100 <= 14 ? forms[2] : mod10 === 1 ? forms[0] : mod10 >= 2 && mod10 <= 4 ? forms[1] : forms[2];
 	return `${count} ${noun}`;
+}
+
+function formatEntryFormTitle(kind: EntryKind, editing: boolean): string {
+	if (kind === "sale") return editing ? "Исправление продажи" : "Новая продажа";
+	return editing ? "Исправление прихода" : "Новый приход";
 }
 
 function trailingDateRange(anchorDate: string, period: DirectAccountingDetailPeriod) {
@@ -458,15 +466,25 @@ function validateListRange(dateFrom: string, dateTo: string, today: string): str
 	return null;
 }
 
-function formatEntriesPeriodTitle(selection: EntriesListSelection, range: { dateFrom: string; dateTo: string }): string {
+function formatEntriesPeriodTitle(
+	kind: EntryKind,
+	selection: EntriesListSelection,
+	range: { dateFrom: string; dateTo: string },
+): string {
+	const subject = kind === "sale" ? "Продажи" : "Приходы";
 	if (selection.mode === "preset") {
-		if (selection.period === "day") return "Операции сегодня";
-		if (selection.period === "week") return "Операции за 7 дней";
-		return "Операции за 30 дней";
+		if (selection.period === "day") return `${subject} сегодня`;
+		if (selection.period === "week") return `${subject} за 7 дней`;
+		return `${subject} за 30 дней`;
 	}
 	return range.dateFrom === range.dateTo
-		? `Операции за ${formatDate(range.dateFrom)}`
-		: `Операции: ${formatDateRange(range.dateFrom, range.dateTo)}`;
+		? `${subject} за ${formatDate(range.dateFrom)}`
+		: `${subject}: ${formatDateRange(range.dateFrom, range.dateTo)}`;
+}
+
+function formatNumericDate(value: string): string {
+	const [year, month, day] = value.split("-");
+	return year && month && day ? `${day}.${month}.${year}` : "Выберите дату";
 }
 
 function formatDateRange(dateFrom: string, dateTo: string): string {

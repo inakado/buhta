@@ -45,6 +45,16 @@ const saleResponse = {
 	updatedAt: sale.updatedAt,
 };
 
+const receipt = {
+	kind: "receipt" as const,
+	id: "receipt1",
+	productName: "Приход кеты",
+	occurredOn: "2026-09-03",
+	quantityKg: 300,
+	createdAt: new Date(0).toISOString(),
+	updatedAt: new Date(0).toISOString(),
+};
+
 afterEach(() => {
 	vi.clearAllMocks();
 });
@@ -57,7 +67,7 @@ describe("DirectAccountingHome", () => {
 
 		renderHome();
 		fireEvent.click(await screen.findByRole("button", { name: /Икра кеты/ }));
-		expect(screen.getByText("Исправление записи")).toBeTruthy();
+		expect(screen.getByText("Исправление продажи")).toBeTruthy();
 		await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText("Наименование")));
 		expect(screen.getByRole("button", { name: "Удалить продажу" }).textContent).toContain("Удалить");
 		fireEvent.change(screen.getByLabelText("Цена за кг, ₽"), { target: { value: "1300" } });
@@ -111,6 +121,7 @@ describe("DirectAccountingHome", () => {
 		expect(screen.queryByLabelText("Цена за кг, ₽")).toBeNull();
 		fireEvent.change(screen.getByLabelText("Наименование"), { target: { value: "Икра кеты" } });
 		fireEvent.change(screen.getByLabelText("Дата"), { target: { value: "2026-09-03" } });
+		expect(screen.getByText("03.09.2026")).toBeTruthy();
 		fireEvent.change(screen.getByLabelText("Количество, кг"), { target: { value: "300" } });
 		fireEvent.click(screen.getByRole("button", { name: "Добавить приход" }));
 
@@ -119,6 +130,23 @@ describe("DirectAccountingHome", () => {
 			receivedOn: "2026-09-03",
 			quantityKg: 300,
 		}));
+	});
+
+	it("filters the ledger and names it by the selected operation type", async () => {
+		vi.mocked(listDirectAccountingEntries).mockResolvedValue({ entries: [sale, receipt] });
+		vi.mocked(listDirectAccountingSuggestions).mockResolvedValue({ suggestions: [] });
+
+		renderHome();
+		expect(await screen.findByText("Продажи за 30 дней")).toBeTruthy();
+		expect(await screen.findByText("1 продажа")).toBeTruthy();
+		expect(screen.queryByText(receipt.productName)).toBeNull();
+
+		fireEvent.click(screen.getByRole("button", { name: "Приход" }));
+		expect(screen.getByText("Приходы за 30 дней")).toBeTruthy();
+		expect(screen.getByText("Новый приход")).toBeTruthy();
+		expect(screen.getByText("1 приход")).toBeTruthy();
+		expect(screen.getByText(receipt.productName)).toBeTruthy();
+		expect(screen.queryByText(sale.productName)).toBeNull();
 	});
 });
 
