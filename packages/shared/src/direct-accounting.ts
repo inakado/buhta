@@ -32,6 +32,14 @@ export const DirectAccountingSaleInputSchema = z.object({
 
 export type DirectAccountingSaleInput = z.infer<typeof DirectAccountingSaleInputSchema>;
 
+export const DirectAccountingReceiptInputSchema = z.object({
+	productName: DirectAccountingProductNameSchema,
+	receivedOn: DirectAccountingDateSchema,
+	quantityKg: DirectAccountingQuantityKgSchema,
+}).strict();
+
+export type DirectAccountingReceiptInput = z.infer<typeof DirectAccountingReceiptInputSchema>;
+
 export const DirectAccountingSaleSchema = DirectAccountingSaleInputSchema.extend({
 	id: z.string(),
 	totalCents: z.number().int().nonnegative(),
@@ -41,11 +49,25 @@ export const DirectAccountingSaleSchema = DirectAccountingSaleInputSchema.extend
 
 export type DirectAccountingSale = z.infer<typeof DirectAccountingSaleSchema>;
 
+export const DirectAccountingReceiptSchema = DirectAccountingReceiptInputSchema.extend({
+	id: z.string(),
+	createdAt: z.string(),
+	updatedAt: z.string(),
+});
+
+export type DirectAccountingReceipt = z.infer<typeof DirectAccountingReceiptSchema>;
+
 export const DirectAccountingSaleResponseSchema = z.object({
 	sale: DirectAccountingSaleSchema,
 });
 
 export type DirectAccountingSaleResponse = z.infer<typeof DirectAccountingSaleResponseSchema>;
+
+export const DirectAccountingReceiptResponseSchema = z.object({
+	receipt: DirectAccountingReceiptSchema,
+});
+
+export type DirectAccountingReceiptResponse = z.infer<typeof DirectAccountingReceiptResponseSchema>;
 
 export const DirectAccountingSalesQuerySchema = z.object({
 	date: DirectAccountingDateSchema.optional(),
@@ -69,11 +91,45 @@ export const DirectAccountingSalesQuerySchema = z.object({
 
 export type DirectAccountingSalesQuery = z.infer<typeof DirectAccountingSalesQuerySchema>;
 
+export const DirectAccountingEntriesQuerySchema = DirectAccountingSalesQuerySchema;
+export type DirectAccountingEntriesQuery = z.infer<typeof DirectAccountingEntriesQuerySchema>;
+
 export const DirectAccountingSalesResponseSchema = z.object({
 	sales: z.array(DirectAccountingSaleSchema),
 });
 
 export type DirectAccountingSalesResponse = z.infer<typeof DirectAccountingSalesResponseSchema>;
+
+export const DirectAccountingEntrySchema = z.discriminatedUnion("kind", [
+	z.object({
+		kind: z.literal("sale"),
+		id: z.string(),
+		productName: DirectAccountingProductNameSchema,
+		occurredOn: DirectAccountingDateSchema,
+		quantityKg: DirectAccountingQuantityKgSchema,
+		unitPriceCents: DirectAccountingUnitPriceCentsSchema,
+		totalCents: z.number().int().nonnegative(),
+		createdAt: z.string(),
+		updatedAt: z.string(),
+	}),
+	z.object({
+		kind: z.literal("receipt"),
+		id: z.string(),
+		productName: DirectAccountingProductNameSchema,
+		occurredOn: DirectAccountingDateSchema,
+		quantityKg: DirectAccountingQuantityKgSchema,
+		createdAt: z.string(),
+		updatedAt: z.string(),
+	}),
+]);
+
+export type DirectAccountingEntry = z.infer<typeof DirectAccountingEntrySchema>;
+
+export const DirectAccountingEntriesResponseSchema = z.object({
+	entries: z.array(DirectAccountingEntrySchema),
+});
+
+export type DirectAccountingEntriesResponse = z.infer<typeof DirectAccountingEntriesResponseSchema>;
 
 export const DirectAccountingSuggestionsQuerySchema = z.object({
 	search: z.string().trim().max(120).optional(),
@@ -116,6 +172,8 @@ export const DirectAccountingPeriodTotalSchema = z.object({
 	dateFrom: DirectAccountingDateSchema,
 	dateTo: DirectAccountingDateSchema,
 	quantityKg: z.number().nonnegative(),
+	receivedQuantityKg: z.number().nonnegative(),
+	balanceQuantityKg: z.number(),
 	revenueCents: z.number().int().nonnegative(),
 });
 
@@ -124,6 +182,8 @@ export type DirectAccountingPeriodTotal = z.infer<typeof DirectAccountingPeriodT
 export const DirectAccountingProductStatisticsSchema = z.object({
 	productName: DirectAccountingProductNameSchema,
 	quantityKg: z.number().nonnegative(),
+	receivedQuantityKg: z.number().nonnegative(),
+	balanceQuantityKg: z.number(),
 	revenueCents: z.number().int().nonnegative(),
 });
 

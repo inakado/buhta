@@ -72,6 +72,9 @@
 | `direct_accounting.sale.create` | Директор или администратор добавил строку прямого учета | `direct_accounting_sale`; audit details содержат `after` с наименованием, датой, кг, ценой за кг и итогом |
 | `direct_accounting.sale.update` | Директор или администратор исправил строку прямого учета | `direct_accounting_sale`; audit details содержат полные `before` и `after` |
 | `direct_accounting.sale.delete` | Директор или администратор мягко удалил строку прямого учета | `direct_accounting_sale`; audit details содержат `before`, `after` и время удаления |
+| `direct_accounting.receipt.create` | Директор или администратор добавил приход прямого учета | `direct_accounting_receipt`; audit details содержат `after` с наименованием, датой и кг |
+| `direct_accounting.receipt.update` | Директор или администратор исправил приход прямого учета | `direct_accounting_receipt`; audit details содержат полные `before` и `after` |
+| `direct_accounting.receipt.delete` | Директор или администратор мягко удалил приход прямого учета | `direct_accounting_receipt`; audit details содержат `before`, `after` и время удаления |
 
 ## 4. Read Model Истории
 

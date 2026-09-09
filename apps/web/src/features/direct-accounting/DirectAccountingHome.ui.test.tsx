@@ -3,30 +3,46 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DirectAccountingHome } from "./DirectAccountingHome";
 import {
+	createDirectAccountingReceipt,
 	createDirectAccountingSale,
 	deleteDirectAccountingSale,
-	listDirectAccountingSales,
+	listDirectAccountingEntries,
 	listDirectAccountingSuggestions,
 	updateDirectAccountingSale,
 } from "../../lib/api-client";
 
 vi.mock("../../lib/api-client", () => ({
+	createDirectAccountingReceipt: vi.fn(),
 	createDirectAccountingSale: vi.fn(),
+	deleteDirectAccountingReceipt: vi.fn(),
 	deleteDirectAccountingSale: vi.fn(),
-	listDirectAccountingSales: vi.fn(),
+	listDirectAccountingEntries: vi.fn(),
 	listDirectAccountingSuggestions: vi.fn(),
+	updateDirectAccountingReceipt: vi.fn(),
 	updateDirectAccountingSale: vi.fn(),
 }));
 
 const sale = {
+	kind: "sale" as const,
 	id: "sale1",
 	productName: "Икра кеты",
-	soldOn: "2026-09-08",
+	occurredOn: "2026-09-08",
 	quantityKg: 2.5,
 	unitPriceCents: 120_000,
 	totalCents: 300_000,
 	createdAt: new Date(0).toISOString(),
 	updatedAt: new Date(0).toISOString(),
+};
+
+const saleResponse = {
+	id: sale.id,
+	productName: sale.productName,
+	soldOn: sale.occurredOn,
+	quantityKg: sale.quantityKg,
+	unitPriceCents: sale.unitPriceCents,
+	totalCents: sale.totalCents,
+	createdAt: sale.createdAt,
+	updatedAt: sale.updatedAt,
 };
 
 afterEach(() => {
@@ -35,9 +51,9 @@ afterEach(() => {
 
 describe("DirectAccountingHome", () => {
 	it("opens a ledger row for inline correction", async () => {
-		vi.mocked(listDirectAccountingSales).mockResolvedValue({ sales: [sale] });
+		vi.mocked(listDirectAccountingEntries).mockResolvedValue({ entries: [sale] });
 		vi.mocked(listDirectAccountingSuggestions).mockResolvedValue({ suggestions: [sale.productName] });
-		vi.mocked(updateDirectAccountingSale).mockResolvedValue({ sale: { ...sale, unitPriceCents: 130_000 } });
+		vi.mocked(updateDirectAccountingSale).mockResolvedValue({ sale: { ...saleResponse, unitPriceCents: 130_000 } });
 
 		renderHome();
 		fireEvent.click(await screen.findByRole("button", { name: /Икра кеты/ }));
@@ -58,9 +74,9 @@ describe("DirectAccountingHome", () => {
 	});
 
 	it("creates a decimal-kilogram sale", async () => {
-		vi.mocked(listDirectAccountingSales).mockResolvedValue({ sales: [] });
+		vi.mocked(listDirectAccountingEntries).mockResolvedValue({ entries: [] });
 		vi.mocked(listDirectAccountingSuggestions).mockResolvedValue({ suggestions: [] });
-		vi.mocked(createDirectAccountingSale).mockResolvedValue({ sale });
+		vi.mocked(createDirectAccountingSale).mockResolvedValue({ sale: saleResponse });
 
 		renderHome();
 		fireEvent.change(screen.getByLabelText("Наименование"), { target: { value: "Икра кеты" } });
@@ -76,6 +92,33 @@ describe("DirectAccountingHome", () => {
 			}));
 		});
 		expect(deleteDirectAccountingSale).not.toHaveBeenCalled();
+	});
+
+	it("creates a backdated receipt without asking for a price", async () => {
+		vi.mocked(listDirectAccountingEntries).mockResolvedValue({ entries: [] });
+		vi.mocked(listDirectAccountingSuggestions).mockResolvedValue({ suggestions: [] });
+		vi.mocked(createDirectAccountingReceipt).mockResolvedValue({ receipt: {
+			id: "receipt1",
+			productName: "Икра кеты",
+			receivedOn: "2026-09-03",
+			quantityKg: 300,
+			createdAt: new Date(0).toISOString(),
+			updatedAt: new Date(0).toISOString(),
+		} });
+
+		renderHome();
+		fireEvent.click(screen.getByRole("button", { name: "Приход" }));
+		expect(screen.queryByLabelText("Цена за кг, ₽")).toBeNull();
+		fireEvent.change(screen.getByLabelText("Наименование"), { target: { value: "Икра кеты" } });
+		fireEvent.change(screen.getByLabelText("Дата"), { target: { value: "2026-09-03" } });
+		fireEvent.change(screen.getByLabelText("Количество, кг"), { target: { value: "300" } });
+		fireEvent.click(screen.getByRole("button", { name: "Добавить приход" }));
+
+		await waitFor(() => expect(createDirectAccountingReceipt).toHaveBeenCalledWith({
+			productName: "Икра кеты",
+			receivedOn: "2026-09-03",
+			quantityKg: 300,
+		}));
 	});
 });
 

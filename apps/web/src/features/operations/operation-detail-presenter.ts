@@ -52,6 +52,12 @@ const OPERATION_LABELS: Record<string, string> = {
 	"distributor.sale.cancel": "Отмена продажи",
 	"distributor.sale.create": "Продажа",
 	"distributor.stock.correct": "Корректировка продукции",
+	"direct_accounting.receipt.create": "Приход прямого учета",
+	"direct_accounting.receipt.delete": "Удаление прихода прямого учета",
+	"direct_accounting.receipt.update": "Исправление прихода прямого учета",
+	"direct_accounting.sale.create": "Продажа прямого учета",
+	"direct_accounting.sale.delete": "Удаление продажи прямого учета",
+	"direct_accounting.sale.update": "Исправление продажи прямого учета",
 	"foundation.baseline": "Проверочная операция",
 	"production.notification.complete": "Задача выполнена",
 	"production.notification.create": "Задача производству",
@@ -77,6 +83,8 @@ const ENTITY_LABELS: Record<string, string> = {
 	distributor_sale: "Продажа",
 	distributor_sale_cancellation: "Отмена продажи",
 	distributor_stock_correction: "Корректировка продукции",
+	direct_accounting_receipt: "Приход прямого учета",
+	direct_accounting_sale: "Продажа прямого учета",
 	packaging_intake: "Прием упаковки",
 	packaging_type: "Тип упаковки",
 	product_batch: "Партия",
@@ -130,6 +138,8 @@ const DETAIL_LABELS: Record<string, string> = {
 	priceCents: "Цена",
 	productName: "Продукция",
 	quantity: "Количество",
+	quantityKg: "Количество",
+	receivedOn: "Дата прихода",
 	rawMaterialTypeName: "Сырье",
 	rawMaterialBalanceAfter: "Остаток сырья после",
 	rawMaterialBalanceBefore: "Остаток сырья до",
@@ -142,6 +152,7 @@ const DETAIL_LABELS: Record<string, string> = {
 	status: "Статус",
 	statusAfter: "Статус после",
 	statusBefore: "Статус до",
+	soldOn: "Дата продажи",
 	stepDiscountCentsPerUnit: "Снижение на этом шаге",
 	stockBalanceAfter: "Остаток товара после",
 	stockBalanceBefore: "Остаток товара до",
@@ -264,6 +275,9 @@ function buildProductSection(
 	addStringRow(rows, details, usedKeys, "rawMaterialTypeName", "Сырье");
 	addStringRow(rows, details, usedKeys, "packagingTypeName", "Тара");
 	addQuantityRow(rows, details, usedKeys, "quantity", "Количество");
+	addQuantityRow(rows, details, usedKeys, "quantityKg", "Количество", "кг");
+	addStringRow(rows, details, usedKeys, "soldOn", "Дата продажи");
+	addStringRow(rows, details, usedKeys, "receivedOn", "Дата прихода");
 	addQuantityRow(rows, details, usedKeys, "consumedRawMaterialQuantity", "Расход сырья", details.rawMaterialUnit);
 	addQuantityRow(rows, details, usedKeys, "consumedPackagingQuantity", "Расход тары", details.packagingUnit);
 	addMoneyRow(rows, details, usedKeys, "unitPriceCents", "Цена");

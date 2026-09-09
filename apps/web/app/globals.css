@@ -1073,10 +1073,29 @@ input[type="search"]::-webkit-search-decoration {
 	background: var(--surface-stock);
 }
 
+.direct-accounting-entry-type {
+	align-self: flex-start;
+	width: min(100%, 238px);
+	border: 1px solid var(--line);
+	border-radius: 9px;
+	background: var(--surface-muted);
+	padding: 3px;
+}
+
+.direct-accounting-entry-type button {
+	min-height: 31px;
+	border-radius: 6px;
+	font-size: 12px;
+}
+
 .direct-accounting-fields {
 	display: grid;
 	grid-template-columns: minmax(0, 1.1fr) repeat(2, minmax(0, .9fr));
 	gap: 8px;
+}
+
+.direct-accounting-fields.receipt {
+	grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .direct-accounting-fields .field {
@@ -1196,6 +1215,10 @@ input[type="search"]::-webkit-search-decoration {
 	white-space: nowrap;
 }
 
+.direct-accounting-row.receipt > strong {
+	color: var(--state-success-text);
+}
+
 .direct-accounting-row > svg {
 	color: var(--text-muted);
 }
@@ -1306,14 +1329,29 @@ input[type="search"]::-webkit-search-decoration {
 	padding: 13px 0;
 }
 
-.direct-accounting-summary > div + div {
+.direct-accounting-summary > div:nth-child(even) {
 	border-left: 1px solid var(--line);
 	padding-left: 16px;
+}
+
+.direct-accounting-summary > div:nth-child(n + 3) {
+	border-top: 1px solid var(--line);
 }
 
 .direct-accounting-summary span,
 .direct-accounting-summary strong {
 	display: block;
+}
+
+.direct-accounting-summary small {
+	display: block;
+	margin-top: 2px;
+	color: var(--state-danger-text);
+	font-size: 10px;
+}
+
+.direct-accounting-summary .negative strong {
+	color: var(--state-danger-text);
 }
 
 .direct-accounting-summary span {
@@ -1340,9 +1378,9 @@ input[type="search"]::-webkit-search-decoration {
 .direct-accounting-product-stats-head,
 .direct-accounting-product-stat {
 	display: grid;
-	grid-template-columns: minmax(0, 1.2fr) minmax(66px, .7fr) minmax(80px, .8fr);
+	grid-template-columns: minmax(0, 1fr) auto;
 	align-items: center;
-	gap: 8px;
+	gap: 12px;
 }
 
 .direct-accounting-product-stats-head {
@@ -1351,23 +1389,47 @@ input[type="search"]::-webkit-search-decoration {
 	font-size: 10px;
 }
 
-.direct-accounting-product-stats-head span:not(:first-child),
-.direct-accounting-product-stat > :not(:first-child) {
+.direct-accounting-product-stats-head span:last-child,
+.direct-accounting-balance {
 	text-align: right;
 }
 
 .direct-accounting-product-stat {
-	min-height: 40px;
+	min-height: 52px;
 	border-top: 1px solid var(--line);
 	font-size: 12px;
 }
 
-.direct-accounting-product-stat strong {
+.direct-accounting-product-stat-main,
+.direct-accounting-balance {
 	min-width: 0;
+}
+
+.direct-accounting-product-stat-main strong,
+.direct-accounting-product-stat-main small,
+.direct-accounting-balance strong,
+.direct-accounting-balance small {
+	display: block;
 	overflow: hidden;
-	font-weight: var(--font-weight-emphasis);
 	text-overflow: ellipsis;
 	white-space: nowrap;
+}
+
+.direct-accounting-product-stat-main strong,
+.direct-accounting-balance strong {
+	font-weight: var(--font-weight-emphasis);
+}
+
+.direct-accounting-product-stat-main small,
+.direct-accounting-balance small {
+	margin-top: 3px;
+	color: var(--text-muted);
+	font-size: 10px;
+}
+
+.direct-accounting-balance.negative strong,
+.direct-accounting-balance.negative small {
+	color: var(--state-danger-text);
 }
 
 @media (max-width: 380px) {

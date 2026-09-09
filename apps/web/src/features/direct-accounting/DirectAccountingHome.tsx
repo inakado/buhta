@@ -4,17 +4,30 @@ import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tansta
 import * as Popover from "@radix-ui/react-popover";
 import { CalendarDays, Check, ChevronDown, Pencil, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { type FormEvent, useDeferredValue, useRef, useState } from "react";
-import type { DirectAccountingDetailPeriod, DirectAccountingSale, DirectAccountingSaleInput } from "@buhta/shared";
+import type {
+	DirectAccountingDetailPeriod,
+	DirectAccountingEntry,
+	DirectAccountingReceiptInput,
+	DirectAccountingSaleInput,
+} from "@buhta/shared";
 import {
+	createDirectAccountingReceipt,
 	createDirectAccountingSale,
+	deleteDirectAccountingReceipt,
 	deleteDirectAccountingSale,
-	listDirectAccountingSales,
+	listDirectAccountingEntries,
 	listDirectAccountingSuggestions,
+	updateDirectAccountingReceipt,
 	updateDirectAccountingSale,
 } from "../../lib/api-client";
 import { formatCompactMoneyCents } from "../../lib/money-format";
 import { DateRangePickerPanel } from "../../ui/DateRangePickerPanel";
 import { SegmentedControl } from "../../ui/SegmentedControl";
+import {
+	parseReceiptDraft,
+	parseSaleDraft,
+	type DirectAccountingDraft,
+} from "./direct-accounting-input";
 
 const QUANTITY_FORMATTER = new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 3 });
 const SHORT_DATE_FORMATTER = new Intl.DateTimeFormat("ru-RU", {
@@ -36,29 +49,29 @@ const LIST_PERIOD_OPTIONS: Array<{ value: DirectAccountingDetailPeriod; label: s
 	{ value: "month", label: "30 дней" },
 ];
 
-type SalesListSelection =
+type EntriesListSelection =
 	| { mode: "preset"; period: DirectAccountingDetailPeriod }
 	| { mode: "custom"; dateFrom: string; dateTo: string };
 
-export type SaleDraft = {
-	productName: string;
-	soldOn: string;
-	quantityKg: string;
-	unitPriceRubles: string;
-};
+type EntryKind = DirectAccountingEntry["kind"];
+
+type SaveInput =
+	| { kind: "sale"; input: DirectAccountingSaleInput }
+	| { kind: "receipt"; input: DirectAccountingReceiptInput };
 
 export function DirectAccountingHome({ online }: { online: boolean }) {
 	const queryClient = useQueryClient();
 	const formRef = useRef<HTMLFormElement>(null);
 	const productNameRef = useRef<HTMLInputElement>(null);
 	const today = businessDateKey();
-	const [listSelection, setListSelection] = useState<SalesListSelection>({ mode: "preset", period: "month" });
+	const [listSelection, setListSelection] = useState<EntriesListSelection>({ mode: "preset", period: "month" });
 	const [periodPickerOpen, setPeriodPickerOpen] = useState(false);
 	const [customDateFrom, setCustomDateFrom] = useState(today);
 	const [customDateTo, setCustomDateTo] = useState(today);
 	const [customPeriodError, setCustomPeriodError] = useState<string | null>(null);
-	const [editingSale, setEditingSale] = useState<DirectAccountingSale | null>(null);
-	const [draft, setDraft] = useState<SaleDraft>(() => emptyDraft(today));
+	const [entryKind, setEntryKind] = useState<EntryKind>("sale");
+	const [editingEntry, setEditingEntry] = useState<DirectAccountingEntry | null>(null);
+	const [draft, setDraft] = useState<DirectAccountingDraft>(() => emptyDraft(today));
 	const [formError, setFormError] = useState<string | null>(null);
 	const [successMessage, setSuccessMessage] = useState<string | null>(null);
 	const deferredProductName = useDeferredValue(draft.productName.trim());
@@ -66,12 +79,12 @@ export function DirectAccountingHome({ online }: { online: boolean }) {
 		? { dateFrom: listSelection.dateFrom, dateTo: listSelection.dateTo }
 		: trailingDateRange(today, listSelection.period);
 	const {
-		data: salesData,
-		error: salesError,
-		isLoading: salesLoading,
+		data: entriesData,
+		error: entriesError,
+		isLoading: entriesLoading,
 	} = useQuery({
-		queryKey: ["direct-accounting", "sales", listRange],
-		queryFn: () => listDirectAccountingSales(listRange),
+		queryKey: ["direct-accounting", "entries", listRange],
+		queryFn: () => listDirectAccountingEntries(listRange),
 		placeholderData: (previousData) => previousData,
 	});
 	const { data: suggestionsData } = useQuery({
@@ -79,41 +92,56 @@ export function DirectAccountingHome({ online }: { online: boolean }) {
 		queryFn: () => listDirectAccountingSuggestions(deferredProductName),
 	});
 	const saveMutation = useMutation({
-		mutationFn: (input: DirectAccountingSaleInput) => editingSale
-			? updateDirectAccountingSale(editingSale.id, input)
-			: createDirectAccountingSale(input),
-		onSuccess: async ({ sale }) => {
-			setListSelection({ mode: "custom", dateFrom: sale.soldOn, dateTo: sale.soldOn });
-			setEditingSale(null);
-			setDraft(emptyDraft(sale.soldOn));
+		mutationFn: async (save: SaveInput) => {
+			if (save.kind === "receipt") {
+				const { receipt } = await (editingEntry
+					? updateDirectAccountingReceipt(editingEntry.id, save.input)
+					: createDirectAccountingReceipt(save.input));
+				return { kind: save.kind, occurredOn: receipt.receivedOn };
+			}
+			const { sale } = await (editingEntry
+				? updateDirectAccountingSale(editingEntry.id, save.input)
+				: createDirectAccountingSale(save.input));
+			return { kind: save.kind, occurredOn: sale.soldOn };
+		},
+		onSuccess: async (response, variables) => {
+			const wasEditing = Boolean(editingEntry);
+			setListSelection({ mode: "custom", dateFrom: response.occurredOn, dateTo: response.occurredOn });
+			setEditingEntry(null);
+			setDraft(emptyDraft(response.occurredOn));
 			setFormError(null);
-			setSuccessMessage(editingSale ? "Продажа обновлена" : "Продажа добавлена");
+			setSuccessMessage(wasEditing
+				? "Запись обновлена"
+				: variables.kind === "sale" ? "Продажа добавлена" : "Приход добавлен");
 			await invalidateDirectAccounting(queryClient);
 		},
 	});
 	const deleteMutation = useMutation({
-		mutationFn: (saleId: string) => deleteDirectAccountingSale(saleId),
+		mutationFn: (entry: DirectAccountingEntry) => entry.kind === "sale"
+			? deleteDirectAccountingSale(entry.id)
+			: deleteDirectAccountingReceipt(entry.id),
 		onSuccess: async () => {
-			setEditingSale(null);
+			setEditingEntry(null);
 			setDraft(emptyDraft(today));
-			setSuccessMessage("Продажа удалена");
+			setSuccessMessage("Запись удалена");
 			await invalidateDirectAccounting(queryClient);
 		},
 	});
 
-	function updateDraft(values: Partial<SaleDraft>) {
+	function updateDraft(values: Partial<DirectAccountingDraft>) {
 		setDraft((current) => ({ ...current, ...values }));
 		setFormError(null);
 		setSuccessMessage(null);
 	}
 
-	function beginEdit(sale: DirectAccountingSale) {
-		setEditingSale(sale);
+	function beginEdit(entry: DirectAccountingEntry) {
+		setEditingEntry(entry);
+		setEntryKind(entry.kind);
 		setDraft({
-			productName: sale.productName,
-			soldOn: sale.soldOn,
-			quantityKg: String(sale.quantityKg).replace(".", ","),
-			unitPriceRubles: centsToInput(sale.unitPriceCents),
+			productName: entry.productName,
+			occurredOn: entry.occurredOn,
+			quantityKg: String(entry.quantityKg).replace(".", ","),
+			unitPriceRubles: entry.kind === "sale" ? centsToInput(entry.unitPriceCents) : "",
 		});
 		setFormError(null);
 		setSuccessMessage(null);
@@ -124,26 +152,29 @@ export function DirectAccountingHome({ online }: { online: boolean }) {
 	}
 
 	function cancelEdit() {
-		setEditingSale(null);
+		setEditingEntry(null);
 		setDraft(emptyDraft(today));
 		setFormError(null);
 	}
 
 	function submit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
-		const parsed = parseSaleDraft(draft, today);
-		if (typeof parsed === "string") {
-			setFormError(parsed);
+		if (entryKind === "sale") {
+			const parsed = parseSaleDraft(draft, today);
+			if (typeof parsed === "string") return setFormError(parsed);
+			saveMutation.mutate({ kind: entryKind, input: parsed });
 			return;
 		}
-		saveMutation.mutate(parsed);
+		const parsed = parseReceiptDraft(draft, today);
+		if (typeof parsed === "string") return setFormError(parsed);
+		saveMutation.mutate({ kind: entryKind, input: parsed });
 	}
 
-	function removeEditingSale() {
-		if (!editingSale || !window.confirm(`Удалить продажу «${editingSale.productName}»?`)) {
+	function removeEditingEntry() {
+		if (!editingEntry || !window.confirm(`Удалить ${editingEntry.kind === "sale" ? "продажу" : "приход"} «${editingEntry.productName}»?`)) {
 			return;
 		}
-		deleteMutation.mutate(editingSale.id);
+		deleteMutation.mutate(editingEntry);
 	}
 
 	function selectListPreset(period: DirectAccountingDetailPeriod) {
@@ -174,10 +205,10 @@ export function DirectAccountingHome({ online }: { online: boolean }) {
 		setPeriodPickerOpen(false);
 	}
 
-	const parsedDraft = parseSaleDraft(draft, today);
-	const draftTotal = typeof parsedDraft === "string"
+	const parsedSaleDraft = parseSaleDraft(draft, today);
+	const draftTotal = entryKind === "receipt" || typeof parsedSaleDraft === "string"
 		? null
-		: Math.round(parsedDraft.quantityKg * parsedDraft.unitPriceCents);
+		: Math.round(parsedSaleDraft.quantityKg * parsedSaleDraft.unitPriceCents);
 	const pending = saveMutation.isPending || deleteMutation.isPending;
 	const mutationError = saveMutation.error ?? deleteMutation.error;
 
@@ -190,16 +221,32 @@ export function DirectAccountingHome({ online }: { online: boolean }) {
 			<form className="direct-accounting-form" onSubmit={submit} ref={formRef}>
 				<div className="direct-accounting-form-heading">
 					<div>
-						<span>{editingSale ? "Исправление записи" : "Новая продажа"}</span>
-						<strong>{draftTotal === null ? "—" : `${formatCompactMoneyCents(draftTotal)} ₽`}</strong>
+						<span>{editingEntry ? "Исправление записи" : "Новая операция"}</span>
+						{draftTotal !== null ? <strong>{formatCompactMoneyCents(draftTotal)} ₽</strong> : null}
 					</div>
-					{editingSale ? (
+					{editingEntry ? (
 						<button className="direct-accounting-reset" onClick={cancelEdit} type="button">
 							<RotateCcw aria-hidden size={15} />
 							Отмена
 						</button>
 					) : null}
 				</div>
+
+				<SegmentedControl
+					ariaLabel="Тип операции"
+					className="direct-accounting-entry-type"
+					items={[
+						{ value: "sale", label: "Продажа", disabled: Boolean(editingEntry) },
+						{ value: "receipt", label: "Приход", disabled: Boolean(editingEntry) },
+					]}
+					onChange={(kind) => {
+						setEntryKind(kind as EntryKind);
+						setFormError(null);
+						setSuccessMessage(null);
+					}}
+					role="group"
+					value={entryKind}
+				/>
 
 				<label className="field direct-accounting-name-field">
 					<span>Наименование</span>
@@ -213,20 +260,20 @@ export function DirectAccountingHome({ online }: { online: boolean }) {
 						value={draft.productName}
 					/>
 					<datalist id="direct-accounting-products">
-						{suggestionsData?.suggestions.map((name) => <option key={name} value={name} />)}
+						{suggestionsData?.suggestions.map((name) => <option aria-label={name} key={name} value={name} />)}
 					</datalist>
 				</label>
 
-				<div className="direct-accounting-fields">
+				<div className={entryKind === "receipt" ? "direct-accounting-fields receipt" : "direct-accounting-fields"}>
 					<label className="field">
 						<span>Дата</span>
 						<input
 							max={today}
 							onClick={(event) => event.currentTarget.showPicker?.()}
-							onChange={(event) => updateDraft({ soldOn: event.target.value })}
+							onChange={(event) => updateDraft({ occurredOn: event.target.value })}
 							required
 							type="date"
-							value={draft.soldOn}
+							value={draft.occurredOn}
 						/>
 					</label>
 					<label className="field">
@@ -238,7 +285,7 @@ export function DirectAccountingHome({ online }: { online: boolean }) {
 							value={draft.quantityKg}
 						/>
 					</label>
-					<label className="field">
+					{entryKind === "sale" ? <label className="field">
 						<span>Цена за кг, ₽</span>
 						<input
 							inputMode="decimal"
@@ -246,7 +293,7 @@ export function DirectAccountingHome({ online }: { online: boolean }) {
 							placeholder="0,00"
 							value={draft.unitPriceRubles}
 						/>
-					</label>
+					</label> : null}
 				</div>
 
 				{formError ? <p className="form-error">{formError}</p> : null}
@@ -254,12 +301,12 @@ export function DirectAccountingHome({ online }: { online: boolean }) {
 				{successMessage ? <p className="direct-accounting-success"><Check aria-hidden size={15} />{successMessage}</p> : null}
 
 				<div className="direct-accounting-form-actions">
-					{editingSale ? (
+					{editingEntry ? (
 						<button
-							aria-label="Удалить продажу"
+							aria-label={`Удалить ${entryKind === "sale" ? "продажу" : "приход"}`}
 							className="direct-accounting-delete"
 							disabled={!online || pending}
-							onClick={removeEditingSale}
+							onClick={removeEditingEntry}
 							type="button"
 						>
 							<Trash2 aria-hidden size={17} />
@@ -267,20 +314,20 @@ export function DirectAccountingHome({ online }: { online: boolean }) {
 						</button>
 					) : null}
 					<button className="primary-button direct-accounting-submit" disabled={!online || pending} type="submit">
-						{editingSale ? <Pencil aria-hidden size={16} /> : <Plus aria-hidden size={17} />}
-						{pending ? "Сохраняем…" : editingSale ? "Сохранить изменения" : "Добавить продажу"}
+						{editingEntry ? <Pencil aria-hidden size={16} /> : <Plus aria-hidden size={17} />}
+						{pending ? "Сохраняем…" : editingEntry ? "Сохранить изменения" : entryKind === "sale" ? "Добавить продажу" : "Добавить приход"}
 					</button>
 				</div>
 			</form>
 
-			<section className="direct-accounting-ledger" aria-label="Продажи за выбранный период">
+			<section className="direct-accounting-ledger" aria-label="Операции за выбранный период">
 				<div className="direct-accounting-ledger-heading">
-					<h2>{formatSalesPeriodTitle(listSelection, listRange)}</h2>
-					<span>{formatSaleCount(salesData?.sales.length ?? 0)}</span>
+					<h2>{formatEntriesPeriodTitle(listSelection, listRange)}</h2>
+					<span>{formatEntryCount(entriesData?.entries.length ?? 0)}</span>
 				</div>
 				<div className="direct-accounting-list-controls">
 					<SegmentedControl
-						ariaLabel="Период списка продаж"
+						ariaLabel="Период списка операций"
 						className="direct-accounting-list-period-control"
 						items={LIST_PERIOD_OPTIONS}
 						onChange={selectListPreset}
@@ -303,7 +350,7 @@ export function DirectAccountingHome({ online }: { online: boolean }) {
 						<Popover.Portal>
 							<Popover.Content
 								align="end"
-								aria-label="Выбор периода списка продаж"
+								aria-label="Выбор периода списка операций"
 								className="director-dashboard-period-picker direct-accounting-period-picker"
 								collisionPadding={12}
 								id="direct-accounting-list-period-picker"
@@ -311,7 +358,7 @@ export function DirectAccountingHome({ online }: { online: boolean }) {
 							>
 								<p className="direct-accounting-period-hint">Выберите один день или диапазон</p>
 								<DateRangePickerPanel
-									ariaLabel="Календарь списка продаж"
+									ariaLabel="Календарь списка операций"
 									dateFrom={customDateFrom}
 									dateTo={customDateTo}
 									error={customPeriodError}
@@ -331,23 +378,26 @@ export function DirectAccountingHome({ online }: { online: boolean }) {
 						</Popover.Portal>
 					</Popover.Root>
 				</div>
-				{salesLoading ? <p className="muted">Загрузка записей…</p> : null}
-				{salesError ? <p className="form-error">{salesError.message}</p> : null}
-				{salesData?.sales.length === 0 ? <p className="direct-accounting-empty">Продаж за выбранный период нет.</p> : null}
-				{salesData?.sales.length ? (
+				{entriesLoading ? <p className="muted">Загрузка записей…</p> : null}
+				{entriesError ? <p className="form-error">{entriesError.message}</p> : null}
+				{entriesData?.entries.length === 0 ? <p className="direct-accounting-empty">Операций за выбранный период нет.</p> : null}
+				{entriesData?.entries.length ? (
 					<div className="direct-accounting-ledger-columns" aria-hidden>
-						<span>Продажа</span>
-						<span>Сумма</span>
+						<span>Операция</span>
+						<span>Значение</span>
 					</div>
 				) : null}
 				<div className="direct-accounting-rows">
-					{salesData?.sales.map((sale) => (
-						<button className="direct-accounting-row" key={sale.id} onClick={() => beginEdit(sale)} type="button">
+					{entriesData?.entries.map((entry) => (
+						<button className={`direct-accounting-row ${entry.kind}`} key={`${entry.kind}-${entry.id}`} onClick={() => beginEdit(entry)} type="button">
 							<span className="direct-accounting-row-main">
-								<strong>{sale.productName}</strong>
-								<small>{formatDate(sale.soldOn)} · {formatQuantity(sale.quantityKg)} кг × {formatCompactMoneyCents(sale.unitPriceCents)} ₽</small>
+								<strong>{entry.productName}</strong>
+								<small>
+									{formatDate(entry.occurredOn)} · {entry.kind === "sale" ? "Продажа" : "Приход"} · {formatQuantity(entry.quantityKg)} кг
+									{entry.kind === "sale" ? ` × ${formatCompactMoneyCents(entry.unitPriceCents)} ₽` : ""}
+								</small>
 							</span>
-							<strong>{formatCompactMoneyCents(sale.totalCents)} ₽</strong>
+							<strong>{entry.kind === "sale" ? `${formatCompactMoneyCents(entry.totalCents)} ₽` : `+${formatQuantity(entry.quantityKg)} кг`}</strong>
 							<Pencil aria-hidden size={15} />
 						</button>
 					))}
@@ -357,43 +407,14 @@ export function DirectAccountingHome({ online }: { online: boolean }) {
 	);
 }
 
-export function parseSaleDraft(draft: SaleDraft, today: string): DirectAccountingSaleInput | string {
-	const productName = draft.productName.trim().replace(/\s+/g, " ");
-	if (!productName) return "Укажите наименование.";
-	if (!draft.soldOn) return "Укажите дату продажи.";
-	if (draft.soldOn > today) return "Дата продажи не может быть в будущем.";
-
-	const quantityKg = parseDecimal(draft.quantityKg, 3);
-	if (quantityKg === null || quantityKg <= 0) return "Укажите количество больше нуля, максимум 3 знака после запятой.";
-	const unitPriceCents = parseRublesToCents(draft.unitPriceRubles);
-	if (unitPriceCents === null || unitPriceCents <= 0) return "Укажите цену больше нуля, максимум 2 знака после запятой.";
-
-	return { productName, soldOn: draft.soldOn, quantityKg, unitPriceCents };
-}
-
-function parseDecimal(value: string, fractionDigits: number): number | null {
-	const normalized = value.trim().replace(",", ".");
-	if (!new RegExp(`^\\d+(?:\\.\\d{1,${fractionDigits}})?$`).test(normalized)) return null;
-	const parsed = Number(normalized);
-	return Number.isFinite(parsed) ? parsed : null;
-}
-
-function parseRublesToCents(value: string): number | null {
-	const normalized = value.trim().replace(",", ".");
-	if (!/^\d+(?:\.\d{1,2})?$/.test(normalized)) return null;
-	const [rubles = "0", kopecks = ""] = normalized.split(".");
-	const cents = Number(rubles) * 100 + Number(kopecks.padEnd(2, "0"));
-	return Number.isSafeInteger(cents) ? cents : null;
-}
-
 function centsToInput(cents: number): string {
 	const rubles = Math.floor(cents / 100);
 	const kopecks = cents % 100;
 	return kopecks ? `${rubles},${String(kopecks).padStart(2, "0")}` : String(rubles);
 }
 
-function emptyDraft(soldOn: string): SaleDraft {
-	return { productName: "", soldOn, quantityKg: "", unitPriceRubles: "" };
+function emptyDraft(occurredOn: string): DirectAccountingDraft {
+	return { productName: "", occurredOn, quantityKg: "", unitPriceRubles: "" };
 }
 
 function businessDateKey(date = new Date()): string {
@@ -405,16 +426,16 @@ function formatQuantity(value: number): string {
 	return QUANTITY_FORMATTER.format(value);
 }
 
-function formatSaleCount(count: number): string {
+function formatEntryCount(count: number): string {
 	const mod100 = count % 100;
 	const mod10 = count % 10;
 	const noun = mod100 >= 11 && mod100 <= 14
-		? "продаж"
+		? "операций"
 		: mod10 === 1
-			? "продажа"
+			? "операция"
 			: mod10 >= 2 && mod10 <= 4
-				? "продажи"
-				: "продаж";
+				? "операции"
+				: "операций";
 	return `${count} ${noun}`;
 }
 
@@ -437,15 +458,15 @@ function validateListRange(dateFrom: string, dateTo: string, today: string): str
 	return null;
 }
 
-function formatSalesPeriodTitle(selection: SalesListSelection, range: { dateFrom: string; dateTo: string }): string {
+function formatEntriesPeriodTitle(selection: EntriesListSelection, range: { dateFrom: string; dateTo: string }): string {
 	if (selection.mode === "preset") {
-		if (selection.period === "day") return "Продажи сегодня";
-		if (selection.period === "week") return "Продажи за 7 дней";
-		return "Продажи за 30 дней";
+		if (selection.period === "day") return "Операции сегодня";
+		if (selection.period === "week") return "Операции за 7 дней";
+		return "Операции за 30 дней";
 	}
 	return range.dateFrom === range.dateTo
-		? `Продажи за ${formatDate(range.dateFrom)}`
-		: `Продажи: ${formatDateRange(range.dateFrom, range.dateTo)}`;
+		? `Операции за ${formatDate(range.dateFrom)}`
+		: `Операции: ${formatDateRange(range.dateFrom, range.dateTo)}`;
 }
 
 function formatDateRange(dateFrom: string, dateTo: string): string {

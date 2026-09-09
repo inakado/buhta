@@ -19,6 +19,7 @@ const normalizedPrefix = prefix.toLocaleLowerCase("ru-RU");
 
 async function cleanup() {
 	await prisma.directAccountingSale.deleteMany({ where: { productNameNormalized: { startsWith: normalizedPrefix } } });
+	await prisma.directAccountingReceipt.deleteMany({ where: { productNameNormalized: { startsWith: normalizedPrefix } } });
 	const operations = await prisma.operation.findMany({
 		where: { actorUserId: actor.userId },
 		select: { id: true },
@@ -99,6 +100,60 @@ describe("DirectAccountingService real Postgres integration", () => {
 		expect(customStats.selection).toMatchObject({ quantityKg: 1.2, revenueCents: 120_000 });
 		expect(customStats.byProduct).toEqual([expect.objectContaining({ quantityKg: 1.2, revenueCents: 120_000 })]);
 		expect(await service.listSuggestions({ search: prefix })).toHaveLength(1);
+	});
+
+	it("records backdated receipts and calculates current and historical balances", async () => {
+		const receipt = await service.createReceipt(actor, {
+			productName: `${prefix} Кета расчетный счет`,
+			receivedOn: "2000-01-01",
+			quantityKg: 300,
+		}, "direct-accounting-receipt-create");
+		await service.createSale(actor, {
+			productName: `${prefix.toLocaleLowerCase("ru-RU")}   кета расчетный счет`,
+			soldOn: "2000-01-03",
+			quantityKg: 155,
+			unitPriceCents: 650_000,
+		}, "direct-accounting-receipt-sale");
+
+		const stats = await service.getStatistics({ dateFrom: "2000-01-03", dateTo: "2000-01-03" });
+		expect(stats.selection).toMatchObject({
+			quantityKg: 155,
+			receivedQuantityKg: 0,
+			balanceQuantityKg: 145,
+			revenueCents: 100_750_000,
+		});
+		expect(stats.byProduct).toEqual([
+			expect.objectContaining({
+				quantityKg: 155,
+				receivedQuantityKg: 0,
+				balanceQuantityKg: 145,
+			}),
+		]);
+		expect(await service.listEntries({ dateFrom: "2000-01-01", dateTo: "2000-01-03" })).toMatchObject([
+			{ kind: "sale", occurredOn: "2000-01-03", quantityKg: 155 },
+			{ kind: "receipt", occurredOn: "2000-01-01", quantityKg: 300 },
+		]);
+		expect(await service.listSuggestions({ search: `${prefix} Кета` })).toHaveLength(1);
+
+		const updated = await service.updateReceipt(actor, receipt.id, {
+			productName: `${prefix} Кета расчетный счет`,
+			receivedOn: "1999-12-31",
+			quantityKg: 250,
+		});
+		expect(updated).toMatchObject({ receivedOn: "1999-12-31", quantityKg: 250 });
+		expect((await service.getStatistics({ dateFrom: "2000-01-03", dateTo: "2000-01-03" })).selection.balanceQuantityKg).toBe(95);
+
+		await service.deleteReceipt(actor, receipt.id);
+		expect((await service.getStatistics({ dateFrom: "2000-01-03", dateTo: "2000-01-03" })).selection.balanceQuantityKg).toBe(-155);
+		const receiptAudit = await prisma.auditLog.findMany({
+			where: { actorUserId: actor.userId, entityId: receipt.id },
+			orderBy: { createdAt: "asc" },
+		});
+		expect(receiptAudit.map(({ action }) => action)).toEqual([
+			"direct_accounting.receipt.create",
+			"direct_accounting.receipt.update",
+			"direct_accounting.receipt.delete",
+		]);
 	});
 
 	it("rejects future dates in Vladivostok business time", async () => {

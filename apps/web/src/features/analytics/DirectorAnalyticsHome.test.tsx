@@ -113,14 +113,16 @@ const directAccountingResponse = {
 		dateFrom: "2026-09-08",
 		dateTo: "2026-09-08",
 		quantityKg: 0.8,
+		receivedQuantityKg: 2,
+		balanceQuantityKg: 1.2,
 		revenueCents: 120_000,
 	},
 	totals: {
-		day: { dateFrom: "2026-09-08", dateTo: "2026-09-08", quantityKg: 0.8, revenueCents: 120_000 },
-		week: { dateFrom: "2026-09-02", dateTo: "2026-09-08", quantityKg: 2, revenueCents: 240_000 },
-		month: { dateFrom: "2026-08-10", dateTo: "2026-09-08", quantityKg: 4, revenueCents: 480_000 },
+		day: { dateFrom: "2026-09-08", dateTo: "2026-09-08", quantityKg: 0.8, receivedQuantityKg: 2, balanceQuantityKg: 1.2, revenueCents: 120_000 },
+		week: { dateFrom: "2026-09-02", dateTo: "2026-09-08", quantityKg: 2, receivedQuantityKg: 3, balanceQuantityKg: 1.2, revenueCents: 240_000 },
+		month: { dateFrom: "2026-08-10", dateTo: "2026-09-08", quantityKg: 4, receivedQuantityKg: 5.2, balanceQuantityKg: 1.2, revenueCents: 480_000 },
 	},
-	byProduct: [{ productName: "Икра кеты", quantityKg: 0.8, revenueCents: 120_000 }],
+	byProduct: [{ productName: "Икра кеты", quantityKg: 0.8, receivedQuantityKg: 2, balanceQuantityKg: 1.2, revenueCents: 120_000 }],
 };
 
 function jsonResponse(body: unknown, status = 200) {

@@ -39,7 +39,7 @@
   - `distributor` — read-only товарные остатки распределителя из projection table;
   - `operations` — baseline operation/idempotency services;
   - `analytics` — read-only директорская аналитика денег, сырья и выпуска продукции;
-  - `direct-accounting` — независимые ручные продажи Директора, подсказки наименований и статистика по весу/выручке;
+  - `direct-accounting` — независимые ручные приходы и продажи Директора, вычисляемые остатки, подсказки наименований и статистика по весу/выручке;
   - `common/errors` — единый `AppError` и mapper в `{ error: { code, message, details } }`;
   - `health` — публичный health contract.
 - `packages/shared` содержит runtime contracts, которые нужны API и web:
@@ -51,7 +51,7 @@
   - production contracts для поступлений, балансов цеха и выпуска партии;
   - distributor contracts для read-only inventory summary и строк остатков;
   - analytics contracts для директорского read-only экрана денег, сырья, выпуска и простых chart datasets;
-  - direct-accounting contracts для изменяемых строк продажи, подсказок и статистики;
+  - direct-accounting contracts для изменяемых приходов/продаж, единого журнала, подсказок и статистики;
   - health constants.
 - Foundation data flow:
 

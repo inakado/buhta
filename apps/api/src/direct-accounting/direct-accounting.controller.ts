@@ -13,6 +13,8 @@ import {
 	UseGuards,
 } from "@nestjs/common";
 import {
+	DirectAccountingEntriesQuerySchema,
+	DirectAccountingReceiptInputSchema,
 	DirectAccountingSaleInputSchema,
 	DirectAccountingSalesQuerySchema,
 	DirectAccountingStatisticsQuerySchema,
@@ -37,6 +39,12 @@ export class DirectAccountingController {
 	async listSales(@Query() query: unknown) {
 		const parsed = parseInput(DirectAccountingSalesQuerySchema, query, "Проверьте выбранный период продаж");
 		return { sales: await this.service.listSales(parsed) };
+	}
+
+	@Get("entries")
+	async listEntries(@Query() query: unknown) {
+		const parsed = parseInput(DirectAccountingEntriesQuerySchema, query, "Проверьте выбранный период операций");
+		return { entries: await this.service.listEntries(parsed) };
 	}
 
 	@Get("suggestions")
@@ -87,6 +95,38 @@ export class DirectAccountingController {
 	async deleteSale(@CurrentActor() actor: Actor | undefined, @Param("saleId") saleId: string) {
 		await this.service.deleteSale(requireActor(actor), saleId);
 	}
+
+	@Post("receipts")
+	async createReceipt(
+		@CurrentActor() actor: Actor | undefined,
+		@Headers("idempotency-key") idempotencyKey: string | undefined,
+		@Body() body: unknown,
+	) {
+		return {
+			receipt: await this.service.createReceipt(
+				requireActor(actor),
+				parseReceiptInput(body),
+				requireIdempotencyKey(idempotencyKey),
+			),
+		};
+	}
+
+	@Put("receipts/:receiptId")
+	async updateReceipt(
+		@CurrentActor() actor: Actor | undefined,
+		@Param("receiptId") receiptId: string,
+		@Body() body: unknown,
+	) {
+		return {
+			receipt: await this.service.updateReceipt(requireActor(actor), receiptId, parseReceiptInput(body)),
+		};
+	}
+
+	@Delete("receipts/:receiptId")
+	@HttpCode(204)
+	async deleteReceipt(@CurrentActor() actor: Actor | undefined, @Param("receiptId") receiptId: string) {
+		await this.service.deleteReceipt(requireActor(actor), receiptId);
+	}
 }
 
 function requireActor(actor: Actor | undefined): Actor {
@@ -120,6 +160,24 @@ function parseSaleInput(value: unknown): z.infer<typeof DirectAccountingSaleInpu
 				: invalidField === "unitPriceCents"
 					? "Проверьте цену: она должна быть больше нуля, с точностью до копейки"
 					: "Проверьте данные продажи: наименование, дату, количество и цену";
+
+	throw new AppError("VALIDATION_ERROR", message, parsed.error.flatten());
+}
+
+function parseReceiptInput(value: unknown): z.infer<typeof DirectAccountingReceiptInputSchema> {
+	const parsed = DirectAccountingReceiptInputSchema.safeParse(value);
+	if (parsed.success) {
+		return parsed.data;
+	}
+
+	const invalidField = parsed.error.issues[0]?.path[0];
+	const message = invalidField === "productName"
+		? "Проверьте наименование: оно должно содержать от 1 до 120 символов"
+		: invalidField === "receivedOn"
+			? "Проверьте дату прихода"
+			: invalidField === "quantityKg"
+				? "Проверьте количество: оно должно быть больше нуля, с точностью до грамма"
+				: "Проверьте данные прихода: наименование, дату и количество";
 
 	throw new AppError("VALIDATION_ERROR", message, parsed.error.flatten());
 }

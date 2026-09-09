@@ -554,9 +554,18 @@ function DirectAccountingAnalytics() {
 			{data ? (
 				<>
 					<section className="direct-accounting-summary" aria-label="Итоги выбранного периода">
+						<div className={data.selection.balanceQuantityKg < 0 ? "negative" : ""}>
+							<span>Остаток на конец периода</span>
+							<strong>{formatQuantity(data.selection.balanceQuantityKg)} кг</strong>
+							{data.selection.balanceQuantityKg < 0 ? <small>Расхождение</small> : null}
+						</div>
 						<div>
 							<span>Выручка</span>
 							<strong>{formatRubles(data.selection.revenueCents)}</strong>
+						</div>
+						<div>
+							<span>Приход за период</span>
+							<strong>{formatQuantity(data.selection.receivedQuantityKg)} кг</strong>
 						</div>
 						<div>
 							<span>Продано</span>
@@ -566,17 +575,21 @@ function DirectAccountingAnalytics() {
 					<div className="direct-accounting-product-stats">
 						<div className="direct-accounting-product-stats-head">
 							<span>Наименование</span>
-							<span>Продано</span>
-							<span>Выручка</span>
+							<span>Остаток</span>
 						</div>
 						{data.byProduct.map((row) => (
 							<div className="direct-accounting-product-stat" key={row.productName.toLocaleLowerCase("ru-RU")}>
-								<strong>{row.productName}</strong>
-								<span>{formatQuantity(row.quantityKg)} кг</span>
-								<strong>{formatRubles(row.revenueCents)}</strong>
+								<div className="direct-accounting-product-stat-main">
+									<strong>{row.productName}</strong>
+									<small>Приход {formatQuantity(row.receivedQuantityKg)} кг · Продано {formatQuantity(row.quantityKg)} кг · {formatRubles(row.revenueCents)}</small>
+								</div>
+								<div className={row.balanceQuantityKg < 0 ? "direct-accounting-balance negative" : "direct-accounting-balance"}>
+									<strong>{formatQuantity(row.balanceQuantityKg)} кг</strong>
+									{row.balanceQuantityKg < 0 ? <small>Расхождение</small> : null}
+								</div>
 							</div>
 						))}
-						{data.byProduct.length === 0 ? <p className="director-dashboard-empty">Нет продаж за выбранный период</p> : null}
+						{data.byProduct.length === 0 ? <p className="director-dashboard-empty">Нет операций и остатков</p> : null}
 					</div>
 				</>
 			) : null}

@@ -1,4 +1,8 @@
-import type { DirectAccountingSale } from "@buhta/shared";
+import type {
+	DirectAccountingEntry,
+	DirectAccountingReceipt,
+	DirectAccountingSale,
+} from "@buhta/shared";
 import { Prisma } from "../generated/prisma/client";
 
 type DirectAccountingSaleRecord = {
@@ -7,6 +11,15 @@ type DirectAccountingSaleRecord = {
 	soldOn: Date;
 	quantityKg: Prisma.Decimal | number | string;
 	unitPriceCents: number;
+	createdAt: Date;
+	updatedAt: Date;
+};
+
+type DirectAccountingReceiptRecord = {
+	id: string;
+	productName: string;
+	receivedOn: Date;
+	quantityKg: Prisma.Decimal | number | string;
 	createdAt: Date;
 	updatedAt: Date;
 };
@@ -21,6 +34,45 @@ export function mapDirectAccountingSale(record: DirectAccountingSaleRecord): Dir
 		totalCents: calculateDirectAccountingTotalCents(record.quantityKg, record.unitPriceCents),
 		createdAt: record.createdAt.toISOString(),
 		updatedAt: record.updatedAt.toISOString(),
+	};
+}
+
+export function mapDirectAccountingReceipt(record: DirectAccountingReceiptRecord): DirectAccountingReceipt {
+	return {
+		id: record.id,
+		productName: record.productName,
+		receivedOn: record.receivedOn.toISOString().slice(0, 10),
+		quantityKg: Number(record.quantityKg),
+		createdAt: record.createdAt.toISOString(),
+		updatedAt: record.updatedAt.toISOString(),
+	};
+}
+
+export function mapDirectAccountingSaleEntry(record: DirectAccountingSaleRecord): DirectAccountingEntry {
+	const sale = mapDirectAccountingSale(record);
+	return {
+		kind: "sale",
+		id: sale.id,
+		productName: sale.productName,
+		occurredOn: sale.soldOn,
+		quantityKg: sale.quantityKg,
+		unitPriceCents: sale.unitPriceCents,
+		totalCents: sale.totalCents,
+		createdAt: sale.createdAt,
+		updatedAt: sale.updatedAt,
+	};
+}
+
+export function mapDirectAccountingReceiptEntry(record: DirectAccountingReceiptRecord): DirectAccountingEntry {
+	const receipt = mapDirectAccountingReceipt(record);
+	return {
+		kind: "receipt",
+		id: receipt.id,
+		productName: receipt.productName,
+		occurredOn: receipt.receivedOn,
+		quantityKg: receipt.quantityKg,
+		createdAt: receipt.createdAt,
+		updatedAt: receipt.updatedAt,
 	};
 }
 

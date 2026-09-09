@@ -108,6 +108,21 @@ model DirectAccountingSale {
   @@map("direct_accounting_sale")
 }
 
+model DirectAccountingReceipt {
+  id                    String    @id @default(cuid())
+  productName           String
+  productNameNormalized String
+  receivedOn            DateTime  @db.Date
+  quantityKg            Decimal   @db.Decimal(12, 3)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  deletedAt             DateTime?
+
+  @@index([receivedOn, deletedAt])
+  @@index([productNameNormalized, receivedOn])
+  @@map("direct_accounting_receipt")
+}
+
 model Operation {
   id                 String              @id @default(cuid())
   type               String

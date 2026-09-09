@@ -34,6 +34,10 @@ import type {
 	DirectAccountingSaleResponse,
 	DirectAccountingSalesQuery,
 	DirectAccountingSalesResponse,
+	DirectAccountingEntriesQuery,
+	DirectAccountingEntriesResponse,
+	DirectAccountingReceiptInput,
+	DirectAccountingReceiptResponse,
 	DirectAccountingStatisticsQuery,
 	DirectAccountingStatisticsResponse,
 	DirectAccountingSuggestionsResponse,
@@ -270,6 +274,10 @@ export async function listDirectAccountingSales(query: DirectAccountingSalesQuer
 	return fetchJson<DirectAccountingSalesResponse>(`/direct-accounting/sales${buildQueryString(query)}`);
 }
 
+export async function listDirectAccountingEntries(query: DirectAccountingEntriesQuery): Promise<DirectAccountingEntriesResponse> {
+	return fetchJson<DirectAccountingEntriesResponse>(`/direct-accounting/entries${buildQueryString(query)}`);
+}
+
 export async function listDirectAccountingSuggestions(search = ""): Promise<DirectAccountingSuggestionsResponse> {
 	const query = search.trim() ? `?search=${encodeURIComponent(search.trim())}` : "";
 	return fetchJson<DirectAccountingSuggestionsResponse>(`/direct-accounting/suggestions${query}`);
@@ -299,6 +307,26 @@ export async function updateDirectAccountingSale(
 
 export async function deleteDirectAccountingSale(saleId: string): Promise<void> {
 	await fetchJson<null>(`/direct-accounting/sales/${saleId}`, { method: "DELETE" });
+}
+
+export async function createDirectAccountingReceipt(
+	input: DirectAccountingReceiptInput,
+): Promise<DirectAccountingReceiptResponse> {
+	return fetchJson<DirectAccountingReceiptResponse>("/direct-accounting/receipts", idempotentJsonPost(input));
+}
+
+export async function updateDirectAccountingReceipt(
+	receiptId: string,
+	input: DirectAccountingReceiptInput,
+): Promise<DirectAccountingReceiptResponse> {
+	return fetchJson<DirectAccountingReceiptResponse>(`/direct-accounting/receipts/${receiptId}`, {
+		method: "PUT",
+		body: JSON.stringify(input),
+	});
+}
+
+export async function deleteDirectAccountingReceipt(receiptId: string): Promise<void> {
+	await fetchJson<null>(`/direct-accounting/receipts/${receiptId}`, { method: "DELETE" });
 }
 
 export async function listRawMaterialTypes(): Promise<RawMaterialTypesListResponse> {

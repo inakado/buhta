@@ -67,4 +67,40 @@ describe("DirectAccountingController", () => {
 		})).rejects.toThrow(AppError);
 		expect(service.createSale).not.toHaveBeenCalled();
 	});
+
+	it("validates and creates a backdated receipt", async () => {
+		const receipt = {
+			id: "receipt1",
+			productName: "Кета расчетный счет",
+			receivedOn: "2026-08-15",
+			quantityKg: 300,
+			createdAt: new Date(0).toISOString(),
+			updatedAt: new Date(0).toISOString(),
+		};
+		const service = { createReceipt: vi.fn().mockResolvedValue(receipt) } as unknown as DirectAccountingService;
+		const controller = new DirectAccountingController(service);
+
+		await expect(controller.createReceipt(actor, "receipt-request-1", {
+			productName: " Кета расчетный счет ",
+			receivedOn: "2026-08-15",
+			quantityKg: 300,
+		})).resolves.toEqual({ receipt });
+		expect(service.createReceipt).toHaveBeenCalledWith(actor, {
+			productName: "Кета расчетный счет",
+			receivedOn: "2026-08-15",
+			quantityKg: 300,
+		}, "receipt-request-1");
+	});
+
+	it("returns a Russian field error for an invalid receipt", async () => {
+		const service = { createReceipt: vi.fn() } as unknown as DirectAccountingService;
+		const controller = new DirectAccountingController(service);
+
+		await expect(controller.createReceipt(actor, "receipt-request-2", {
+			productName: "Кета",
+			receivedOn: "2026-08-15",
+			quantityKg: 0,
+		})).rejects.toThrow("Проверьте количество");
+		expect(service.createReceipt).not.toHaveBeenCalled();
+	});
 });

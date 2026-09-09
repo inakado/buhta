@@ -1,8 +1,12 @@
 import { Injectable } from "@nestjs/common";
 import type {
 	DirectAccountingDetailPeriod,
+	DirectAccountingEntriesQuery,
+	DirectAccountingEntry,
 	DirectAccountingPeriodTotal,
 	DirectAccountingProductStatistics,
+	DirectAccountingReceipt,
+	DirectAccountingReceiptInput,
 	DirectAccountingSale,
 	DirectAccountingSaleInput,
 	DirectAccountingSalesQuery,
@@ -17,7 +21,10 @@ import type { Actor } from "../policy/actor";
 import { prisma } from "../prisma/client";
 import {
 	calculateDirectAccountingTotalCents,
+	mapDirectAccountingReceipt,
+	mapDirectAccountingReceiptEntry,
 	mapDirectAccountingSale,
+	mapDirectAccountingSaleEntry,
 } from "./direct-accounting.mapper";
 
 const BUSINESS_TIMEZONE = "Asia/Vladivostok" as const;
@@ -28,19 +35,13 @@ const SUGGESTION_SCAN_LIMIT = 200;
 const SUGGESTION_LIMIT = 10;
 
 type SaleRecord = Prisma.DirectAccountingSaleGetPayload<Record<string, never>>;
+type ReceiptRecord = Prisma.DirectAccountingReceiptGetPayload<Record<string, never>>;
 type DateRange = { dateFrom: string; dateTo: string; from: Date; to: Date };
 
 @Injectable()
 export class DirectAccountingService {
 	async listSales(query: DirectAccountingSalesQuery): Promise<DirectAccountingSale[]> {
-		let range: DateRange;
-		if (query.date) {
-			range = rangeFromDates(parseDateOnly(query.date), parseDateOnly(query.date));
-		} else if (query.dateFrom && query.dateTo) {
-			range = buildCustomRange(query.dateFrom, query.dateTo);
-		} else {
-			throw new AppError("VALIDATION_ERROR", "Укажите дату или диапазон продаж");
-		}
+		const range = listRange(query);
 		const records = await prisma.directAccountingSale.findMany({
 			where: { soldOn: { gte: range.from, lte: range.to }, deletedAt: null },
 			orderBy: [{ soldOn: "desc" }, { createdAt: "desc" }, { id: "desc" }],
@@ -49,17 +50,50 @@ export class DirectAccountingService {
 		return records.map(mapDirectAccountingSale);
 	}
 
+	async listEntries(query: DirectAccountingEntriesQuery): Promise<DirectAccountingEntry[]> {
+		const range = listRange(query);
+		const [sales, receipts] = await Promise.all([
+			prisma.directAccountingSale.findMany({
+				where: { soldOn: { gte: range.from, lte: range.to }, deletedAt: null },
+			}),
+			prisma.directAccountingReceipt.findMany({
+				where: { receivedOn: { gte: range.from, lte: range.to }, deletedAt: null },
+			}),
+		]);
+
+		return [
+			...sales.map(mapDirectAccountingSaleEntry),
+			...receipts.map(mapDirectAccountingReceiptEntry),
+		].sort((left, right) =>
+			right.occurredOn.localeCompare(left.occurredOn)
+			|| right.createdAt.localeCompare(left.createdAt)
+			|| right.id.localeCompare(left.id),
+		);
+	}
+
 	async listSuggestions(query: DirectAccountingSuggestionsQuery): Promise<string[]> {
 		const normalizedSearch = normalizeProductName(query.search ?? "");
-		const records = await prisma.directAccountingSale.findMany({
-			where: {
-				deletedAt: null,
-				...(normalizedSearch ? { productNameNormalized: { startsWith: normalizedSearch } } : {}),
-			},
-			select: { id: true, productName: true, productNameNormalized: true },
-			orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
-			take: SUGGESTION_SCAN_LIMIT,
-		});
+		const where = {
+			deletedAt: null,
+			...(normalizedSearch ? { productNameNormalized: { startsWith: normalizedSearch } } : {}),
+		};
+		const [sales, receipts] = await Promise.all([
+			prisma.directAccountingSale.findMany({
+				where,
+				select: { id: true, productName: true, productNameNormalized: true, updatedAt: true },
+				orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+				take: SUGGESTION_SCAN_LIMIT,
+			}),
+			prisma.directAccountingReceipt.findMany({
+				where,
+				select: { id: true, productName: true, productNameNormalized: true, updatedAt: true },
+				orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+				take: SUGGESTION_SCAN_LIMIT,
+			}),
+		]);
+		const records = [...sales, ...receipts].sort((left, right) =>
+			right.updatedAt.getTime() - left.updatedAt.getTime() || right.id.localeCompare(left.id),
+		);
 		const seen = new Set<string>();
 		const suggestions: string[] = [];
 
@@ -88,7 +122,7 @@ export class DirectAccountingService {
 		try {
 			const record = await prisma.$transaction(async (tx) => {
 				const sale = await tx.directAccountingSale.create({ data: saleData(normalized) });
-				await createAuditOperation(tx, actor, "direct_accounting.sale.create", sale, {
+				await createAuditOperation(tx, actor, "direct_accounting.sale.create", sale.id, {
 					before: null,
 					after: saleSnapshot(sale),
 				}, idempotencyKey);
@@ -116,7 +150,7 @@ export class DirectAccountingService {
 					where: { id: saleId },
 					data: saleData(normalized),
 				});
-				await createAuditOperation(tx, actor, "direct_accounting.sale.update", after, {
+				await createAuditOperation(tx, actor, "direct_accounting.sale.update", after.id, {
 					before: saleSnapshot(before),
 					after: saleSnapshot(after),
 				});
@@ -145,9 +179,86 @@ export class DirectAccountingService {
 					where: { id: saleId },
 					data: { deletedAt },
 				});
-				await createAuditOperation(tx, actor, "direct_accounting.sale.delete", after, {
+				await createAuditOperation(tx, actor, "direct_accounting.sale.delete", after.id, {
 					before: saleSnapshot(before),
 					after: { ...saleSnapshot(after), deletedAt: deletedAt.toISOString() },
+				});
+			});
+		} catch (error) {
+			throw mapWriteError(error);
+		}
+	}
+
+	async createReceipt(
+		actor: Actor,
+		input: DirectAccountingReceiptInput,
+		idempotencyKey: string,
+	): Promise<DirectAccountingReceipt> {
+		this.assertNotFutureDate(input.receivedOn);
+		const normalized = normalizeReceiptInput(input);
+
+		try {
+			const record = await prisma.$transaction(async (tx) => {
+				const receipt = await tx.directAccountingReceipt.create({ data: receiptData(normalized) });
+				await createAuditOperation(tx, actor, "direct_accounting.receipt.create", receipt.id, {
+					before: null,
+					after: receiptSnapshot(receipt),
+				}, idempotencyKey);
+				return receipt;
+			});
+
+			return mapDirectAccountingReceipt(record);
+		} catch (error) {
+			throw mapWriteError(error);
+		}
+	}
+
+	async updateReceipt(
+		actor: Actor,
+		receiptId: string,
+		input: DirectAccountingReceiptInput,
+	): Promise<DirectAccountingReceipt> {
+		this.assertNotFutureDate(input.receivedOn);
+		const normalized = normalizeReceiptInput(input);
+
+		try {
+			const record = await prisma.$transaction(async (tx) => {
+				const before = await tx.directAccountingReceipt.findFirst({ where: { id: receiptId, deletedAt: null } });
+				if (!before) {
+					throw new AppError("NOT_FOUND", "Приход прямого учета не найден", { id: receiptId });
+				}
+				const after = await tx.directAccountingReceipt.update({
+					where: { id: receiptId },
+					data: receiptData(normalized),
+				});
+				await createAuditOperation(tx, actor, "direct_accounting.receipt.update", after.id, {
+					before: receiptSnapshot(before),
+					after: receiptSnapshot(after),
+				});
+				return after;
+			});
+
+			return mapDirectAccountingReceipt(record);
+		} catch (error) {
+			throw mapWriteError(error);
+		}
+	}
+
+	async deleteReceipt(actor: Actor, receiptId: string): Promise<void> {
+		try {
+			await prisma.$transaction(async (tx) => {
+				const before = await tx.directAccountingReceipt.findUnique({ where: { id: receiptId } });
+				if (!before) {
+					throw new AppError("NOT_FOUND", "Приход прямого учета не найден", { id: receiptId });
+				}
+				if (before.deletedAt) {
+					return;
+				}
+				const deletedAt = new Date();
+				const after = await tx.directAccountingReceipt.update({ where: { id: receiptId }, data: { deletedAt } });
+				await createAuditOperation(tx, actor, "direct_accounting.receipt.delete", after.id, {
+					before: receiptSnapshot(before),
+					after: { ...receiptSnapshot(after), deletedAt: deletedAt.toISOString() },
 				});
 			});
 		} catch (error) {
@@ -167,14 +278,19 @@ export class DirectAccountingService {
 			? buildCustomRange(query.dateFrom, query.dateTo)
 			: ranges[detailPeriod];
 		this.assertNotFutureDate(selectedRange.dateTo, now);
-		const overallFrom = [ranges.day.from, ranges.week.from, ranges.month.from, selectedRange.from]
-			.reduce((earliest, current) => current < earliest ? current : earliest);
 		const overallTo = [ranges.day.to, ranges.week.to, ranges.month.to, selectedRange.to]
 			.reduce((latest, current) => current > latest ? current : latest);
-		const records = await prisma.directAccountingSale.findMany({
-			where: { soldOn: { gte: overallFrom, lte: overallTo }, deletedAt: null },
-			orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
-		});
+		// ponystack: aggregate the small direct ledger in memory; move this read model to SQL if volume grows.
+		const [sales, receipts] = await Promise.all([
+			prisma.directAccountingSale.findMany({
+				where: { soldOn: { lte: overallTo }, deletedAt: null },
+				orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+			}),
+			prisma.directAccountingReceipt.findMany({
+				where: { receivedOn: { lte: overallTo }, deletedAt: null },
+				orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+			}),
+		]);
 
 		return {
 			filters: {
@@ -184,24 +300,35 @@ export class DirectAccountingService {
 				dateTo: selectedRange.dateTo,
 				timezone: BUSINESS_TIMEZONE,
 			},
-			selection: buildPeriodTotal(records, selectedRange),
+			selection: buildPeriodTotal(sales, receipts, selectedRange),
 			totals: {
-				day: buildPeriodTotal(records, ranges.day),
-				week: buildPeriodTotal(records, ranges.week),
-				month: buildPeriodTotal(records, ranges.month),
+				day: buildPeriodTotal(sales, receipts, ranges.day),
+				week: buildPeriodTotal(sales, receipts, ranges.week),
+				month: buildPeriodTotal(sales, receipts, ranges.month),
 			},
-			byProduct: buildProductStatistics(records, selectedRange),
+			byProduct: buildProductStatistics(sales, receipts, selectedRange),
 		};
 	}
 
-	private assertNotFutureDate(soldOn: string, now = new Date()): void {
-		if (soldOn > businessDateKey(now)) {
-			throw new AppError("VALIDATION_ERROR", "Дата продажи не может быть в будущем");
+	private assertNotFutureDate(occurredOn: string, now = new Date()): void {
+		if (occurredOn > businessDateKey(now)) {
+			throw new AppError("VALIDATION_ERROR", "Дата операции не может быть в будущем");
 		}
 	}
 }
 
 function normalizeSaleInput(input: DirectAccountingSaleInput): DirectAccountingSaleInput & {
+	productNameNormalized: string;
+} {
+	const productName = input.productName.trim().replace(/\s+/g, " ");
+	return {
+		...input,
+		productName,
+		productNameNormalized: normalizeProductName(productName),
+	};
+}
+
+function normalizeReceiptInput(input: DirectAccountingReceiptInput): DirectAccountingReceiptInput & {
 	productNameNormalized: string;
 } {
 	const productName = input.productName.trim().replace(/\s+/g, " ");
@@ -237,11 +364,37 @@ function saleSnapshot(record: SaleRecord) {
 	};
 }
 
+function receiptData(input: DirectAccountingReceiptInput & { productNameNormalized: string }) {
+	return {
+		productName: input.productName,
+		productNameNormalized: input.productNameNormalized,
+		receivedOn: parseDateOnly(input.receivedOn),
+		quantityKg: input.quantityKg,
+	};
+}
+
+function receiptSnapshot(record: ReceiptRecord) {
+	const receipt = mapDirectAccountingReceipt(record);
+	return {
+		productName: receipt.productName,
+		receivedOn: receipt.receivedOn,
+		quantityKg: receipt.quantityKg,
+	};
+}
+
+type DirectAccountingWriteOperation =
+	| "direct_accounting.sale.create"
+	| "direct_accounting.sale.update"
+	| "direct_accounting.sale.delete"
+	| "direct_accounting.receipt.create"
+	| "direct_accounting.receipt.update"
+	| "direct_accounting.receipt.delete";
+
 async function createAuditOperation(
 	tx: Prisma.TransactionClient,
 	actor: Actor,
-	type: "direct_accounting.sale.create" | "direct_accounting.sale.update" | "direct_accounting.sale.delete",
-	sale: SaleRecord,
+	type: DirectAccountingWriteOperation,
+	entityId: string,
 	details: Prisma.InputJsonValue,
 	idempotencyKey?: string,
 ) {
@@ -258,58 +411,121 @@ async function createAuditOperation(
 			operationId: operation.id,
 			actorUserId: actor.userId,
 			action: type,
-			entityType: "direct_accounting_sale",
-			entityId: sale.id,
+			entityType: type.includes(".receipt.") ? "direct_accounting_receipt" : "direct_accounting_sale",
+			entityId,
 			details,
 		},
 	});
 }
 
-function buildPeriodTotal(records: SaleRecord[], range: DateRange): DirectAccountingPeriodTotal {
-	let quantityKg = 0;
+function buildPeriodTotal(
+	sales: SaleRecord[],
+	receipts: ReceiptRecord[],
+	range: DateRange,
+): DirectAccountingPeriodTotal {
+	let soldQuantityKg = 0;
+	let receivedQuantityKg = 0;
+	let balanceQuantityKg = 0;
 	let revenueCents = 0;
-	for (const record of records) {
-		if (!isInRange(record.soldOn, range)) {
-			continue;
+	for (const sale of sales) {
+		if (sale.soldOn <= range.to) {
+			balanceQuantityKg -= Number(sale.quantityKg);
 		}
-		quantityKg += Number(record.quantityKg);
-		revenueCents = addRevenueCents(
-			revenueCents,
-			calculateDirectAccountingTotalCents(record.quantityKg, record.unitPriceCents),
-		);
+		if (isInRange(sale.soldOn, range)) {
+			soldQuantityKg += Number(sale.quantityKg);
+			revenueCents = addRevenueCents(
+				revenueCents,
+				calculateDirectAccountingTotalCents(sale.quantityKg, sale.unitPriceCents),
+			);
+		}
+	}
+	for (const receipt of receipts) {
+		if (receipt.receivedOn <= range.to) {
+			balanceQuantityKg += Number(receipt.quantityKg);
+		}
+		if (isInRange(receipt.receivedOn, range)) {
+			receivedQuantityKg += Number(receipt.quantityKg);
+		}
 	}
 
-	return { dateFrom: range.dateFrom, dateTo: range.dateTo, quantityKg: roundQuantityKg(quantityKg), revenueCents };
+	return {
+		dateFrom: range.dateFrom,
+		dateTo: range.dateTo,
+		quantityKg: roundQuantityKg(soldQuantityKg),
+		receivedQuantityKg: roundQuantityKg(receivedQuantityKg),
+		balanceQuantityKg: roundQuantityKg(balanceQuantityKg),
+		revenueCents,
+	};
 }
 
-function buildProductStatistics(records: SaleRecord[], range: DateRange): DirectAccountingProductStatistics[] {
-	const rows = new Map<string, DirectAccountingProductStatistics>();
-	for (const record of records) {
-		if (!isInRange(record.soldOn, range)) {
-			continue;
-		}
-		const existing = rows.get(record.productNameNormalized);
-		if (existing) {
-			existing.quantityKg += Number(record.quantityKg);
-			existing.revenueCents = addRevenueCents(
-				existing.revenueCents,
-				calculateDirectAccountingTotalCents(record.quantityKg, record.unitPriceCents),
+type ProductStatisticsAccumulator = DirectAccountingProductStatistics & { lastUpdatedAt: Date };
+
+function buildProductStatistics(
+	sales: SaleRecord[],
+	receipts: ReceiptRecord[],
+	range: DateRange,
+): DirectAccountingProductStatistics[] {
+	const rows = new Map<string, ProductStatisticsAccumulator>();
+	for (const sale of sales) {
+		if (sale.soldOn > range.to) continue;
+		const row = productStatisticsRow(rows, sale.productNameNormalized, sale.productName, sale.updatedAt);
+		row.balanceQuantityKg -= Number(sale.quantityKg);
+		if (isInRange(sale.soldOn, range)) {
+			row.quantityKg += Number(sale.quantityKg);
+			row.revenueCents = addRevenueCents(
+				row.revenueCents,
+				calculateDirectAccountingTotalCents(sale.quantityKg, sale.unitPriceCents),
 			);
-			continue;
 		}
-		rows.set(record.productNameNormalized, {
-			productName: record.productName,
-			quantityKg: Number(record.quantityKg),
-			revenueCents: calculateDirectAccountingTotalCents(record.quantityKg, record.unitPriceCents),
-		});
+	}
+	for (const receipt of receipts) {
+		if (receipt.receivedOn > range.to) continue;
+		const row = productStatisticsRow(rows, receipt.productNameNormalized, receipt.productName, receipt.updatedAt);
+		row.balanceQuantityKg += Number(receipt.quantityKg);
+		if (isInRange(receipt.receivedOn, range)) {
+			row.receivedQuantityKg += Number(receipt.quantityKg);
+		}
 	}
 
-	return [...rows.values()].map((row) => ({
-		...row,
-		quantityKg: roundQuantityKg(row.quantityKg),
-	})).sort((left, right) =>
-		right.revenueCents - left.revenueCents || left.productName.localeCompare(right.productName, "ru"),
-	);
+	return [...rows.values()]
+		.filter((row) => row.quantityKg !== 0 || row.receivedQuantityKg !== 0 || row.balanceQuantityKg !== 0)
+		.map(({ lastUpdatedAt: _, ...row }) => ({
+			...row,
+			quantityKg: roundQuantityKg(row.quantityKg),
+			receivedQuantityKg: roundQuantityKg(row.receivedQuantityKg),
+			balanceQuantityKg: roundQuantityKg(row.balanceQuantityKg),
+		}))
+		.sort((left, right) =>
+			right.balanceQuantityKg - left.balanceQuantityKg
+			|| right.revenueCents - left.revenueCents
+			|| left.productName.localeCompare(right.productName, "ru"),
+		);
+}
+
+function productStatisticsRow(
+	rows: Map<string, ProductStatisticsAccumulator>,
+	normalizedName: string,
+	productName: string,
+	updatedAt: Date,
+): ProductStatisticsAccumulator {
+	const existing = rows.get(normalizedName);
+	if (existing) {
+		if (updatedAt > existing.lastUpdatedAt) {
+			existing.productName = productName;
+			existing.lastUpdatedAt = updatedAt;
+		}
+		return existing;
+	}
+	const created = {
+		productName,
+		quantityKg: 0,
+		receivedQuantityKg: 0,
+		balanceQuantityKg: 0,
+		revenueCents: 0,
+		lastUpdatedAt: updatedAt,
+	};
+	rows.set(normalizedName, created);
+	return created;
 }
 
 function roundQuantityKg(value: number): number {
@@ -342,6 +558,16 @@ function buildCustomRange(dateFrom: string, dateTo: string): DateRange {
 		throw new AppError("VALIDATION_ERROR", "Период должен быть от 1 до 366 дней");
 	}
 	return rangeFromDates(from, to);
+}
+
+function listRange(query: DirectAccountingEntriesQuery): DateRange {
+	if (query.date) {
+		return rangeFromDates(parseDateOnly(query.date), parseDateOnly(query.date));
+	}
+	if (query.dateFrom && query.dateTo) {
+		return buildCustomRange(query.dateFrom, query.dateTo);
+	}
+	throw new AppError("VALIDATION_ERROR", "Укажите дату или диапазон операций");
 }
 
 function rangeFromDates(from: Date, to: Date): DateRange {
