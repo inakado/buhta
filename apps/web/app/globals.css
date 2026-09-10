@@ -1671,6 +1671,8 @@ input[type="search"]::-webkit-search-decoration {
 
 	.director-shell .direct-accounting-entry-type {
 		width: min(100%, 810px);
+		min-height: 54px;
+		flex: 0 0 auto;
 		border-radius: 10px;
 		padding: 0;
 		overflow: hidden;
