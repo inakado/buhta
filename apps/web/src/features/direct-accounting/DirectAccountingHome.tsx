@@ -264,6 +264,11 @@ export function DirectAccountingHome({ online }: { online: boolean }) {
 		? Math.round(parsedSaleDraft.quantityKg * parsedSaleDraft.unitPriceCents)
 		: null;
 	const visibleEntries = entriesData?.entries.filter((entry) => entry.kind === entryKind) ?? [];
+	const ledgerTotal = visibleEntries.reduce((total, entry) => {
+		if (entry.kind === "sale") return total + entry.totalCents;
+		if (entry.kind === "receipt") return total + entry.quantityKg;
+		return total + entry.amountCents;
+	}, 0);
 	const pending = saveMutation.isPending || deleteMutation.isPending;
 	const mutationError = saveMutation.error ?? deleteMutation.error;
 
@@ -293,21 +298,22 @@ export function DirectAccountingHome({ online }: { online: boolean }) {
 				value={entryKind}
 			/>
 
-			<form className="direct-accounting-form" onSubmit={submit} ref={formRef}>
-				<div className="direct-accounting-form-heading">
-					<div>
-						<span>{formatEntryFormTitle(entryKind, Boolean(editingEntry))}</span>
-						{draftTotal !== null ? <strong>{formatCompactMoneyCents(draftTotal)} ₽</strong> : null}
+			<div className="direct-accounting-workspace">
+				<form className="direct-accounting-form" onSubmit={submit} ref={formRef}>
+					<div className="direct-accounting-form-heading">
+						<div className="direct-accounting-form-title">
+							<h2>{formatEntryFormTitle(entryKind, Boolean(editingEntry))}</h2>
+							{draftTotal !== null ? <strong>{formatCompactMoneyCents(draftTotal)} ₽</strong> : null}
+						</div>
+						{editingEntry ? (
+							<button className="direct-accounting-reset" onClick={cancelEdit} type="button">
+								<RotateCcw aria-hidden size={15} />
+								Отмена
+							</button>
+						) : null}
 					</div>
-					{editingEntry ? (
-						<button className="direct-accounting-reset" onClick={cancelEdit} type="button">
-							<RotateCcw aria-hidden size={15} />
-							Отмена
-						</button>
-					) : null}
-				</div>
 
-				<label className="field direct-accounting-name-field">
+					<label className="field direct-accounting-name-field">
 					<span>{entryKind === "transfer" ? "Кому / комментарий" : "Наименование"}</span>
 					<input
 						autoComplete="off"
@@ -321,9 +327,9 @@ export function DirectAccountingHome({ online }: { online: boolean }) {
 					<datalist id="direct-accounting-products">
 						{suggestionsData?.suggestions.map((name) => <option aria-label={name} key={name} value={name} />)}
 					</datalist>
-				</label>
+					</label>
 
-				<div className={entryKind === "sale" ? "direct-accounting-fields" : "direct-accounting-fields compact"}>
+					<div className={entryKind === "sale" ? "direct-accounting-fields" : "direct-accounting-fields compact"}>
 					<label className="field">
 						<span>Дата</span>
 						<span className="direct-accounting-date-control">
@@ -365,13 +371,20 @@ export function DirectAccountingHome({ online }: { online: boolean }) {
 							value={draft.amountRubles}
 						/>
 					</label> : null}
-				</div>
+					</div>
 
-				{formError ? <p className="form-error">{formError}</p> : null}
-				{mutationError ? <p className="form-error">{mutationError.message}</p> : null}
-				{successMessage ? <p className="direct-accounting-success"><Check aria-hidden size={15} />{successMessage}</p> : null}
+					{draftTotal !== null ? (
+						<div className="direct-accounting-total">
+							<span>Итого</span>
+							<strong>{formatCompactMoneyCents(draftTotal)} ₽</strong>
+						</div>
+					) : null}
 
-				<div className="direct-accounting-form-actions">
+					{formError ? <p className="form-error">{formError}</p> : null}
+					{mutationError ? <p className="form-error">{mutationError.message}</p> : null}
+					{successMessage ? <p className="direct-accounting-success"><Check aria-hidden size={15} />{successMessage}</p> : null}
+
+					<div className="direct-accounting-form-actions">
 					{editingEntry ? (
 						<button
 							aria-label={`Удалить ${entryKindAccusative(entryKind)}`}
@@ -388,15 +401,19 @@ export function DirectAccountingHome({ online }: { online: boolean }) {
 						{editingEntry ? <Pencil aria-hidden size={16} /> : <Plus aria-hidden size={17} />}
 						{pending ? "Сохраняем…" : editingEntry ? "Сохранить изменения" : formatCreateLabel(entryKind)}
 					</button>
-				</div>
-			</form>
+					</div>
+				</form>
 
-			<section className="direct-accounting-ledger" aria-label={`${entryKindSubject(entryKind)} за выбранный период`}>
-				<div className="direct-accounting-ledger-heading">
-					<h2>{formatEntriesPeriodTitle(entryKind, listSelection, listRange)}</h2>
-					<span>{formatEntryCount(visibleEntries.length, entryKind)}</span>
-				</div>
-				<div className="direct-accounting-list-controls">
+				<section className="direct-accounting-ledger" aria-label={`${entryKindSubject(entryKind)} за выбранный период`}>
+					<div className="direct-accounting-ledger-toolbar">
+						<div className="direct-accounting-ledger-heading">
+							<h2>
+								<span className="direct-accounting-ledger-title-mobile">{formatEntriesPeriodTitle(entryKind, listSelection, listRange)}</span>
+								<span className="direct-accounting-ledger-title-desktop">{entryKindSubject(entryKind)}</span>
+							</h2>
+							<span>{formatOperationCount(visibleEntries.length)}</span>
+						</div>
+						<div className="direct-accounting-list-controls">
 					<SegmentedControl
 						ariaLabel="Период списка операций"
 						className="direct-accounting-list-period-control"
@@ -448,29 +465,50 @@ export function DirectAccountingHome({ online }: { online: boolean }) {
 							</Popover.Content>
 						</Popover.Portal>
 					</Popover.Root>
-				</div>
-				{entriesLoading ? <p className="muted">Загрузка записей…</p> : null}
-				{entriesError ? <p className="form-error">{entriesError.message}</p> : null}
-				{!entriesLoading && visibleEntries.length === 0 ? <p className="direct-accounting-empty">{entryKindEmpty(entryKind)} за выбранный период нет.</p> : null}
-				{visibleEntries.length ? (
-					<div className="direct-accounting-ledger-columns" aria-hidden>
-						<span>{entryKind === "sale" ? "Продажа" : entryKind === "receipt" ? "Приход" : entryKind === "expense" ? "Затрата" : "Передача"}</span>
-						<span>{entryKind === "receipt" ? "Количество" : "Сумма"}</span>
+						</div>
 					</div>
-				) : null}
-				<div className="direct-accounting-rows">
-					{visibleEntries.map((entry) => (
-						<button className={`direct-accounting-row ${entry.kind}`} key={`${entry.kind}-${entry.id}`} onClick={() => beginEdit(entry)} type="button">
-							<span className="direct-accounting-row-main">
-								<strong>{entryName(entry)}</strong>
-								<small>{formatEntryMeta(entry)}</small>
-							</span>
-							<strong>{entry.kind === "sale" ? `${formatCompactMoneyCents(entry.totalCents)} ₽` : entry.kind === "receipt" ? `+${formatQuantity(entry.quantityKg)} кг` : `${formatCompactMoneyCents(entry.amountCents)} ₽`}</strong>
-							<Pencil aria-hidden size={15} />
-						</button>
-					))}
-				</div>
-			</section>
+					{entriesLoading ? <p className="muted">Загрузка записей…</p> : null}
+					{entriesError ? <p className="form-error">{entriesError.message}</p> : null}
+					{!entriesLoading && visibleEntries.length === 0 ? <p className="direct-accounting-empty">За выбранный период операций нет.</p> : null}
+					{visibleEntries.length ? (
+						<>
+							<div className="direct-accounting-ledger-columns direct-accounting-ledger-columns-mobile" aria-hidden>
+								<span>{entryKind === "sale" ? "Продажа" : entryKind === "receipt" ? "Приход" : entryKind === "expense" ? "Затрата" : "Передача"}</span>
+								<span>{entryKind === "receipt" ? "Количество" : "Сумма"}</span>
+							</div>
+							<div className={`direct-accounting-ledger-columns direct-accounting-ledger-columns-desktop ${entryKind}`} aria-hidden>
+								<span>Дата</span>
+								<span>{entryKind === "transfer" ? "Кому / комментарий" : "Наименование"}</span>
+								{entryKind === "sale" ? <span>Количество</span> : null}
+								{entryKind === "sale" ? <span>Цена за кг</span> : null}
+								<span>{entryKind === "receipt" ? "Количество" : "Сумма"}</span>
+								<span aria-hidden />
+							</div>
+						</>
+					) : null}
+					<div className="direct-accounting-rows">
+						{visibleEntries.map((entry) => (
+							<button className={`direct-accounting-row ${entry.kind}`} key={`${entry.kind}-${entry.id}`} onClick={() => beginEdit(entry)} type="button">
+								<time className="direct-accounting-row-date" dateTime={entry.occurredOn}>{formatNumericDate(entry.occurredOn)}</time>
+								<span className="direct-accounting-row-main">
+									<strong>{entryName(entry)}</strong>
+									<small>{formatEntryMeta(entry)}</small>
+								</span>
+								{entry.kind === "sale" ? <span className="direct-accounting-row-quantity">{formatQuantity(entry.quantityKg)} кг</span> : null}
+								{entry.kind === "sale" ? <span className="direct-accounting-row-price">{formatCompactMoneyCents(entry.unitPriceCents)} ₽</span> : null}
+								<strong className="direct-accounting-row-value">{entry.kind === "sale" ? `${formatCompactMoneyCents(entry.totalCents)} ₽` : entry.kind === "receipt" ? `+${formatQuantity(entry.quantityKg)} кг` : `${formatCompactMoneyCents(entry.amountCents)} ₽`}</strong>
+								<Pencil aria-hidden className="direct-accounting-row-edit" size={15} />
+							</button>
+						))}
+					</div>
+					{visibleEntries.length ? (
+						<div className="direct-accounting-ledger-total">
+							<span>За период</span>
+							<strong>{formatLedgerTotal(entryKind, ledgerTotal)}</strong>
+						</div>
+					) : null}
+				</section>
+			</div>
 		</section>
 	);
 }
@@ -494,14 +532,10 @@ function formatQuantity(value: number): string {
 	return QUANTITY_FORMATTER.format(value);
 }
 
-function formatEntryCount(count: number, kind: EntryKind): string {
+function formatOperationCount(count: number): string {
 	const mod100 = count % 100;
 	const mod10 = count % 10;
-	const forms = kind === "sale"
-		? ["продажа", "продажи", "продаж"]
-		: kind === "receipt"
-			? ["приход", "прихода", "приходов"]
-			: kind === "expense" ? ["затрата", "затраты", "затрат"] : ["передача", "передачи", "передач"];
+	const forms = ["операция", "операции", "операций"];
 	const noun = mod100 >= 11 && mod100 <= 14 ? forms[2] : mod10 === 1 ? forms[0] : mod10 >= 2 && mod10 <= 4 ? forms[1] : forms[2];
 	return `${count} ${noun}`;
 }
@@ -579,14 +613,14 @@ function entryKindSubject(kind: EntryKind): string {
 	return kind === "sale" ? "Продажи" : kind === "receipt" ? "Приходы" : kind === "expense" ? "Затраты" : "Передачи";
 }
 
-function entryKindEmpty(kind: EntryKind): string {
-	return kind === "sale" ? "Продаж" : kind === "receipt" ? "Приходов" : kind === "expense" ? "Затрат" : "Передач";
-}
-
 function entryKindAccusative(kind: EntryKind): string {
 	return kind === "sale" ? "продажу" : kind === "receipt" ? "приход" : kind === "expense" ? "затрату" : "передачу";
 }
 
 function formatCreateLabel(kind: EntryKind): string {
 	return kind === "sale" ? "Добавить продажу" : kind === "receipt" ? "Добавить приход" : kind === "expense" ? "Добавить затрату" : "Добавить передачу";
+}
+
+function formatLedgerTotal(kind: EntryKind, total: number): string {
+	return kind === "receipt" ? `${formatQuantity(total)} кг` : `${formatCompactMoneyCents(total)} ₽`;
 }

@@ -166,31 +166,31 @@ describe("DirectAccountingHome", () => {
 
 		renderHome();
 		expect(await screen.findByText("Продажи за 30 дней")).toBeTruthy();
-		expect(await screen.findByText("1 продажа")).toBeTruthy();
+		expect(await screen.findByText("1 операция")).toBeTruthy();
 		expect(screen.queryByText(receipt.productName)).toBeNull();
 
 		fireEvent.click(screen.getByRole("button", { name: "Приход" }));
 		expect(screen.getByText("Приходы за 30 дней")).toBeTruthy();
 		expect(screen.getByText("Новый приход")).toBeTruthy();
-		expect(screen.getByText("1 приход")).toBeTruthy();
+		expect(screen.getByText("1 операция")).toBeTruthy();
 		expect(screen.getByText(receipt.productName)).toBeTruthy();
 		expect(screen.queryByText(sale.productName)).toBeNull();
 
 		fireEvent.click(screen.getByRole("button", { name: "Затраты" }));
 		expect(screen.getByText("Затраты за 30 дней")).toBeTruthy();
 		expect(screen.getByText("Новая затрата")).toBeTruthy();
-		expect(screen.getByText("1 затрата")).toBeTruthy();
+		expect(screen.getByText("1 операция")).toBeTruthy();
 		expect(screen.getByText(expense.name)).toBeTruthy();
-		expect(screen.getByText("250 ₽")).toBeTruthy();
+		expect(screen.getAllByText("250 ₽")).toHaveLength(2);
 		expect(screen.queryByLabelText("Количество, кг")).toBeNull();
 		expect(screen.queryByLabelText("Цена за кг, ₽")).toBeNull();
 
 		fireEvent.click(screen.getByRole("button", { name: "Передача" }));
 		expect(screen.getByText("Передачи за 30 дней")).toBeTruthy();
 		expect(screen.getByText("Новая передача средств")).toBeTruthy();
-		expect(screen.getByText("1 передача")).toBeTruthy();
+		expect(screen.getByText("1 операция")).toBeTruthy();
 		expect(screen.getByText(transfer.comment)).toBeTruthy();
-		expect(screen.getByText("500 ₽")).toBeTruthy();
+		expect(screen.getAllByText("500 ₽")).toHaveLength(2);
 		expect(screen.getByLabelText("Кому / комментарий")).toBeTruthy();
 		expect(screen.queryByLabelText("Количество, кг")).toBeNull();
 		expect(screen.queryByLabelText("Цена за кг, ₽")).toBeNull();
