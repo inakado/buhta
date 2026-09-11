@@ -3093,6 +3093,7 @@ describe("HomePage", () => {
 
 		render(<HomePage />);
 
+		fireEvent.click(await screen.findByRole("button", { name: "Основной учет" }));
 		fireEvent.click(await screen.findByRole("button", { name: "7 дней" }));
 		await waitFor(() => {
 			expect(fetchMock.mock.calls.some(([input]) => String(input).includes("/analytics/director?periodPreset=7d"))).toBe(true);
@@ -3103,6 +3104,7 @@ describe("HomePage", () => {
 
 		fireEvent.click(screen.getByRole("button", { name: "Главная" }));
 		expect(await screen.findByRole("heading", { name: "Главная" })).toBeTruthy();
+		fireEvent.click(await screen.findByRole("button", { name: "Основной учет" }));
 		expect(screen.getByRole("button", { name: "7 дней" }).getAttribute("aria-pressed")).toBe("true");
 	});
 
@@ -3460,6 +3462,8 @@ describe("HomePage", () => {
 		render(<HomePage />);
 
 		expect(await screen.findByRole("heading", { name: "Главная" })).toBeTruthy();
+		expect((await screen.findByRole("button", { name: "Вернуться к основной аналитике" })).getAttribute("aria-pressed")).toBe("true");
+		fireEvent.click(screen.getByRole("button", { name: "Основной учет" }));
 		expect(await screen.findByText("Выручка")).toBeTruthy();
 		expect(screen.getByText("Касса")).toBeTruthy();
 		const navigation = within(screen.getByRole("navigation", { name: "Основная навигация" }));

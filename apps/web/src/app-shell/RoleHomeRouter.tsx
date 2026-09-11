@@ -200,6 +200,7 @@ export function RoleHomeRouter({
 		return (
 			<DirectorAnalyticsHome
 				initialPeriodSelection={directorAnalyticsPeriodSelection}
+				initialViewMode={activeTab === "home" ? "directAccounting" : "production"}
 				onOpenDirectAccounting={() => onTabChange("direct-accounting")}
 				onPeriodSelectionChange={onDirectorAnalyticsPeriodSelectionChange}
 				title={activeTab === "home" ? "Главная" : "Аналитика"}

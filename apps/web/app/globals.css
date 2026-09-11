@@ -2117,35 +2117,61 @@ input[type="search"]::-webkit-search-decoration {
 		font-weight: var(--font-weight-label);
 	}
 
-	.direct-accounting-chart-legend {
+	.direct-accounting-chart-series {
 		display: flex;
 		align-items: center;
-		gap: 14px;
+		flex-wrap: wrap;
+		gap: 10px 20px;
 		color: var(--text-muted);
-		justify-content: center;
-		font-size: 11px;
+		font-size: 12px;
+		line-height: 1;
+		margin-top: 14px;
 		white-space: nowrap;
 	}
 
-	.direct-accounting-chart-legend span {
+	.direct-accounting-chart-series label {
 		display: inline-flex;
 		align-items: center;
-		gap: 6px;
+		gap: 7px;
+		cursor: pointer;
+		font-weight: var(--font-weight-label);
 	}
 
-	.direct-accounting-chart-legend i {
-		display: block;
+	.direct-accounting-chart-series input {
+		appearance: none;
+		display: grid;
+		place-content: center;
+		width: 17px;
+		height: 17px;
+		margin: 0;
+		border: 1px solid #7f8983;
+		border-radius: 4px;
+		background: var(--base-white);
+		cursor: pointer;
+	}
+
+	.direct-accounting-chart-series input::before {
 		width: 9px;
-		height: 9px;
-		border-radius: 3px;
-		background: var(--brand-green);
+		height: 5px;
+		border-bottom: 2px solid var(--base-white);
+		border-left: 2px solid var(--base-white);
+		content: "";
+		opacity: 0;
+		transform: translateY(-1px) rotate(-45deg);
 	}
 
-	.direct-accounting-chart-legend i.balance {
-		width: 16px;
-		height: 2px;
-		border-radius: 0;
-		background: var(--base-black);
+	.direct-accounting-chart-series input:checked {
+		border-color: var(--chart-series-color);
+		background: var(--chart-series-color);
+	}
+
+	.direct-accounting-chart-series input:checked::before {
+		opacity: 1;
+	}
+
+	.direct-accounting-chart-series input:focus-visible {
+		outline: 2px solid var(--base-black);
+		outline-offset: 2px;
 	}
 
 	.direct-accounting-chart {

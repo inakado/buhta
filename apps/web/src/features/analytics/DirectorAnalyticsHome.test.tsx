@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { ComponentProps } from "react";
 import { DirectorAnalyticsHome } from "./DirectorAnalyticsHome";
 
 const analyticsResponse = {
@@ -140,6 +141,24 @@ const directAccountingEntriesResponse = {
 			createdAt: "2026-09-08T04:30:00.000Z",
 			updatedAt: "2026-09-08T04:30:00.000Z",
 		},
+		{
+			kind: "expense",
+			id: "expense-1",
+			name: "Доставка",
+			occurredOn: "2026-09-08",
+			amountCents: 25_000,
+			createdAt: "2026-09-08T05:00:00.000Z",
+			updatedAt: "2026-09-08T05:00:00.000Z",
+		},
+		{
+			kind: "transfer",
+			id: "transfer-1",
+			comment: "На закупку",
+			occurredOn: "2026-09-08",
+			amountCents: 50_000,
+			createdAt: "2026-09-08T05:30:00.000Z",
+			updatedAt: "2026-09-08T05:30:00.000Z",
+		},
 	],
 };
 
@@ -152,7 +171,7 @@ function jsonResponse(body: unknown, status = 200) {
 	});
 }
 
-function renderAnalytics() {
+function renderAnalytics(props: ComponentProps<typeof DirectorAnalyticsHome> = {}) {
 	const queryClient = new QueryClient({
 		defaultOptions: {
 			queries: {
@@ -163,7 +182,7 @@ function renderAnalytics() {
 
 	return render(
 		<QueryClientProvider client={queryClient}>
-			<DirectorAnalyticsHome />
+			<DirectorAnalyticsHome {...props} />
 		</QueryClientProvider>,
 	);
 }
@@ -272,14 +291,26 @@ describe("DirectorAnalyticsHome", () => {
 		fireEvent.click(await screen.findByRole("button", { name: "Открыть статистику прямого учета" }));
 
 		expect(await screen.findByText("Икра кеты")).toBeTruthy();
+		expect(screen.getByRole("button", { name: "30 дней" }).getAttribute("aria-pressed")).toBe("true");
+		expect(fetchMock.mock.calls.some(([input]) => String(input).includes("detailPeriod=month"))).toBe(true);
 		expect(screen.getByText("Затраты")).toBeTruthy();
 		expect(screen.getByText("250 ₽")).toBeTruthy();
 		expect(screen.getByText("Передано")).toBeTruthy();
 		expect(screen.getByText("500 ₽")).toBeTruthy();
 		expect(screen.getByText("Остаток товара")).toBeTruthy();
 		expect(screen.getAllByText("1,2 кг").length).toBeGreaterThanOrEqual(2);
-		expect(await screen.findByText("Выручка по дням")).toBeTruthy();
-		expect(screen.getByText("08.09.2026")).toBeTruthy();
+		expect(await screen.findByText("Денежные операции")).toBeTruthy();
+		const revenueToggle = screen.getByRole("checkbox", { name: "Выручка" }) as HTMLInputElement;
+		const expensesToggle = screen.getByRole("checkbox", { name: "Затраты" }) as HTMLInputElement;
+		const transfersToggle = screen.getByRole("checkbox", { name: "Передача" }) as HTMLInputElement;
+		expect(revenueToggle.checked).toBe(true);
+		expect(expensesToggle.checked).toBe(false);
+		expect(transfersToggle.checked).toBe(false);
+		fireEvent.click(expensesToggle);
+		fireEvent.click(transfersToggle);
+		expect(expensesToggle.checked).toBe(true);
+		expect(transfersToggle.checked).toBe(true);
+		expect(screen.getAllByText("08.09.2026").length).toBe(3);
 		expect(screen.getByText("Икра кеты, 0,8 кг")).toBeTruthy();
 		expect(screen.getByRole("button", { name: "Сегодня" })).toBeTruthy();
 		fireEvent.click(screen.getByRole("button", { name: "7 дней" }));
@@ -297,5 +328,22 @@ describe("DirectorAnalyticsHome", () => {
 				return url.includes("dateFrom=2026-09-01") && url.includes("dateTo=2026-09-08");
 			})).toBe(true);
 		});
+	});
+
+	it("opens the director home in direct accounting mode", async () => {
+		const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+			const url = String(input);
+			if (url.includes("/direct-accounting/statistics")) return jsonResponse(directAccountingResponse);
+			if (url.includes("/direct-accounting/entries")) return jsonResponse(directAccountingEntriesResponse);
+			return jsonResponse(analyticsResponse);
+		});
+		vi.stubGlobal("fetch", fetchMock);
+
+		renderAnalytics({ initialViewMode: "directAccounting", title: "Главная" });
+
+		expect(await screen.findByRole("heading", { name: "Главная" })).toBeTruthy();
+		expect(screen.getByRole("button", { name: "Вернуться к основной аналитике" }).getAttribute("aria-pressed")).toBe("true");
+		expect(await screen.findByText("Икра кеты")).toBeTruthy();
+		expect(fetchMock.mock.calls.some(([input]) => String(input).includes("detailPeriod=month"))).toBe(true);
 	});
 });

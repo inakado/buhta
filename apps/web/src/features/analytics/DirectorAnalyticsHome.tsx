@@ -143,6 +143,8 @@ type DirectAccountingChartPoint = {
 	date: string;
 	label: string;
 	revenueCents: number;
+	expensesCents: number;
+	transfersCents: number;
 };
 
 const INITIAL_DIRECTOR_ANALYTICS_STATE: DirectorAnalyticsState = {
@@ -206,11 +208,13 @@ function directorAnalyticsReducer(
 
 export function DirectorAnalyticsHome({
 	initialPeriodSelection = INITIAL_DIRECTOR_ANALYTICS_STATE.periodSelection,
+	initialViewMode = "production",
 	onOpenDirectAccounting,
 	onPeriodSelectionChange,
 	title = "Аналитика",
 }: {
 	initialPeriodSelection?: DirectorPeriodSelection;
+	initialViewMode?: AnalyticsViewMode;
 	onOpenDirectAccounting?: () => void;
 	onPeriodSelectionChange?: (selection: DirectorPeriodSelection) => void;
 	title?: string;
@@ -218,6 +222,7 @@ export function DirectorAnalyticsHome({
 	const [state, dispatch] = useReducer(directorAnalyticsReducer, {
 		...INITIAL_DIRECTOR_ANALYTICS_STATE,
 		periodSelection: initialPeriodSelection,
+		viewMode: initialViewMode,
 	});
 	const { customDateFrom, customDateTo, customPeriodError, periodPickerOpen, periodSelection, viewMode } = state;
 	const analyticsQuery = useMemo(() => {
@@ -477,7 +482,7 @@ function DirectAccountingAnalytics({
 	onReturnToMain: () => void;
 }) {
 	const today = formatBusinessDateInputValue(new Date().toISOString());
-	const [selection, setSelection] = useState<DirectAccountingPeriodSelection>({ mode: "preset", period: "day" });
+	const [selection, setSelection] = useState<DirectAccountingPeriodSelection>({ mode: "preset", period: "month" });
 	const [periodPickerOpen, setPeriodPickerOpen] = useState(false);
 	const [customDateFrom, setCustomDateFrom] = useState(today);
 	const [customDateTo, setCustomDateTo] = useState(today);
@@ -755,12 +760,19 @@ function buildDirectAccountingChartData(
 	dateFrom: string,
 	dateTo: string,
 ): DirectAccountingChartPoint[] {
-	const daily = new Map<string, number>();
+	const daily = new Map<string, Pick<DirectAccountingChartPoint, "revenueCents" | "expensesCents" | "transfersCents">>();
 
 	for (const entry of entries) {
-		if (entry.kind === "sale") {
-			daily.set(entry.occurredOn, (daily.get(entry.occurredOn) ?? 0) + entry.totalCents);
-		}
+		const current = daily.get(entry.occurredOn) ?? {
+			revenueCents: 0,
+			expensesCents: 0,
+			transfersCents: 0,
+		};
+		daily.set(entry.occurredOn, {
+			revenueCents: current.revenueCents + (entry.kind === "sale" ? entry.totalCents : 0),
+			expensesCents: current.expensesCents + (entry.kind === "expense" ? entry.amountCents : 0),
+			transfersCents: current.transfersCents + (entry.kind === "transfer" ? entry.amountCents : 0),
+		});
 	}
 
 	const result: DirectAccountingChartPoint[] = [];
@@ -769,7 +781,9 @@ function buildDirectAccountingChartData(
 		result.push({
 			date: dateKey,
 			label: ANALYTICS_CHART_DATE_FORMATTER.format(date),
-			revenueCents: daily.get(dateKey) ?? 0,
+			revenueCents: daily.get(dateKey)?.revenueCents ?? 0,
+			expensesCents: daily.get(dateKey)?.expensesCents ?? 0,
+			transfersCents: daily.get(dateKey)?.transfersCents ?? 0,
 		});
 	}
 
