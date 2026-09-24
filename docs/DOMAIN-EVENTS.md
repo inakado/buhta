@@ -81,6 +81,9 @@
 | `direct_accounting.transfer.create` | Директор или администратор добавил передачу средств | `direct_accounting_transfer`; audit details содержат `after` с комментарием, датой и суммой |
 | `direct_accounting.transfer.update` | Директор или администратор исправил передачу средств | `direct_accounting_transfer`; audit details содержат полные `before` и `after` |
 | `direct_accounting.transfer.delete` | Директор или администратор мягко удалил передачу средств | `direct_accounting_transfer`; audit details содержат `before`, `after` и время удаления |
+| `direct_accounting.salary.create` | Директор или администратор рассчитал зарплату за период | `direct_accounting_salary`; audit details содержат сотрудника, период, процент, снимок выручки и сумму |
+| `direct_accounting.salary.update` | Директор или администратор пересчитал зарплату | `direct_accounting_salary`; audit details содержат полные `before` и `after` |
+| `direct_accounting.salary.delete` | Директор или администратор мягко удалил зарплату | `direct_accounting_salary`; audit details содержат `before`, `after` и время удаления |
 
 ## 4. Read Model Истории
 

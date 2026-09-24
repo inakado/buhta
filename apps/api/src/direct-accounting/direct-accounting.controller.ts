@@ -17,6 +17,7 @@ import {
 	DirectAccountingExpenseInputSchema,
 	DirectAccountingReceiptInputSchema,
 	DirectAccountingSaleInputSchema,
+	DirectAccountingSalaryInputSchema,
 	DirectAccountingSalesQuerySchema,
 	DirectAccountingStatisticsQuerySchema,
 	DirectAccountingSuggestionsQuerySchema,
@@ -193,6 +194,38 @@ export class DirectAccountingController {
 	async deleteTransfer(@CurrentActor() actor: Actor | undefined, @Param("transferId") transferId: string) {
 		await this.service.deleteTransfer(requireActor(actor), transferId);
 	}
+
+	@Post("salaries")
+	async createSalary(
+		@CurrentActor() actor: Actor | undefined,
+		@Headers("idempotency-key") idempotencyKey: string | undefined,
+		@Body() body: unknown,
+	) {
+		return {
+			salary: await this.service.createSalary(
+				requireActor(actor),
+				parseSalaryInput(body),
+				requireIdempotencyKey(idempotencyKey),
+			),
+		};
+	}
+
+	@Put("salaries/:salaryId")
+	async updateSalary(
+		@CurrentActor() actor: Actor | undefined,
+		@Param("salaryId") salaryId: string,
+		@Body() body: unknown,
+	) {
+		return {
+			salary: await this.service.updateSalary(requireActor(actor), salaryId, parseSalaryInput(body)),
+		};
+	}
+
+	@Delete("salaries/:salaryId")
+	@HttpCode(204)
+	async deleteSalary(@CurrentActor() actor: Actor | undefined, @Param("salaryId") salaryId: string) {
+		await this.service.deleteSalary(requireActor(actor), salaryId);
+	}
 }
 
 function requireActor(actor: Actor | undefined): Actor {
@@ -278,6 +311,22 @@ function parseTransferInput(value: unknown): z.infer<typeof DirectAccountingTran
 			: invalidField === "amountCents"
 				? "Проверьте сумму: она должна быть больше нуля, с точностью до копейки"
 				: "Проверьте данные передачи: комментарий, дату и сумму";
+
+	throw new AppError("VALIDATION_ERROR", message, parsed.error.flatten());
+}
+
+function parseSalaryInput(value: unknown): z.infer<typeof DirectAccountingSalaryInputSchema> {
+	const parsed = DirectAccountingSalaryInputSchema.safeParse(value);
+	if (parsed.success) return parsed.data;
+
+	const invalidField = parsed.error.issues[0]?.path[0];
+	const message = invalidField === "employeeName"
+		? "Проверьте имя и фамилию: поле должно содержать от 1 до 120 символов"
+		: invalidField === "periodFrom" || invalidField === "periodTo"
+			? "Проверьте период зарплаты: от 1 до 366 дней"
+			: invalidField === "rateBasisPoints"
+				? "Проверьте процент: от 0,01% до 100%"
+				: "Проверьте данные зарплаты: сотрудника, период и процент";
 
 	throw new AppError("VALIDATION_ERROR", message, parsed.error.flatten());
 }

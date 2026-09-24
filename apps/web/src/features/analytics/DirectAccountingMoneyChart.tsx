@@ -8,14 +8,16 @@ type ChartPoint = {
 	revenueCents: number;
 	expensesCents: number;
 	transfersCents: number;
+	salariesCents: number;
 };
 
-type MoneySeriesKey = "revenueCents" | "expensesCents" | "transfersCents";
+type MoneySeriesKey = "revenueCents" | "expensesCents" | "transfersCents" | "salariesCents";
 
 const MONEY_SERIES: Array<{ color: string; key: MoneySeriesKey; label: string }> = [
 	{ color: "#4ab855", key: "revenueCents", label: "Выручка" },
 	{ color: "#b24a3b", key: "expensesCents", label: "Затраты" },
 	{ color: "#3f4743", key: "transfersCents", label: "Передача" },
+	{ color: "#4f6f8f", key: "salariesCents", label: "Зарплата" },
 ];
 
 export default function DirectAccountingMoneyChart({
@@ -31,6 +33,7 @@ export default function DirectAccountingMoneyChart({
 		revenueCents: true,
 		expensesCents: false,
 		transfersCents: false,
+		salariesCents: false,
 	});
 	const activeSeries = MONEY_SERIES.filter((series) => visibleSeries[series.key]);
 	const hasActivity = data.some((point) => activeSeries.some((series) => point[series.key] !== 0));

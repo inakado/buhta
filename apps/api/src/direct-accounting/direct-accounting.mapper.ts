@@ -3,6 +3,7 @@ import type {
 	DirectAccountingExpense,
 	DirectAccountingReceipt,
 	DirectAccountingSale,
+	DirectAccountingSalary,
 	DirectAccountingTransfer,
 } from "@buhta/shared";
 import { Prisma } from "../generated/prisma/client";
@@ -39,6 +40,18 @@ type DirectAccountingTransferRecord = {
 	id: string;
 	comment: string;
 	transferredOn: Date;
+	amountCents: number;
+	createdAt: Date;
+	updatedAt: Date;
+};
+
+type DirectAccountingSalaryRecord = {
+	id: string;
+	employeeName: string;
+	periodFrom: Date;
+	periodTo: Date;
+	rateBasisPoints: number;
+	baseRevenueCents: Prisma.Decimal | number | string;
 	amountCents: number;
 	createdAt: Date;
 	updatedAt: Date;
@@ -84,6 +97,20 @@ export function mapDirectAccountingTransfer(record: DirectAccountingTransferReco
 		id: record.id,
 		comment: record.comment,
 		transferredOn: record.transferredOn.toISOString().slice(0, 10),
+		amountCents: record.amountCents,
+		createdAt: record.createdAt.toISOString(),
+		updatedAt: record.updatedAt.toISOString(),
+	};
+}
+
+export function mapDirectAccountingSalary(record: DirectAccountingSalaryRecord): DirectAccountingSalary {
+	return {
+		id: record.id,
+		employeeName: record.employeeName,
+		periodFrom: record.periodFrom.toISOString().slice(0, 10),
+		periodTo: record.periodTo.toISOString().slice(0, 10),
+		rateBasisPoints: record.rateBasisPoints,
+		baseRevenueCents: Number(record.baseRevenueCents),
 		amountCents: record.amountCents,
 		createdAt: record.createdAt.toISOString(),
 		updatedAt: record.updatedAt.toISOString(),
@@ -144,6 +171,23 @@ export function mapDirectAccountingTransferEntry(record: DirectAccountingTransfe
 	};
 }
 
+export function mapDirectAccountingSalaryEntry(record: DirectAccountingSalaryRecord): DirectAccountingEntry {
+	const salary = mapDirectAccountingSalary(record);
+	return {
+		kind: "salary",
+		id: salary.id,
+		employeeName: salary.employeeName,
+		periodFrom: salary.periodFrom,
+		periodTo: salary.periodTo,
+		occurredOn: salary.periodTo,
+		rateBasisPoints: salary.rateBasisPoints,
+		baseRevenueCents: salary.baseRevenueCents,
+		amountCents: salary.amountCents,
+		createdAt: salary.createdAt,
+		updatedAt: salary.updatedAt,
+	};
+}
+
 export function calculateDirectAccountingTotalCents(
 	quantityKg: Prisma.Decimal | number | string,
 	unitPriceCents: number,
@@ -158,4 +202,15 @@ export function calculateDirectAccountingTotalCents(
 	}
 
 	return total;
+}
+
+export function calculateDirectAccountingSalaryAmountCents(
+	baseRevenueCents: number,
+	rateBasisPoints: number,
+): number {
+	const amount = (BigInt(baseRevenueCents) * BigInt(rateBasisPoints) + 5_000n) / 10_000n;
+	if (amount < 1n || amount > 2_147_483_647n) {
+		throw new RangeError("Сумма зарплаты прямого учета вышла за допустимый числовой диапазон");
+	}
+	return Number(amount);
 }

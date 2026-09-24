@@ -12,6 +12,8 @@ import type {
 	DirectAccountingSale,
 	DirectAccountingSaleInput,
 	DirectAccountingSalesQuery,
+	DirectAccountingSalary,
+	DirectAccountingSalaryInput,
 	DirectAccountingStatisticsQuery,
 	DirectAccountingStatisticsResponse,
 	DirectAccountingSuggestionsQuery,
@@ -31,6 +33,9 @@ import {
 	mapDirectAccountingReceiptEntry,
 	mapDirectAccountingSale,
 	mapDirectAccountingSaleEntry,
+	calculateDirectAccountingSalaryAmountCents,
+	mapDirectAccountingSalary,
+	mapDirectAccountingSalaryEntry,
 	mapDirectAccountingTransfer,
 	mapDirectAccountingTransferEntry,
 } from "./direct-accounting.mapper";
@@ -46,6 +51,7 @@ type SaleRecord = Prisma.DirectAccountingSaleGetPayload<Record<string, never>>;
 type ReceiptRecord = Prisma.DirectAccountingReceiptGetPayload<Record<string, never>>;
 type ExpenseRecord = Prisma.DirectAccountingExpenseGetPayload<Record<string, never>>;
 type TransferRecord = Prisma.DirectAccountingTransferGetPayload<Record<string, never>>;
+type SalaryRecord = Prisma.DirectAccountingSalaryGetPayload<Record<string, never>>;
 type DateRange = { dateFrom: string; dateTo: string; from: Date; to: Date };
 
 @Injectable()
@@ -62,7 +68,7 @@ export class DirectAccountingService {
 
 	async listEntries(query: DirectAccountingEntriesQuery): Promise<DirectAccountingEntry[]> {
 		const range = listRange(query);
-		const [sales, receipts, expenses, transfers] = await Promise.all([
+		const [sales, receipts, expenses, transfers, salaries] = await Promise.all([
 			prisma.directAccountingSale.findMany({
 				where: { soldOn: { gte: range.from, lte: range.to }, deletedAt: null },
 			}),
@@ -75,6 +81,9 @@ export class DirectAccountingService {
 			prisma.directAccountingTransfer.findMany({
 				where: { transferredOn: { gte: range.from, lte: range.to }, deletedAt: null },
 			}),
+			prisma.directAccountingSalary.findMany({
+				where: { periodTo: { gte: range.from, lte: range.to }, deletedAt: null },
+			}),
 		]);
 
 		return [
@@ -82,6 +91,7 @@ export class DirectAccountingService {
 			...receipts.map(mapDirectAccountingReceiptEntry),
 			...expenses.map(mapDirectAccountingExpenseEntry),
 			...transfers.map(mapDirectAccountingTransferEntry),
+			...salaries.map(mapDirectAccountingSalaryEntry),
 		].sort((left, right) =>
 			right.occurredOn.localeCompare(left.occurredOn)
 			|| right.createdAt.localeCompare(left.createdAt)
@@ -434,6 +444,83 @@ export class DirectAccountingService {
 		}
 	}
 
+	async createSalary(
+		actor: Actor,
+		input: DirectAccountingSalaryInput,
+		idempotencyKey: string,
+	): Promise<DirectAccountingSalary> {
+		const range = this.validateSalaryInput(input);
+		const employeeName = normalizeDisplayName(input.employeeName);
+
+		try {
+			const record = await prisma.$transaction(async (tx) => {
+				const calculation = await calculateSalary(tx, range, input.rateBasisPoints);
+				const salary = await tx.directAccountingSalary.create({
+					data: salaryData({ ...input, employeeName }, calculation),
+				});
+				await createAuditOperation(tx, actor, "direct_accounting.salary.create", salary.id, {
+					before: null,
+					after: salarySnapshot(salary),
+				}, idempotencyKey);
+				return salary;
+			});
+			return mapDirectAccountingSalary(record);
+		} catch (error) {
+			throw mapWriteError(error);
+		}
+	}
+
+	async updateSalary(
+		actor: Actor,
+		salaryId: string,
+		input: DirectAccountingSalaryInput,
+	): Promise<DirectAccountingSalary> {
+		const range = this.validateSalaryInput(input);
+		const employeeName = normalizeDisplayName(input.employeeName);
+
+		try {
+			const record = await prisma.$transaction(async (tx) => {
+				const before = await tx.directAccountingSalary.findFirst({ where: { id: salaryId, deletedAt: null } });
+				if (!before) {
+					throw new AppError("NOT_FOUND", "Зарплата прямого учета не найдена", { id: salaryId });
+				}
+				const calculation = await calculateSalary(tx, range, input.rateBasisPoints);
+				const after = await tx.directAccountingSalary.update({
+					where: { id: salaryId },
+					data: salaryData({ ...input, employeeName }, calculation),
+				});
+				await createAuditOperation(tx, actor, "direct_accounting.salary.update", after.id, {
+					before: salarySnapshot(before),
+					after: salarySnapshot(after),
+				});
+				return after;
+			});
+			return mapDirectAccountingSalary(record);
+		} catch (error) {
+			throw mapWriteError(error);
+		}
+	}
+
+	async deleteSalary(actor: Actor, salaryId: string): Promise<void> {
+		try {
+			await prisma.$transaction(async (tx) => {
+				const before = await tx.directAccountingSalary.findUnique({ where: { id: salaryId } });
+				if (!before) {
+					throw new AppError("NOT_FOUND", "Зарплата прямого учета не найдена", { id: salaryId });
+				}
+				if (before.deletedAt) return;
+				const deletedAt = new Date();
+				const after = await tx.directAccountingSalary.update({ where: { id: salaryId }, data: { deletedAt } });
+				await createAuditOperation(tx, actor, "direct_accounting.salary.delete", after.id, {
+					before: salarySnapshot(before),
+					after: { ...salarySnapshot(after), deletedAt: deletedAt.toISOString() },
+				});
+			});
+		} catch (error) {
+			throw mapWriteError(error);
+		}
+	}
+
 	async getStatistics(
 		query: DirectAccountingStatisticsQuery,
 		now = new Date(),
@@ -449,7 +536,7 @@ export class DirectAccountingService {
 		const overallTo = [ranges.day.to, ranges.week.to, ranges.month.to, selectedRange.to]
 			.reduce((latest, current) => current > latest ? current : latest);
 		// ponystack: aggregate the small direct ledger in memory; move this read model to SQL if volume grows.
-		const [sales, receipts, expenses, transfers] = await Promise.all([
+		const [sales, receipts, expenses, transfers, salaries] = await Promise.all([
 			prisma.directAccountingSale.findMany({
 				where: { soldOn: { lte: overallTo }, deletedAt: null },
 				orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
@@ -464,6 +551,9 @@ export class DirectAccountingService {
 			prisma.directAccountingTransfer.findMany({
 				where: { transferredOn: { lte: overallTo }, deletedAt: null },
 			}),
+			prisma.directAccountingSalary.findMany({
+				where: { periodTo: { lte: overallTo }, deletedAt: null },
+			}),
 		]);
 
 		return {
@@ -474,11 +564,11 @@ export class DirectAccountingService {
 				dateTo: selectedRange.dateTo,
 				timezone: BUSINESS_TIMEZONE,
 			},
-			selection: buildPeriodTotal(sales, receipts, expenses, transfers, selectedRange),
+			selection: buildPeriodTotal(sales, receipts, expenses, transfers, salaries, selectedRange),
 			totals: {
-				day: buildPeriodTotal(sales, receipts, expenses, transfers, ranges.day),
-				week: buildPeriodTotal(sales, receipts, expenses, transfers, ranges.week),
-				month: buildPeriodTotal(sales, receipts, expenses, transfers, ranges.month),
+				day: buildPeriodTotal(sales, receipts, expenses, transfers, salaries, ranges.day),
+				week: buildPeriodTotal(sales, receipts, expenses, transfers, salaries, ranges.week),
+				month: buildPeriodTotal(sales, receipts, expenses, transfers, salaries, ranges.month),
 			},
 			byProduct: buildProductStatistics(sales, receipts, selectedRange),
 		};
@@ -488,6 +578,17 @@ export class DirectAccountingService {
 		if (occurredOn > businessDateKey(now)) {
 			throw new AppError("VALIDATION_ERROR", "Дата операции не может быть в будущем");
 		}
+	}
+
+	private validateSalaryInput(input: DirectAccountingSalaryInput, now = new Date()): DateRange {
+		if (!normalizeDisplayName(input.employeeName)) {
+			throw new AppError("VALIDATION_ERROR", "Укажите имя и фамилию");
+		}
+		if (!Number.isInteger(input.rateBasisPoints) || input.rateBasisPoints < 1 || input.rateBasisPoints > 10_000) {
+			throw new AppError("VALIDATION_ERROR", "Процент зарплаты должен быть от 0,01% до 100%");
+		}
+		this.assertNotFutureDate(input.periodTo, now);
+		return buildCustomRange(input.periodFrom, input.periodTo);
 	}
 }
 
@@ -526,6 +627,10 @@ function normalizeExpenseInput(input: DirectAccountingExpenseInput): DirectAccou
 
 function normalizeTransferInput(input: DirectAccountingTransferInput): DirectAccountingTransferInput {
 	return { ...input, comment: input.comment.trim().replace(/\s+/g, " ") };
+}
+
+function normalizeDisplayName(value: string): string {
+	return value.trim().replace(/\s+/g, " ");
 }
 
 function normalizeProductName(value: string): string {
@@ -606,6 +711,65 @@ function transferSnapshot(record: TransferRecord) {
 	};
 }
 
+function salaryData(
+	input: DirectAccountingSalaryInput,
+	calculation: { amountCents: number; baseRevenueCents: number },
+) {
+	return {
+		employeeName: input.employeeName,
+		periodFrom: parseDateOnly(input.periodFrom),
+		periodTo: parseDateOnly(input.periodTo),
+		rateBasisPoints: input.rateBasisPoints,
+		baseRevenueCents: calculation.baseRevenueCents,
+		amountCents: calculation.amountCents,
+	};
+}
+
+function salarySnapshot(record: SalaryRecord) {
+	const salary = mapDirectAccountingSalary(record);
+	return {
+		employeeName: salary.employeeName,
+		periodFrom: salary.periodFrom,
+		periodTo: salary.periodTo,
+		rateBasisPoints: salary.rateBasisPoints,
+		baseRevenueCents: salary.baseRevenueCents,
+		amountCents: salary.amountCents,
+	};
+}
+
+async function calculateSalary(
+	tx: Prisma.TransactionClient,
+	range: DateRange,
+	rateBasisPoints: number,
+): Promise<{ amountCents: number; baseRevenueCents: number }> {
+	const sales = await tx.directAccountingSale.findMany({
+		where: { soldOn: { gte: range.from, lte: range.to }, deletedAt: null },
+	});
+	let baseRevenueCents = 0;
+	for (const sale of sales) {
+		baseRevenueCents = addRevenueCents(
+			baseRevenueCents,
+			calculateDirectAccountingTotalCents(sale.quantityKg, sale.unitPriceCents),
+		);
+	}
+	if (baseRevenueCents === 0) {
+		throw new AppError("VALIDATION_ERROR", "За выбранный период нет продаж для расчета зарплаты");
+	}
+	let amountCents: number;
+	try {
+		amountCents = calculateDirectAccountingSalaryAmountCents(baseRevenueCents, rateBasisPoints);
+	} catch (error) {
+		if (error instanceof RangeError) {
+			throw new AppError("VALIDATION_ERROR", "Рассчитанная зарплата должна быть не меньше одной копейки и не больше 21 474 836,47 ₽");
+		}
+		throw error;
+	}
+	return {
+		baseRevenueCents,
+		amountCents,
+	};
+}
+
 type DirectAccountingWriteOperation =
 	| "direct_accounting.sale.create"
 	| "direct_accounting.sale.update"
@@ -618,7 +782,10 @@ type DirectAccountingWriteOperation =
 	| "direct_accounting.expense.delete"
 	| "direct_accounting.transfer.create"
 	| "direct_accounting.transfer.update"
-	| "direct_accounting.transfer.delete";
+	| "direct_accounting.transfer.delete"
+	| "direct_accounting.salary.create"
+	| "direct_accounting.salary.update"
+	| "direct_accounting.salary.delete";
 
 async function createAuditOperation(
 	tx: Prisma.TransactionClient,
@@ -645,7 +812,9 @@ async function createAuditOperation(
 				? "direct_accounting_receipt"
 				: type.includes(".expense.")
 					? "direct_accounting_expense"
-					: type.includes(".transfer.") ? "direct_accounting_transfer" : "direct_accounting_sale",
+					: type.includes(".transfer.")
+						? "direct_accounting_transfer"
+						: type.includes(".salary.") ? "direct_accounting_salary" : "direct_accounting_sale",
 			entityId,
 			details,
 		},
@@ -657,6 +826,7 @@ function buildPeriodTotal(
 	receipts: ReceiptRecord[],
 	expenses: ExpenseRecord[],
 	transfers: TransferRecord[],
+	salaries: SalaryRecord[],
 	range: DateRange,
 ): DirectAccountingPeriodTotal {
 	let soldQuantityKg = 0;
@@ -665,6 +835,7 @@ function buildPeriodTotal(
 	let revenueCents = 0;
 	let expensesCents = 0;
 	let transfersCents = 0;
+	let salariesCents = 0;
 	for (const sale of sales) {
 		if (sale.soldOn <= range.to) {
 			balanceQuantityKg -= Number(sale.quantityKg);
@@ -695,6 +866,11 @@ function buildPeriodTotal(
 			transfersCents = addTransferCents(transfersCents, transfer.amountCents);
 		}
 	}
+	for (const salary of salaries) {
+		if (isInRange(salary.periodTo, range)) {
+			salariesCents = addSalaryCents(salariesCents, salary.amountCents);
+		}
+	}
 
 	return {
 		dateFrom: range.dateFrom,
@@ -705,6 +881,7 @@ function buildPeriodTotal(
 		revenueCents,
 		expensesCents,
 		transfersCents,
+		salariesCents,
 	};
 }
 
@@ -802,6 +979,14 @@ function addTransferCents(current: number, addition: number): number {
 	const total = current + addition;
 	if (!Number.isSafeInteger(total)) {
 		throw new RangeError("Передачи средств прямого учета вышли за допустимый числовой диапазон");
+	}
+	return total;
+}
+
+function addSalaryCents(current: number, addition: number): number {
+	const total = current + addition;
+	if (!Number.isSafeInteger(total)) {
+		throw new RangeError("Зарплаты прямого учета вышли за допустимый числовой диапазон");
 	}
 	return total;
 }

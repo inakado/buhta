@@ -12,6 +12,7 @@ export const DirectAccountingDateSchema = z.string().regex(DATE_PATTERN).refine(
 
 export const DirectAccountingProductNameSchema = z.string().trim().min(1).max(120);
 export const DirectAccountingTransferCommentSchema = z.string().trim().min(1).max(240);
+export const DirectAccountingEmployeeNameSchema = z.string().trim().min(1).max(120);
 
 export const DirectAccountingQuantityKgSchema = z.number()
 	.positive()
@@ -58,6 +59,25 @@ export const DirectAccountingTransferInputSchema = z.object({
 
 export type DirectAccountingTransferInput = z.infer<typeof DirectAccountingTransferInputSchema>;
 
+export const DirectAccountingSalaryInputSchema = z.object({
+	employeeName: DirectAccountingEmployeeNameSchema,
+	periodFrom: DirectAccountingDateSchema,
+	periodTo: DirectAccountingDateSchema,
+	rateBasisPoints: z.number().int().min(1).max(10_000),
+}).strict().superRefine((value, context) => {
+	if (value.periodFrom > value.periodTo) {
+		context.addIssue({ code: "custom", path: ["periodTo"], message: "Начало периода не может быть позже окончания" });
+		return;
+	}
+	const from = new Date(`${value.periodFrom}T00:00:00.000Z`);
+	const to = new Date(`${value.periodTo}T00:00:00.000Z`);
+	if (Math.floor((to.getTime() - from.getTime()) / 86_400_000) + 1 > 366) {
+		context.addIssue({ code: "custom", path: ["periodTo"], message: "Период не должен быть больше 366 дней" });
+	}
+});
+
+export type DirectAccountingSalaryInput = z.infer<typeof DirectAccountingSalaryInputSchema>;
+
 export const DirectAccountingSaleSchema = DirectAccountingSaleInputSchema.extend({
 	id: z.string(),
 	totalCents: z.number().int().nonnegative(),
@@ -91,6 +111,16 @@ export const DirectAccountingTransferSchema = DirectAccountingTransferInputSchem
 
 export type DirectAccountingTransfer = z.infer<typeof DirectAccountingTransferSchema>;
 
+export const DirectAccountingSalarySchema = DirectAccountingSalaryInputSchema.safeExtend({
+	id: z.string(),
+	baseRevenueCents: z.number().int().positive(),
+	amountCents: z.number().int().positive(),
+	createdAt: z.string(),
+	updatedAt: z.string(),
+});
+
+export type DirectAccountingSalary = z.infer<typeof DirectAccountingSalarySchema>;
+
 export const DirectAccountingSaleResponseSchema = z.object({
 	sale: DirectAccountingSaleSchema,
 });
@@ -114,6 +144,12 @@ export const DirectAccountingTransferResponseSchema = z.object({
 });
 
 export type DirectAccountingTransferResponse = z.infer<typeof DirectAccountingTransferResponseSchema>;
+
+export const DirectAccountingSalaryResponseSchema = z.object({
+	salary: DirectAccountingSalarySchema,
+});
+
+export type DirectAccountingSalaryResponse = z.infer<typeof DirectAccountingSalaryResponseSchema>;
 
 export const DirectAccountingSalesQuerySchema = z.object({
 	date: DirectAccountingDateSchema.optional(),
@@ -185,6 +221,19 @@ export const DirectAccountingEntrySchema = z.discriminatedUnion("kind", [
 		createdAt: z.string(),
 		updatedAt: z.string(),
 	}),
+	z.object({
+		kind: z.literal("salary"),
+		id: z.string(),
+		employeeName: DirectAccountingEmployeeNameSchema,
+		periodFrom: DirectAccountingDateSchema,
+		periodTo: DirectAccountingDateSchema,
+		occurredOn: DirectAccountingDateSchema,
+		rateBasisPoints: z.number().int().min(1).max(10_000),
+		baseRevenueCents: z.number().int().positive(),
+		amountCents: z.number().int().positive(),
+		createdAt: z.string(),
+		updatedAt: z.string(),
+	}),
 ]);
 
 export type DirectAccountingEntry = z.infer<typeof DirectAccountingEntrySchema>;
@@ -242,6 +291,7 @@ export const DirectAccountingPeriodTotalSchema = z.object({
 	revenueCents: z.number().int().nonnegative(),
 	expensesCents: z.number().int().nonnegative(),
 	transfersCents: z.number().int().nonnegative(),
+	salariesCents: z.number().int().nonnegative(),
 });
 
 export type DirectAccountingPeriodTotal = z.infer<typeof DirectAccountingPeriodTotalSchema>;

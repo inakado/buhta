@@ -61,6 +61,9 @@ const OPERATION_LABELS: Record<string, string> = {
 	"direct_accounting.transfer.create": "Передача средств прямого учета",
 	"direct_accounting.transfer.delete": "Удаление передачи средств прямого учета",
 	"direct_accounting.transfer.update": "Исправление передачи средств прямого учета",
+	"direct_accounting.salary.create": "Расчет зарплаты прямого учета",
+	"direct_accounting.salary.delete": "Удаление зарплаты прямого учета",
+	"direct_accounting.salary.update": "Перерасчет зарплаты прямого учета",
 	"direct_accounting.sale.create": "Продажа прямого учета",
 	"direct_accounting.sale.delete": "Удаление продажи прямого учета",
 	"direct_accounting.sale.update": "Исправление продажи прямого учета",
@@ -92,6 +95,7 @@ const ENTITY_LABELS: Record<string, string> = {
 	direct_accounting_receipt: "Приход прямого учета",
 	direct_accounting_expense: "Затрата прямого учета",
 	direct_accounting_transfer: "Передача средств прямого учета",
+	direct_accounting_salary: "Зарплата прямого учета",
 	direct_accounting_sale: "Продажа прямого учета",
 	packaging_intake: "Прием упаковки",
 	packaging_type: "Тип упаковки",
@@ -133,6 +137,7 @@ const DETAIL_LABELS: Record<string, string> = {
 	distributorCashBalanceAfter: "Наличные распределителя после",
 	distributorCashBalanceBefore: "Наличные распределителя до",
 	distributorName: "Распределитель",
+	employeeName: "Имя и фамилия",
 	fromRole: "Было",
 	fromLogin: "Логин был",
 	fromName: "Имя было",
@@ -144,6 +149,8 @@ const DETAIL_LABELS: Record<string, string> = {
 	paymentMethod: "Оплата",
 	phone: "Телефон",
 	priceCents: "Цена",
+	periodFrom: "Начало периода",
+	periodTo: "Конец периода",
 	productName: "Продукция",
 	quantity: "Количество",
 	quantityKg: "Количество",
@@ -154,6 +161,7 @@ const DETAIL_LABELS: Record<string, string> = {
 	rawMaterialBalanceAfter: "Остаток сырья после",
 	rawMaterialBalanceBefore: "Остаток сырья до",
 	rawMaterialUnit: "Единица сырья",
+	rateBasisPoints: "Процент",
 	reason: "Причина",
 	recipientRole: "Получатель",
 	sourceQuantityAfter: "Исходный остаток после",
@@ -173,6 +181,7 @@ const DETAIL_LABELS: Record<string, string> = {
 	toLogin: "Логин стал",
 	toName: "Имя стало",
 	totalCents: "Итого",
+	baseRevenueCents: "Выручка для расчета",
 	unit: "Единица",
 	unitPriceCents: "Цена",
 	workshopBalanceAfter: "Остаток цеха после",
@@ -181,6 +190,7 @@ const DETAIL_LABELS: Record<string, string> = {
 
 const MONEY_DETAIL_KEYS = new Set([
 	"amountCents",
+	"baseRevenueCents",
 	"baseUnitPriceCents",
 	"cashAmountCents",
 	"cashBalanceAfter",
@@ -249,6 +259,7 @@ function buildParticipantSection(details: Record<string, unknown>, usedKeys: Set
 	addStringRow(rows, details, usedKeys, "courierLogin", "Курьер");
 	addStringRow(rows, details, usedKeys, "createdByName", "Создал");
 	addStringRow(rows, details, usedKeys, "completedByName", "Исполнитель");
+	addStringRow(rows, details, usedKeys, "employeeName", "Имя и фамилия");
 	addRoleRow(rows, details, usedKeys, "recipientRole", "Получатель");
 
 	return rows.length ? { title: "Участники", rows } : null;
@@ -312,6 +323,13 @@ function buildMoneySection(details: Record<string, unknown>, usedKeys: Set<strin
 
 	addMoneyRow(rows, details, usedKeys, "totalCents", "Итого");
 	addMoneyRow(rows, details, usedKeys, "amountCents", "Сумма");
+	addMoneyRow(rows, details, usedKeys, "baseRevenueCents", "Выручка для расчета");
+	addStringRow(rows, details, usedKeys, "periodFrom", "Начало периода");
+	addStringRow(rows, details, usedKeys, "periodTo", "Конец периода");
+	usedKeys.add("rateBasisPoints");
+	if (typeof details.rateBasisPoints === "number") {
+		rows.push({ label: "Процент", value: `${formatBasisPoints(details.rateBasisPoints)}%` });
+	}
 	addMoneyRow(rows, details, usedKeys, "cashAmountCents", "Наличными");
 	addMoneyRow(rows, details, usedKeys, "stockValueBeforeCents", "Стоимость остатка до");
 	addMoneyRow(rows, details, usedKeys, "stockValueAfterCents", "Стоимость остатка после");
@@ -605,6 +623,10 @@ export function formatDateTime(value: string): string {
 
 function formatInteger(value: number): string {
 	return String(value).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+}
+
+function formatBasisPoints(value: number): string {
+	return new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 2 }).format(value / 100);
 }
 
 function formatPaymentMethod(value: string): string {

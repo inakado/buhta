@@ -151,6 +151,22 @@ model DirectAccountingTransfer {
   @@map("direct_accounting_transfer")
 }
 
+model DirectAccountingSalary {
+  id                   String    @id @default(cuid())
+  employeeName         String
+  periodFrom           DateTime  @db.Date
+  periodTo             DateTime  @db.Date
+  rateBasisPoints      Int
+  baseRevenueCents     Decimal   @db.Decimal(18, 0)
+  amountCents          Int
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+  deletedAt            DateTime?
+
+  @@index([periodTo, deletedAt])
+  @@map("direct_accounting_salary")
+}
+
 model Operation {
   id                 String              @id @default(cuid())
   type               String

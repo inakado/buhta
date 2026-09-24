@@ -2,6 +2,7 @@ import type {
 	DirectAccountingExpenseInput,
 	DirectAccountingReceiptInput,
 	DirectAccountingSaleInput,
+	DirectAccountingSalaryInput,
 	DirectAccountingTransferInput,
 } from "@buhta/shared";
 
@@ -11,6 +12,9 @@ export type DirectAccountingDraft = {
 	quantityKg: string;
 	unitPriceRubles: string;
 	amountRubles: string;
+	periodFrom: string;
+	periodTo: string;
+	ratePercent: string;
 };
 
 export function parseSaleDraft(draft: DirectAccountingDraft, today: string): DirectAccountingSaleInput | string {
@@ -66,6 +70,27 @@ export function parseTransferDraft(draft: DirectAccountingDraft, today: string):
 	}
 
 	return { comment, transferredOn: draft.occurredOn, amountCents };
+}
+
+export function parseSalaryDraft(draft: DirectAccountingDraft, today: string): DirectAccountingSalaryInput | string {
+	const employeeName = normalizeProductName(draft.productName);
+	if (!employeeName) return "Укажите имя и фамилию.";
+	if (!draft.periodFrom || !draft.periodTo) return "Укажите начало и окончание периода.";
+	if (draft.periodFrom > draft.periodTo) return "Дата окончания должна быть не раньше даты начала.";
+	if (draft.periodTo > today) return "Период зарплаты не может заканчиваться в будущем.";
+
+	const from = new Date(`${draft.periodFrom}T00:00:00.000Z`);
+	const to = new Date(`${draft.periodTo}T00:00:00.000Z`);
+	if (Math.floor((to.getTime() - from.getTime()) / 86_400_000) + 1 > 366) {
+		return "Период не должен быть больше 366 дней.";
+	}
+
+	const ratePercent = parseDecimal(draft.ratePercent, 2);
+	if (ratePercent === null || ratePercent <= 0 || ratePercent > 100) {
+		return "Укажите процент от 0,01 до 100.";
+	}
+
+	return { employeeName, periodFrom: draft.periodFrom, periodTo: draft.periodTo, rateBasisPoints: Math.round(ratePercent * 100) };
 }
 
 function normalizeProductName(value: string): string {

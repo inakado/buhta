@@ -119,11 +119,12 @@ const directAccountingResponse = {
 		revenueCents: 120_000,
 		expensesCents: 25_000,
 		transfersCents: 50_000,
+		salariesCents: 12_000,
 	},
 	totals: {
-		day: { dateFrom: "2026-09-08", dateTo: "2026-09-08", quantityKg: 0.8, receivedQuantityKg: 2, balanceQuantityKg: 1.2, revenueCents: 120_000, expensesCents: 25_000, transfersCents: 50_000 },
-		week: { dateFrom: "2026-09-02", dateTo: "2026-09-08", quantityKg: 2, receivedQuantityKg: 3, balanceQuantityKg: 1.2, revenueCents: 240_000, expensesCents: 25_000, transfersCents: 50_000 },
-		month: { dateFrom: "2026-08-10", dateTo: "2026-09-08", quantityKg: 4, receivedQuantityKg: 5.2, balanceQuantityKg: 1.2, revenueCents: 480_000, expensesCents: 25_000, transfersCents: 50_000 },
+		day: { dateFrom: "2026-09-08", dateTo: "2026-09-08", quantityKg: 0.8, receivedQuantityKg: 2, balanceQuantityKg: 1.2, revenueCents: 120_000, expensesCents: 25_000, transfersCents: 50_000, salariesCents: 12_000 },
+		week: { dateFrom: "2026-09-02", dateTo: "2026-09-08", quantityKg: 2, receivedQuantityKg: 3, balanceQuantityKg: 1.2, revenueCents: 240_000, expensesCents: 25_000, transfersCents: 50_000, salariesCents: 12_000 },
+		month: { dateFrom: "2026-08-10", dateTo: "2026-09-08", quantityKg: 4, receivedQuantityKg: 5.2, balanceQuantityKg: 1.2, revenueCents: 480_000, expensesCents: 25_000, transfersCents: 50_000, salariesCents: 12_000 },
 	},
 	byProduct: [{ productName: "Икра кеты", quantityKg: 0.8, receivedQuantityKg: 2, balanceQuantityKg: 1.2, revenueCents: 120_000 }],
 };
@@ -297,15 +298,19 @@ describe("DirectorAnalyticsHome", () => {
 		expect(screen.getByText("250 ₽")).toBeTruthy();
 		expect(screen.getByText("Передано")).toBeTruthy();
 		expect(screen.getByText("500 ₽")).toBeTruthy();
+		expect(screen.getByText("Зарплата")).toBeTruthy();
+		expect(screen.getByText("120 ₽")).toBeTruthy();
 		expect(screen.getByText("Остаток товара")).toBeTruthy();
 		expect(screen.getAllByText("1,2 кг").length).toBeGreaterThanOrEqual(2);
 		expect(await screen.findByText("Денежные операции")).toBeTruthy();
 		const revenueToggle = screen.getByRole("checkbox", { name: "Выручка" }) as HTMLInputElement;
 		const expensesToggle = screen.getByRole("checkbox", { name: "Затраты" }) as HTMLInputElement;
 		const transfersToggle = screen.getByRole("checkbox", { name: "Передача" }) as HTMLInputElement;
+		const salariesToggle = screen.getByRole("checkbox", { name: "Зарплата" }) as HTMLInputElement;
 		expect(revenueToggle.checked).toBe(true);
 		expect(expensesToggle.checked).toBe(false);
 		expect(transfersToggle.checked).toBe(false);
+		expect(salariesToggle.checked).toBe(false);
 		fireEvent.click(expensesToggle);
 		fireEvent.click(transfersToggle);
 		expect(expensesToggle.checked).toBe(true);

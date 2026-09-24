@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import * as Popover from "@radix-ui/react-popover";
 import {
+	BadgeDollarSign,
 	CalendarDays,
 	Check,
 	ChevronDown,
@@ -22,22 +23,27 @@ import type {
 	DirectAccountingExpenseInput,
 	DirectAccountingReceiptInput,
 	DirectAccountingSaleInput,
+	DirectAccountingSalaryInput,
 	DirectAccountingTransferInput,
 } from "@buhta/shared";
 import {
 	createDirectAccountingExpense,
 	createDirectAccountingReceipt,
 	createDirectAccountingSale,
+	createDirectAccountingSalary,
 	createDirectAccountingTransfer,
 	deleteDirectAccountingExpense,
 	deleteDirectAccountingReceipt,
 	deleteDirectAccountingSale,
+	deleteDirectAccountingSalary,
+	getDirectAccountingStatistics,
 	deleteDirectAccountingTransfer,
 	listDirectAccountingEntries,
 	listDirectAccountingSuggestions,
 	updateDirectAccountingExpense,
 	updateDirectAccountingReceipt,
 	updateDirectAccountingSale,
+	updateDirectAccountingSalary,
 	updateDirectAccountingTransfer,
 } from "../../lib/api-client";
 import { formatCompactMoneyCents } from "../../lib/money-format";
@@ -47,6 +53,7 @@ import {
 	parseExpenseDraft,
 	parseReceiptDraft,
 	parseSaleDraft,
+	parseSalaryDraft,
 	parseTransferDraft,
 	type DirectAccountingDraft,
 } from "./direct-accounting-input";
@@ -81,7 +88,8 @@ type SaveInput =
 	| { kind: "sale"; input: DirectAccountingSaleInput }
 	| { kind: "receipt"; input: DirectAccountingReceiptInput }
 	| { kind: "expense"; input: DirectAccountingExpenseInput }
-	| { kind: "transfer"; input: DirectAccountingTransferInput };
+	| { kind: "transfer"; input: DirectAccountingTransferInput }
+	| { kind: "salary"; input: DirectAccountingSalaryInput };
 
 export function DirectAccountingHome({ online }: { online: boolean }) {
 	const queryClient = useQueryClient();
@@ -114,10 +122,27 @@ export function DirectAccountingHome({ online }: { online: boolean }) {
 	const { data: suggestionsData } = useQuery({
 		queryKey: ["direct-accounting", "suggestions", entryKind, deferredProductName],
 		queryFn: () => listDirectAccountingSuggestions(deferredProductName, entryKind === "expense" ? "expense" : "stock"),
-		enabled: entryKind !== "transfer",
+		enabled: entryKind === "sale" || entryKind === "receipt" || entryKind === "expense",
+	});
+	const salaryPreviewInput = entryKind === "salary"
+		? parseSalaryDraft({ ...draft, productName: draft.productName || "Предпросмотр" }, today)
+		: null;
+	const { data: salaryPreviewData } = useQuery({
+		queryKey: ["direct-accounting", "salary-preview", typeof salaryPreviewInput === "string" ? null : salaryPreviewInput],
+		queryFn: () => getDirectAccountingStatistics({
+			dateFrom: typeof salaryPreviewInput === "string" || !salaryPreviewInput ? today : salaryPreviewInput.periodFrom,
+			dateTo: typeof salaryPreviewInput === "string" || !salaryPreviewInput ? today : salaryPreviewInput.periodTo,
+		}),
+		enabled: Boolean(salaryPreviewInput && typeof salaryPreviewInput !== "string"),
 	});
 	const saveMutation = useMutation({
 		mutationFn: async (save: SaveInput) => {
+			if (save.kind === "salary") {
+				const { salary } = await (editingEntry
+					? updateDirectAccountingSalary(editingEntry.id, save.input)
+					: createDirectAccountingSalary(save.input));
+				return { kind: save.kind, occurredOn: salary.periodTo };
+			}
 			if (save.kind === "transfer") {
 				const { transfer } = await (editingEntry
 					? updateDirectAccountingTransfer(editingEntry.id, save.input)
@@ -151,7 +176,7 @@ export function DirectAccountingHome({ online }: { online: boolean }) {
 				? "Запись обновлена"
 				: variables.kind === "sale"
 					? "Продажа добавлена"
-					: variables.kind === "receipt" ? "Приход добавлен" : variables.kind === "expense" ? "Затрата добавлена" : "Передача добавлена");
+					: variables.kind === "receipt" ? "Приход добавлен" : variables.kind === "expense" ? "Затрата добавлена" : variables.kind === "salary" ? "Зарплата рассчитана" : "Передача добавлена");
 			await invalidateDirectAccounting(queryClient);
 		},
 	});
@@ -160,7 +185,7 @@ export function DirectAccountingHome({ online }: { online: boolean }) {
 			? deleteDirectAccountingSale(entry.id)
 			: entry.kind === "receipt"
 				? deleteDirectAccountingReceipt(entry.id)
-				: entry.kind === "expense" ? deleteDirectAccountingExpense(entry.id) : deleteDirectAccountingTransfer(entry.id),
+				: entry.kind === "expense" ? deleteDirectAccountingExpense(entry.id) : entry.kind === "salary" ? deleteDirectAccountingSalary(entry.id) : deleteDirectAccountingTransfer(entry.id),
 		onSuccess: async () => {
 			setEditingEntry(null);
 			setDraft(emptyDraft(today));
@@ -184,6 +209,9 @@ export function DirectAccountingHome({ online }: { online: boolean }) {
 			quantityKg: entry.kind === "sale" || entry.kind === "receipt" ? String(entry.quantityKg).replace(".", ",") : "",
 			unitPriceRubles: entry.kind === "sale" ? centsToInput(entry.unitPriceCents) : "",
 			amountRubles: entry.kind === "expense" || entry.kind === "transfer" ? centsToInput(entry.amountCents) : "",
+			periodFrom: entry.kind === "salary" ? entry.periodFrom : entry.occurredOn,
+			periodTo: entry.kind === "salary" ? entry.periodTo : entry.occurredOn,
+			ratePercent: entry.kind === "salary" ? formatRatePercent(entry.rateBasisPoints) : "",
 		});
 		setFormError(null);
 		setSuccessMessage(null);
@@ -201,6 +229,12 @@ export function DirectAccountingHome({ online }: { online: boolean }) {
 
 	function submit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
+		if (entryKind === "salary") {
+			const parsed = parseSalaryDraft(draft, today);
+			if (typeof parsed === "string") return setFormError(parsed);
+			saveMutation.mutate({ kind: entryKind, input: parsed });
+			return;
+		}
 		if (entryKind === "sale") {
 			const parsed = parseSaleDraft(draft, today);
 			if (typeof parsed === "string") return setFormError(parsed);
@@ -263,6 +297,12 @@ export function DirectAccountingHome({ online }: { online: boolean }) {
 	const draftTotal = entryKind === "sale" && typeof parsedSaleDraft !== "string"
 		? Math.round(parsedSaleDraft.quantityKg * parsedSaleDraft.unitPriceCents)
 		: null;
+	const salaryPreview = salaryPreviewInput && typeof salaryPreviewInput !== "string" && salaryPreviewData
+		? {
+			baseRevenueCents: salaryPreviewData.selection.revenueCents,
+			amountCents: Math.round(salaryPreviewData.selection.revenueCents * salaryPreviewInput.rateBasisPoints / 10_000),
+		}
+		: null;
 	const visibleEntries = entriesData?.entries.filter((entry) => entry.kind === entryKind) ?? [];
 	const ledgerTotal = visibleEntries.reduce((total, entry) => {
 		if (entry.kind === "sale") return total + entry.totalCents;
@@ -287,6 +327,7 @@ export function DirectAccountingHome({ online }: { online: boolean }) {
 					{ value: "receipt", label: "Приход", icon: PackagePlus, disabled: Boolean(editingEntry) },
 					{ value: "expense", label: "Затраты", icon: ReceiptText, disabled: Boolean(editingEntry) },
 					{ value: "transfer", label: "Передача", icon: HandCoins, disabled: Boolean(editingEntry) },
+					{ value: "salary", label: "Зарплата", icon: BadgeDollarSign, disabled: Boolean(editingEntry) },
 				]}
 				onChange={(kind) => {
 					setEntryKind(kind as EntryKind);
@@ -314,13 +355,13 @@ export function DirectAccountingHome({ online }: { online: boolean }) {
 					</div>
 
 					<label className="field direct-accounting-name-field">
-					<span>{entryKind === "transfer" ? "Кому / комментарий" : "Наименование"}</span>
+					<span>{entryKind === "transfer" ? "Кому / комментарий" : entryKind === "salary" ? "Имя и фамилия" : "Наименование"}</span>
 					<input
 						autoComplete="off"
-						list={entryKind === "transfer" ? undefined : "direct-accounting-products"}
+						list={entryKind === "sale" || entryKind === "receipt" || entryKind === "expense" ? "direct-accounting-products" : undefined}
 						maxLength={entryKind === "transfer" ? 240 : 120}
 						onChange={(event) => updateDraft({ productName: event.target.value })}
-						placeholder={entryKind === "transfer" ? "Например, Ивану на закупку" : entryKind === "expense" ? "Например, доставка" : "Например, икра кеты"}
+						placeholder={entryKind === "transfer" ? "Например, Ивану на закупку" : entryKind === "salary" ? "Например, Иван Петров" : entryKind === "expense" ? "Например, доставка" : "Например, икра кеты"}
 						ref={productNameRef}
 						value={draft.productName}
 					/>
@@ -329,7 +370,19 @@ export function DirectAccountingHome({ online }: { online: boolean }) {
 					</datalist>
 					</label>
 
-					<div className={entryKind === "sale" ? "direct-accounting-fields" : "direct-accounting-fields compact"}>
+					{entryKind === "salary" ? (
+						<div className="direct-accounting-salary-fields">
+							<SalaryDateField label="Начало" value={draft.periodFrom} max={draft.periodTo || today} onChange={(periodFrom) => updateDraft({ periodFrom })} />
+							<SalaryDateField label="Окончание" value={draft.periodTo} min={draft.periodFrom} max={today} onChange={(periodTo) => updateDraft({ periodTo })} />
+							<label className="field direct-accounting-rate-field">
+								<span>Процент</span>
+								<span className="direct-accounting-rate-control">
+									<input aria-label="Процент" inputMode="decimal" onChange={(event) => updateDraft({ ratePercent: event.target.value })} placeholder="0,00" value={draft.ratePercent} />
+									<span>%</span>
+								</span>
+							</label>
+						</div>
+					) : <div className={entryKind === "sale" ? "direct-accounting-fields" : "direct-accounting-fields compact"}>
 					<label className="field">
 						<span>Дата</span>
 						<span className="direct-accounting-date-control">
@@ -371,13 +424,22 @@ export function DirectAccountingHome({ online }: { online: boolean }) {
 							value={draft.amountRubles}
 						/>
 					</label> : null}
-					</div>
+					</div>}
 
 					{draftTotal !== null ? (
 						<div className="direct-accounting-total">
 							<span>Итого</span>
 							<strong>{formatCompactMoneyCents(draftTotal)} ₽</strong>
 						</div>
+					) : null}
+					{entryKind === "salary" && salaryPreview ? (
+						<div className="direct-accounting-salary-preview">
+							<span>Выручка за период <strong>{formatCompactMoneyCents(salaryPreview.baseRevenueCents)} ₽</strong></span>
+							<span>Зарплата <strong>{formatCompactMoneyCents(salaryPreview.amountCents)} ₽</strong></span>
+						</div>
+					) : null}
+					{entryKind === "salary" && salaryPreviewData?.selection.revenueCents === 0 ? (
+						<p className="muted direct-accounting-salary-empty">За выбранный период продаж нет — зарплату рассчитать нельзя.</p>
 					) : null}
 
 					{formError ? <p className="form-error">{formError}</p> : null}
@@ -397,7 +459,7 @@ export function DirectAccountingHome({ online }: { online: boolean }) {
 							Удалить
 						</button>
 					) : null}
-					<button className="primary-button direct-accounting-submit" disabled={!online || pending} type="submit">
+					<button className="primary-button direct-accounting-submit" disabled={!online || pending || (entryKind === "salary" && salaryPreviewData?.selection.revenueCents === 0)} type="submit">
 						{editingEntry ? <Pencil aria-hidden size={16} /> : <Plus aria-hidden size={17} />}
 						{pending ? "Сохраняем…" : editingEntry ? "Сохранить изменения" : formatCreateLabel(entryKind)}
 					</button>
@@ -473,14 +535,16 @@ export function DirectAccountingHome({ online }: { online: boolean }) {
 					{visibleEntries.length ? (
 						<>
 							<div className="direct-accounting-ledger-columns direct-accounting-ledger-columns-mobile" aria-hidden>
-								<span>{entryKind === "sale" ? "Продажа" : entryKind === "receipt" ? "Приход" : entryKind === "expense" ? "Затрата" : "Передача"}</span>
+								<span>{entryKind === "sale" ? "Продажа" : entryKind === "receipt" ? "Приход" : entryKind === "expense" ? "Затрата" : entryKind === "salary" ? "Зарплата" : "Передача"}</span>
 								<span>{entryKind === "receipt" ? "Количество" : "Сумма"}</span>
 							</div>
 							<div className={`direct-accounting-ledger-columns direct-accounting-ledger-columns-desktop ${entryKind}`} aria-hidden>
-								<span>Дата</span>
-								<span>{entryKind === "transfer" ? "Кому / комментарий" : "Наименование"}</span>
+								<span>{entryKind === "salary" ? "Период" : "Дата"}</span>
+								<span>{entryKind === "transfer" ? "Кому / комментарий" : entryKind === "salary" ? "Сотрудник" : "Наименование"}</span>
 								{entryKind === "sale" ? <span>Количество</span> : null}
 								{entryKind === "sale" ? <span>Цена за кг</span> : null}
+								{entryKind === "salary" ? <span>Процент</span> : null}
+								{entryKind === "salary" ? <span>Выручка</span> : null}
 								<span>{entryKind === "receipt" ? "Количество" : "Сумма"}</span>
 								<span aria-hidden />
 							</div>
@@ -489,13 +553,15 @@ export function DirectAccountingHome({ online }: { online: boolean }) {
 					<div className="direct-accounting-rows">
 						{visibleEntries.map((entry) => (
 							<button className={`direct-accounting-row ${entry.kind}`} key={`${entry.kind}-${entry.id}`} onClick={() => beginEdit(entry)} type="button">
-								<time className="direct-accounting-row-date" dateTime={entry.occurredOn}>{formatNumericDate(entry.occurredOn)}</time>
+								<time className="direct-accounting-row-date" dateTime={entry.occurredOn}>{entry.kind === "salary" ? formatDateRange(entry.periodFrom, entry.periodTo) : formatNumericDate(entry.occurredOn)}</time>
 								<span className="direct-accounting-row-main">
 									<strong>{entryName(entry)}</strong>
 									<small>{formatEntryMeta(entry)}</small>
 								</span>
 								{entry.kind === "sale" ? <span className="direct-accounting-row-quantity">{formatQuantity(entry.quantityKg)} кг</span> : null}
 								{entry.kind === "sale" ? <span className="direct-accounting-row-price">{formatCompactMoneyCents(entry.unitPriceCents)} ₽</span> : null}
+								{entry.kind === "salary" ? <span className="direct-accounting-row-quantity">{formatRatePercent(entry.rateBasisPoints)}%</span> : null}
+								{entry.kind === "salary" ? <span className="direct-accounting-row-price">{formatCompactMoneyCents(entry.baseRevenueCents)} ₽</span> : null}
 								<strong className="direct-accounting-row-value">{entry.kind === "sale" ? `${formatCompactMoneyCents(entry.totalCents)} ₽` : entry.kind === "receipt" ? `+${formatQuantity(entry.quantityKg)} кг` : `${formatCompactMoneyCents(entry.amountCents)} ₽`}</strong>
 								<Pencil aria-hidden className="direct-accounting-row-edit" size={15} />
 							</button>
@@ -520,7 +586,20 @@ function centsToInput(cents: number): string {
 }
 
 function emptyDraft(occurredOn: string): DirectAccountingDraft {
-	return { productName: "", occurredOn, quantityKg: "", unitPriceRubles: "", amountRubles: "" };
+	return { productName: "", occurredOn, quantityKg: "", unitPriceRubles: "", amountRubles: "", periodFrom: occurredOn, periodTo: occurredOn, ratePercent: "" };
+}
+
+function SalaryDateField({ label, value, min, max, onChange }: { label: string; value: string; min?: string; max: string; onChange: (value: string) => void }) {
+	return (
+		<label className="field">
+			<span>{label}</span>
+			<span className="direct-accounting-date-control">
+				<span>{formatNumericDate(value)}</span>
+				<CalendarDays aria-hidden size={14} />
+				<input aria-label={label} max={max} min={min} onChange={(event) => onChange(event.target.value)} required type="date" value={value} />
+			</span>
+		</label>
+	);
 }
 
 function businessDateKey(date = new Date()): string {
@@ -544,6 +623,7 @@ function formatEntryFormTitle(kind: EntryKind, editing: boolean): string {
 	if (kind === "sale") return editing ? "Исправление продажи" : "Новая продажа";
 	if (kind === "receipt") return editing ? "Исправление прихода" : "Новый приход";
 	if (kind === "expense") return editing ? "Исправление затраты" : "Новая затрата";
+	if (kind === "salary") return editing ? "Перерасчет зарплаты" : "Новая зарплата";
 	return editing ? "Исправление передачи средств" : "Новая передача средств";
 }
 
@@ -601,24 +681,29 @@ async function invalidateDirectAccounting(queryClient: QueryClient) {
 }
 
 function entryName(entry: DirectAccountingEntry): string {
-	return entry.kind === "expense" ? entry.name : entry.kind === "transfer" ? entry.comment : entry.productName;
+	return entry.kind === "expense" ? entry.name : entry.kind === "transfer" ? entry.comment : entry.kind === "salary" ? entry.employeeName : entry.productName;
 }
 
 function formatEntryMeta(entry: DirectAccountingEntry): string {
 	if (entry.kind === "expense" || entry.kind === "transfer") return formatDate(entry.occurredOn);
+	if (entry.kind === "salary") return `${formatDateRange(entry.periodFrom, entry.periodTo)} · ${formatRatePercent(entry.rateBasisPoints)}% от ${formatCompactMoneyCents(entry.baseRevenueCents)} ₽`;
 	return `${formatDate(entry.occurredOn)} · ${formatQuantity(entry.quantityKg)} кг${entry.kind === "sale" ? ` × ${formatCompactMoneyCents(entry.unitPriceCents)} ₽` : ""}`;
 }
 
 function entryKindSubject(kind: EntryKind): string {
-	return kind === "sale" ? "Продажи" : kind === "receipt" ? "Приходы" : kind === "expense" ? "Затраты" : "Передачи";
+	return kind === "sale" ? "Продажи" : kind === "receipt" ? "Приходы" : kind === "expense" ? "Затраты" : kind === "salary" ? "Зарплаты" : "Передачи";
 }
 
 function entryKindAccusative(kind: EntryKind): string {
-	return kind === "sale" ? "продажу" : kind === "receipt" ? "приход" : kind === "expense" ? "затрату" : "передачу";
+	return kind === "sale" ? "продажу" : kind === "receipt" ? "приход" : kind === "expense" ? "затрату" : kind === "salary" ? "зарплату" : "передачу";
 }
 
 function formatCreateLabel(kind: EntryKind): string {
-	return kind === "sale" ? "Добавить продажу" : kind === "receipt" ? "Добавить приход" : kind === "expense" ? "Добавить затрату" : "Добавить передачу";
+	return kind === "sale" ? "Добавить продажу" : kind === "receipt" ? "Добавить приход" : kind === "expense" ? "Добавить затрату" : kind === "salary" ? "Рассчитать зарплату" : "Добавить передачу";
+}
+
+function formatRatePercent(rateBasisPoints: number): string {
+	return String(rateBasisPoints / 100).replace(".", ",");
 }
 
 function formatLedgerTotal(kind: EntryKind, total: number): string {

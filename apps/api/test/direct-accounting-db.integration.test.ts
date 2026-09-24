@@ -18,6 +18,7 @@ const prefix = "Прямой тест";
 const normalizedPrefix = prefix.toLocaleLowerCase("ru-RU");
 
 async function cleanup() {
+	await prisma.directAccountingSalary.deleteMany({ where: { employeeName: { startsWith: prefix } } });
 	await prisma.directAccountingSale.deleteMany({ where: { productNameNormalized: { startsWith: normalizedPrefix } } });
 	await prisma.directAccountingReceipt.deleteMany({ where: { productNameNormalized: { startsWith: normalizedPrefix } } });
 	await prisma.directAccountingExpense.deleteMany({ where: { nameNormalized: { startsWith: normalizedPrefix } } });
@@ -246,5 +247,52 @@ describe("DirectAccountingService real Postgres integration", () => {
 			"direct_accounting.transfer.update",
 			"direct_accounting.transfer.delete",
 		]);
+	});
+
+	it("calculates salary from period revenue and keeps the saved snapshot", async () => {
+		const sale = await service.createSale(actor, {
+			productName: `${prefix} Кета`, soldOn: "2000-01-03", quantityKg: 2, unitPriceCents: 100_000,
+		}, "direct-accounting-salary-sale");
+		await service.createSale(actor, {
+			productName: `${prefix} Нерка`, soldOn: "2000-01-04", quantityKg: 1, unitPriceCents: 50_000,
+		}, "direct-accounting-salary-sale-2");
+
+		const created = await service.createSalary(actor, {
+			employeeName: `${prefix} Иван Петров`, periodFrom: "2000-01-01", periodTo: "2000-01-04", rateBasisPoints: 500,
+		}, "direct-accounting-salary-create");
+		expect(created).toMatchObject({ baseRevenueCents: 250_000, amountCents: 12_500 });
+
+		await service.updateSale(actor, sale.id, {
+			productName: `${prefix} Кета`, soldOn: "2000-01-03", quantityKg: 3, unitPriceCents: 100_000,
+		});
+		expect((await service.listEntries({ date: "2000-01-04" })).find(({ kind }) => kind === "salary")).toMatchObject({
+			baseRevenueCents: 250_000,
+			amountCents: 12_500,
+		});
+
+		const updated = await service.updateSalary(actor, created.id, {
+			employeeName: `${prefix} Иван Петров`, periodFrom: "2000-01-01", periodTo: "2000-01-04", rateBasisPoints: 400,
+		});
+		expect(updated).toMatchObject({ baseRevenueCents: 350_000, amountCents: 14_000 });
+		const stats = await service.getStatistics({ dateFrom: "2000-01-04", dateTo: "2000-01-04" });
+		expect(stats.selection).toMatchObject({ salariesCents: 14_000, revenueCents: 50_000 });
+
+		await service.deleteSalary(actor, created.id);
+		expect((await service.getStatistics({ dateFrom: "2000-01-04", dateTo: "2000-01-04" })).selection.salariesCents).toBe(0);
+		const audit = await prisma.auditLog.findMany({
+			where: { actorUserId: actor.userId, entityId: created.id },
+			orderBy: { createdAt: "asc" },
+		});
+		expect(audit.map(({ action }) => action)).toEqual([
+			"direct_accounting.salary.create",
+			"direct_accounting.salary.update",
+			"direct_accounting.salary.delete",
+		]);
+	});
+
+	it("rejects salary periods without sales", async () => {
+		await expect(service.createSalary(actor, {
+			employeeName: `${prefix} Без продаж`, periodFrom: "2000-02-01", periodTo: "2000-02-02", rateBasisPoints: 500,
+		}, "direct-accounting-salary-empty")).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
 	});
 });

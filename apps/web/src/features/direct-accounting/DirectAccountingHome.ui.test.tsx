@@ -6,8 +6,10 @@ import {
 	createDirectAccountingExpense,
 	createDirectAccountingReceipt,
 	createDirectAccountingSale,
+	createDirectAccountingSalary,
 	createDirectAccountingTransfer,
 	deleteDirectAccountingSale,
+	getDirectAccountingStatistics,
 	listDirectAccountingEntries,
 	listDirectAccountingSuggestions,
 	updateDirectAccountingSale,
@@ -17,16 +19,20 @@ vi.mock("../../lib/api-client", () => ({
 	createDirectAccountingExpense: vi.fn(),
 	createDirectAccountingReceipt: vi.fn(),
 	createDirectAccountingSale: vi.fn(),
+	createDirectAccountingSalary: vi.fn(),
 	createDirectAccountingTransfer: vi.fn(),
 	deleteDirectAccountingExpense: vi.fn(),
 	deleteDirectAccountingReceipt: vi.fn(),
 	deleteDirectAccountingSale: vi.fn(),
+	deleteDirectAccountingSalary: vi.fn(),
 	deleteDirectAccountingTransfer: vi.fn(),
 	listDirectAccountingEntries: vi.fn(),
 	listDirectAccountingSuggestions: vi.fn(),
+	getDirectAccountingStatistics: vi.fn(),
 	updateDirectAccountingExpense: vi.fn(),
 	updateDirectAccountingReceipt: vi.fn(),
 	updateDirectAccountingSale: vi.fn(),
+	updateDirectAccountingSalary: vi.fn(),
 	updateDirectAccountingTransfer: vi.fn(),
 }));
 
@@ -78,6 +84,20 @@ const transfer = {
 	id: "transfer1",
 	comment: "Ивану на закупку",
 	occurredOn: "2026-09-01",
+	amountCents: 50_000,
+	createdAt: new Date(0).toISOString(),
+	updatedAt: new Date(0).toISOString(),
+};
+
+const salary = {
+	kind: "salary" as const,
+	id: "salary1",
+	employeeName: "Иван Петров",
+	periodFrom: "2026-09-01",
+	periodTo: "2026-09-08",
+	occurredOn: "2026-09-08",
+	rateBasisPoints: 500,
+	baseRevenueCents: 1_000_000,
 	amountCents: 50_000,
 	createdAt: new Date(0).toISOString(),
 	updatedAt: new Date(0).toISOString(),
@@ -161,7 +181,7 @@ describe("DirectAccountingHome", () => {
 	});
 
 	it("filters the ledger and names it by the selected operation type", async () => {
-		vi.mocked(listDirectAccountingEntries).mockResolvedValue({ entries: [sale, receipt, expense, transfer] });
+		vi.mocked(listDirectAccountingEntries).mockResolvedValue({ entries: [sale, receipt, expense, transfer, salary] });
 		vi.mocked(listDirectAccountingSuggestions).mockResolvedValue({ suggestions: [] });
 
 		renderHome();
@@ -184,6 +204,12 @@ describe("DirectAccountingHome", () => {
 		expect(screen.getAllByText("250 ₽")).toHaveLength(2);
 		expect(screen.queryByLabelText("Количество, кг")).toBeNull();
 		expect(screen.queryByLabelText("Цена за кг, ₽")).toBeNull();
+
+		fireEvent.click(screen.getByRole("button", { name: "Зарплата" }));
+		expect(screen.getByText("Зарплаты за 30 дней")).toBeTruthy();
+		expect(screen.getByText("Новая зарплата")).toBeTruthy();
+		expect(screen.getByText(salary.employeeName)).toBeTruthy();
+		expect(screen.getByLabelText("Имя и фамилия")).toBeTruthy();
 
 		fireEvent.click(screen.getByRole("button", { name: "Передача" }));
 		expect(screen.getByText("Передачи за 30 дней")).toBeTruthy();
@@ -245,6 +271,39 @@ describe("DirectAccountingHome", () => {
 			comment: transfer.comment,
 			transferredOn: transfer.occurredOn,
 			amountCents: transfer.amountCents,
+		}));
+	});
+
+	it("previews and saves salary from period revenue", async () => {
+		vi.mocked(listDirectAccountingEntries).mockResolvedValue({ entries: [] });
+		vi.mocked(listDirectAccountingSuggestions).mockResolvedValue({ suggestions: [] });
+		vi.mocked(getDirectAccountingStatistics).mockResolvedValue({ selection: { revenueCents: 1_000_000 } } as never);
+		vi.mocked(createDirectAccountingSalary).mockResolvedValue({ salary: {
+			id: salary.id,
+			employeeName: salary.employeeName,
+			periodFrom: salary.periodFrom,
+			periodTo: salary.periodTo,
+			rateBasisPoints: salary.rateBasisPoints,
+			baseRevenueCents: salary.baseRevenueCents,
+			amountCents: salary.amountCents,
+			createdAt: salary.createdAt,
+			updatedAt: salary.updatedAt,
+		} });
+
+		renderHome();
+		fireEvent.click(screen.getByRole("button", { name: "Зарплата" }));
+		fireEvent.change(screen.getByLabelText("Имя и фамилия"), { target: { value: salary.employeeName } });
+		fireEvent.change(screen.getByLabelText("Начало"), { target: { value: salary.periodFrom } });
+		fireEvent.change(screen.getByLabelText("Окончание"), { target: { value: salary.periodTo } });
+		fireEvent.change(screen.getByLabelText("Процент"), { target: { value: "5" } });
+		expect(await screen.findByText("500 ₽")).toBeTruthy();
+		fireEvent.click(screen.getByRole("button", { name: "Рассчитать зарплату" }));
+
+		await waitFor(() => expect(createDirectAccountingSalary).toHaveBeenCalledWith({
+			employeeName: salary.employeeName,
+			periodFrom: salary.periodFrom,
+			periodTo: salary.periodTo,
+			rateBasisPoints: 500,
 		}));
 	});
 });

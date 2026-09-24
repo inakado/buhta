@@ -145,6 +145,7 @@ type DirectAccountingChartPoint = {
 	revenueCents: number;
 	expensesCents: number;
 	transfersCents: number;
+	salariesCents: number;
 };
 
 const INITIAL_DIRECTOR_ANALYTICS_STATE: DirectorAnalyticsState = {
@@ -644,6 +645,10 @@ function DirectAccountingAnalytics({
 							<span>Продано</span>
 							<strong>{formatQuantity(data.selection.quantityKg)} кг</strong>
 						</div>
+						<div className="direct-accounting-salary-total">
+							<span>Зарплата</span>
+							<strong>{formatRubles(data.selection.salariesCents)}</strong>
+						</div>
 					</section>
 
 					<div className="direct-accounting-desktop-panels">
@@ -760,18 +765,20 @@ function buildDirectAccountingChartData(
 	dateFrom: string,
 	dateTo: string,
 ): DirectAccountingChartPoint[] {
-	const daily = new Map<string, Pick<DirectAccountingChartPoint, "revenueCents" | "expensesCents" | "transfersCents">>();
+	const daily = new Map<string, Pick<DirectAccountingChartPoint, "revenueCents" | "expensesCents" | "transfersCents" | "salariesCents">>();
 
 	for (const entry of entries) {
 		const current = daily.get(entry.occurredOn) ?? {
 			revenueCents: 0,
 			expensesCents: 0,
 			transfersCents: 0,
+			salariesCents: 0,
 		};
 		daily.set(entry.occurredOn, {
 			revenueCents: current.revenueCents + (entry.kind === "sale" ? entry.totalCents : 0),
 			expensesCents: current.expensesCents + (entry.kind === "expense" ? entry.amountCents : 0),
 			transfersCents: current.transfersCents + (entry.kind === "transfer" ? entry.amountCents : 0),
+			salariesCents: current.salariesCents + (entry.kind === "salary" ? entry.amountCents : 0),
 		});
 	}
 
@@ -784,6 +791,7 @@ function buildDirectAccountingChartData(
 			revenueCents: daily.get(dateKey)?.revenueCents ?? 0,
 			expensesCents: daily.get(dateKey)?.expensesCents ?? 0,
 			transfersCents: daily.get(dateKey)?.transfersCents ?? 0,
+			salariesCents: daily.get(dateKey)?.salariesCents ?? 0,
 		});
 	}
 
@@ -811,6 +819,7 @@ function directAccountingEntryLabel(kind: DirectAccountingEntry["kind"]): string
 	if (kind === "sale") return "Продажа";
 	if (kind === "receipt") return "Приход";
 	if (kind === "expense") return "Затрата";
+	if (kind === "salary") return "Зарплата";
 	return "Передача";
 }
 
@@ -818,6 +827,7 @@ function directAccountingEntryDescription(entry: DirectAccountingEntry): string 
 	if (entry.kind === "sale") return `${entry.productName}, ${formatQuantity(entry.quantityKg)} кг`;
 	if (entry.kind === "receipt") return entry.productName;
 	if (entry.kind === "expense") return entry.name;
+	if (entry.kind === "salary") return `${entry.employeeName}, ${formatDirectAccountingRange(entry.periodFrom, entry.periodTo)}`;
 	return entry.comment;
 }
 

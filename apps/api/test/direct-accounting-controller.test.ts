@@ -175,4 +175,46 @@ describe("DirectAccountingController", () => {
 		})).rejects.toThrow("Проверьте сумму");
 		expect(service.createTransfer).not.toHaveBeenCalled();
 	});
+
+	it("validates and creates a salary calculation", async () => {
+		const salary = {
+			id: "salary1",
+			employeeName: "Иван Петров",
+			periodFrom: "2026-08-01",
+			periodTo: "2026-08-31",
+			rateBasisPoints: 500,
+			baseRevenueCents: 1_000_000,
+			amountCents: 50_000,
+			createdAt: new Date(0).toISOString(),
+			updatedAt: new Date(0).toISOString(),
+		};
+		const service = { createSalary: vi.fn().mockResolvedValue(salary) } as unknown as DirectAccountingService;
+		const controller = new DirectAccountingController(service);
+
+		await expect(controller.createSalary(actor, "salary-request-1", {
+			employeeName: " Иван Петров ",
+			periodFrom: "2026-08-01",
+			periodTo: "2026-08-31",
+			rateBasisPoints: 500,
+		})).resolves.toEqual({ salary });
+		expect(service.createSalary).toHaveBeenCalledWith(actor, {
+			employeeName: "Иван Петров",
+			periodFrom: "2026-08-01",
+			periodTo: "2026-08-31",
+			rateBasisPoints: 500,
+		}, "salary-request-1");
+	});
+
+	it("returns a Russian field error for an invalid salary percentage", async () => {
+		const service = { createSalary: vi.fn() } as unknown as DirectAccountingService;
+		const controller = new DirectAccountingController(service);
+
+		await expect(controller.createSalary(actor, "salary-request-2", {
+			employeeName: "Иван Петров",
+			periodFrom: "2026-08-01",
+			periodTo: "2026-08-31",
+			rateBasisPoints: 0,
+		})).rejects.toThrow("Проверьте процент");
+		expect(service.createSalary).not.toHaveBeenCalled();
+	});
 });
