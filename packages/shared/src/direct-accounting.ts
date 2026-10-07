@@ -279,10 +279,12 @@ export type DirectAccountingSuggestionsResponse = z.infer<typeof DirectAccountin
 
 export const DirectAccountingDetailPeriodSchema = z.enum(["day", "week", "month"]);
 export type DirectAccountingDetailPeriod = z.infer<typeof DirectAccountingDetailPeriodSchema>;
+export const DirectAccountingStatisticsPeriodSchema = z.enum(["day", "week", "month", "all"]);
+export type DirectAccountingStatisticsPeriod = z.infer<typeof DirectAccountingStatisticsPeriodSchema>;
 
 export const DirectAccountingStatisticsQuerySchema = z.object({
 	anchorDate: DirectAccountingDateSchema.optional(),
-	detailPeriod: DirectAccountingDetailPeriodSchema.optional(),
+	detailPeriod: DirectAccountingStatisticsPeriodSchema.optional(),
 	dateFrom: DirectAccountingDateSchema.optional(),
 	dateTo: DirectAccountingDateSchema.optional(),
 }).strict().superRefine((value, context) => {
@@ -329,7 +331,7 @@ export type DirectAccountingProductStatistics = z.infer<typeof DirectAccountingP
 export const DirectAccountingStatisticsResponseSchema = z.object({
 	filters: z.object({
 		anchorDate: DirectAccountingDateSchema,
-		detailPeriod: DirectAccountingDetailPeriodSchema,
+		detailPeriod: DirectAccountingStatisticsPeriodSchema,
 		dateFrom: DirectAccountingDateSchema,
 		dateTo: DirectAccountingDateSchema,
 		timezone: z.literal("Asia/Vladivostok"),

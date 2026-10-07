@@ -529,11 +529,11 @@ export class DirectAccountingService {
 		const detailPeriod = query.detailPeriod ?? "day";
 		this.assertNotFutureDate(anchorDate, now);
 		const ranges = buildRanges(anchorDate);
-		const selectedRange = query.dateFrom && query.dateTo
+		const requestedRange = query.dateFrom && query.dateTo
 			? buildCustomRange(query.dateFrom, query.dateTo)
-			: ranges[detailPeriod];
-		this.assertNotFutureDate(selectedRange.dateTo, now);
-		const overallTo = [ranges.day.to, ranges.week.to, ranges.month.to, selectedRange.to]
+			: detailPeriod === "all" ? null : ranges[detailPeriod];
+		if (requestedRange) this.assertNotFutureDate(requestedRange.dateTo, now);
+		const overallTo = [ranges.day.to, ranges.week.to, ranges.month.to, requestedRange?.to ?? ranges.day.to]
 			.reduce((latest, current) => current > latest ? current : latest);
 		// ponystack: aggregate the small direct ledger in memory; move this read model to SQL if volume grows.
 		const [sales, receipts, expenses, transfers, salaries] = await Promise.all([
@@ -554,6 +554,13 @@ export class DirectAccountingService {
 			prisma.directAccountingSalary.findMany({
 				where: { periodTo: { lte: overallTo }, deletedAt: null },
 			}),
+		]);
+		const selectedRange = requestedRange ?? buildAllRange(anchorDate, [
+			...sales.map((sale) => sale.soldOn),
+			...receipts.map((receipt) => receipt.receivedOn),
+			...expenses.map((expense) => expense.spentOn),
+			...transfers.map((transfer) => transfer.transferredOn),
+			...salaries.map((salary) => salary.periodTo),
 		]);
 
 		return {
@@ -1021,6 +1028,14 @@ function buildCustomRange(dateFrom: string, dateTo: string): DateRange {
 		throw new AppError("VALIDATION_ERROR", "Период должен быть от 1 до 366 дней");
 	}
 	return rangeFromDates(from, to);
+}
+
+function buildAllRange(anchorDate: string, operationDates: Date[]): DateRange {
+	const from = operationDates.reduce(
+		(earliest, current) => current < earliest ? current : earliest,
+		parseDateOnly(anchorDate),
+	);
+	return rangeFromDates(from, parseDateOnly(anchorDate));
 }
 
 function listRange(query: DirectAccountingEntriesQuery): DateRange {

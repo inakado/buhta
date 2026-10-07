@@ -177,6 +177,7 @@ describe("shared contracts", () => {
 		expect(DirectAccountingEntriesQuerySchema.safeParse({ all: "false" }).success).toBe(false);
 		expect(DirectAccountingEntriesQuerySchema.safeParse({ all: "true", date: "2026-09-08" }).success).toBe(false);
 		expect(DirectAccountingStatisticsQuerySchema.parse({ detailPeriod: "week" })).toEqual({ detailPeriod: "week" });
+		expect(DirectAccountingStatisticsQuerySchema.parse({ detailPeriod: "all" })).toEqual({ detailPeriod: "all" });
 		expect(DirectAccountingStatisticsQuerySchema.parse({
 			dateFrom: "2026-09-01",
 			dateTo: "2026-09-08",

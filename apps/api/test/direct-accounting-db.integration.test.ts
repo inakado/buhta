@@ -102,6 +102,9 @@ describe("DirectAccountingService real Postgres integration", () => {
 		const customStats = await service.getStatistics({ dateFrom: "2000-01-07", dateTo: "2000-01-07" });
 		expect(customStats.selection).toMatchObject({ quantityKg: 1.2, revenueCents: 120_000 });
 		expect(customStats.byProduct).toEqual([expect.objectContaining({ quantityKg: 1.2, revenueCents: 120_000 })]);
+		const allStats = await service.getStatistics({ anchorDate: "2000-01-08", detailPeriod: "all" });
+		expect(allStats.filters).toMatchObject({ detailPeriod: "all", dateFrom: "2000-01-07", dateTo: "2000-01-08" });
+		expect(allStats.selection).toMatchObject({ quantityKg: 2, revenueCents: 240_000 });
 		expect(await service.listSuggestions({ search: prefix })).toHaveLength(1);
 	});
 

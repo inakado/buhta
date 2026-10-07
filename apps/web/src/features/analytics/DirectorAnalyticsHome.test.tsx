@@ -319,12 +319,15 @@ describe("DirectorAnalyticsHome", () => {
 		expect(screen.getAllByText("08.09.2026").length).toBe(3);
 		expect(screen.getByText("Икра кеты, 0,8 кг")).toBeTruthy();
 		expect(screen.getByRole("button", { name: "Сегодня" })).toBeTruthy();
-		fireEvent.click(screen.getByRole("button", { name: "7 дней" }));
+		expect(screen.queryByRole("button", { name: "7 дней" })).toBeNull();
+		fireEvent.click(screen.getByRole("button", { name: "Всего" }));
 		await waitFor(() => {
-			expect(fetchMock.mock.calls.some(([input]) => String(input).includes("detailPeriod=week"))).toBe(true);
+			expect(fetchMock.mock.calls.some(([input]) => String(input).includes("detailPeriod=all"))).toBe(true);
+			expect(fetchMock.mock.calls.some(([input]) => String(input).includes("/direct-accounting/entries?all=true"))).toBe(true);
 		});
+		expect(screen.getByRole("button", { name: /Все даты/ })).toBeTruthy();
 
-		fireEvent.click(screen.getByRole("button", { name: /8 сент/i }));
+		fireEvent.click(screen.getByRole("button", { name: /Все даты/ }));
 		fireEvent.change(screen.getByLabelText("С"), { target: { value: "2026-09-01" } });
 		fireEvent.change(screen.getByLabelText("По"), { target: { value: "2026-09-08" } });
 		fireEvent.click(screen.getByRole("button", { name: "Показать" }));

@@ -7,7 +7,8 @@ import dynamic from "next/dynamic";
 import { useId, useMemo, useReducer, useState, type ReactNode } from "react";
 import {
 	type DirectAccountingEntry,
-	type DirectAccountingDetailPeriod,
+	type DirectAccountingEntriesQuery,
+	type DirectAccountingStatisticsPeriod,
 	type DirectorAnalyticsPeriodPreset,
 	type DirectorAnalyticsProductOutputRow,
 	type DirectorAnalyticsRawMaterialRow,
@@ -69,17 +70,17 @@ const VIEW_OPTIONS = [
 	{ value: "production", label: "Производство", icon: Factory },
 ] as const;
 
-const DIRECT_ACCOUNTING_PERIOD_OPTIONS: Array<{ value: DirectAccountingDetailPeriod; label: string }> = [
+const DIRECT_ACCOUNTING_PERIOD_OPTIONS: Array<{ value: DirectAccountingStatisticsPeriod; label: string }> = [
 	{ value: "day", label: "Сегодня" },
-	{ value: "week", label: "7 дней" },
 	{ value: "month", label: "30 дней" },
+	{ value: "all", label: "Всего" },
 ];
 
 type StandardAnalyticsViewMode = typeof VIEW_OPTIONS[number]["value"];
 type AnalyticsViewMode = StandardAnalyticsViewMode | "directAccounting";
 
 type DirectAccountingPeriodSelection =
-	| { mode: "preset"; period: DirectAccountingDetailPeriod }
+	| { mode: "preset"; period: DirectAccountingStatisticsPeriod }
 	| { mode: "custom"; dateFrom: string; dateTo: string };
 
 export type DirectorPeriodSelection =
@@ -501,13 +502,15 @@ function DirectAccountingAnalytics({
 		queryFn: () => getDirectAccountingStatistics(statisticsQueryInput),
 		placeholderData: (previousData) => previousData,
 	});
-	const entriesRange = data
-		? { dateFrom: data.filters.dateFrom, dateTo: data.filters.dateTo }
+	const entriesQuery: DirectAccountingEntriesQuery | null = data
+		? selection.mode === "preset" && selection.period === "all"
+			? { all: true }
+			: { dateFrom: data.filters.dateFrom, dateTo: data.filters.dateTo }
 		: null;
 	const { data: entriesData } = useQuery({
-		queryKey: ["direct-accounting", "analytics-entries", entriesRange],
-		queryFn: () => listDirectAccountingEntries(entriesRange!),
-		enabled: Boolean(entriesRange),
+		queryKey: ["direct-accounting", "analytics-entries", entriesQuery],
+		queryFn: () => listDirectAccountingEntries(entriesQuery!),
+		enabled: Boolean(entriesQuery),
 		placeholderData: (previousData) => previousData,
 	});
 	const entries = Array.isArray(entriesData?.entries) ? entriesData.entries : EMPTY_DIRECT_ACCOUNTING_ENTRIES;
@@ -516,7 +519,7 @@ function DirectAccountingAnalytics({
 		[data, entries],
 	);
 
-	function selectPresetPeriod(period: DirectAccountingDetailPeriod) {
+	function selectPresetPeriod(period: DirectAccountingStatisticsPeriod) {
 		setSelection({ mode: "preset", period });
 		setPeriodPickerOpen(false);
 		setCustomPeriodError(null);
@@ -524,8 +527,11 @@ function DirectAccountingAnalytics({
 
 	function changePeriodPickerOpen(open: boolean) {
 		if (open) {
-			setCustomDateFrom(data?.filters.dateFrom ?? today);
-			setCustomDateTo(data?.filters.dateTo ?? today);
+			const pickerRange = selection.mode === "preset" && selection.period === "all"
+				? data?.totals.month
+				: data?.filters;
+			setCustomDateFrom(pickerRange?.dateFrom ?? today);
+			setCustomDateTo(pickerRange?.dateTo ?? today);
 			setCustomPeriodError(null);
 		}
 		setPeriodPickerOpen(open);
@@ -569,7 +575,9 @@ function DirectAccountingAnalytics({
 							type="button"
 						>
 							<CalendarDays aria-hidden size={17} />
-							<span>{data ? formatDirectAccountingRange(data.filters.dateFrom, data.filters.dateTo) : "Выбрать даты"}</span>
+							<span>{selection.mode === "preset" && selection.period === "all"
+								? "Все даты"
+								: data ? formatDirectAccountingRange(data.filters.dateFrom, data.filters.dateTo) : "Выбрать даты"}</span>
 							<ChevronDown aria-hidden size={15} />
 						</button>
 					</Popover.Trigger>
