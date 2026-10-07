@@ -136,6 +136,10 @@ describe("DirectAccountingService real Postgres integration", () => {
 			{ kind: "sale", occurredOn: "2000-01-03", quantityKg: 155 },
 			{ kind: "receipt", occurredOn: "2000-01-01", quantityKg: 300 },
 		]);
+		expect(await service.listEntries({ all: true })).toEqual(expect.arrayContaining([
+			expect.objectContaining({ kind: "sale", occurredOn: "2000-01-03", quantityKg: 155 }),
+			expect.objectContaining({ kind: "receipt", occurredOn: "2000-01-01", quantityKg: 300 }),
+		]));
 		expect(await service.listSuggestions({ search: `${prefix} Кета` })).toHaveLength(1);
 
 		const updated = await service.updateReceipt(actor, receipt.id, {

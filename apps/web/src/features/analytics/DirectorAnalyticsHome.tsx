@@ -15,7 +15,7 @@ import {
 	type DirectorAnalyticsResponse,
 } from "@buhta/shared";
 import { getDirectAccountingStatistics, getDirectorAnalytics, listDirectAccountingEntries } from "../../lib/api-client";
-import { formatCompactMoneyCents } from "../../lib/money-format";
+import { formatCompactMoneyCents, formatGroupedRubles } from "../../lib/money-format";
 import { DateRangePickerPanel } from "../../ui/DateRangePickerPanel";
 import { SegmentedControl } from "../../ui/SegmentedControl";
 import { formatProductQuantityLabel } from "../operations/product-quantity-input";
@@ -627,15 +627,15 @@ function DirectAccountingAnalytics({
 						</div>
 						<div>
 							<span>Выручка</span>
-							<strong>{formatRubles(data.selection.revenueCents)}</strong>
+							<strong>{formatGroupedRubles(data.selection.revenueCents)}</strong>
 						</div>
 						<div>
 							<span>Затраты</span>
-							<strong>{formatRubles(data.selection.expensesCents)}</strong>
+							<strong>{formatGroupedRubles(data.selection.expensesCents)}</strong>
 						</div>
 						<div>
 							<span>Передано</span>
-							<strong>{formatRubles(data.selection.transfersCents)}</strong>
+							<strong>{formatGroupedRubles(data.selection.transfersCents)}</strong>
 						</div>
 						<div>
 							<span>Приход</span>
@@ -647,7 +647,7 @@ function DirectAccountingAnalytics({
 						</div>
 						<div className="direct-accounting-salary-total">
 							<span>Зарплата</span>
-							<strong>{formatRubles(data.selection.salariesCents)}</strong>
+							<strong>{formatGroupedRubles(data.selection.salariesCents)}</strong>
 						</div>
 					</section>
 

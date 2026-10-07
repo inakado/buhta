@@ -18,8 +18,8 @@ import {
 } from "lucide-react";
 import { type FormEvent, useDeferredValue, useRef, useState } from "react";
 import type {
-	DirectAccountingDetailPeriod,
 	DirectAccountingEntry,
+	DirectAccountingEntriesQuery,
 	DirectAccountingExpenseInput,
 	DirectAccountingReceiptInput,
 	DirectAccountingSaleInput,
@@ -72,14 +72,16 @@ const BUSINESS_DATE_FORMATTER = new Intl.DateTimeFormat("en-CA", {
 });
 const DAY_MS = 24 * 60 * 60 * 1_000;
 const MAX_LIST_RANGE_DAYS = 366;
-const LIST_PERIOD_OPTIONS: Array<{ value: DirectAccountingDetailPeriod; label: string }> = [
+type ListPeriod = "day" | "month" | "all";
+
+const LIST_PERIOD_OPTIONS: Array<{ value: ListPeriod; label: string }> = [
 	{ value: "day", label: "Сегодня" },
-	{ value: "week", label: "7 дней" },
 	{ value: "month", label: "30 дней" },
+	{ value: "all", label: "Всего" },
 ];
 
 type EntriesListSelection =
-	| { mode: "preset"; period: DirectAccountingDetailPeriod }
+	| { mode: "preset"; period: ListPeriod }
 	| { mode: "custom"; dateFrom: string; dateTo: string };
 
 type EntryKind = DirectAccountingEntry["kind"];
@@ -109,14 +111,15 @@ export function DirectAccountingHome({ online }: { online: boolean }) {
 	const deferredProductName = useDeferredValue(draft.productName.trim());
 	const listRange = listSelection.mode === "custom"
 		? { dateFrom: listSelection.dateFrom, dateTo: listSelection.dateTo }
-		: trailingDateRange(today, listSelection.period);
+		: listSelection.period === "all" ? null : trailingDateRange(today, listSelection.period);
+	const listQuery: DirectAccountingEntriesQuery = listRange ?? { all: true };
 	const {
 		data: entriesData,
 		error: entriesError,
 		isLoading: entriesLoading,
 	} = useQuery({
-		queryKey: ["direct-accounting", "entries", listRange],
-		queryFn: () => listDirectAccountingEntries(listRange),
+		queryKey: ["direct-accounting", "entries", listQuery],
+		queryFn: () => listDirectAccountingEntries(listQuery),
 		placeholderData: (previousData) => previousData,
 	});
 	const { data: suggestionsData } = useQuery({
@@ -265,7 +268,7 @@ export function DirectAccountingHome({ online }: { online: boolean }) {
 		deleteMutation.mutate(editingEntry);
 	}
 
-	function selectListPreset(period: DirectAccountingDetailPeriod) {
+	function selectListPreset(period: ListPeriod) {
 		setListSelection({ mode: "preset", period });
 		setPeriodPickerOpen(false);
 		setCustomPeriodError(null);
@@ -273,8 +276,9 @@ export function DirectAccountingHome({ online }: { online: boolean }) {
 
 	function changePeriodPickerOpen(open: boolean) {
 		if (open) {
-			setCustomDateFrom(listRange.dateFrom);
-			setCustomDateTo(listRange.dateTo);
+			const initialRange = listRange ?? trailingDateRange(today, "month");
+			setCustomDateFrom(initialRange.dateFrom);
+			setCustomDateTo(initialRange.dateTo);
 			setCustomPeriodError(null);
 		}
 		setPeriodPickerOpen(open);
@@ -493,7 +497,7 @@ export function DirectAccountingHome({ online }: { online: boolean }) {
 								type="button"
 							>
 								<CalendarDays aria-hidden size={17} />
-								<span>{formatDateRange(listRange.dateFrom, listRange.dateTo)}</span>
+								<span>{listRange ? formatDateRange(listRange.dateFrom, listRange.dateTo) : "Все даты"}</span>
 								<ChevronDown aria-hidden size={15} />
 							</button>
 						</Popover.Trigger>
@@ -627,8 +631,8 @@ function formatEntryFormTitle(kind: EntryKind, editing: boolean): string {
 	return editing ? "Исправление передачи средств" : "Новая передача средств";
 }
 
-function trailingDateRange(anchorDate: string, period: DirectAccountingDetailPeriod) {
-	const days = period === "day" ? 1 : period === "week" ? 7 : 30;
+function trailingDateRange(anchorDate: string, period: Exclude<ListPeriod, "all">) {
+	const days = period === "day" ? 1 : 30;
 	const anchor = new Date(`${anchorDate}T00:00:00.000Z`);
 	const from = new Date(anchor.getTime() - (days - 1) * DAY_MS);
 	return { dateFrom: from.toISOString().slice(0, 10), dateTo: anchorDate };
@@ -649,14 +653,15 @@ function validateListRange(dateFrom: string, dateTo: string, today: string): str
 function formatEntriesPeriodTitle(
 	kind: EntryKind,
 	selection: EntriesListSelection,
-	range: { dateFrom: string; dateTo: string },
+	range: { dateFrom: string; dateTo: string } | null,
 ): string {
 	const subject = entryKindSubject(kind);
 	if (selection.mode === "preset") {
 		if (selection.period === "day") return `${subject} сегодня`;
-		if (selection.period === "week") return `${subject} за 7 дней`;
+		if (selection.period === "all") return `${subject} за всё время`;
 		return `${subject} за 30 дней`;
 	}
+	if (!range) return `${subject} за всё время`;
 	return range.dateFrom === range.dateTo
 		? `${subject} за ${formatDate(range.dateFrom)}`
 		: `${subject}: ${formatDateRange(range.dateFrom, range.dateTo)}`;

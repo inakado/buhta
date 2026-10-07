@@ -67,22 +67,22 @@ export class DirectAccountingService {
 	}
 
 	async listEntries(query: DirectAccountingEntriesQuery): Promise<DirectAccountingEntry[]> {
-		const range = listRange(query);
+		const range = query.all ? null : listRange(query);
 		const [sales, receipts, expenses, transfers, salaries] = await Promise.all([
 			prisma.directAccountingSale.findMany({
-				where: { soldOn: { gte: range.from, lte: range.to }, deletedAt: null },
+				where: { ...(range ? { soldOn: { gte: range.from, lte: range.to } } : {}), deletedAt: null },
 			}),
 			prisma.directAccountingReceipt.findMany({
-				where: { receivedOn: { gte: range.from, lte: range.to }, deletedAt: null },
+				where: { ...(range ? { receivedOn: { gte: range.from, lte: range.to } } : {}), deletedAt: null },
 			}),
 			prisma.directAccountingExpense.findMany({
-				where: { spentOn: { gte: range.from, lte: range.to }, deletedAt: null },
+				where: { ...(range ? { spentOn: { gte: range.from, lte: range.to } } : {}), deletedAt: null },
 			}),
 			prisma.directAccountingTransfer.findMany({
-				where: { transferredOn: { gte: range.from, lte: range.to }, deletedAt: null },
+				where: { ...(range ? { transferredOn: { gte: range.from, lte: range.to } } : {}), deletedAt: null },
 			}),
 			prisma.directAccountingSalary.findMany({
-				where: { periodTo: { gte: range.from, lte: range.to }, deletedAt: null },
+				where: { ...(range ? { periodTo: { gte: range.from, lte: range.to } } : {}), deletedAt: null },
 			}),
 		]);
 

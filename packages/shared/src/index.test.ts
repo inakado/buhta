@@ -57,6 +57,7 @@ import {
 	DirectorAnalyticsQuerySchema,
 	DirectorAnalyticsResponseSchema,
 	DirectAccountingSaleInputSchema,
+	DirectAccountingEntriesQuerySchema,
 	DirectAccountingSalesQuerySchema,
 	DirectAccountingStatisticsQuerySchema,
 	LoginSchema,
@@ -172,6 +173,9 @@ describe("shared contracts", () => {
 			dateTo: "2026-09-08",
 		})).toEqual({ dateFrom: "2026-09-01", dateTo: "2026-09-08" });
 		expect(DirectAccountingSalesQuerySchema.safeParse({}).success).toBe(false);
+		expect(DirectAccountingEntriesQuerySchema.parse({ all: "true" })).toEqual({ all: true });
+		expect(DirectAccountingEntriesQuerySchema.safeParse({ all: "false" }).success).toBe(false);
+		expect(DirectAccountingEntriesQuerySchema.safeParse({ all: "true", date: "2026-09-08" }).success).toBe(false);
 		expect(DirectAccountingStatisticsQuerySchema.parse({ detailPeriod: "week" })).toEqual({ detailPeriod: "week" });
 		expect(DirectAccountingStatisticsQuerySchema.parse({
 			dateFrom: "2026-09-01",

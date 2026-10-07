@@ -2114,7 +2114,7 @@ input[type="search"]::-webkit-search-decoration {
 	}
 
 	.direct-accounting-summary {
-		grid-template-columns: repeat(7, minmax(0, 1fr));
+		grid-template-columns: repeat(4, minmax(0, 1fr));
 		overflow: hidden;
 		gap: 0;
 		border: 1px solid var(--line);
@@ -2142,6 +2142,14 @@ input[type="search"]::-webkit-search-decoration {
 
 	.direct-accounting-summary > div + div {
 		box-shadow: inset 1px 0 0 var(--line);
+	}
+
+	.direct-accounting-summary > div:nth-child(5) {
+		box-shadow: inset 0 1px 0 var(--line);
+	}
+
+	.direct-accounting-summary > div:nth-child(n + 6) {
+		box-shadow: inset 1px 0 0 var(--line), inset 0 1px 0 var(--line);
 	}
 
 	.direct-accounting-summary > .direct-accounting-salary-total {
@@ -2419,6 +2427,16 @@ input[type="search"]::-webkit-search-decoration {
 		display: grid;
 		grid-template-columns: minmax(340px, .48fr) minmax(0, 1fr);
 		align-items: stretch;
+	}
+}
+
+@media (min-width: 1440px) {
+	.direct-accounting-summary {
+		grid-template-columns: repeat(7, minmax(0, 1fr));
+	}
+
+	.direct-accounting-summary > div:nth-child(n + 5) {
+		box-shadow: inset 1px 0 0 var(--line);
 	}
 }
 

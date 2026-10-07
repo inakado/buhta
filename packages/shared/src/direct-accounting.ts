@@ -173,7 +173,27 @@ export const DirectAccountingSalesQuerySchema = z.object({
 
 export type DirectAccountingSalesQuery = z.infer<typeof DirectAccountingSalesQuerySchema>;
 
-export const DirectAccountingEntriesQuerySchema = DirectAccountingSalesQuerySchema;
+export const DirectAccountingEntriesQuerySchema = z.object({
+	date: DirectAccountingDateSchema.optional(),
+	dateFrom: DirectAccountingDateSchema.optional(),
+	dateTo: DirectAccountingDateSchema.optional(),
+	all: z.union([z.literal("true"), z.literal(true)]).transform(() => true as const).optional(),
+}).strict().superRefine((value, context) => {
+	const hasRangeBoundary = Boolean(value.dateFrom || value.dateTo);
+	const selectionCount = Number(Boolean(value.date)) + Number(hasRangeBoundary) + Number(Boolean(value.all));
+	if (selectionCount === 0) {
+		context.addIssue({ code: "custom", message: "Укажите дату, границы периода или все записи" });
+	}
+	if (selectionCount > 1) {
+		context.addIssue({ code: "custom", message: "Укажите только один режим периода" });
+	}
+	if ((value.dateFrom && !value.dateTo) || (!value.dateFrom && value.dateTo)) {
+		context.addIssue({ code: "custom", message: "Укажите обе границы периода" });
+	}
+	if (value.dateFrom && value.dateTo && value.dateFrom > value.dateTo) {
+		context.addIssue({ code: "custom", message: "Начало периода не может быть позже окончания" });
+	}
+});
 export type DirectAccountingEntriesQuery = z.infer<typeof DirectAccountingEntriesQuerySchema>;
 
 export const DirectAccountingSalesResponseSchema = z.object({

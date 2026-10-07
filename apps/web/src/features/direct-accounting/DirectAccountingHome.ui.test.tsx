@@ -222,6 +222,18 @@ describe("DirectAccountingHome", () => {
 		expect(screen.queryByLabelText("Цена за кг, ₽")).toBeNull();
 	});
 
+	it("shows all ledger entries without a date range", async () => {
+		vi.mocked(listDirectAccountingEntries).mockResolvedValue({ entries: [sale] });
+		vi.mocked(listDirectAccountingSuggestions).mockResolvedValue({ suggestions: [] });
+
+		renderHome();
+		fireEvent.click(screen.getByRole("button", { name: "Всего" }));
+
+		expect(await screen.findByText("Продажи за всё время")).toBeTruthy();
+		expect(screen.getByRole("button", { name: /Все даты/ })).toBeTruthy();
+		await waitFor(() => expect(listDirectAccountingEntries).toHaveBeenCalledWith({ all: true }));
+	});
+
 	it("creates a backdated expense with an amount only", async () => {
 		vi.mocked(listDirectAccountingEntries).mockResolvedValue({ entries: [] });
 		vi.mocked(listDirectAccountingSuggestions).mockResolvedValue({ suggestions: [] });

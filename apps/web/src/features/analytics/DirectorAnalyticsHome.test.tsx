@@ -116,7 +116,7 @@ const directAccountingResponse = {
 		quantityKg: 0.8,
 		receivedQuantityKg: 2,
 		balanceQuantityKg: 1.2,
-		revenueCents: 120_000,
+		revenueCents: 1_151_259_000,
 		expensesCents: 25_000,
 		transfersCents: 50_000,
 		salariesCents: 12_000,
@@ -295,6 +295,7 @@ describe("DirectorAnalyticsHome", () => {
 		expect(screen.getByRole("button", { name: "30 дней" }).getAttribute("aria-pressed")).toBe("true");
 		expect(fetchMock.mock.calls.some(([input]) => String(input).includes("detailPeriod=month"))).toBe(true);
 		expect(screen.getByText("Затраты")).toBeTruthy();
+		expect(screen.getByText(/11\s512\s590\s₽/)).toBeTruthy();
 		expect(screen.getByText("250 ₽")).toBeTruthy();
 		expect(screen.getByText("Передано")).toBeTruthy();
 		expect(screen.getByText("500 ₽")).toBeTruthy();
